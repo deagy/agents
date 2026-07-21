@@ -1,4 +1,0 @@
-interface:
-  display_name: "SAMPLE-001 Run"
-  short_description: "Operate the local demo stack."
-  default_prompt: "Use $sample-001-run to start, validate, or debug the local demo."
