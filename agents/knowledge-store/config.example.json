@@ -1,0 +1,19 @@
+{
+  "database": "./data/knowledge.db",
+  "embedding": {
+    "provider": "hashing",
+    "model": "feature-hash-v1",
+    "dimensions": 384,
+    "base_url": "https://api.example.invalid/v1",
+    "api_key_env": "KNOWLEDGE_EMBEDDING_API_KEY",
+    "batch_size": 32
+  },
+  "chunking": {
+    "max_characters": 2400,
+    "overlap_characters": 240
+  },
+  "ingestion": {
+    "default_classification": "internal",
+    "redact_secrets": true
+  }
+}

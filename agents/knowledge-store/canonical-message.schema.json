@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/canonical-message.schema.json",
+  "title": "Canonical Chat Message",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["source", "conversation_id", "message_id", "role", "content", "classification"],
+  "properties": {
+    "source": { "type": "string", "minLength": 1 },
+    "source_uri": { "type": ["string", "null"] },
+    "conversation_id": { "type": "string", "minLength": 1 },
+    "conversation_title": { "type": ["string", "null"] },
+    "message_id": { "type": "string", "minLength": 1 },
+    "role": { "enum": ["system", "user", "assistant", "tool", "unknown"] },
+    "content": { "type": "string", "minLength": 1 },
+    "created_at": { "type": ["string", "null"], "format": "date-time" },
+    "classification": { "enum": ["public", "internal", "confidential", "restricted"] },
+    "metadata": { "type": "object" }
+  }
+}

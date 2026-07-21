@@ -1,0 +1,51 @@
+profile_version: 1
+status: active
+
+platform:
+  hosting_model: self-hosted
+  virtualization: proxmox
+  node_operating_system: talos
+  orchestration: kubernetes
+  package_deployment: helm
+
+infrastructure:
+  infrastructure_as_code: terraform
+  desired_state_required: true
+  manual_configuration: exception_only
+  terraform_provider: not_yet_selected
+  state_backend: not_yet_selected
+  policy_as_code: not_yet_selected
+
+engineering:
+  primary_language: golang
+  secondary_languages:
+    - python
+  python_usage: when_necessary
+  dependency_versions: project_defined_and_pinned
+
+testing:
+  integration_specification: gherkin
+  regression_specification: gherkin
+  gherkin_step_implementation: project_defined
+
+source_control:
+  platform: gitlab
+  change_model: merge_request
+  protected_default_branch: required
+
+cicd:
+  platform: gitlab_ci
+  runner_hosting: not_yet_selected
+  runner_trust_model: not_yet_selected
+  protected_production_environment: required
+
+unresolved_standards:
+  - supported tool and language versions
+  - Proxmox Terraform provider and version policy
+  - Terraform state backend and recovery process
+  - Kubernetes policy-as-code engine
+  - GitLab runner placement, isolation, and trust tiers
+  - container registry and artifact-signing implementation
+  - observability platform
+  - secrets-management platform
+  - compliance frameworks and evidence retention

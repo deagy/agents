@@ -1,0 +1,47 @@
+version: 1
+agents:
+  cloud-architect:
+    definition: architecture/cloud-architect/AGENT.md
+    phase: design
+  threat-modeler:
+    definition: architecture/threat-modeler/AGENT.md
+    phase: design
+  application-engineer:
+    definition: engineering/application-engineer/AGENT.md
+    phase: build
+  infrastructure-provisioner:
+    definition: engineering/infrastructure-provisioner/AGENT.md
+    phase: build
+  cicd-engineer:
+    definition: engineering/cicd-engineer/AGENT.md
+    phase: build
+  test-engineer:
+    definition: engineering/test-engineer/AGENT.md
+    phase: verify
+  release-engineer:
+    definition: engineering/release-engineer/AGENT.md
+    phase: release
+  code-reviewer:
+    definition: review/code-reviewer/AGENT.md
+    phase: review
+  infrastructure-reviewer:
+    definition: review/infrastructure-reviewer/AGENT.md
+    phase: review
+  pipeline-security-reviewer:
+    definition: review/pipeline-security-reviewer/AGENT.md
+    phase: review
+  security-reviewer:
+    definition: review/security-reviewer/AGENT.md
+    phase: review
+  compliance-reviewer:
+    definition: review/compliance-reviewer/AGENT.md
+    phase: review
+  technical-writer:
+    definition: documentation/technical-writer/AGENT.md
+    phase: document
+  evidence-curator:
+    definition: documentation/evidence-curator/AGENT.md
+    phase: evidence
+  knowledge-store-steward:
+    definition: knowledge-store/AGENT.md
+    phase: knowledge
