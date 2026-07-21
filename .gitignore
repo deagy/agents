@@ -1,7 +1,14 @@
 __pycache__/
 *.py[cod]
 
+*/**/sample-001-run
+/*/sample-001-run
+sample-001-run
+
 # SAMPLE-001 local/demo data and credentials
+sample-001/**/*
+sample-001/*
+sample-001/
 sample-001/.env.local
 sample-001/**/.env.local
 sample-001/**/compose.override.yaml
