@@ -322,9 +322,9 @@ Follow `workflows/debugging.md`.
 ### Debugging engineer brief
 
 ```text
-Objective: Debug the failing SAMPLE-001 login flow and tune agent routing if the wrong agents are selected.
+Objective: Debug a failing login flow and tune agent routing if the wrong agents are selected.
 Inputs: failing command or UI action, logs, request IDs, current changed paths, and expected behavior.
-Scope: sample-001 runtime/configuration plus agents/catalog.yaml, orchestration/routing.yaml, and selector tests if agent selection is defective.
+Scope: application runtime/configuration plus agents/catalog.yaml, orchestration/routing.yaml, and selector tests if agent selection is defective.
 Output: reproduction evidence, root cause, smallest safe fix, regression tests or justified gaps, validation commands, and independent-review handoff.
 Prohibited: production changes, persistent environment mutation, risk acceptance, deleting data, or approving your own fix.
 ```

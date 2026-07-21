@@ -1,4 +1,4 @@
-# SAMPLE-001 API Contract
+# Document Upload Example API Contract
 
 ## Boundary
 

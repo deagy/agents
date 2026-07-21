@@ -2,9 +2,9 @@
 
 ## Project Structure & Module Organization
 
-Agent roles, policies, workflows, orchestration, testing, support/escalation, and the knowledge store live under `agents/`; publishable skills live under `.agents/skills/`. The local SAMPLE-001 product demonstration is isolated under `sample-001/`: React code is in `apps/frontend/`, Go commands and packages in `services/`, migrations in `db/`, Gherkin in `tests/features/`, and delivery contracts in `deploy/` and `infra/`.
+Agent roles, policies, workflows, orchestration, testing, support/escalation, and the knowledge store live under `agents/`; publishable skills live under `.agents/skills/`. Keep product/application code, tests, migrations, deployment contracts, and infrastructure contracts in clearly scoped project directories.
 
-Read `agents/RUNBOOK.md` for orchestration and `sample-001/AGENTS.md` before product changes. Keep role definitions and `agents/catalog.yaml` synchronized.
+Read `agents/RUNBOOK.md` for orchestration and any project-local `AGENTS.md` before product changes. Keep role definitions and `agents/catalog.yaml` synchronized.
 
 ## Build, Test, and Development Commands
 
@@ -14,7 +14,7 @@ Resolve Python 3.10+ as documented in the runbook. From each internal-tool compo
 <python> -B -m unittest discover -s test -p "test_*.py"
 ```
 
-From `sample-001/services/`, use `gofmt`, `go tool goimports`, `go vet ./...`, `go test ./...`, `go test -race ./...`, and `go tool golangci-lint run ./...`. From `sample-001/apps/frontend/`, use `npm ci`, `npm test`, `npm run typecheck`, and `npm run build`. Podman, PostgreSQL migrations, Helm, and Terraform remain disposable or validation-only; follow the component README and never target a persistent environment without approval.
+For Go services, use `gofmt`, `go tool goimports`, `go vet ./...`, `go test ./...`, `go test -race ./...`, and `go tool golangci-lint run ./...`. For React frontends, use the project-pinned package manager for install, test, typecheck, and build commands. Podman, PostgreSQL migrations, Helm, and Terraform remain disposable or validation-only unless a project has explicit production approval; follow the component README and never target a persistent environment without approval.
 
 ## Coding Style & Naming Conventions
 

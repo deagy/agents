@@ -1,6 +1,6 @@
 # Secure Cloud Agents
 
-This repository contains a secure cloud agent suite plus a local demonstration workload. It is intended for teams building self-hosted infrastructure and applications with Proxmox, Talos, Kubernetes, Helm, Terraform, GitLab CI/CD, Go, PostgreSQL, React, TypeScript, Python where useful, and Gherkin-based integration/regression testing.
+This repository contains a secure cloud agent suite. It is intended for teams building self-hosted infrastructure and applications with Proxmox, Talos, Kubernetes, Helm, Terraform, GitLab CI/CD, Go, PostgreSQL, React, TypeScript, Python where useful, and Gherkin-based integration/regression testing.
 
 The agent suite helps select, coordinate, test, review, document, support, and escalate work across specialized roles. Agents may prepare scoped repository changes and evidence, but human approval is still required for production, persistent infrastructure, destructive actions, policy exceptions, privileged access, and risk acceptance.
 
@@ -11,7 +11,6 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 ├── AGENTS.md                 # Repository-wide contributor and safety rules
 ├── agents/                   # Agent roles, policies, workflows, orchestration, support, tests
 ├── .agents/skills/           # Publishable Codex skills for this repository
-├── sample-001/               # Local-only secure document-upload vertical slice
 ├── .gitlab-ci.yml            # Validate/test/build/package-only GitLab pipeline
 └── README.md                 # This overview
 ```
@@ -26,7 +25,6 @@ Key areas:
 - [agents/knowledge-store/](agents/knowledge-store/) contains the retrieval layer for approved historical context.
 - [agents/testing/](agents/testing/) and [agents/support/](agents/support/) define black-box testing, end-user testing, support triage, and escalation roles.
 - [.agents/skills/](.agents/skills/) contains Codex skill packaging for repository orchestration.
-- [sample-001/](sample-001/) is the local demonstration product.
 
 ## Quick start
 
@@ -42,7 +40,7 @@ Generate a reviewable dispatch plan:
 ```powershell
 py -3 agents/orchestration/src/select_agents.py `
   --task "Review a React and Go upload feature" `
-  --files sample-001/apps/frontend/src/App.tsx,sample-001/services/internal/api/api.go `
+  --files frontend/src/App.tsx,services/internal/api/api.go `
   --classification internal `
   --task-id EXAMPLE-1
 ```
@@ -67,19 +65,6 @@ originating agent -> support triage agent -> responsible role
 
 No agent may approve its own work, accept risk, bypass a required gate, or authorize production.
 
-## SAMPLE-001 demo
-
-[sample-001/](sample-001/) is a local-only secure document-upload demonstration with:
-
-- React/TypeScript frontend
-- Go BFF/API/workers and fake OIDC/scanner adapters
-- PostgreSQL and Goose migrations
-- Gherkin/Godog, Vitest, and Playwright-oriented contracts
-- disposable Compose, render-only Helm, validate-only Terraform
-- no-deploy GitLab pipeline
-
-Read [sample-001/README.md](sample-001/README.md) and [sample-001/AGENTS.md](sample-001/AGENTS.md) before changing or running the demo.
-
 ## Validation
 
 Common local checks:
@@ -87,25 +72,9 @@ Common local checks:
 ```powershell
 py -3 -B -m unittest discover -s agents/orchestration/test -p "test_*.py"
 py -3 -B -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
-
-Push-Location sample-001/services
-go mod verify
-gofmt -l .
-go tool goimports -l .
-go vet ./...
-go test ./...
-go test -race ./...
-go tool golangci-lint run ./...
-Pop-Location
-
-Push-Location sample-001/apps/frontend
-npm test
-npm run typecheck
-npm run build
-Pop-Location
 ```
 
-Some checks require a prepared disposable runner with Podman/Compose, PostgreSQL, Helm, Terraform, Kubernetes tooling, vulnerability scanning, SBOM generation, or browser engines. Never target a persistent environment without explicit approval.
+Component-level checks should run from the relevant project directory and may include Go, frontend, Gherkin, Helm, Terraform, vulnerability scanning, SBOM generation, or browser-engine validation. Never target a persistent environment without explicit approval.
 
 ## Knowledge store
 
@@ -131,4 +100,3 @@ Start here:
 - [AGENTS.md](AGENTS.md) for repository rules
 - [agents/README.md](agents/README.md) for the agent-suite overview
 - [agents/RUNBOOK.md](agents/RUNBOOK.md) for orchestration examples
-- [sample-001/README.md](sample-001/README.md) for the demo product

@@ -1,4 +1,4 @@
-# SAMPLE-001 Architecture Baseline
+# Document Upload Example Architecture Baseline
 
 ## Scope and status
 

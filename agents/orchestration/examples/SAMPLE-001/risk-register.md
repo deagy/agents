@@ -1,4 +1,4 @@
-# SAMPLE-001 Risk Register
+# Document Upload Example Risk Register
 
 All risks remain open until required decisions and verification evidence are approved. Risk acceptance is human-only.
 

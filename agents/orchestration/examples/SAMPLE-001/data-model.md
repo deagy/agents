@@ -1,4 +1,4 @@
-# SAMPLE-001 PostgreSQL Data Model
+# Document Upload Example PostgreSQL Data Model
 
 ## Proposed entities
 

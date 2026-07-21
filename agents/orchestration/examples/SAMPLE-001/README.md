@@ -1,6 +1,6 @@
-# SAMPLE-001 Design Resolution
+# Document Upload Example Design Resolution
 
-This package resolves the planning blockers identified in `../SAMPLE-001-report.md` far enough for independent architecture, threat, infrastructure, pipeline-security, and security review.
+This package resolves planning blockers far enough for independent architecture, threat, infrastructure, pipeline-security, and security review.
 
 All decisions are **proposed** until the named human owner approves them. No artifact authorizes implementation, deployment, migration, Terraform state access, or production changes.
 

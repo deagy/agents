@@ -1,4 +1,4 @@
-# SAMPLE-001 Review Package
+# Document Upload Example Review Package
 
 ## Requested disposition
 
@@ -16,7 +16,7 @@ Review the proposed design for readiness to begin implementation. Do not treat t
 - `acceptance-criteria.md`
 - `adrs/*.md`
 - `design-resolution-plan.json`
-- `../SAMPLE-001-report.md`
+- companion orchestration report
 
 ## Required review sequence
 
@@ -43,9 +43,9 @@ Resolve `$AgentPython` with the Python 3.10+ probe in `agents/RUNBOOK.md` first.
 ```powershell
 Set-Location agents/orchestration
 & $AgentPython.Path @($AgentPython.Args) -B src/select_agents.py `
-  --task "Review resolved SAMPLE-001 architecture for implementation readiness" `
-  --files "agents/orchestration/examples/SAMPLE-001/architecture.md,agents/orchestration/examples/SAMPLE-001/decision-register.yaml" `
-  --task-id SAMPLE-001-REVIEW `
+  --task "Review resolved document-upload architecture for implementation readiness" `
+  --files "<example-package>/architecture.md,<example-package>/decision-register.yaml" `
+  --task-id EXAMPLE-REVIEW `
   --classification internal
 ```
 

@@ -1,4 +1,4 @@
-# SAMPLE-001 State Machines
+# Document Upload Example State Machines
 
 ## Document lifecycle
 

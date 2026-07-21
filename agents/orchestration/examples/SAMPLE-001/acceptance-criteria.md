@@ -1,4 +1,4 @@
-# SAMPLE-001 Implementation-Handoff Acceptance Criteria
+# Document Upload Example Implementation-Handoff Acceptance Criteria
 
 Implementation may begin only when every blocking decision in `decision-register.yaml` has a named human owner, disposition, date, and evidence reference, and the independent infrastructure/security gates are non-blocking.
 
