@@ -3,9 +3,12 @@ enabled: true
 mode: required_when_authorized_store_is_available
 command:
   cwd: agents/knowledge-store
-  executable: node
+  launcher:
+    runtime: python
+    minimum_version: "3.10"
+    resolution: runner-probed
   args_prefix:
-    - src/cli.mjs
+    - src/cli.py
     - context
 
 pre_dispatch:
@@ -17,10 +20,11 @@ pre_dispatch:
     - architecture_and_control_references
   default_top_k: 5
   maximum_top_k: 20
-  implementation_note: demo_cli_currently_permits_up_to_100_engineering_enforcement_required
+  enforcement: selector_and_python_cli_reject_values_outside_1_to_20
   require_agent_identifier: true
   require_task_identifier: true
   require_classification_filter: true
+  require_explicit_config: true
   require_authorized_scope_filter_before_ranking: true
 
 during_execution:

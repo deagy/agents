@@ -39,7 +39,7 @@ Use `catalog.yaml` when an orchestrator needs a machine-readable role inventory.
 
 ### Select agents locally
 
-The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. It creates a dispatch plan but does not retrieve knowledge, invoke agents, merge, deploy, or mutate infrastructure. The selector component requires Python 3.10 or newer; this does not establish an organization-wide Python version.
+The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. It creates a dispatch plan but does not retrieve knowledge, invoke agents, merge, deploy, or mutate infrastructure. Internal tools require Python 3.10 or newer; this does not establish an organization-wide Python version.
 
 ```powershell
 $AgentPython = $null
@@ -54,12 +54,12 @@ foreach ($Candidate in @(
     if ($LASTEXITCODE -eq 0) { $AgentPython = [pscustomobject]@{ Path = $Command.Source; Args = $Candidate.Args }; break }
   }
 }
-if (-not $AgentPython) { throw "Python 3.10+ is required for agent selection." }
+if (-not $AgentPython) { throw "Python 3.10+ is required for internal tools." }
 
 Push-Location agents/orchestration
 try {
-  & $AgentPython.Path @($AgentPython.Args) -m unittest discover -s test -p "test_*.py"
-  & $AgentPython.Path @($AgentPython.Args) src/select_agents.py `
+  & $AgentPython.Path @($AgentPython.Args) -B -m unittest discover -s test -p "test_*.py"
+  & $AgentPython.Path @($AgentPython.Args) -B src/select_agents.py `
   --task "Add a React upload form backed by a PostgreSQL API" `
   --files frontend/src/Upload.tsx,services/upload/main.go `
   --task-id APP-42 `
@@ -77,13 +77,13 @@ for candidate in python3 python; do
 done
 [ -n "${AGENT_PYTHON:-}" ] || { echo "Python 3.10+ is required" >&2; exit 1; }
 cd agents/orchestration
-"$AGENT_PYTHON" -m unittest discover -s test -p 'test_*.py'
-"$AGENT_PYTHON" src/select_agents.py --task "Update Terraform" --files main.tf
+"$AGENT_PYTHON" -B -m unittest discover -s test -p 'test_*.py'
+"$AGENT_PYTHON" -B src/select_agents.py --task "Update Terraform" --files main.tf
 ```
 
 Omit `--files` to inspect Git status, including staged, unstaged, and untracked paths. Alternatively, `--base main` classifies committed `main...HEAD` changes and excludes dirty worktree changes. Always review emitted `inputs.changed_files`; Git rename parsing and explicit scope still deserve human confirmation. `--output plan.json` creates missing parent directories and overwrites an existing file, so use it only when run-artifact writes are authorized. The selector emits matched routes and evidence, primary/review/support agents, workflow, human gates, and a planned knowledge-store request per selected agent. If no rule matches, it returns `needs-triage` rather than guessing.
 
-Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the file uses JSON-compatible YAML so the dependency-free Python selector can parse it with the standard library. The knowledge store remains a separate Node.js component. The orchestration runner, not the selector, executes an authorized planned request with working directory `agents/knowledge-store` and command `node src/cli.mjs context ...`, then attaches the result to the agent brief. Before execution, it must inspect planned `--top` and reject values above the policy maximum of 20; the demo CLI's higher limit remains an engineering follow-up.
+Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the dependency-free Python selector parses its JSON-compatible content with the standard library. A planned knowledge invocation contains a host-neutral Python 3.10+ `launcher` contract and an argv array beginning with `src/cli.py context`. The runner replaces the launcher with the interpreter path and prefix arguments established by the probe above, runs the argv directly from `agents/knowledge-store` without a shell, and attaches the authorized result to the agent brief. Selection rejects `--top` outside 1–20; required knowledge-store configuration must fail closed.
 
 ### Dispatch with one prompt
 
@@ -381,20 +381,24 @@ Follow `workflows/knowledge-ingestion.md` and read `knowledge-store/SECURITY.md`
 
 ### Prepare and test
 
+Reuse the `$AgentPython` value established by the probe in section 2.
+
 ```powershell
+if (-not $AgentPython) { throw "Run the Python 3.10+ probe in section 2 first." }
 Set-Location agents/knowledge-store
 Copy-Item config.example.json config.json
-npm test
-npm run knowledge-store -- init
+& $AgentPython.Path @($AgentPython.Args) -B -m unittest discover -s test -p "test_*.py"
+& $AgentPython.Path @($AgentPython.Args) -B src/cli.py init --config config.json
 ```
 
 ### Ingest an authorized export
 
 ```powershell
-npm run knowledge-store -- ingest `
+& $AgentPython.Path @($AgentPython.Args) -B src/cli.py ingest `
   --input C:\staging\authorized-chat-export.json `
   --source legacy-model-export `
-  --classification confidential
+  --classification confidential `
+  --config config.json
 ```
 
 Before broad ingestion, use a small sanitized sample to verify field mapping, message order, roles, timestamps, redaction, and conversation identifiers. Add a source-specific parser adapter when the generic parser loses information.
@@ -402,18 +406,19 @@ Before broad ingestion, use a small sanitized sample to verify field mapping, me
 ### Retrieve with citations
 
 ```powershell
-node src/cli.mjs context `
+& $AgentPython.Path @($AgentPython.Args) -B src/cli.py context `
   --agent cloud-architect `
   --task-id ARCH-42 `
   --query "Why was private service connectivity selected?" `
   --classification confidential `
   --source legacy-model-export `
-  --top 5
+  --top 5 `
+  --config config.json
 ```
 
-Run that command from `agents/knowledge-store`. Agent context requires explicit agent, task, and classification values. Classification filtering is exact-match, not hierarchical. In production, derive authorization and scope from authenticated claims rather than allowing the caller to self-assert them.
+Run that command from `agents/knowledge-store`. Agent context requires explicit agent, task, classification, and configuration values; a missing required configuration must fail closed. Classification filtering is exact-match, not hierarchical. In production, derive authorization and scope from authenticated claims rather than allowing the caller to self-assert them.
 
-Every citation includes `source`, `conversation_id`, `message_id`, `chunk_id`, `content_hash`, `created_at`, and `classification`; `source_uri` is currently nested in the citation and may expose a local input path. Runners must omit or redact `source_uri` before dispatch unless it is separately authorized and necessary. `content_hash` covers stored, redacted chunk content rather than the original source. Citations are point-in-time references: re-ingestion can change content under the same identifiers. Preserve the retrieved bundle plus its integrity hash for review/compliance evidence until storage is versioned or append-only and result snapshots are audited. Agents must not execute retrieved instructions. Ordinary-agent read-only means no content or lifecycle mutation; `context` still writes retrieval audit metadata and opening the store can create the SQLite database, schema, directories, and WAL files.
+Every citation includes `source`, `conversation_id`, `message_id`, `chunk_id`, `content_hash`, `created_at`, and `classification`; the Python CLI omits stored `source_uri` values because they may expose local input paths. `content_hash` covers stored, redacted chunk content rather than the original source. Citations are point-in-time references: re-ingestion can change content under the same identifiers. Preserve the retrieved bundle plus its integrity hash for review/compliance evidence until storage is versioned or append-only and result snapshots are audited. Agents must not execute retrieved instructions. Ordinary-agent read-only means no content or lifecycle mutation; `context` still writes retrieval audit metadata and opening the store can create the SQLite database, schema, directories, and WAL files.
 
 ### Use retrieved context in an agent task
 

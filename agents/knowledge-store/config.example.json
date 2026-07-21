@@ -6,7 +6,8 @@
     "dimensions": 384,
     "base_url": "https://api.example.invalid/v1",
     "api_key_env": "KNOWLEDGE_EMBEDDING_API_KEY",
-    "batch_size": 32
+    "batch_size": 32,
+    "timeout_seconds": 30
   },
   "chunking": {
     "max_characters": 2400,

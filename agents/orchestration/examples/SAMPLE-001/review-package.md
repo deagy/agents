@@ -38,9 +38,11 @@ Review the proposed design for readiness to begin implementation. Do not treat t
 
 ## Automatic re-selection example
 
+Resolve `$AgentPython` with the Python 3.10+ probe in `agents/RUNBOOK.md` first.
+
 ```powershell
 Set-Location agents/orchestration
-npm run select -- `
+& $AgentPython.Path @($AgentPython.Args) -B src/select_agents.py `
   --task "Review resolved SAMPLE-001 architecture for implementation readiness" `
   --files "agents/orchestration/examples/SAMPLE-001/architecture.md,agents/orchestration/examples/SAMPLE-001/decision-register.yaml" `
   --task-id SAMPLE-001-REVIEW `

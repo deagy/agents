@@ -111,11 +111,13 @@
         "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve prior threats, incidents, mitigations, trust boundaries, and residual risks.",
         "invocation": {
           "cwd": "agents/knowledge-store",
-          "executable": "npm",
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
           "args": [
-            "run",
-            "knowledge-store",
-            "--",
+            "src/cli.py",
             "context",
             "--agent",
             "threat-modeler",
@@ -126,7 +128,9 @@
             "--classification",
             "internal",
             "--top",
-            "5"
+            "5",
+            "--config",
+            "config.json"
           ]
         }
       },
@@ -135,11 +139,13 @@
         "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve cross-stack contracts, integration decisions, shared behavior, and implementation patterns.",
         "invocation": {
           "cwd": "agents/knowledge-store",
-          "executable": "npm",
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
           "args": [
-            "run",
-            "knowledge-store",
-            "--",
+            "src/cli.py",
             "context",
             "--agent",
             "application-engineer",
@@ -150,7 +156,9 @@
             "--classification",
             "internal",
             "--top",
-            "5"
+            "5",
+            "--config",
+            "config.json"
           ]
         }
       },
@@ -159,11 +167,13 @@
         "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve React patterns, UX decisions, accessibility, API contracts, and browser security.",
         "invocation": {
           "cwd": "agents/knowledge-store",
-          "executable": "npm",
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
           "args": [
-            "run",
-            "knowledge-store",
-            "--",
+            "src/cli.py",
             "context",
             "--agent",
             "frontend-engineer",
@@ -174,7 +184,9 @@
             "--classification",
             "internal",
             "--top",
-            "5"
+            "5",
+            "--config",
+            "config.json"
           ]
         }
       },
@@ -183,11 +195,13 @@
         "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve Go patterns, PostgreSQL decisions, schemas, migrations, APIs, and operational lessons.",
         "invocation": {
           "cwd": "agents/knowledge-store",
-          "executable": "npm",
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
           "args": [
-            "run",
-            "knowledge-store",
-            "--",
+            "src/cli.py",
             "context",
             "--agent",
             "backend-engineer",
@@ -198,7 +212,9 @@
             "--classification",
             "internal",
             "--top",
-            "5"
+            "5",
+            "--config",
+            "config.json"
           ]
         }
       },
@@ -207,11 +223,13 @@
         "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve Proxmox, Terraform, Talos, Kubernetes, Helm, storage, and networking patterns.",
         "invocation": {
           "cwd": "agents/knowledge-store",
-          "executable": "npm",
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
           "args": [
-            "run",
-            "knowledge-store",
-            "--",
+            "src/cli.py",
             "context",
             "--agent",
             "infrastructure-provisioner",
@@ -222,7 +240,9 @@
             "--classification",
             "internal",
             "--top",
-            "5"
+            "5",
+            "--config",
+            "config.json"
           ]
         }
       },
@@ -231,11 +251,13 @@
         "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve Gherkin scenarios, regressions, failure cases, and quality history.",
         "invocation": {
           "cwd": "agents/knowledge-store",
-          "executable": "npm",
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
           "args": [
-            "run",
-            "knowledge-store",
-            "--",
+            "src/cli.py",
             "context",
             "--agent",
             "test-engineer",
@@ -246,7 +268,9 @@
             "--classification",
             "internal",
             "--top",
-            "5"
+            "5",
+            "--config",
+            "config.json"
           ]
         }
       },
@@ -255,11 +279,13 @@
         "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve prior defects, coding conventions, exceptions, and relevant findings.",
         "invocation": {
           "cwd": "agents/knowledge-store",
-          "executable": "npm",
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
           "args": [
-            "run",
-            "knowledge-store",
-            "--",
+            "src/cli.py",
             "context",
             "--agent",
             "code-reviewer",
@@ -270,7 +296,9 @@
             "--classification",
             "internal",
             "--top",
-            "5"
+            "5",
+            "--config",
+            "config.json"
           ]
         }
       },
@@ -279,11 +307,13 @@
         "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve prior infrastructure findings, drift, incidents, and approved guardrails.",
         "invocation": {
           "cwd": "agents/knowledge-store",
-          "executable": "npm",
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
           "args": [
-            "run",
-            "knowledge-store",
-            "--",
+            "src/cli.py",
             "context",
             "--agent",
             "infrastructure-reviewer",
@@ -294,7 +324,9 @@
             "--classification",
             "internal",
             "--top",
-            "5"
+            "5",
+            "--config",
+            "config.json"
           ]
         }
       },
@@ -303,11 +335,13 @@
         "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve threats, findings, exceptions, incidents, and compensating controls.",
         "invocation": {
           "cwd": "agents/knowledge-store",
-          "executable": "npm",
+          "launcher": {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed"
+          },
           "args": [
-            "run",
-            "knowledge-store",
-            "--",
+            "src/cli.py",
             "context",
             "--agent",
             "security-reviewer",
@@ -318,7 +352,9 @@
             "--classification",
             "internal",
             "--top",
-            "5"
+            "5",
+            "--config",
+            "config.json"
           ]
         }
       }

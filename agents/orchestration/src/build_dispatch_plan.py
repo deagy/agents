@@ -10,6 +10,7 @@ from risk_classifier import apply_cross_stack, classify_risks
 from routing import match_routes
 
 CLASSIFICATIONS = {"public", "internal", "confidential", "restricted"}
+MAXIMUM_KNOWLEDGE_TOP = 20
 
 
 def _unique(values: Iterable[str]) -> list[str]:
@@ -83,6 +84,12 @@ def _build_knowledge_context(
         }
     if classification not in CLASSIFICATIONS:
         raise ValueError(f"Invalid classification: {classification}")
+    try:
+        top = int(input_data.get("top", 5))
+    except (TypeError, ValueError) as error:
+        raise ValueError("Knowledge top must be an integer from 1 through 20") from error
+    if not 1 <= top <= MAXIMUM_KNOWLEDGE_TOP:
+        raise ValueError("Knowledge top must be an integer from 1 through 20")
 
     requests = []
     normalized_task = " ".join(input_data["task"].split())
@@ -92,7 +99,7 @@ def _build_knowledge_context(
             raise ValueError(f"Missing knowledge focus for selected agent: {agent}")
         query = f"Task: {normalized_task}. Retrieve {focus}."
         args = [
-            "src/cli.mjs",
+            "src/cli.py",
             "context",
             "--agent",
             agent,
@@ -103,7 +110,9 @@ def _build_knowledge_context(
             "--classification",
             classification,
             "--top",
-            str(input_data.get("top", 5)),
+            str(top),
+            "--config",
+            "config.json",
         ]
         if input_data.get("source"):
             args.extend(["--source", input_data["source"]])
@@ -113,7 +122,11 @@ def _build_knowledge_context(
                 "query": query,
                 "invocation": {
                     "cwd": "agents/knowledge-store",
-                    "executable": "node",
+                    "launcher": {
+                        "runtime": "python",
+                        "minimum_version": "3.10",
+                        "resolution": "runner-probed",
+                    },
                     "args": args,
                 },
             }

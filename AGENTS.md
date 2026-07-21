@@ -4,28 +4,28 @@
 
 The repository is centered on `agents/`. Role definitions live in category folders such as `engineering/`, `review/`, and `architecture/`; each uses an `AGENT.md`. Shared policy is under `agents/shared/`, orchestration contracts under `agents/orchestration/`, and procedures under `agents/workflows/`. Start with `agents/RUNBOOK.md`; keep `agents/catalog.yaml` synchronized with roles.
 
-The knowledge store uses ESM modules in `agents/knowledge-store/src/` and tests in `test/*.test.mjs`. The Python orchestrator is in `agents/orchestration/src/`, with `unittest` coverage in `test/test_*.py`. Examples stay under each component; local databases belong in the ignored knowledge-store `data/` directory.
+The Python knowledge store and orchestrator live in `agents/knowledge-store/src/` and `agents/orchestration/src/`; both use `unittest` tests named `test_*.py`. Examples stay under each component; local databases belong in the ignored knowledge-store `data/` directory.
 
 ## Build, Test, and Development Commands
 
-Run knowledge-store commands from `agents/knowledge-store/`:
+Resolve Python 3.10+ as documented in `agents/RUNBOOK.md`. Run knowledge-store commands from `agents/knowledge-store/`:
 
 ```powershell
-npm test
-npm run knowledge-store -- init
-npm run knowledge-store -- ingest --input examples/chat-export.json --source example --classification internal
-npm run knowledge-store -- search --query "release approval" --classification internal
+<python> -B -m unittest discover -s test -p "test_*.py"
+<python> -B src/cli.py init
+<python> -B src/cli.py ingest --input examples/chat-export.json --source example --classification internal
+<python> -B src/cli.py search --query "release approval" --classification internal
 ```
 
-The orchestrator component requires Python 3.10+; this is not a repository-wide version choice. From `agents/orchestration/`, resolve and probe an interpreter as shown in `agents/RUNBOOK.md`, then run `<python> -m unittest discover -s test -p "test_*.py"` and `<python> src/select_agents.py --task "Update Terraform" --files main.tf`. It uses only the standard library. Node.js 22.5+ is required for the knowledge store; neither component needs a build step.
+From `agents/orchestration/`, run `<python> -B -m unittest discover -s test -p "test_*.py"` and `<python> -B src/select_agents.py --task "Update Terraform" --files main.tf`. Internal tools use the standard library and need no build step. Node.js remains permitted for frontend tooling when the project selects it.
 
 ## Coding Style & Naming Conventions
 
-Use four-space indentation and snake_case for Python; use two spaces for JavaScript, TypeScript, JSON, and YAML. Knowledge-store JavaScript is ESM with `.mjs`, single quotes, semicolons, and camelCase. Product frontends prefer React/TypeScript; backends prefer Go/PostgreSQL. Use lowercase kebab-case directories, uppercase `AGENT.md` for roles, and descriptive headings. Validate edited schemas.
+Use four-space indentation, snake_case, type hints where useful, and standard-library-first design for Python. Use two spaces for TypeScript, JavaScript, JSON, and YAML. Product frontends prefer React/TypeScript; backends prefer Go/PostgreSQL. Use lowercase kebab-case directories, uppercase `AGENT.md` for roles, and descriptive headings. Validate edited schemas.
 
 ## Testing Guidelines
 
-Use `unittest` and `test_*.py` for orchestration; use `node:test` and `*.test.mjs` for the knowledge store. Cover routing and store behavior. Integration and regression behavior uses Gherkin. Use temporary data and no live credentials. Add regression coverage for defects.
+Use `unittest` and `test_*.py` for internal tools. Cover routing, retrieval, authorization boundaries, and store behavior. Integration and regression behavior uses Gherkin. Use temporary data and no live credentials. Add regression coverage for defects.
 
 ## Commit & Merge Request Guidelines
 

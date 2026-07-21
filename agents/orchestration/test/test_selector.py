@@ -58,8 +58,13 @@ class SelectorTests(unittest.TestCase):
         self.assertTrue(any(request["agent"] == "frontend-engineer" for request in requests))
         self.assertTrue(all("APP-42" in request["invocation"]["args"] for request in requests))
         self.assertTrue(all("\n" not in request["query"] and "\r" not in request["query"] for request in requests))
-        self.assertTrue(all(request["invocation"]["executable"] == "node" for request in requests))
-        self.assertTrue(all(request["invocation"]["args"][:2] == ["src/cli.mjs", "context"] for request in requests))
+        expected_launcher = {
+            "runtime": "python",
+            "minimum_version": "3.10",
+            "resolution": "runner-probed",
+        }
+        self.assertTrue(all(request["invocation"]["launcher"] == expected_launcher for request in requests))
+        self.assertTrue(all(request["invocation"]["args"][:2] == ["src/cli.py", "context"] for request in requests))
 
     def test_knowledge_invocation_preserves_argv_and_output_contract(self) -> None:
         result = plan(
@@ -85,9 +90,13 @@ class SelectorTests(unittest.TestCase):
                 ),
                 "invocation": {
                     "cwd": "agents/knowledge-store",
-                    "executable": "node",
+                    "launcher": {
+                        "runtime": "python",
+                        "minimum_version": "3.10",
+                        "resolution": "runner-probed",
+                    },
                     "args": [
-                        "src/cli.mjs",
+                        "src/cli.py",
                         "context",
                         "--agent",
                         "frontend-engineer",
@@ -102,6 +111,8 @@ class SelectorTests(unittest.TestCase):
                         "confidential",
                         "--top",
                         "3",
+                        "--config",
+                        "config.json",
                         "--source",
                         "approved-decisions",
                     ],
@@ -207,6 +218,18 @@ class SelectorTests(unittest.TestCase):
                 changed_files=["main.tf"],
                 classification="secret",
             )
+
+    def test_rejects_knowledge_top_outside_orchestration_policy(self) -> None:
+        for top in (0, 21, "many"):
+            with self.subTest(top=top), self.assertRaisesRegex(
+                ValueError, "Knowledge top must be an integer from 1 through 20"
+            ):
+                plan(
+                    task="Update Terraform",
+                    changed_files=["main.tf"],
+                    classification="internal",
+                    top=top,
+                )
 
     def test_cli_emits_a_valid_plan_for_explicit_files(self) -> None:
         result = subprocess.run(

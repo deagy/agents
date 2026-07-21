@@ -10,7 +10,7 @@ Each dispatch prompt must include:
 - task ID, objective, execution mode, classification, scope, exclusions, and acceptance criteria;
 - exact files, source revision, plan, artifact digest, target, or environment when applicable;
 - applicable shared policies, workflow, quality gates, and escalation policy;
-- the planned knowledge-store invocation and its result status;
+- the planned Python knowledge-store invocation and its result status; resolve its Python 3.10+ launcher at execution and preserve the supplied argv without shell interpretation;
 - retrieved passages with `source`, `conversation_id`, `message_id`, `chunk_id`, `content_hash`, `created_at`, and `classification` citations, plus the retrieved bundle and its integrity hash as point-in-time evidence;
 - nested citation `source_uri` omitted or redacted by default, and included only when separately authorized and necessary because it may reveal a local path;
 - explicit permitted and prohibited actions;
