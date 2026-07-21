@@ -161,7 +161,7 @@ class SelectorTests(unittest.TestCase):
     def test_routes_compose_runtime_changes_to_infrastructure_review(self) -> None:
         result = plan(
             task="Fix Podman Compose named volume behavior for PostgreSQL",
-            changed_files=["sample-001/deploy/compose/compose.yaml"],
+            changed_files=["deploy/compose/compose.yaml"],
         )
         self.assertEqual(result["workflow"], "new-service")
         self.assertIn("backend-engineer", result["agents"]["primary"])
@@ -171,7 +171,7 @@ class SelectorTests(unittest.TestCase):
     def test_selects_black_box_tester_for_external_behavior(self) -> None:
         result = plan(
             task="Create black-box end-to-end tests for public API upload behavior",
-            changed_files=["sample-001/tests/features/upload.feature"],
+            changed_files=["tests/features/upload.feature"],
             classification="internal",
             task_id="QA-1",
         )
@@ -185,7 +185,7 @@ class SelectorTests(unittest.TestCase):
     def test_selects_debugging_engineer_for_root_cause_work(self) -> None:
         result = plan(
             task="Debug a panic and identify the root cause from the stack trace",
-            changed_files=["sample-001/services/internal/repository/regression/panic_test.go"],
+            changed_files=["services/internal/repository/regression/panic_test.go"],
             classification="internal",
             task_id="DBG-1",
         )
@@ -220,6 +220,38 @@ class SelectorTests(unittest.TestCase):
         self.assertEqual(result["workflow"], "debugging")
         self.assertIn("debugging-engineer", result["agents"]["primary"])
         self.assertIn("technical-writer", result["agents"]["primary"])
+
+    def test_selects_governance_roles_for_agent_suite_review(self) -> None:
+        result = plan(
+            task="Review project agents skills and structure",
+            changed_files=["README.md", "AGENTS.md", ".agents/skills/agent-authoring/SKILL.md"],
+            classification="internal",
+            task_id="GOV-1",
+        )
+        self.assertEqual(result["workflow"], "debugging")
+        self.assertIn("application-engineer", result["agents"]["primary"])
+        self.assertIn("debugging-engineer", result["agents"]["primary"])
+        self.assertIn("test-engineer", result["agents"]["reviewers"])
+        self.assertIn("code-reviewer", result["agents"]["reviewers"])
+        self.assertTrue(
+            "technical-writer" in result["agents"]["primary"]
+            or "technical-writer" in result["agents"]["support"]
+        )
+        self.assertNotEqual(result["agents"]["primary"], ["technical-writer"])
+
+    def test_selects_governance_roles_for_publishable_skill_audit(self) -> None:
+        result = plan(
+            task="Audit publishable skills for packaging and stale references",
+            changed_files=[".agents/skills/run-agent-orchestration/SKILL.md"],
+            classification="internal",
+            task_id="GOV-2",
+        )
+        self.assertIn("application-engineer", result["agents"]["primary"])
+        self.assertIn("debugging-engineer", result["agents"]["primary"])
+        self.assertTrue(
+            "technical-writer" in result["agents"]["primary"]
+            or "technical-writer" in result["agents"]["support"]
+        )
 
     def test_selects_end_user_and_support_for_uat(self) -> None:
         result = plan(
@@ -292,7 +324,7 @@ class SelectorTests(unittest.TestCase):
     def test_selects_supply_chain_reviewer_for_dependency_evidence(self) -> None:
         result = plan(
             task="Review dependency SBOM and container image provenance",
-            changed_files=["sample-001/services/go.mod"],
+            changed_files=["services/go.mod"],
             classification="internal",
             task_id="SC-1",
         )
@@ -326,7 +358,7 @@ class SelectorTests(unittest.TestCase):
             task="Adjust configuration behavior",
             changed_files=["agents/orchestration/routing.yaml"],
         )
-        self.assertEqual(result["agents"]["primary"], ["application-engineer"])
+        self.assertEqual(result["agents"]["primary"], ["application-engineer", "debugging-engineer"])
         self.assertEqual(result["agents"]["reviewers"], ["test-engineer", "code-reviewer"])
 
     def test_adds_human_gates_for_production_database_migrations(self) -> None:
@@ -359,7 +391,7 @@ class SelectorTests(unittest.TestCase):
             task="Refactor the local agent selector",
             changed_files=["agents/orchestration/src/select_agents.py"],
         )
-        self.assertEqual(result["agents"]["primary"], ["application-engineer"])
+        self.assertEqual(result["agents"]["primary"], ["application-engineer", "debugging-engineer"])
         self.assertIn("test-engineer", result["agents"]["reviewers"])
         self.assertIn("code-reviewer", result["agents"]["reviewers"])
 
