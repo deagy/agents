@@ -43,17 +43,29 @@ The local selector uses deterministic path, keyword, and risk rules from `orches
 
 ```powershell
 Set-Location agents/orchestration
-npm test
-npm run select -- `
+$Python = Get-Command python, python3, py -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $Python) { throw "Python 3 is required for agent selection." }
+$LauncherArgs = if ($Python.Name -in @("py", "py.exe")) { @("-3") } else { @() }
+& $Python.Source @LauncherArgs -m unittest discover -s test -p "test_*.py"
+& $Python.Source @LauncherArgs src/select_agents.py `
   --task "Add a React upload form backed by a PostgreSQL API" `
   --files frontend/src/Upload.tsx,services/upload/main.go `
   --task-id APP-42 `
   --classification internal
 ```
 
+On Unix:
+
+```sh
+cd agents/orchestration
+PYTHON="$(command -v python3 || command -v python)" || { echo "Python 3 is required" >&2; exit 1; }
+"$PYTHON" -m unittest discover -s test -p 'test_*.py'
+"$PYTHON" src/select_agents.py --task "Update Terraform" --files main.tf
+```
+
 Omit `--files` to inspect the current `git status`, or provide `--base main` to classify `main...HEAD`. Use `--output plan.json` to save the result. The selector emits matched routes and evidence, primary/review/support agents, workflow, human gates, and one knowledge-store `context` invocation per selected agent. If no rule matches, it returns `needs-triage` rather than guessing.
 
-Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the file uses JSON-compatible YAML so the dependency-free Node selector can parse it deterministically.
+Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the file uses JSON-compatible YAML so the dependency-free Python selector can parse it with the standard library. The knowledge store remains a separate Node.js component; generated context requests invoke its CLI directly with `node`, without npm.
 
 ### Dispatch with one prompt
 

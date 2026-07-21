@@ -9,7 +9,7 @@ Turn one scoped request into a deterministic agent selection, authorized knowled
 
 ## Establish Scope
 
-1. Locate the repository root containing `agents/catalog.yaml` and `agents/orchestration/src/select-agents.mjs`.
+1. Locate the repository root containing `agents/catalog.yaml` and `agents/orchestration/src/select_agents.py`.
 2. Read the repository `AGENTS.md`, `agents/shared/operating-principles.md`, `team-profile.yaml`, `technology-standards.md`, `library-standards.yaml`, `knowledge-use-policy.md`, and `agent-autonomy.yaml`.
 3. Extract the objective, task ID, classification, changed paths or base revision, acceptance criteria, exclusions, and requested execution mode.
 4. Default to `planning-review-only` when execution mode is absent. In that mode, inspect and report without editing application or infrastructure artifacts.
@@ -17,10 +17,22 @@ Turn one scoped request into a deterministic agent selection, authorized knowled
 
 ## Select Agents
 
-Run the dependency-free selector from `agents/orchestration`:
+Resolve a Python 3 interpreter before running the dependency-free selector. On PowerShell, try `python`, `python3`, then the Python launcher with `py -3`; on Unix, try `python3`, then `python`. Stop with a clear error when none is available—do not install an interpreter or silently fall back to the retired Node selector.
+
+PowerShell:
 
 ```powershell
-node src/select-agents.mjs --task "<objective>" --task-id "<id>" --classification "<level>" --files "<comma-separated paths>"
+$Python = Get-Command python, python3, py -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $Python) { throw "Python 3 is required for agent selection." }
+$LauncherArgs = if ($Python.Name -in @("py", "py.exe")) { @("-3") } else { @() }
+& $Python.Source @LauncherArgs src/select_agents.py --task "<objective>" --task-id "<id>" --classification "<level>" --files "<comma-separated paths>"
+```
+
+Unix:
+
+```sh
+PYTHON="$(command -v python3 || command -v python)" || { echo "Python 3 is required for agent selection." >&2; exit 1; }
+"$PYTHON" src/select_agents.py --task "<objective>" --task-id "<id>" --classification "<level>" --files "<comma-separated paths>"
 ```
 
 Omit `--files` to use Git status, or use `--base <ref>` for `<ref>...HEAD`. Do not invent changed paths. If the selector returns `needs-triage`, stop dispatch and request the missing scope. Validate every selected role against `agents/catalog.yaml`.

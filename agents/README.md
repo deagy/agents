@@ -6,7 +6,7 @@ The `knowledge-store/` subsystem is the shared agent retrieval layer for authori
 
 Start with `RUNBOOK.md` for operating instructions and worked examples.
 
-Run the dependency-free local selector from `orchestration/` with `npm run select -- --task "..."`. It evaluates task text and Git changes, validates roles against `catalog.yaml`, and emits a reviewable dispatch plan with knowledge-context requests; it does not execute selected agents.
+Run the dependency-free local selector from `orchestration/` with a resolved Python 3 interpreter (`python3 src/select_agents.py --task "..."` on Unix or `py -3 src/select_agents.py --task "..."` with the Windows launcher). See `RUNBOOK.md` for interpreter checks. The selector evaluates task text and Git changes, validates roles against `catalog.yaml`, and emits a reviewable plan; it does not execute agents.
 
 ## Operating model
 

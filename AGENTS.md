@@ -2,9 +2,9 @@
 
 ## Project Structure & Module Organization
 
-The repository is centered on `agents/`. Role definitions live in category folders such as `agents/engineering/`, `agents/review/`, and `agents/architecture/`; each role uses an `AGENT.md`. Shared policy is under `agents/shared/`, orchestration contracts under `agents/orchestration/`, and executable procedures under `agents/workflows/`. Start with `agents/RUNBOOK.md` and keep `agents/catalog.yaml` synchronized when adding or renaming roles.
+The repository is centered on `agents/`. Role definitions live in category folders such as `engineering/`, `review/`, and `architecture/`; each uses an `AGENT.md`. Shared policy is under `agents/shared/`, orchestration contracts under `agents/orchestration/`, and procedures under `agents/workflows/`. Start with `agents/RUNBOOK.md`; keep `agents/catalog.yaml` synchronized with roles.
 
-The vector knowledge store is in `agents/knowledge-store/`. Runtime modules are in `src/*.mjs`, tests in `test/*.test.mjs`, examples in `examples/`, and local databases in the ignored `data/` directory.
+The knowledge store uses ESM modules in `agents/knowledge-store/src/` and tests in `test/*.test.mjs`. The Python orchestrator is in `agents/orchestration/src/`, with `unittest` coverage in `test/test_*.py`. Examples stay under each component; local databases belong in the ignored knowledge-store `data/` directory.
 
 ## Build, Test, and Development Commands
 
@@ -17,15 +17,15 @@ npm run knowledge-store -- ingest --input examples/chat-export.json --source exa
 npm run knowledge-store -- search --query "release approval" --classification internal
 ```
 
-From `agents/orchestration/`, run `npm test` and `npm run select -- --task "Update Terraform" --files main.tf`. Tests validate routing; `select` emits a dispatch plan. Knowledge-store commands initialize, populate, and query local data. Node.js 22.5+ is required; no build step or package installation is needed.
+From `agents/orchestration/`, resolve Python 3 as shown in `agents/RUNBOOK.md`, then run `<python> -m unittest discover -s test -p "test_*.py"` and `<python> src/select_agents.py --task "Update Terraform" --files main.tf`. The orchestrator uses only the standard library. Node.js 22.5+ remains required for the knowledge store; neither component needs a build step.
 
 ## Coding Style & Naming Conventions
 
-Use two-space indentation for JavaScript, TypeScript, JSON, and YAML. Knowledge-store JavaScript is ESM with `.mjs`, single quotes, semicolons, and camelCase identifiers. Product frontends prefer React with TypeScript; backends prefer Go with PostgreSQL and use Python only when necessary. Use lowercase kebab-case directories, uppercase `AGENT.md` for roles, and descriptive Markdown headings. Keep standards centralized and validate edited schemas.
+Use four-space indentation and snake_case for Python; use two spaces for JavaScript, TypeScript, JSON, and YAML. Knowledge-store JavaScript is ESM with `.mjs`, single quotes, semicolons, and camelCase. Product frontends prefer React/TypeScript; backends prefer Go/PostgreSQL. Use lowercase kebab-case directories, uppercase `AGENT.md` for roles, and descriptive headings. Validate edited schemas.
 
 ## Testing Guidelines
 
-Use `node:test` and `node:assert/strict`; name tests `*.test.mjs`. Cover routing and store behavior. Integration and regression behavior uses Gherkin. Use temporary data and no live credentials. Add regression coverage for every defect; no numeric threshold is defined.
+Use `unittest` and `test_*.py` for orchestration; use `node:test` and `*.test.mjs` for the knowledge store. Cover routing and store behavior. Integration and regression behavior uses Gherkin. Use temporary data and no live credentials. Add regression coverage for defects.
 
 ## Commit & Merge Request Guidelines
 

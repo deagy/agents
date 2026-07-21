@@ -1,0 +1,195 @@
+"""Build the stable version 1 agent dispatch-plan document."""
+
+from __future__ import annotations
+
+import hashlib
+from datetime import datetime, timezone
+from typing import Any, Iterable
+
+from risk_classifier import apply_cross_stack, classify_risks
+from routing import match_routes
+
+CLASSIFICATIONS = {"public", "internal", "confidential", "restricted"}
+
+
+def _unique(values: Iterable[str]) -> list[str]:
+    return list(dict.fromkeys(values))
+
+
+def _ordered(values: Iterable[str], catalog: list[str]) -> list[str]:
+    positions = {agent: index for index, agent in enumerate(catalog)}
+    return sorted(_unique(values), key=lambda agent: positions.get(agent, len(catalog)))
+
+
+def _reasons(match: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "keywords": match["reasons"]["keywords"],
+        "paths": match["reasons"]["paths"],
+    }
+
+
+def _select_workflow(route_ids: list[str], risk_ids: list[str], has_agents: bool) -> str:
+    if not has_agents:
+        return "needs-triage"
+    if "production" in risk_ids:
+        return "production-release"
+    if "knowledge-store" in route_ids and all(
+        route_id in {"knowledge-store", "documentation", "testing"} for route_id in route_ids
+    ):
+        return "knowledge-ingestion"
+    if "infrastructure" in route_ids and not any(
+        route_id in {"frontend", "backend", "pipeline"} for route_id in route_ids
+    ):
+        return "infrastructure-change"
+    if "pipeline" in route_ids and not any(
+        route_id in {"frontend", "backend", "infrastructure"} for route_id in route_ids
+    ):
+        return "pipeline-change"
+    return "new-service"
+
+
+def _build_human_gates(risks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    descriptions = {
+        "persistent-database-migration": "An authorized human must approve persistent database migrations.",
+        "production-change": "An authorized human must approve the exact production change and target.",
+        "destructive-action": "An authorized human must approve the exact destructive action and recovery plan.",
+    }
+    gate_ids = _unique(
+        risk["rule"].get("human_gate")
+        for risk in risks
+        if risk["rule"].get("human_gate")
+    )
+    return [
+        {
+            "id": gate_id,
+            "required": True,
+            "reason": descriptions.get(gate_id, "An authorized human decision is required."),
+        }
+        for gate_id in gate_ids
+    ]
+
+
+def _build_knowledge_context(
+    config: dict[str, Any], selected_agents: list[str], input_data: dict[str, Any]
+) -> dict[str, Any]:
+    if not selected_agents:
+        return {"status": "not-applicable", "requests": []}
+    classification = input_data.get("classification")
+    if not classification:
+        return {
+            "status": "authorization-required",
+            "reason": "Provide an authorized classification and scope before retrieval.",
+            "requests": [],
+        }
+    if classification not in CLASSIFICATIONS:
+        raise ValueError(f"Invalid classification: {classification}")
+
+    requests = []
+    normalized_task = " ".join(input_data["task"].split())
+    for agent in selected_agents:
+        focus = config["knowledge_focus"].get(agent)
+        if not focus:
+            raise ValueError(f"Missing knowledge focus for selected agent: {agent}")
+        query = f"Task: {normalized_task}. Retrieve {focus}."
+        args = [
+            "src/cli.mjs",
+            "context",
+            "--agent",
+            agent,
+            "--task-id",
+            input_data["task_id"],
+            "--query",
+            query,
+            "--classification",
+            classification,
+            "--top",
+            str(input_data.get("top", 5)),
+        ]
+        if input_data.get("source"):
+            args.extend(["--source", input_data["source"]])
+        requests.append(
+            {
+                "agent": agent,
+                "query": query,
+                "invocation": {
+                    "cwd": "agents/knowledge-store",
+                    "executable": "node",
+                    "args": args,
+                },
+            }
+        )
+    return {
+        "status": "planned",
+        "classification": classification,
+        "source_filter": input_data.get("source"),
+        "requests": requests,
+    }
+
+
+def _validate_agents(groups: dict[str, list[str]], catalog: list[str]) -> None:
+    known = set(catalog)
+    for agent in [*groups["primary"], *groups["reviewers"], *groups["support"]]:
+        if agent not in known:
+            raise ValueError(f"Routing selected an unknown agent: {agent}")
+
+
+def build_dispatch_plan(
+    config: dict[str, Any], catalog: list[str], input_data: dict[str, Any]
+) -> dict[str, Any]:
+    matched_routes = match_routes(config, input_data["task"], input_data["changed_files"])
+    matched_risks = classify_risks(config, input_data["task"], input_data["changed_files"])
+    primary = [agent for match in matched_routes for agent in match["rule"].get("primary", [])]
+    reviewers = [agent for match in matched_routes for agent in match["rule"].get("reviewers", [])]
+    support = [agent for match in matched_routes for agent in match["rule"].get("support", [])]
+    for risk in matched_risks:
+        primary.extend(risk["rule"].get("primary", []))
+        reviewers.extend(risk["rule"].get("reviewers", []))
+        support.extend(risk["rule"].get("support", []))
+    support.extend(apply_cross_stack(config, matched_routes))
+
+    groups = {
+        "primary": _ordered(primary, catalog),
+        "reviewers": _ordered(reviewers, catalog),
+        "support": _ordered(support, catalog),
+    }
+    groups["reviewers"] = [agent for agent in groups["reviewers"] if agent not in groups["primary"]]
+    groups["support"] = [
+        agent
+        for agent in groups["support"]
+        if agent not in groups["primary"] and agent not in groups["reviewers"]
+    ]
+    _validate_agents(groups, catalog)
+
+    selected_agents = _ordered(
+        [*groups["primary"], *groups["reviewers"], *groups["support"]], catalog
+    )
+    route_ids = [route["id"] for route in matched_routes]
+    risk_ids = [risk["id"] for risk in matched_risks]
+    task_id = input_data.get("task_id")
+    if not task_id:
+        changed_file_fingerprint = "\n".join(input_data["changed_files"])
+        fingerprint = f"{input_data['task']}\n{changed_file_fingerprint}"
+        task_id = f"local-{hashlib.sha256(fingerprint.encode('utf-8')).hexdigest()[:12]}"
+    normalized_input = {**input_data, "task_id": task_id}
+    generated_at = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+    return {
+        "schema_version": 1,
+        "task_id": task_id,
+        "generated_at": generated_at,
+        "status": "ready" if selected_agents else "needs-triage",
+        "workflow": _select_workflow(route_ids, risk_ids, bool(selected_agents)),
+        "inputs": {
+            "task": input_data["task"],
+            "base": input_data.get("base"),
+            "changed_file_source": input_data["changed_file_source"],
+            "changed_files": input_data["changed_files"],
+            "classification": input_data.get("classification"),
+            "source_filter": input_data.get("source"),
+        },
+        "matched_routes": [{"id": match["id"], "reasons": _reasons(match)} for match in matched_routes],
+        "matched_risks": [{"id": match["id"], "reasons": _reasons(match)} for match in matched_risks],
+        "agents": groups,
+        "human_gates": _build_human_gates(matched_risks),
+        "knowledge_context": _build_knowledge_context(config, selected_agents, normalized_input),
+    }

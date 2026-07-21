@@ -2,6 +2,13 @@
   "version": 1,
   "routes": [
     {
+      "id": "orchestration",
+      "paths": ["agents/orchestration/routing.yaml", "agents/orchestration/selection.schema.json", "agents/orchestration/src/**", "agents/orchestration/test/**", ".agents/skills/run-agent-orchestration/**"],
+      "keywords": ["agent orchestration", "agent selector", "agent routing", "dispatch plan"],
+      "primary": ["application-engineer"],
+      "reviewers": ["test-engineer", "code-reviewer"]
+    },
+    {
       "id": "frontend",
       "paths": ["frontend/**", "web/**", "ui/**", "**/*.tsx", "**/*.jsx", "**/*.ts", "**/*.css", "**/*.scss"],
       "keywords": ["react", "typescript", "javascript", "frontend", "browser", "accessibility", "user interface"],
