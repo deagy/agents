@@ -4,6 +4,7 @@
 |---|---|---|
 | Architecture | Approved proposal, data flows, trust boundaries, ADRs | Cloud architect and accountable human |
 | Threat model | Assets, threats, mitigations, residual risks | Security reviewer |
+| Knowledge context | Authorized retrieval status, query identifiers, citations, and conflicts | Receiving agent or workflow owner |
 | Implementation | Tests, scans, review findings, traceable revision | Independent code reviewer |
 | Infrastructure | IaC validation, policy checks, reviewed plan, rollback | Infrastructure reviewer |
 | Pipeline | Runner trust, identity scope, provenance, protected environments | Pipeline security reviewer |

@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "routes": [
+    {
+      "id": "frontend",
+      "paths": ["frontend/**", "web/**", "ui/**", "**/*.tsx", "**/*.jsx", "**/*.ts", "**/*.css", "**/*.scss"],
+      "keywords": ["react", "typescript", "javascript", "frontend", "browser", "accessibility", "user interface"],
+      "primary": ["frontend-engineer"],
+      "reviewers": ["test-engineer", "code-reviewer"]
+    },
+    {
+      "id": "backend",
+      "paths": ["backend/**", "services/**", "api/**", "**/*.go", "**/*.sql", "**/migrations/**"],
+      "keywords": ["backend", "api", "golang", "postgres", "postgresql", "pgx", "database", "migration"],
+      "primary": ["backend-engineer"],
+      "reviewers": ["test-engineer", "code-reviewer"]
+    },
+    {
+      "id": "infrastructure",
+      "paths": ["terraform/**", "infrastructure/**", "infra/**", "talos/**", "kubernetes/**", "k8s/**", "helm/**", "charts/**", "**/*.tf", "**/*.tfvars"],
+      "keywords": ["proxmox", "terraform", "talos", "kubernetes", "k8s", "helm", "infrastructure"],
+      "primary": ["infrastructure-provisioner"],
+      "reviewers": ["infrastructure-reviewer"]
+    },
+    {
+      "id": "pipeline",
+      "paths": [".gitlab-ci.yml", ".gitlab/**", "**/.gitlab-ci.yml", "ci/**", "pipelines/**"],
+      "keywords": ["gitlab ci", "pipeline", "runner", "build job", "deployment job"],
+      "primary": ["cicd-engineer"],
+      "reviewers": ["pipeline-security-reviewer"]
+    },
+    {
+      "id": "testing",
+      "paths": ["features/**", "**/*.feature", "**/*_test.go", "**/*.test.mjs", "**/*.test.ts", "**/*.spec.ts", "test/**", "tests/**"],
+      "keywords": ["gherkin", "godog", "integration test", "regression test", "test coverage"],
+      "primary": ["test-engineer"],
+      "reviewers": ["code-reviewer"]
+    },
+    {
+      "id": "documentation",
+      "paths": ["docs/**", "**/*.md", "**/adr/**"],
+      "keywords": ["documentation", "runbook", "adr", "architecture decision", "operator guide"],
+      "primary": ["technical-writer"],
+      "reviewers": []
+    },
+    {
+      "id": "knowledge-store",
+      "paths": ["agents/knowledge-store/**", "agents/shared/knowledge-use-policy.md", "agents/orchestration/knowledge-retrieval-policy.yaml"],
+      "keywords": ["knowledge store", "chat history", "embedding", "vector search", "retrieval", "rag"],
+      "primary": ["knowledge-store-steward"],
+      "reviewers": ["security-reviewer", "compliance-reviewer"]
+    }
+  ],
+  "risk_rules": [
+    {
+      "id": "authentication-authorization",
+      "keywords": ["authentication", "authorization", "oauth", "oidc", "token", "session", "rbac", "permission"],
+      "paths": ["**/auth/**", "**/identity/**", "**/rbac/**"],
+      "support": ["threat-modeler"],
+      "reviewers": ["security-reviewer"]
+    },
+    {
+      "id": "sensitive-data",
+      "keywords": ["pii", "personal data", "confidential", "restricted data", "secret", "credential", "private key"],
+      "paths": ["**/secrets/**"],
+      "reviewers": ["security-reviewer", "compliance-reviewer"]
+    },
+    {
+      "id": "database-migration",
+      "keywords": ["database migration", "schema migration", "alter table", "drop table"],
+      "paths": ["**/migrations/**", "**/*.sql"],
+      "primary": ["backend-engineer"],
+      "reviewers": ["test-engineer", "code-reviewer"],
+      "support": ["release-engineer"],
+      "human_gate": "persistent-database-migration"
+    },
+    {
+      "id": "public-exposure",
+      "keywords": ["internet-facing", "public endpoint", "public exposure", "ingress", "load balancer"],
+      "paths": ["**/ingress/**"],
+      "support": ["cloud-architect", "threat-modeler"],
+      "reviewers": ["security-reviewer"]
+    },
+    {
+      "id": "architecture-change",
+      "keywords": ["architecture", "trust boundary", "new service", "new component", "platform topology"],
+      "paths": ["**/architecture/**", "**/adr/**"],
+      "support": ["cloud-architect", "threat-modeler"]
+    },
+    {
+      "id": "compliance",
+      "keywords": ["compliance", "control mapping", "audit evidence", "soc 2", "iso 27001"],
+      "paths": ["**/compliance/**", "**/controls/**"],
+      "reviewers": ["compliance-reviewer"],
+      "support": ["evidence-curator"]
+    },
+    {
+      "id": "production",
+      "keywords": ["production", "prod deploy", "release to prod"],
+      "paths": [],
+      "support": ["release-engineer"],
+      "human_gate": "production-change"
+    },
+    {
+      "id": "destructive",
+      "keywords": ["destroy", "delete resource", "drop table", "terraform state", "force replace", "wipe"],
+      "paths": [],
+      "reviewers": ["security-reviewer"],
+      "human_gate": "destructive-action"
+    }
+  ],
+  "cross_stack": {
+    "route_ids": ["frontend", "backend", "infrastructure", "pipeline"],
+    "minimum_matches": 2,
+    "support": ["application-engineer"]
+  },
+  "knowledge_focus": {
+    "cloud-architect": "prior architecture decisions, constraints, alternatives, failure domains, and recovery objectives",
+    "threat-modeler": "prior threats, incidents, mitigations, trust boundaries, and residual risks",
+    "application-engineer": "cross-stack contracts, integration decisions, shared behavior, and implementation patterns",
+    "frontend-engineer": "React patterns, UX decisions, accessibility, API contracts, and browser security",
+    "backend-engineer": "Go patterns, PostgreSQL decisions, schemas, migrations, APIs, and operational lessons",
+    "infrastructure-provisioner": "Proxmox, Terraform, Talos, Kubernetes, Helm, storage, and networking patterns",
+    "cicd-engineer": "GitLab pipelines, runners, artifacts, signing, deployments, and rollback",
+    "test-engineer": "Gherkin scenarios, regressions, failure cases, and quality history",
+    "release-engineer": "release history, rollback, incidents, dependencies, and verification thresholds",
+    "code-reviewer": "prior defects, coding conventions, exceptions, and relevant findings",
+    "infrastructure-reviewer": "prior infrastructure findings, drift, incidents, and approved guardrails",
+    "pipeline-security-reviewer": "runner, token, dependency, artifact, and pipeline findings",
+    "security-reviewer": "threats, findings, exceptions, incidents, and compensating controls",
+    "compliance-reviewer": "control interpretations, mappings, evidence, exceptions, and retention",
+    "technical-writer": "approved decisions, current operations, terminology, and audience conventions",
+    "evidence-curator": "evidence locations, retention, integrity, ownership, and prior gaps",
+    "knowledge-store-steward": "source ownership, parser behavior, classification, retention, retrieval quality, and lifecycle decisions"
+  }
+}

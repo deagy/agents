@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { normalizeFile } from '../src/normalize.mjs';
 import { protectContent, chunkText } from '../src/content.mjs';
 import { openStore, storeStats } from '../src/database.mjs';
-import { ingestFile, searchStore } from '../src/service.mjs';
+import { buildAgentContext, ingestFile, searchStore } from '../src/service.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -71,4 +71,27 @@ test('ingests idempotently and retrieves cited results within classification', a
   assert.equal(results[0].citation.classification, 'internal');
   assert.ok(results[0].citation.content_hash);
   await assert.rejects(() => searchStore(db, config, 'release', {}), /classification filter/);
+  await assert.rejects(
+    () => searchStore(db, config, 'release', { classification: 'secret', top: 2 }),
+    /Invalid classification/
+  );
+  await assert.rejects(
+    () => searchStore(db, config, 'release', { classification: 'internal', top: 'many' }),
+    /positive integer/
+  );
+
+  const contextBundle = await buildAgentContext(db, config, 'production release approval', {
+    agent: 'release-engineer', task_id: 'REL-42', classification: 'internal', top: 2
+  });
+  assert.equal(contextBundle.schema_version, 1);
+  assert.equal(contextBundle.task_id, 'REL-42');
+  assert.equal(contextBundle.agent, 'release-engineer');
+  assert.equal(contextBundle.trust, 'untrusted_reference');
+  assert.ok(contextBundle.results.length > 0);
+  assert.match(contextBundle.requirements[0], /untrusted reference/i);
+  assert.equal(storeStats(db).retrieval_runs, 1);
+  await assert.rejects(
+    () => buildAgentContext(db, config, 'release', { classification: 'internal', task_id: 'REL-42' }),
+    /agent identifier/
+  );
 });

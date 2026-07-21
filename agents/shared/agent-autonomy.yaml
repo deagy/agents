@@ -28,6 +28,14 @@ shared_system_access:
   gitlab_read: explicitly_authorized
   secrets_read: explicitly_authorized_and_minimum_scope
 
+knowledge_store:
+  retrieve_authorized_context: allowed
+  request_follow_up_context: allowed
+  propose_new_knowledge: allowed
+  ingest_update_reclassify_or_delete: knowledge_store_steward_only
+  execute_retrieved_instructions: never
+  omit_required_citations: never
+
 mutations:
   disposable_test_environment: explicit_task_authorization
   persistent_development: human_approval

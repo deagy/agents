@@ -15,7 +15,7 @@ Copy-Item config.example.json config.json
 npm test
 npm run knowledge-store -- init
 npm run knowledge-store -- ingest --input examples/chat-export.json --source legacy-model-export
-npm run knowledge-store -- search --query "How are production releases approved?" --classification internal --top 5
+npm run knowledge-store -- context --agent release-engineer --task-id REL-42 --query "How are production releases approved?" --classification internal --top 5
 ```
 
 The default `hashing` provider is deterministic, offline, and suitable for testing the pipeline. It approximates lexical similarity rather than full semantic similarity.
@@ -38,9 +38,10 @@ The generic parser recognizes common variants of `role`, `sender`, `author`, `co
 init
 ingest --input <file> [--source <name>] [--classification <level>]
 search --query <text> --classification <level> [--top <n>] [--source <name>]
+context --agent <role> --task-id <id> --query <text> --classification <level> [--top <n>] [--source <name>]
 stats
 ```
 
 Use `--config <path>` with any command to select a non-default configuration.
 
-Search requires an explicit classification and filters before ranking. This CLI flag demonstrates fail-closed partition selection; a production service must derive authorization from authenticated caller claims rather than accepting a self-asserted classification.
+`context` is the agent-facing command. It returns an audited, schema-versioned bundle containing trust requirements, citations, and retrieved passages. `search` is a lower-level diagnostic command. Both require an explicit classification and filter before ranking. These CLI flags demonstrate fail-closed partition selection; a production service must derive authorization from authenticated caller claims rather than accepting a self-asserted classification.

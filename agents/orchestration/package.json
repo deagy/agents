@@ -1,0 +1,11 @@
+{
+  "name": "secure-agent-orchestration",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "select": "node src/select-agents.mjs",
+    "test": "node --test"
+  }
+}

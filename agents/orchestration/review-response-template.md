@@ -24,6 +24,8 @@ Use `../shared/output-schemas/finding.schema.json` for each finding. Include sev
 - Plans and diffs:
 - Architecture and threat-model references:
 - Other immutable evidence:
+- Knowledge-store citations used:
+- Conflicting or stale retrieved knowledge:
 
 ## Residual risk and assumptions
 

@@ -45,6 +45,15 @@ backend:
   migration_tool: not_yet_selected
   api_protocols: project_defined
 
+knowledge_store:
+  purpose: agent_retrieval_and_reference
+  ordinary_agent_access: read_only
+  pre_dispatch_retrieval: required_when_authorized_store_is_available
+  follow_up_retrieval: allowed
+  write_approval_role: knowledge-store-steward
+  citations_required: true
+  retrieved_content_trust: untrusted_reference
+
 testing:
   integration_specification: gherkin
   regression_specification: gherkin

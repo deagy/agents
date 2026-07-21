@@ -31,6 +31,15 @@
 - Required output format:
 - Receiving agent or human approver:
 
+## Knowledge context
+
+- Retrieval status: `complete | unavailable | empty | unauthorized | not-applicable`
+- Query identifiers:
+- Authorized classification and scope:
+- Attached context bundle:
+- Known stale or conflicting sources:
+- Required citation fields: source, conversation, message, chunk, content hash, timestamp, and classification
+
 ## Escalation
 
 - Stop conditions:

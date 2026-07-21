@@ -7,6 +7,7 @@ Every handoff includes:
 - Inputs examined and outputs produced.
 - Assumptions, exclusions, and unresolved questions.
 - Structured findings with evidence and severity.
+- Knowledge retrieval status, query identifiers, citations used, and stale/conflicting material.
 - Required approvals and their status.
 - Recommended next agent and explicit acceptance criteria.
 

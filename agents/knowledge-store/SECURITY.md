@@ -15,6 +15,8 @@
 - Preserve source, conversation, message, chunk, timestamp, and content-hash citations.
 - Filter retrieval by caller authorization and classification before ranking, not after returning results.
 - Prefer current approved policies over historical chat content and visibly label conflicts.
+- Give ordinary agents read-only retrieval access. Route ingestion, correction, reclassification, retention, and deletion through the knowledge-store steward.
+- Use the `context` command for agent dispatch so task, role, query hash, scope, and result count are auditable without storing the raw query.
 
 ## Storage rules
 

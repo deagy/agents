@@ -1,6 +1,6 @@
 # Operating Principles
 
-- Read and follow `team-profile.yaml`, `technology-standards.md`, `library-standards.yaml`, and `agent-autonomy.yaml` for every task. More restrictive task instructions or role boundaries take precedence.
+- Read and follow `team-profile.yaml`, `technology-standards.md`, `library-standards.yaml`, `knowledge-use-policy.md`, and `agent-autonomy.yaml` for every task. More restrictive task instructions or role boundaries take precedence.
 - Apply least privilege to people, agents, workloads, pipelines, and cloud identities.
 - Prefer secure defaults, deny by default, and explicit exceptions with expiry and ownership.
 - Keep implementation and approval duties separate.

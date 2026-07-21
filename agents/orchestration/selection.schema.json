@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/agent-selection.schema.json",
+  "title": "Local Agent Selection Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "task_id", "generated_at", "status", "workflow", "inputs", "matched_routes", "matched_risks", "agents", "human_gates", "knowledge_context"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "task_id": { "type": "string", "minLength": 1 },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "status": { "enum": ["ready", "needs-triage"] },
+    "workflow": { "enum": ["new-service", "infrastructure-change", "pipeline-change", "knowledge-ingestion", "production-release", "needs-triage"] },
+    "inputs": { "type": "object" },
+    "matched_routes": { "type": "array", "items": { "type": "object" } },
+    "matched_risks": { "type": "array", "items": { "type": "object" } },
+    "agents": {
+      "type": "object",
+      "required": ["primary", "reviewers", "support"],
+      "properties": {
+        "primary": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "reviewers": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "support": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      }
+    },
+    "human_gates": { "type": "array", "items": { "type": "object" } },
+    "knowledge_context": { "type": "object" }
+  }
+}

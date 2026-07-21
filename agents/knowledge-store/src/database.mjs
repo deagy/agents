@@ -53,10 +53,24 @@ export function openStore(databasePath) {
       embedding_json TEXT NOT NULL,
       UNIQUE(message_id, ordinal, embedding_provider, embedding_model)
     );
+    CREATE TABLE IF NOT EXISTS retrieval_runs (
+      id TEXT PRIMARY KEY,
+      query_hash TEXT NOT NULL,
+      task_id TEXT NOT NULL,
+      agent TEXT NOT NULL,
+      classification TEXT NOT NULL,
+      source_filter TEXT,
+      embedding_provider TEXT NOT NULL,
+      embedding_model TEXT NOT NULL,
+      requested_top INTEGER NOT NULL,
+      result_count INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS idx_messages_source ON messages(source);
     CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
     CREATE INDEX IF NOT EXISTS idx_messages_classification ON messages(classification);
     CREATE INDEX IF NOT EXISTS idx_chunks_model ON chunks(embedding_provider, embedding_model);
+    CREATE INDEX IF NOT EXISTS idx_retrieval_runs_task ON retrieval_runs(task_id, agent);
   `);
   return db;
 }
@@ -136,10 +150,24 @@ export function loadChunks(db, embedding, filters = {}) {
     WHERE ${clauses.join(' AND ')}`).all(...values);
 }
 
+export function recordRetrieval(db, retrieval) {
+  const id = randomUUID();
+  db.prepare(`INSERT INTO retrieval_runs (
+    id, query_hash, task_id, agent, classification, source_filter,
+    embedding_provider, embedding_model, requested_top, result_count, created_at
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+    id, retrieval.queryHash, retrieval.taskId, retrieval.agent, retrieval.classification,
+    retrieval.source ?? null, retrieval.embedding.provider, retrieval.embedding.model,
+    retrieval.requestedTop, retrieval.resultCount, new Date().toISOString()
+  );
+  return id;
+}
+
 export function storeStats(db) {
   const counts = db.prepare(`SELECT
     (SELECT COUNT(*) FROM messages) AS messages,
     (SELECT COUNT(*) FROM chunks) AS chunks,
+    (SELECT COUNT(*) FROM retrieval_runs) AS retrieval_runs,
     (SELECT COUNT(*) FROM ingestion_runs WHERE status = 'complete') AS completed_runs,
     (SELECT COUNT(*) FROM ingestion_runs WHERE status = 'failed') AS failed_runs`).get();
   const sources = db.prepare('SELECT source, COUNT(*) AS messages FROM messages GROUP BY source ORDER BY source').all();

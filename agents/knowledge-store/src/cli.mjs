@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { loadConfig } from './config.mjs';
 import { openStore, storeStats } from './database.mjs';
-import { ingestFile, searchStore, stableQueryId } from './service.mjs';
+import { buildAgentContext, ingestFile, searchStore, stableQueryId } from './service.mjs';
 
 function parseArgs(argv) {
   const [command, ...rest] = argv;
@@ -22,6 +22,7 @@ function usage() {
   node src/cli.mjs init [--config <path>]
   node src/cli.mjs ingest --input <file> [--source <name>] [--classification <level>] [--config <path>]
   node src/cli.mjs search --query <text> --classification <level> [--top <n>] [--source <name>] [--config <path>]
+  node src/cli.mjs context --agent <role> --task-id <id> --query <text> --classification <level> [--top <n>] [--source <name>] [--config <path>]
   node src/cli.mjs stats [--config <path>]`;
 }
 
@@ -50,6 +51,14 @@ async function main() {
       if (!options.classification) throw new Error('--classification is required');
       const results = await searchStore(db, config, options.query, options);
       console.log(JSON.stringify({ query_id: stableQueryId(options.query), results }, null, 2));
+      return;
+    }
+    if (command === 'context') {
+      if (!options.agent) throw new Error('--agent is required');
+      if (!options.task_id) throw new Error('--task-id is required');
+      if (!options.query) throw new Error('--query is required');
+      if (!options.classification) throw new Error('--classification is required');
+      console.log(JSON.stringify(await buildAgentContext(db, config, options.query, options), null, 2));
       return;
     }
     if (command === 'stats') {
