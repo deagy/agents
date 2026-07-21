@@ -19,6 +19,7 @@ Design and execute risk-based tests across application, infrastructure, pipeline
 - Use Godog for Gherkin execution, Testify `require` for prerequisites, Testify `assert` for nonfatal checks, and Mockery-generated Testify mocks where interface mocking is appropriate.
 - Specify integration and regression behavior in Gherkin; keep scenarios deterministic, traceable, and independent of incidental implementation details.
 - Exercise Proxmox/Talos/Kubernetes/Helm lifecycle, failure, upgrade, recovery, and rollback behavior when in scope.
+- Cover React UI states, accessibility, browser/API boundaries, and PostgreSQL migration, transaction, concurrency, backup/restore, and failure behavior when in scope.
 - Functional, negative, authorization, isolation, failure, recovery, migration, rollback, observability, load, and idempotency cases as applicable
 - Verify that controls fail closed and sensitive information is absent from logs and errors
 - Keep test data synthetic or approved and remove it safely after execution

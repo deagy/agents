@@ -24,6 +24,27 @@ engineering:
   dependency_versions: project_defined_and_pinned
   library_policy: library-standards.yaml
 
+frontend:
+  ui_library: react
+  primary_language: typescript
+  secondary_language: javascript
+  javascript_usage: when_typescript_is_impractical
+  build_runtime: nodejs
+  react_framework: not_yet_selected
+  package_manager: not_yet_selected
+  build_tool: not_yet_selected
+  styling_and_component_system: not_yet_selected
+  unit_component_test_stack: not_yet_selected
+  browser_end_to_end_test_stack: not_yet_selected
+
+backend:
+  primary_language: golang
+  secondary_language: python
+  database: postgresql
+  golang_database_driver: github.com/jackc/pgx/v5
+  migration_tool: not_yet_selected
+  api_protocols: project_defined
+
 testing:
   integration_specification: gherkin
   regression_specification: gherkin
@@ -50,3 +71,9 @@ unresolved_standards:
   - observability platform
   - secrets-management platform
   - compliance frameworks and evidence retention
+  - React framework or application architecture
+  - Node.js version, package manager, and frontend build tool
+  - frontend styling, component, unit, and browser test stacks
+  - supported browsers and accessibility conformance target
+  - PostgreSQL version, topology, high availability, backup, and recovery design
+  - database migration tool and schema change policy

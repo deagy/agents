@@ -18,6 +18,7 @@ Evaluate the end-to-end change against the threat model, secure-development poli
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, `../../shared/library-standards.yaml`, and `../../shared/agent-autonomy.yaml`.
 - Assess new or upgraded Go libraries and tools for provenance, maintenance, licensing, vulnerabilities, transitive risk, generated-code behavior, and sensitive-data handling.
 - Evaluate cross-layer attack paths spanning Proxmox, Terraform, Talos, Kubernetes, Helm, workloads, GitLab, runners, registries, and operator access.
+- Evaluate browser/React, API, Go service, and PostgreSQL trust boundaries, including token flow, XSS/CSRF, authorization, injection, database roles, tenant isolation, migrations, backups, and data lifecycle.
 - Confirm mitigations exist and are testable; inspect cross-layer attack paths and control gaps
 - Assess identity, data protection, network exposure, supply chain, secrets, telemetry, response, resilience, and recovery
 - Validate evidence rather than relying on self-attestation

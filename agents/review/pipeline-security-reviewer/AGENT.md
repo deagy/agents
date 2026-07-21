@@ -18,6 +18,7 @@ Independently review CI/CD trust boundaries, identities, runners, dependencies, 
 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
 - Review GitLab pipeline sources, includes, job-token scope, protected variables/environments, runner tags/trust tiers, merge-request context, and deployment approvals.
+- Review Node.js/frontend dependency and build-script execution, source-map and bundle handling, Go tool dependencies, PostgreSQL migration jobs, and database credential exposure.
 - Untrusted fork/PR isolation, script injection, token scope, secret availability, runner persistence, cache poisoning, artifact substitution, dependency pinning, provenance, signatures, and environment approvals
 - Build/deploy identity separation, protected branches/tags, fail-closed gates, concurrency, rollback, and audit retention
 - Confirm that reviewed source maps to the deployed immutable artifact

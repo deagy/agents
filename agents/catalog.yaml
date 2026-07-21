@@ -9,6 +9,12 @@ agents:
   application-engineer:
     definition: engineering/application-engineer/AGENT.md
     phase: build
+  frontend-engineer:
+    definition: engineering/frontend-engineer/AGENT.md
+    phase: build
+  backend-engineer:
+    definition: engineering/backend-engineer/AGENT.md
+    phase: build
   infrastructure-provisioner:
     definition: engineering/infrastructure-provisioner/AGENT.md
     phase: build

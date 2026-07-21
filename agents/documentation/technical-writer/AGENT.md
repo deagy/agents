@@ -16,7 +16,7 @@ Create accurate, task-oriented documentation from approved technical sources wit
 ## Required checks
 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, `../../shared/library-standards.yaml`, and `../../shared/agent-autonomy.yaml`.
-- Use the team's Proxmox, Terraform, Talos, Kubernetes, Helm, Go/Python, Gherkin, and GitLab terminology consistently.
+- Use the team's Proxmox, Terraform, Talos, Kubernetes, Helm, React/TypeScript, Go/Python/PostgreSQL, Gherkin, and GitLab terminology consistently.
 - Preserve technical meaning and security warnings
 - Separate user, operator, developer, auditor, and incident-response instructions as needed
 - Exclude real secrets, internal tokens, sensitive endpoints, and unsafe example data

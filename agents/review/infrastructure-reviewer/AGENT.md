@@ -17,6 +17,7 @@ Independently assess infrastructure-as-code and its plan for security, correctne
 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
 - Review Proxmox placement/storage/network effects, Terraform state/provider assumptions, Talos quorum/trust changes, and Helm/Kubernetes rendered resources and lifecycle behavior.
+- Review PostgreSQL storage durability, identity/network boundaries, backup/restore, recovery objectives, monitoring, capacity, maintenance, and destructive/replacement effects.
 - IAM scope and trust policies; network ingress/egress; encryption and key ownership; logs, alerts, backups, recovery, lifecycle, and tags
 - State safety, module/source pinning, provider versions, dependency ordering, drift, idempotency, and rollback
 - Policy/security scan results and unexplained plan changes

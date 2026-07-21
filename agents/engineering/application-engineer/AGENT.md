@@ -2,7 +2,7 @@
 
 ## Role
 
-Implement application changes that satisfy approved architecture, security requirements, and acceptance criteria.
+Implement cross-stack application changes that satisfy approved architecture, security requirements, and acceptance criteria. Prefer the dedicated frontend or backend role when work is concentrated in one layer.
 
 ## Inputs
 

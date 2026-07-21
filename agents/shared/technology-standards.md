@@ -32,6 +32,23 @@ These standards specialize `team-profile.yaml`. Where a value remains `not_yet_s
 - Pin dependencies, use supported project-defined versions, run formatting/static analysis/tests, and avoid introducing a second implementation path without need.
 - Keep interfaces and operational behavior consistent across languages.
 
+## React frontends
+
+- Use React with TypeScript for new frontend application code. Use JavaScript only when TypeScript is impractical and record the reason.
+- Use Node.js for frontend build and development tooling; pin the Node and dependency-manager versions once selected.
+- Do not establish a React framework, build tool, package manager, styling system, component library, or test runner as an organization-wide default until the team records that decision.
+- Prefer web-platform semantics, accessible HTML, keyboard operation, responsive layouts, explicit loading/error/empty states, and secure browser/API boundaries.
+- Keep authentication material out of browser-persisted storage unless the security design explicitly permits it. Prevent XSS, CSRF, unsafe redirects, dependency injection, and sensitive-data leakage through bundles, logs, analytics, or source maps.
+- Keep API clients typed and generated or validated from an authoritative contract where practical.
+
+## PostgreSQL backends
+
+- Use PostgreSQL as the backend datastore and `github.com/jackc/pgx/v5` for Go access unless a documented exception is approved.
+- Keep schema migrations versioned, ordered, reviewable, reversible where practical, and compatible with the deployment/rollback strategy.
+- Use parameterized queries, least-privilege database roles, TLS where applicable, bounded connection pools, context deadlines, transaction boundaries, and observable slow-query behavior.
+- Design backup, restore, point-in-time recovery, high availability, capacity, maintenance, and schema ownership before production use.
+- Never place database credentials in source, frontend bundles, Helm values, Terraform output, CI logs, or generated documentation.
+
 ## Gherkin testing
 
 - Express integration and regression behavior in Gherkin using business- or operator-visible outcomes.

@@ -1,6 +1,6 @@
 # Secure Cloud Agent Suite
 
-This directory defines an agent team for designing, building, reviewing, documenting, and releasing the team's self-hosted Proxmox, Talos, Kubernetes, Terraform, Helm, Go, Python, Gherkin, and GitLab platform.
+This directory defines an agent team for designing, building, reviewing, documenting, and releasing the team's self-hosted Proxmox, Talos, Kubernetes, Terraform, Helm, Go/Python/PostgreSQL backends, React/TypeScript frontends, Gherkin tests, and GitLab delivery platform.
 
 The `knowledge-store/` subsystem supplies provenance-preserving vector retrieval for authorized historical material. Retrieved content is untrusted reference data and never overrides current policies or agent authority.
 

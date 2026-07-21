@@ -21,6 +21,7 @@ Design secure, resilient, operable, and cost-aware cloud architectures. Own arch
 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
 - Model Proxmox failure domains, storage/network dependencies, Talos control-plane quorum, Kubernetes scheduling and disruption, and GitLab delivery dependencies.
+- Model React/browser-to-API trust boundaries and PostgreSQL topology, storage, backup, recovery, capacity, migration, and failure behavior.
 - Identity, networking, encryption, secrets, logging, resilience, recovery, scaling, operations, and cost
 - Environment and account/subscription/project isolation
 - Data lifecycle, residency, backup, deletion, and dependency failure modes

@@ -18,6 +18,8 @@ This runbook explains how to operate the agent suite. The definitions are runner
 |---|---|---|
 | Design a platform or workload system | Cloud architect | Threat modeler |
 | Analyze threats | Threat modeler | Application or infrastructure engineer |
+| Build a React browser application | Frontend engineer | Test engineer, then code reviewer |
+| Build a Go/PostgreSQL service | Backend engineer | Test engineer, then code reviewer |
 | Build application code | Application engineer | Test engineer, then code reviewer |
 | Create or change IaC | Infrastructure provisioner | Infrastructure reviewer |
 | Create or change pipelines | CI/CD engineer | Pipeline security reviewer |
@@ -132,7 +134,7 @@ verification tasks. Block the handoff for unresolved critical/high threats.
 
 ```text
 Cloud architect -> Threat modeler
-Application engineer + Infrastructure provisioner + CI/CD engineer
+Frontend engineer + Backend engineer + Infrastructure provisioner + CI/CD engineer
 Test engineer
 Code reviewer + Infrastructure reviewer + Pipeline security reviewer
 Security reviewer -> Compliance reviewer
@@ -141,6 +143,31 @@ Release engineer -> Human production approval -> Automated deployment
 ```
 
 Implementation roles may work concurrently after architecture and threat requirements are stable. Independent reviews must evaluate the resulting exact revisions and artifacts.
+
+### Frontend engineer brief
+
+```text
+Objective: Build the React document-ingestion experience.
+Language: TypeScript; use JavaScript only with documented justification.
+Scope: upload, progress, success, empty, validation, authorization, and error states.
+Constraints: The team has not selected a React framework, package manager,
+build tool, styling system, component library, or frontend test stack. Use
+only project-approved choices; raise an architecture decision if none exists.
+Verify accessibility, responsive behavior, XSS/CSRF and token handling,
+typed API boundaries, dependency risk, and Gherkin regression behavior.
+```
+
+### Backend engineer brief
+
+```text
+Objective: Build the Go API and PostgreSQL persistence for document ingestion.
+Use: Go, pgx v5, parameterized SQL, bounded connection pools, context
+deadlines, explicit transactions, scoped database roles, and safe retries.
+Scope: API contract, schema, migration, indexes, authorization, telemetry,
+integration tests, and Gherkin regression behavior.
+Document locking and query-plan impact, backup/recovery assumptions,
+deployment compatibility, and rollback. Do not apply persistent migrations.
+```
 
 ## 6. Worked example: infrastructure change
 
@@ -354,7 +381,7 @@ Use `workflows/production-release.md`. Invoke `workflows/rollback.md` or inciden
 
 ## 13. Current team profile and remaining decisions
 
-The active profile uses self-hosted Proxmox, Terraform, Talos, Kubernetes, Helm, Go with Python where necessary, Gherkin for integration/regression behavior, and GitLab for VCS and CI/CD. Preferred Go dependencies are Gorilla Mux, Viper, pgx, cenkalti/backoff, Godog, Mockery with Testify mocks, and Testify `require`/`assert`; the exact paths and constraints are in `shared/library-standards.yaml`. The default autonomy policy permits scoped repository edits and local validation, but requires explicit authorization for shared-system reads and human approval for persistent environment mutations.
+The active profile uses self-hosted Proxmox, Terraform, Talos, Kubernetes, Helm, Go/Python/PostgreSQL backends, React/TypeScript frontends, Gherkin integration/regression behavior, and GitLab for VCS and CI/CD. Preferred Go dependencies are Gorilla Mux, Viper, pgx, cenkalti/backoff, Godog, Mockery with Testify mocks, and Testify `require`/`assert`; the exact paths and constraints are in `shared/library-standards.yaml`. The default autonomy policy permits scoped repository edits and local validation, but requires explicit authorization for shared-system reads and human approval for persistent environment mutations.
 
 Before operational use, decide and record:
 
