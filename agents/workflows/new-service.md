@@ -8,7 +8,7 @@
 6. **Test engineer:** Execute functional, negative, resilience, security, and recovery tests appropriate to risk.
 7. **Independent reviewers:** Code reviewer, infrastructure reviewer, and pipeline security reviewer inspect exact revisions and artifacts.
 8. **Security and compliance reviewers:** Consolidate residual risk and control evidence. Route exceptions to accountable humans.
-9. **Technical writer and evidence curator:** Finalize operational documentation and the immutable evidence index.
+9. **Technical writer and evidence curator:** Finalize operational documentation and a preserved snapshot/run evidence index with integrity hashes.
 10. **Release engineer:** Verify gates, coordinate explicit human production approval, release progressively, validate, and record the result.
 
 Return to the owning implementation role whenever a gate fails. A reviewer who makes a material fix must transfer approval to another independent reviewer.

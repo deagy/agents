@@ -1,7 +1,7 @@
 # Pipeline Change Workflow
 
 1. CI/CD engineer documents the execution graph, trust boundaries, runner types, triggers, permissions, secret exposure, artifact flow, environments, and rollback behavior.
-2. Test changes with non-production identities and synthetic inputs. Include untrusted pull-request/fork scenarios where applicable.
+2. Test changes with non-production identities and synthetic inputs. Include untrusted merge-request/fork scenarios where applicable.
 3. Pipeline security reviewer independently checks injection paths, token scope, runner persistence, cache/artifact poisoning, mutable dependencies, provenance, signatures, protections, approvals, and audit evidence.
 4. Code or infrastructure reviewers join when scripts, build logic, deployment modules, runners, or cloud resources change.
 5. Security/compliance review is required when identity scope, production access, evidence generation, retention, or regulated workflows change.

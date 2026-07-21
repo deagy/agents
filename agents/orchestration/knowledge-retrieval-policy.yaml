@@ -1,7 +1,12 @@
 policy_version: 1
 enabled: true
 mode: required_when_authorized_store_is_available
-command: knowledge-store context
+command:
+  cwd: agents/knowledge-store
+  executable: node
+  args_prefix:
+    - src/cli.mjs
+    - context
 
 pre_dispatch:
   derive_queries_from:
@@ -12,6 +17,7 @@ pre_dispatch:
     - architecture_and_control_references
   default_top_k: 5
   maximum_top_k: 20
+  implementation_note: demo_cli_currently_permits_up_to_100_engineering_enforcement_required
   require_agent_identifier: true
   require_task_identifier: true
   require_classification_filter: true
@@ -42,7 +48,9 @@ citations:
     - classification
 
 writes:
-  ordinary_agents: prohibited
+  ordinary_agent_content_and_lifecycle_mutation: prohibited
+  retrieval_audit_metadata: allowed_when_retrieval_is_authorized
+  sqlite_initialization_side_effect: database_schema_and_wal_may_be_created
   proposals: allowed
   approval_role: knowledge-store-steward
 

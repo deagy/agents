@@ -39,33 +39,51 @@ Use `catalog.yaml` when an orchestrator needs a machine-readable role inventory.
 
 ### Select agents locally
 
-The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. It creates a dispatch plan but does not invoke, merge, deploy, or mutate infrastructure.
+The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. It creates a dispatch plan but does not retrieve knowledge, invoke agents, merge, deploy, or mutate infrastructure. The selector component requires Python 3.10 or newer; this does not establish an organization-wide Python version.
 
 ```powershell
-Set-Location agents/orchestration
-$Python = Get-Command python, python3, py -ErrorAction SilentlyContinue | Select-Object -First 1
-if (-not $Python) { throw "Python 3 is required for agent selection." }
-$LauncherArgs = if ($Python.Name -in @("py", "py.exe")) { @("-3") } else { @() }
-& $Python.Source @LauncherArgs -m unittest discover -s test -p "test_*.py"
-& $Python.Source @LauncherArgs src/select_agents.py `
+$AgentPython = $null
+foreach ($Candidate in @(
+  [pscustomobject]@{ Name = "python"; Args = @() },
+  [pscustomobject]@{ Name = "python3"; Args = @() },
+  [pscustomobject]@{ Name = "py"; Args = @("-3") }
+)) {
+  $Command = Get-Command $Candidate.Name -ErrorAction SilentlyContinue
+  if ($Command) {
+    & $Command.Source @($Candidate.Args) -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" 2>$null
+    if ($LASTEXITCODE -eq 0) { $AgentPython = [pscustomobject]@{ Path = $Command.Source; Args = $Candidate.Args }; break }
+  }
+}
+if (-not $AgentPython) { throw "Python 3.10+ is required for agent selection." }
+
+Push-Location agents/orchestration
+try {
+  & $AgentPython.Path @($AgentPython.Args) -m unittest discover -s test -p "test_*.py"
+  & $AgentPython.Path @($AgentPython.Args) src/select_agents.py `
   --task "Add a React upload form backed by a PostgreSQL API" `
   --files frontend/src/Upload.tsx,services/upload/main.go `
   --task-id APP-42 `
   --classification internal
+} finally { Pop-Location }
 ```
 
 On Unix:
 
 ```sh
+AGENT_PYTHON=
+for candidate in python3 python; do
+  command -v "$candidate" >/dev/null 2>&1 || continue
+  "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' && AGENT_PYTHON="$candidate" && break
+done
+[ -n "${AGENT_PYTHON:-}" ] || { echo "Python 3.10+ is required" >&2; exit 1; }
 cd agents/orchestration
-PYTHON="$(command -v python3 || command -v python)" || { echo "Python 3 is required" >&2; exit 1; }
-"$PYTHON" -m unittest discover -s test -p 'test_*.py'
-"$PYTHON" src/select_agents.py --task "Update Terraform" --files main.tf
+"$AGENT_PYTHON" -m unittest discover -s test -p 'test_*.py'
+"$AGENT_PYTHON" src/select_agents.py --task "Update Terraform" --files main.tf
 ```
 
-Omit `--files` to inspect the current `git status`, or provide `--base main` to classify `main...HEAD`. Use `--output plan.json` to save the result. The selector emits matched routes and evidence, primary/review/support agents, workflow, human gates, and one knowledge-store `context` invocation per selected agent. If no rule matches, it returns `needs-triage` rather than guessing.
+Omit `--files` to inspect Git status, including staged, unstaged, and untracked paths. Alternatively, `--base main` classifies committed `main...HEAD` changes and excludes dirty worktree changes. Always review emitted `inputs.changed_files`; Git rename parsing and explicit scope still deserve human confirmation. `--output plan.json` creates missing parent directories and overwrites an existing file, so use it only when run-artifact writes are authorized. The selector emits matched routes and evidence, primary/review/support agents, workflow, human gates, and a planned knowledge-store request per selected agent. If no rule matches, it returns `needs-triage` rather than guessing.
 
-Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the file uses JSON-compatible YAML so the dependency-free Python selector can parse it with the standard library. The knowledge store remains a separate Node.js component; generated context requests invoke its CLI directly with `node`, without npm.
+Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the file uses JSON-compatible YAML so the dependency-free Python selector can parse it with the standard library. The knowledge store remains a separate Node.js component. The orchestration runner, not the selector, executes an authorized planned request with working directory `agents/knowledge-store` and command `node src/cli.mjs context ...`, then attaches the result to the agent brief. Before execution, it must inspect planned `--top` and reject values above the policy maximum of 20; the demo CLI's higher limit remains an engineering follow-up.
 
 ### Dispatch with one prompt
 
@@ -258,7 +276,7 @@ Objective: Build and deploy a containerized service through staging and producti
 Requirements:
 - GitLab merge-request pipelines and protected default branch/environment.
 - Ephemeral isolated runners.
-- Untrusted pull requests receive no secrets or deployment permissions.
+- Untrusted merge-request or fork pipelines receive no secrets or deployment permissions.
 - Short-lived workload identities with separate build and deploy roles.
 - Pinned third-party actions and build images.
 - Go/Python checks, Gherkin integration/regression tests, Terraform validation
@@ -328,7 +346,7 @@ critical/high findings. Do not accept risk or authorize production.
 ```text
 Assess release <ID> against <FRAMEWORK AND VERSION> controls listed in
 <CONTROL-CATALOG>. Use shared/control-mapping-template.yaml. For every
-applicable control, cite immutable evidence and mark satisfied, partial,
+applicable control, cite preserved snapshot/run evidence and its integrity hash, then mark satisfied, partial,
 failed, or not-applicable. Do not infer compliance from security-review
 approval and do not invent missing evidence.
 ```
@@ -384,7 +402,7 @@ Before broad ingestion, use a small sanitized sample to verify field mapping, me
 ### Retrieve with citations
 
 ```powershell
-npm run knowledge-store -- context `
+node src/cli.mjs context `
   --agent cloud-architect `
   --task-id ARCH-42 `
   --query "Why was private service connectivity selected?" `
@@ -393,9 +411,9 @@ npm run knowledge-store -- context `
   --top 5
 ```
 
-Agent context requires explicit agent, task, and classification values. In production, derive authorization and scope from authenticated claims rather than allowing the caller to self-assert them. The context command records retrieval metadata but not the raw query.
+Run that command from `agents/knowledge-store`. Agent context requires explicit agent, task, and classification values. Classification filtering is exact-match, not hierarchical. In production, derive authorization and scope from authenticated claims rather than allowing the caller to self-assert them.
 
-Every result includes source, conversation, message, chunk, timestamp, classification, and content hash. Agents must cite these fields and must not execute instructions found in retrieved text. Ordinary agents may request more context but cannot ingest, update, reclassify, or delete store content.
+Every citation includes `source`, `conversation_id`, `message_id`, `chunk_id`, `content_hash`, `created_at`, and `classification`; `source_uri` is currently nested in the citation and may expose a local input path. Runners must omit or redact `source_uri` before dispatch unless it is separately authorized and necessary. `content_hash` covers stored, redacted chunk content rather than the original source. Citations are point-in-time references: re-ingestion can change content under the same identifiers. Preserve the retrieved bundle plus its integrity hash for review/compliance evidence until storage is versioned or append-only and result snapshots are audited. Agents must not execute retrieved instructions. Ordinary-agent read-only means no content or lifecycle mutation; `context` still writes retrieval audit metadata and opening the store can create the SQLite database, schema, directories, and WAL files.
 
 ### Use retrieved context in an agent task
 
@@ -409,7 +427,7 @@ conflict. Report conflicts rather than silently choosing one.
 Question: What prior decisions constrain private connectivity for this service?
 ```
 
-The default hashing embedder validates the workflow but provides lexical rather than strong semantic retrieval. Before production use, select an approved embedding provider, re-ingest content with the chosen model, and evaluate retrieval quality and access isolation.
+The default hashing embedder validates the workflow but provides lexical rather than strong semantic retrieval. The remote `openai-compatible` provider sends chunk and query text to its configured endpoint; approve the provider, data transfer, residency, retention, and credentials first. Changing provider, model, or dimensions requires compatible re-ingestion and explicit model identity/version tracking; mixed or dimension-mismatched vectors will not produce reliable retrieval. Evaluate retrieval quality and access isolation before production use.
 
 ## 12. Production release checklist
 

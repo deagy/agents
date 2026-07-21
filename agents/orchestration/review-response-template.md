@@ -23,7 +23,7 @@ Use `../shared/output-schemas/finding.schema.json` for each finding. Include sev
 - Tests and scans:
 - Plans and diffs:
 - Architecture and threat-model references:
-- Other immutable evidence:
+- Other snapshot/run evidence and integrity identifiers:
 - Knowledge-store citations used:
 - Conflicting or stale retrieved knowledge:
 

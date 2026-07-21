@@ -38,7 +38,8 @@
 - Authorized classification and scope:
 - Attached context bundle:
 - Known stale or conflicting sources:
-- Required citation fields: source, conversation, message, chunk, content hash, timestamp, and classification
+- Required citation fields: `source`, `conversation_id`, `message_id`, `chunk_id`, `content_hash`, `created_at`, and `classification`
+- Supplementary source URI handling (may expose local paths):
 
 ## Escalation
 
