@@ -63,7 +63,7 @@ function buildKnowledgeContext(config, selectedAgents, input) {
   const requests = selectedAgents.map((agent) => {
     const focus = config.knowledge_focus[agent];
     if (!focus) throw new Error(`Missing knowledge focus for selected agent: ${agent}`);
-    const query = `Task: ${input.task}\nRetrieve ${focus}.`;
+    const query = `Task: ${input.task}. Retrieve ${focus}.`;
     const args = [
       'run', 'knowledge-store', '--', 'context',
       '--agent', agent,

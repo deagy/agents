@@ -44,6 +44,7 @@ test('selects frontend and backend agents with cross-stack coordination', () => 
   assert.equal(result.knowledge_context.status, 'planned');
   assert.ok(result.knowledge_context.requests.some((request) => request.agent === 'frontend-engineer'));
   assert.ok(result.knowledge_context.requests.every((request) => request.invocation.args.includes('APP-42')));
+  assert.ok(result.knowledge_context.requests.every((request) => !/[\r\n]/.test(request.query)));
 });
 
 test('adds security roles for authentication work', () => {

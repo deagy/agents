@@ -1,0 +1,327 @@
+{
+  "schema_version": 1,
+  "task_id": "SAMPLE-001",
+  "generated_at": "2026-07-21T02:32:15.623Z",
+  "status": "ready",
+  "workflow": "new-service",
+  "inputs": {
+    "task": "Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm",
+    "base": null,
+    "changed_file_source": "explicit",
+    "changed_files": [
+      "frontend/src/Upload.tsx",
+      "services/documents/main.go",
+      "charts/documents/values.yaml"
+    ],
+    "classification": "internal",
+    "source_filter": null
+  },
+  "matched_routes": [
+    {
+      "id": "frontend",
+      "reasons": {
+        "keywords": [
+          "react",
+          "typescript"
+        ],
+        "paths": [
+          {
+            "pattern": "frontend/**",
+            "file": "frontend/src/Upload.tsx"
+          },
+          {
+            "pattern": "**/*.tsx",
+            "file": "frontend/src/Upload.tsx"
+          }
+        ]
+      }
+    },
+    {
+      "id": "backend",
+      "reasons": {
+        "keywords": [
+          "api",
+          "postgresql"
+        ],
+        "paths": [
+          {
+            "pattern": "services/**",
+            "file": "services/documents/main.go"
+          },
+          {
+            "pattern": "**/*.go",
+            "file": "services/documents/main.go"
+          }
+        ]
+      }
+    },
+    {
+      "id": "infrastructure",
+      "reasons": {
+        "keywords": [
+          "kubernetes",
+          "helm"
+        ],
+        "paths": [
+          {
+            "pattern": "charts/**",
+            "file": "charts/documents/values.yaml"
+          }
+        ]
+      }
+    }
+  ],
+  "matched_risks": [
+    {
+      "id": "authentication-authorization",
+      "reasons": {
+        "keywords": [
+          "authentication",
+          "oidc"
+        ],
+        "paths": []
+      }
+    }
+  ],
+  "agents": {
+    "primary": [
+      "frontend-engineer",
+      "backend-engineer",
+      "infrastructure-provisioner"
+    ],
+    "reviewers": [
+      "test-engineer",
+      "code-reviewer",
+      "infrastructure-reviewer",
+      "security-reviewer"
+    ],
+    "support": [
+      "threat-modeler",
+      "application-engineer"
+    ]
+  },
+  "human_gates": [],
+  "knowledge_context": {
+    "status": "planned",
+    "classification": "internal",
+    "source_filter": null,
+    "requests": [
+      {
+        "agent": "threat-modeler",
+        "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve prior threats, incidents, mitigations, trust boundaries, and residual risks.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "threat-modeler",
+            "--task-id",
+            "SAMPLE-001",
+            "--query",
+            "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve prior threats, incidents, mitigations, trust boundaries, and residual risks.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "application-engineer",
+        "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve cross-stack contracts, integration decisions, shared behavior, and implementation patterns.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "application-engineer",
+            "--task-id",
+            "SAMPLE-001",
+            "--query",
+            "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve cross-stack contracts, integration decisions, shared behavior, and implementation patterns.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "frontend-engineer",
+        "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve React patterns, UX decisions, accessibility, API contracts, and browser security.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "frontend-engineer",
+            "--task-id",
+            "SAMPLE-001",
+            "--query",
+            "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve React patterns, UX decisions, accessibility, API contracts, and browser security.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "backend-engineer",
+        "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve Go patterns, PostgreSQL decisions, schemas, migrations, APIs, and operational lessons.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "backend-engineer",
+            "--task-id",
+            "SAMPLE-001",
+            "--query",
+            "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve Go patterns, PostgreSQL decisions, schemas, migrations, APIs, and operational lessons.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "infrastructure-provisioner",
+        "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve Proxmox, Terraform, Talos, Kubernetes, Helm, storage, and networking patterns.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "infrastructure-provisioner",
+            "--task-id",
+            "SAMPLE-001",
+            "--query",
+            "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve Proxmox, Terraform, Talos, Kubernetes, Helm, storage, and networking patterns.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "test-engineer",
+        "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve Gherkin scenarios, regressions, failure cases, and quality history.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "test-engineer",
+            "--task-id",
+            "SAMPLE-001",
+            "--query",
+            "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve Gherkin scenarios, regressions, failure cases, and quality history.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "code-reviewer",
+        "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve prior defects, coding conventions, exceptions, and relevant findings.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "code-reviewer",
+            "--task-id",
+            "SAMPLE-001",
+            "--query",
+            "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve prior defects, coding conventions, exceptions, and relevant findings.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "infrastructure-reviewer",
+        "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve prior infrastructure findings, drift, incidents, and approved guardrails.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "infrastructure-reviewer",
+            "--task-id",
+            "SAMPLE-001",
+            "--query",
+            "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve prior infrastructure findings, drift, incidents, and approved guardrails.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "security-reviewer",
+        "query": "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve threats, findings, exceptions, incidents, and compensating controls.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "security-reviewer",
+            "--task-id",
+            "SAMPLE-001",
+            "--query",
+            "Task: Design a secure React TypeScript document upload UI backed by a Go PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm\nRetrieve threats, findings, exceptions, incidents, and compensating controls.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      }
+    ]
+  }
+}

@@ -55,6 +55,18 @@ Omit `--files` to inspect the current `git status`, or provide `--base main` to 
 
 Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the file uses JSON-compatible YAML so the dependency-free Node selector can parse it deterministically.
 
+### Dispatch with one prompt
+
+In Codex, invoke the repository skill to select agents, retrieve authorized knowledge context, run independent subagents in dependency-aware waves, enforce human gates, and consolidate their results:
+
+```text
+$run-agent-orchestration Review TASK-42 for implementation readiness.
+Scope: frontend/src/**, services/api/**, infra/**, and .gitlab-ci.yml.
+Classification: internal. Mode: planning-review-only.
+```
+
+Omit the mode to default to planning and review only. Name `scoped-repository-edit` when you want agents to make bounded repository changes. The skill never treats invocation as permission to apply infrastructure, run migrations, deploy to production, merge or push, accept risk, or perform destructive actions.
+
 ## 3. Prepare the task
 
 Copy `orchestration/task-brief-template.md` and complete it before dispatch. Include exact scope and exclusions; avoid prompts such as “review everything” or “make it secure.”

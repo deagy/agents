@@ -1,0 +1,450 @@
+{
+  "schema_version": 1,
+  "task_id": "SAMPLE-001-DESIGN",
+  "generated_at": "2026-07-21T14:14:57.647Z",
+  "status": "ready",
+  "workflow": "new-service",
+  "inputs": {
+    "task": "Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling",
+    "base": null,
+    "changed_file_source": "explicit",
+    "changed_files": [
+      "agents/orchestration/examples/SAMPLE-001/architecture.md",
+      "agents/orchestration/examples/SAMPLE-001/adrs/0001-oidc-bff.md"
+    ],
+    "classification": "internal",
+    "source_filter": null
+  },
+  "matched_routes": [
+    {
+      "id": "frontend",
+      "reasons": {
+        "keywords": [
+          "frontend"
+        ],
+        "paths": []
+      }
+    },
+    {
+      "id": "backend",
+      "reasons": {
+        "keywords": [
+          "postgresql"
+        ],
+        "paths": []
+      }
+    },
+    {
+      "id": "infrastructure",
+      "reasons": {
+        "keywords": [
+          "terraform",
+          "kubernetes"
+        ],
+        "paths": []
+      }
+    },
+    {
+      "id": "pipeline",
+      "reasons": {
+        "keywords": [
+          "runner"
+        ],
+        "paths": []
+      }
+    },
+    {
+      "id": "documentation",
+      "reasons": {
+        "keywords": [],
+        "paths": [
+          {
+            "pattern": "**/*.md",
+            "file": "agents/orchestration/examples/SAMPLE-001/architecture.md"
+          },
+          {
+            "pattern": "**/*.md",
+            "file": "agents/orchestration/examples/SAMPLE-001/adrs/0001-oidc-bff.md"
+          }
+        ]
+      }
+    }
+  ],
+  "matched_risks": [
+    {
+      "id": "authentication-authorization",
+      "reasons": {
+        "keywords": [
+          "authorization",
+          "oidc"
+        ],
+        "paths": []
+      }
+    },
+    {
+      "id": "architecture-change",
+      "reasons": {
+        "keywords": [
+          "architecture"
+        ],
+        "paths": []
+      }
+    },
+    {
+      "id": "destructive",
+      "reasons": {
+        "keywords": [
+          "terraform state"
+        ],
+        "paths": []
+      }
+    }
+  ],
+  "agents": {
+    "primary": [
+      "frontend-engineer",
+      "backend-engineer",
+      "infrastructure-provisioner",
+      "cicd-engineer",
+      "technical-writer"
+    ],
+    "reviewers": [
+      "test-engineer",
+      "code-reviewer",
+      "infrastructure-reviewer",
+      "pipeline-security-reviewer",
+      "security-reviewer"
+    ],
+    "support": [
+      "cloud-architect",
+      "threat-modeler",
+      "application-engineer"
+    ]
+  },
+  "human_gates": [
+    {
+      "id": "destructive-action",
+      "required": true,
+      "reason": "An authorized human must approve the exact destructive action and recovery plan."
+    }
+  ],
+  "knowledge_context": {
+    "status": "planned",
+    "classification": "internal",
+    "source_filter": null,
+    "requests": [
+      {
+        "agent": "cloud-architect",
+        "query": "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve prior architecture decisions, constraints, alternatives, failure domains, and recovery objectives.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "cloud-architect",
+            "--task-id",
+            "SAMPLE-001-DESIGN",
+            "--query",
+            "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve prior architecture decisions, constraints, alternatives, failure domains, and recovery objectives.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "threat-modeler",
+        "query": "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve prior threats, incidents, mitigations, trust boundaries, and residual risks.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "threat-modeler",
+            "--task-id",
+            "SAMPLE-001-DESIGN",
+            "--query",
+            "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve prior threats, incidents, mitigations, trust boundaries, and residual risks.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "application-engineer",
+        "query": "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve cross-stack contracts, integration decisions, shared behavior, and implementation patterns.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "application-engineer",
+            "--task-id",
+            "SAMPLE-001-DESIGN",
+            "--query",
+            "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve cross-stack contracts, integration decisions, shared behavior, and implementation patterns.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "frontend-engineer",
+        "query": "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve React patterns, UX decisions, accessibility, API contracts, and browser security.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "frontend-engineer",
+            "--task-id",
+            "SAMPLE-001-DESIGN",
+            "--query",
+            "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve React patterns, UX decisions, accessibility, API contracts, and browser security.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "backend-engineer",
+        "query": "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve Go patterns, PostgreSQL decisions, schemas, migrations, APIs, and operational lessons.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "backend-engineer",
+            "--task-id",
+            "SAMPLE-001-DESIGN",
+            "--query",
+            "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve Go patterns, PostgreSQL decisions, schemas, migrations, APIs, and operational lessons.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "infrastructure-provisioner",
+        "query": "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve Proxmox, Terraform, Talos, Kubernetes, Helm, storage, and networking patterns.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "infrastructure-provisioner",
+            "--task-id",
+            "SAMPLE-001-DESIGN",
+            "--query",
+            "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve Proxmox, Terraform, Talos, Kubernetes, Helm, storage, and networking patterns.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "cicd-engineer",
+        "query": "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve GitLab pipelines, runners, artifacts, signing, deployments, and rollback.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "cicd-engineer",
+            "--task-id",
+            "SAMPLE-001-DESIGN",
+            "--query",
+            "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve GitLab pipelines, runners, artifacts, signing, deployments, and rollback.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "test-engineer",
+        "query": "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve Gherkin scenarios, regressions, failure cases, and quality history.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "test-engineer",
+            "--task-id",
+            "SAMPLE-001-DESIGN",
+            "--query",
+            "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve Gherkin scenarios, regressions, failure cases, and quality history.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "code-reviewer",
+        "query": "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve prior defects, coding conventions, exceptions, and relevant findings.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "code-reviewer",
+            "--task-id",
+            "SAMPLE-001-DESIGN",
+            "--query",
+            "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve prior defects, coding conventions, exceptions, and relevant findings.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "infrastructure-reviewer",
+        "query": "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve prior infrastructure findings, drift, incidents, and approved guardrails.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "infrastructure-reviewer",
+            "--task-id",
+            "SAMPLE-001-DESIGN",
+            "--query",
+            "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve prior infrastructure findings, drift, incidents, and approved guardrails.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "pipeline-security-reviewer",
+        "query": "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve runner, token, dependency, artifact, and pipeline findings.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "pipeline-security-reviewer",
+            "--task-id",
+            "SAMPLE-001-DESIGN",
+            "--query",
+            "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve runner, token, dependency, artifact, and pipeline findings.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "security-reviewer",
+        "query": "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve threats, findings, exceptions, incidents, and compensating controls.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "security-reviewer",
+            "--task-id",
+            "SAMPLE-001-DESIGN",
+            "--query",
+            "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve threats, findings, exceptions, incidents, and compensating controls.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      },
+      {
+        "agent": "technical-writer",
+        "query": "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve approved decisions, current operations, terminology, and audience conventions.",
+        "invocation": {
+          "cwd": "agents/knowledge-store",
+          "executable": "npm",
+          "args": [
+            "run",
+            "knowledge-store",
+            "--",
+            "context",
+            "--agent",
+            "technical-writer",
+            "--task-id",
+            "SAMPLE-001-DESIGN",
+            "--query",
+            "Task: Resolve SAMPLE-001 architecture decisions for OIDC BFF, tenant authorization, document storage and scanning, PostgreSQL recovery, Kubernetes policy, Terraform state, GitLab runner trust, and frontend tooling\nRetrieve approved decisions, current operations, terminology, and audience conventions.",
+            "--classification",
+            "internal",
+            "--top",
+            "5"
+          ]
+        }
+      }
+    ]
+  }
+}
