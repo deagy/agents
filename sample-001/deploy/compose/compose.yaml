@@ -49,7 +49,7 @@ services:
       retries: 20
     networks: [backend]
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql
 
   migrate:
     build:
@@ -115,10 +115,9 @@ services:
   objects-init:
     image: docker.io/library/alpine:3.23.2@sha256:865b95f46d98cf867a156fe4a135ad3fe50d2056aa3f25ed31662dff6da4eb62
     restart: "no"
-    command: ["sh", "-c", "install -d -o 65532 -g 65532 -m 0700 /objects /objects/quarantine /objects/clean"]
+    command: ["sh", "-c", "mkdir -p /objects/quarantine /objects/clean"]
     read_only: true
     cap_drop: [ALL]
-    cap_add: [CHOWN, DAC_OVERRIDE]
     security_opt: [no-new-privileges:true]
     networks: [backend]
     volumes: ["objects:/objects"]
@@ -149,6 +148,8 @@ services:
       SAMPLE001_DATABASE_URL: postgres://sample001_api_login:${API_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
       SAMPLE001_ASSERTION_PUBLIC_KEY: ${ASSERTION_PUBLIC_KEY:?replace sentinel}
       SAMPLE001_STORAGE_ROOT: /objects
+      SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS: "true"
+    user: "0:0"
     volumes:
       - objects:/objects
 
@@ -186,6 +187,8 @@ services:
       SAMPLE001_MODE: development
       SAMPLE001_DATABASE_URL: postgres://sample001_scanner_login:${SCANNER_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
       SAMPLE001_STORAGE_ROOT: /objects
+      SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS: "true"
+    user: "0:0"
     tmpfs:
       - /tmp:size=64m,mode=1777
       - /objects/clean:size=1m,mode=0700
@@ -209,6 +212,8 @@ services:
       SAMPLE001_MODE: development
       SAMPLE001_DATABASE_URL: postgres://sample001_promotion_login:${PROMOTION_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
       SAMPLE001_STORAGE_ROOT: /objects
+      SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS: "true"
+    user: "0:0"
     volumes:
       - objects:/objects
 
@@ -224,6 +229,8 @@ services:
       SAMPLE001_MODE: development
       SAMPLE001_DATABASE_URL: postgres://sample001_deletion_login:${DELETION_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
       SAMPLE001_STORAGE_ROOT: /objects
+      SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS: "true"
+    user: "0:0"
     volumes:
       - objects:/objects
 
@@ -239,6 +246,8 @@ services:
       SAMPLE001_MODE: development
       SAMPLE001_DATABASE_URL: postgres://sample001_deletion_login:${DELETION_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
       SAMPLE001_STORAGE_ROOT: /objects
+      SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS: "true"
+    user: "0:0"
     volumes:
       - objects:/objects
 

@@ -17,6 +17,33 @@ On Windows, use `py -3 deploy/compose/generate-env.py` if `python` opens the Mic
 
 Compose creates separate BFF, API, scanner, promotion, and deletion database logins from the ignored local environment file. The fake scanner receives only a read-only quarantine subpath; its `/objects/clean` path is an isolated empty tmpfs. The BFF retries fake-provider discovery for a bounded startup window and returns successful callbacks to the configured frontend origin.
 
+Some Docker Desktop and rootless Podman volume backends reject chmod/chown on named volume roots. The local compose stack therefore initializes object directories with `mkdir`, sets `SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS=true` only for object-storage services, and overrides those local demo containers to run as root inside the container. The production-shaped images and Helm contract remain non-root. If an older failed run created the object volume with incompatible metadata, remove the disposable volume before retrying:
+
+```powershell
+podman volume rm sample-001_objects
+```
+
+PostgreSQL 18 stores data under a major-version-specific subdirectory. The compose volume is mounted at `/var/lib/postgresql`, not `/var/lib/postgresql/data`. If an older partial run created the disposable database volume with the old layout, remove it before retrying:
+
+```powershell
+podman volume rm sample-001_postgres-data
+```
+
+If Compose reports that `sample-001_backend` has an incorrect `com.docker.compose.network` label, remove the stale stopped demo containers and network before retrying:
+
+```powershell
+$ids = @(podman ps -a --filter label=com.docker.compose.project=sample-001 -q)
+if ($ids.Count -gt 0) { podman rm -f $ids }
+podman network rm sample-001_backend
+```
+
+The equivalent shell form is:
+
+```sh
+podman ps -a --filter label=com.docker.compose.project=sample-001 -q | xargs -r podman rm -f
+podman network rm sample-001_backend
+```
+
 ## Render-only Helm chart
 
 The chart excludes fake identity, fake scanning, PostgreSQL, migrations, hooks, CRDs, and cluster-scoped resources. It references an externally managed secret and requires digest-pinned images. Render with non-secret review values only:

@@ -24,8 +24,8 @@
     },
     {
       "id": "infrastructure",
-      "paths": ["terraform/**", "infrastructure/**", "infra/**", "talos/**", "kubernetes/**", "k8s/**", "helm/**", "charts/**", "**/*.tf", "**/*.tfvars"],
-      "keywords": ["proxmox", "terraform", "talos", "kubernetes", "k8s", "helm", "infrastructure"],
+      "paths": ["terraform/**", "infrastructure/**", "infra/**", "talos/**", "kubernetes/**", "k8s/**", "helm/**", "charts/**", "deploy/compose/**", "**/compose.yaml", "**/compose.yml", "**/docker-compose.yaml", "**/docker-compose.yml", "**/*.tf", "**/*.tfvars"],
+      "keywords": ["proxmox", "terraform", "talos", "kubernetes", "k8s", "helm", "infrastructure", "docker compose", "podman compose", "compose.yaml", "named volume", "container storage"],
       "primary": ["infrastructure-provisioner"],
       "reviewers": ["infrastructure-reviewer"]
     },

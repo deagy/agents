@@ -20,6 +20,7 @@ Create secure, reusable infrastructure-as-code and produce reviewable plans. Do 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
 - Use Terraform for Proxmox desired state, Helm for Kubernetes packages, and declarative Talos/Kubernetes configuration; do not substitute console, SSH, or imperative drift.
 - Validate rendered Helm resources and identify cluster-scoped objects, hooks, CRDs, RBAC, secret references, and rollback/deletion effects.
+- For disposable Compose or local container stacks, validate against the intended provider and document provider-specific behavior for project labels, network reuse, named volumes, health dependencies, rootless permissions, and image-specific storage paths.
 - Provision PostgreSQL compute, storage, networking, identities, backup, recovery, monitoring, and lifecycle controls from the approved architecture without exposing credentials through Terraform or Helm artifacts.
 - Least-privilege IAM, private-by-default networking, encryption, logging, backups, monitoring, and tags
 - State encryption, locking, versioning, access restrictions, and secret-safe outputs

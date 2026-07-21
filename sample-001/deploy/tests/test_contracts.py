@@ -35,6 +35,26 @@ class DeliveryContractTests(unittest.TestCase):
         self.assertIn("read_only: true", scanner)
         self.assertNotIn('objects:/objects', scanner)
 
+    def test_compose_preserves_local_volume_compatibility_contract(self) -> None:
+        text = (SAMPLE / "deploy/compose/compose.yaml").read_text(encoding="utf-8")
+        self.assertIn("- postgres-data:/var/lib/postgresql", text)
+        self.assertNotIn("- postgres-data:/var/lib/postgresql/data", text)
+        objects_init = text[text.index("  objects-init:"):text.index("  api:")]
+        self.assertIn("mkdir -p /objects/quarantine /objects/clean", objects_init)
+        self.assertNotIn("install -d", objects_init)
+        self.assertNotIn("cap_add:", objects_init)
+
+        object_storage_services = ("api", "scanner", "promotion", "deletion", "reconciliation")
+        for index, service in enumerate(object_storage_services):
+            next_service = object_storage_services[index + 1] if index + 1 < len(object_storage_services) else "frontend"
+            section = text[text.index(f"  {service}:"):text.index(f"  {next_service}:")]
+            self.assertIn('SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS: "true"', section)
+            self.assertIn('user: "0:0"', section)
+
+        bff = text[text.index("  bff:"):text.index("  scanner:")]
+        self.assertNotIn("SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS", bff)
+        self.assertNotIn('user: "0:0"', bff)
+
     def test_demo_fakes_have_no_production_shaped_image_targets(self) -> None:
         dockerfile = (SAMPLE / "services/Dockerfile").read_text(encoding="utf-8")
         self.assertNotRegex(dockerfile, r"(?m)^FROM (?:fake-)?scanner-demo AS scanner$")

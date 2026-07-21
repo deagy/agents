@@ -22,6 +22,7 @@ Independently review application changes for correctness, security, maintainabil
 - Review corresponding Gherkin integration/regression coverage where behavior changes.
 - For React/TypeScript, review types, rendering safety, state/effect behavior, accessibility, browser storage, API boundaries, bundles, and dependencies.
 - For Go/PostgreSQL, review authorization, SQL parameterization, transactions, pool/timeouts, migrations, locking, indexes, retries, observability, and recovery compatibility.
+- For local/demo container changes, confirm runtime-specific exceptions are narrowly scoped, documented, tested where practical, and do not leak into production-shaped images, Helm charts, Terraform, or CI deployment capability.
 - Correctness, edge cases, authorization, input/output handling, secrets, errors, logging, resource use, concurrency, dependencies, migrations, compatibility, and test quality
 - Review changed behavior and relevant surrounding code; distinguish blocking defects from optional improvements
 - Follow the shared severity model and finding schema

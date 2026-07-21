@@ -139,6 +139,16 @@ class SelectorTests(unittest.TestCase):
         self.assertEqual(result["agents"]["primary"], ["infrastructure-provisioner"])
         self.assertEqual(result["agents"]["reviewers"], ["infrastructure-reviewer"])
 
+    def test_routes_compose_runtime_changes_to_infrastructure_review(self) -> None:
+        result = plan(
+            task="Fix Podman Compose named volume behavior for PostgreSQL",
+            changed_files=["sample-001/deploy/compose/compose.yaml"],
+        )
+        self.assertEqual(result["workflow"], "new-service")
+        self.assertIn("backend-engineer", result["agents"]["primary"])
+        self.assertIn("infrastructure-provisioner", result["agents"]["primary"])
+        self.assertIn("infrastructure-reviewer", result["agents"]["reviewers"])
+
     def test_selects_engineering_and_review_for_orchestration_config_only(self) -> None:
         result = plan(
             task="Adjust configuration behavior",

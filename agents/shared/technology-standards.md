@@ -48,6 +48,14 @@ These standards specialize `team-profile.yaml`. Where a value remains `not_yet_s
 - Use parameterized queries, least-privilege database roles, TLS where applicable, bounded connection pools, context deadlines, transaction boundaries, and observable slow-query behavior.
 - Design backup, restore, point-in-time recovery, high availability, capacity, maintenance, and schema ownership before production use.
 - Never place database credentials in source, frontend bundles, Helm values, Terraform output, CI logs, or generated documentation.
+- For PostgreSQL 18+ containerized disposable stacks, mount persistent database storage at `/var/lib/postgresql` rather than `/var/lib/postgresql/data` unless the image documentation for that exact tag says otherwise. Treat old named volumes with the prior layout as disposable reset candidates only after confirming the environment is local/demo.
+
+## Disposable local container stacks
+
+- Treat Docker Compose and Podman Compose as local/development conveniences unless a production architecture explicitly approves them.
+- Validate Compose files with the intended runtime and provider, because Docker Compose, `podman-compose`, Docker Desktop, and rootless Podman differ in labels, dependency cleanup, named-volume behavior, and supported mount options.
+- For rootless Podman or Docker Desktop named volumes, do not assume `chown` or `chmod` will succeed on mounted volume roots. Prefer runtime-compatible initialization, document any local-only relaxed-permission flags, and keep production-shaped images non-root.
+- Cleanup instructions for disposable stacks may remove only project-labeled containers, networks, and volumes. Name the exact labels/resources and call out data loss before removing database or object volumes.
 
 ## Gherkin testing
 

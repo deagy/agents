@@ -56,6 +56,9 @@ func NewFilesystem(root string) (*Filesystem, error) {
 		}
 		if runtime.GOOS != "windows" && info.Mode().Perm()&0o077 != 0 {
 			if err := os.Chmod(dir, 0o700); err != nil {
+				if os.IsPermission(err) && os.Getenv("SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS") == "true" {
+					continue
+				}
 				return nil, err
 			}
 		}
