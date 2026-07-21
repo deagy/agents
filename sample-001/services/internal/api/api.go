@@ -100,7 +100,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 		web.WriteError(w, r, http.StatusBadRequest, "invalid_upload", "multipart field file is required")
 		return
 	}
-	defer part.Close()
+	defer func() { _ = part.Close() }()
 	name := part.FileName()
 	requestHash := assertion.Hash(fmt.Sprintf("%s\x00%d", name, r.ContentLength))
 	document, existing, err := s.Store.ReserveUpload(r.Context(), principal(r), key, requestHash, name, "demo-v1")
@@ -184,7 +184,7 @@ func (s *Server) download(w http.ResponseWriter, r *http.Request) {
 		web.WriteError(w, r, http.StatusServiceUnavailable, "content_unavailable", "document content is temporarily unavailable")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	w.Header().Set("Content-Type", document.MediaType)
 	w.Header().Set("Content-Disposition", "attachment; filename*=UTF-8''"+strings.ReplaceAll(url.PathEscape(document.Name), "+", "%20"))
 	w.Header().Set("X-Content-Type-Options", "nosniff")

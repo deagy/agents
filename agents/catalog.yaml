@@ -24,6 +24,18 @@ agents:
   test-engineer:
     definition: engineering/test-engineer/AGENT.md
     phase: verify
+  black-box-tester:
+    definition: testing/black-box-tester/AGENT.md
+    phase: verify
+  end-user-tester:
+    definition: testing/end-user-tester/AGENT.md
+    phase: verify
+  support-triage-agent:
+    definition: support/support-triage-agent/AGENT.md
+    phase: support
+  escalation-manager:
+    definition: support/escalation-manager/AGENT.md
+    phase: support
   release-engineer:
     definition: engineering/release-engineer/AGENT.md
     phase: release

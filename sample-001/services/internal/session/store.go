@@ -74,7 +74,7 @@ func (s *Store) Get(ctx context.Context, id, csrf string, requireCSRF bool) (Ses
 	if err != nil {
 		return Session{}, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	var session Session
 	var csrfHash, csrfCiphertext []byte
 	err = tx.QueryRow(ctx, `SELECT tenant_id,subject_id,display_name,csrf_hash,csrf_ciphertext,version,absolute_expires_at FROM sessions WHERE id_hash=$1 AND idle_expires_at>$2 AND absolute_expires_at>$2 FOR UPDATE`, digest(id), now).Scan(&session.Principal.Tenant, &session.Principal.Subject, &session.DisplayName, &csrfHash, &csrfCiphertext, &session.Principal.SessionVersion, &session.AbsoluteExpires)

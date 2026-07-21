@@ -55,6 +55,17 @@ class DeliveryContractTests(unittest.TestCase):
         self.assertNotIn("SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS", bff)
         self.assertNotIn('user: "0:0"', bff)
 
+    def test_frontend_dev_server_writes_only_to_tmpfs_cache(self) -> None:
+        compose = (SAMPLE / "deploy/compose/compose.yaml").read_text(encoding="utf-8")
+        dockerfile = (SAMPLE / "apps/frontend/Dockerfile").read_text(encoding="utf-8")
+        vite_config = (SAMPLE / "apps/frontend/vite.config.ts").read_text(encoding="utf-8")
+        frontend = compose[compose.index("  frontend:"):compose.index("\n\nnetworks:")]
+        self.assertIn("read_only: true", frontend)
+        self.assertIn("VITE_CACHE_DIR: /tmp/vite-cache", frontend)
+        self.assertIn('tmpfs: ["/tmp:size=64m,mode=1777"]', frontend)
+        self.assertIn('"--configLoader", "runner"', dockerfile)
+        self.assertIn("cacheDir: process.env.VITE_CACHE_DIR", vite_config)
+
     def test_demo_fakes_have_no_production_shaped_image_targets(self) -> None:
         dockerfile = (SAMPLE / "services/Dockerfile").read_text(encoding="utf-8")
         self.assertNotRegex(dockerfile, r"(?m)^FROM (?:fake-)?scanner-demo AS scanner$")

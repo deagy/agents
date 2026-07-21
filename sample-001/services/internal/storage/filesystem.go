@@ -168,7 +168,7 @@ func (f *Filesystem) ScanQuarantine(key, expectedHash string, expectedSize int64
 	if err != nil {
 		return false, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	hash := sha256.New()
 	const eicar = "EICAR-STANDARD-ANTIVIRUS-TEST-FILE"
 	buffer := make([]byte, 32*1024)
@@ -310,7 +310,7 @@ func syncDir(path string) error {
 	if err != nil {
 		return err
 	}
-	defer dir.Close()
+	defer func() { _ = dir.Close() }()
 	return dir.Sync()
 }
 

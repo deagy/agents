@@ -1,8 +1,9 @@
 package main
 
 import (
-	"example.com/sample-001/services/internal/launch"
 	"log"
+
+	"example.com/sample-001/services/internal/launch"
 )
 
 func main() {

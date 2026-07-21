@@ -5,7 +5,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts && test "$(node node_modules/npm/bin/npm-cli.js --version)" = "12.0.1"
 COPY . .
 EXPOSE 5173
-CMD ["node", "node_modules/vite/bin/vite.js", "--host", "0.0.0.0"]
+CMD ["node", "node_modules/vite/bin/vite.js", "--host", "0.0.0.0", "--configLoader", "runner"]
 
 FROM development AS build
 RUN node node_modules/typescript/bin/tsc -b && node node_modules/vite/bin/vite.js build

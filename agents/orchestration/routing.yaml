@@ -44,6 +44,29 @@
       "reviewers": ["code-reviewer"]
     },
     {
+      "id": "black-box-testing",
+      "paths": ["**/black-box/**", "**/blackbox/**", "**/e2e/**", "**/playwright/**", "**/postman/**", "**/*.feature"],
+      "keywords": ["black-box", "black box", "external behavior", "public api test", "opaque system", "end-to-end test", "e2e"],
+      "primary": ["black-box-tester"],
+      "reviewers": ["test-engineer", "code-reviewer"]
+    },
+    {
+      "id": "end-user-testing",
+      "paths": ["**/uat/**", "**/user-acceptance/**", "**/personas/**", "**/journeys/**", "**/usability/**"],
+      "keywords": ["uat", "user acceptance", "end-user", "end user", "persona", "user journey", "usability", "user readiness"],
+      "primary": ["end-user-tester"],
+      "reviewers": ["technical-writer"],
+      "support": ["support-triage-agent"]
+    },
+    {
+      "id": "support",
+      "paths": ["support/**", "docs/support/**", "**/runbooks/support/**", "**/incidents/**", "**/tickets/**"],
+      "keywords": ["support", "triage", "user report", "customer report", "incident ticket", "reproduction steps", "workaround"],
+      "primary": ["support-triage-agent"],
+      "reviewers": ["technical-writer"],
+      "support": ["escalation-manager"]
+    },
+    {
       "id": "documentation",
       "paths": ["docs/**", "**/*.md", "**/adr/**"],
       "keywords": ["documentation", "runbook", "adr", "architecture decision", "operator guide"],
@@ -114,6 +137,13 @@
       "paths": [],
       "reviewers": ["security-reviewer"],
       "human_gate": "destructive-action"
+    },
+    {
+      "id": "human-escalation",
+      "keywords": ["escalate to human", "human escalation", "human support", "accountable human", "human approval", "human owner"],
+      "paths": [],
+      "support": ["escalation-manager"],
+      "human_gate": "accountable-human-escalation"
     }
   ],
   "cross_stack": {
@@ -130,6 +160,10 @@
     "infrastructure-provisioner": "Proxmox, Terraform, Talos, Kubernetes, Helm, storage, and networking patterns",
     "cicd-engineer": "GitLab pipelines, runners, artifacts, signing, deployments, and rollback",
     "test-engineer": "Gherkin scenarios, regressions, failure cases, and quality history",
+    "black-box-tester": "externally visible behavior, public API and UI contracts, black-box regressions, client compatibility, and reproducible defects",
+    "end-user-tester": "personas, user journeys, UAT decisions, accessibility observations, user-readiness risks, and supportability gaps",
+    "support-triage-agent": "prior incidents, user reports, reproduction notes, support runbooks, known workarounds, severity patterns, and ownership history",
+    "escalation-manager": "escalation history, approval chains, human owner decisions, unresolved blockers, incident communications, and risk acceptance boundaries",
     "release-engineer": "release history, rollback, incidents, dependencies, and verification thresholds",
     "code-reviewer": "prior defects, coding conventions, exceptions, and relevant findings",
     "infrastructure-reviewer": "prior infrastructure findings, drift, incidents, and approved guardrails",

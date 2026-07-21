@@ -11,6 +11,7 @@ SAMPLE-001 local startup exposed three reusable lessons for agents working on di
 - Compose project resources can survive failed runs. A stale `sample-001_backend` network without `com.docker.compose.network=backend` caused Compose to refuse reuse. Cleanup must target only project-labeled disposable containers/networks.
 - PostgreSQL 18 Docker images expect the persistent mount at `/var/lib/postgresql`, not `/var/lib/postgresql/data`. Old local volumes with the prior layout should be removed only when confirmed disposable.
 - Docker Desktop and rootless Podman named volumes may reject `chown`/`chmod` on mounted volume roots. Local demo stacks should avoid assuming ownership changes on volume roots, document any local-only relaxed-permission flag, and keep production-shaped images and Helm contracts non-root.
+- Vite 8 development servers using bundled TypeScript config loading may try to write `.vite-temp` under `node_modules`. In read-only local containers, use a config-loader mode and cache directory that write to tmpfs, such as `--configLoader runner` with `VITE_CACHE_DIR=/tmp/vite-cache`.
 
 ## Recommended Retrieval Use
 

@@ -13,6 +13,40 @@ selection_rules:
   require_transitive_dependency_review: true
 
 golang:
+  tools:
+    formatting:
+      - name: gofmt
+        status: required
+        source: go_toolchain
+        command: gofmt
+        version_policy: use_project_pinned_go_toolchain
+        usage: canonical Go source formatting
+        constraints:
+          - run_before_review_and_ci
+          - fail_ci_when_formatting_diff_exists
+
+      - name: goimports
+        status: required
+        module: golang.org/x/tools
+        tool_path: golang.org/x/tools/cmd/goimports
+        version_policy: pin_exact_reviewed_tool_version
+        usage: canonical Go import grouping and unused import cleanup
+        constraints:
+          - run_after_gofmt_or_as_the_final_formatting_pass
+          - fail_ci_when_import_formatting_diff_exists
+
+    linting:
+      - name: golangci_lint
+        status: required
+        module: github.com/golangci/golangci-lint/v2
+        tool_path: github.com/golangci/golangci-lint/v2/cmd/golangci-lint
+        version_policy: pin_exact_reviewed_tool_version
+        usage: consolidated Go static analysis, style, security, and bug-risk linting
+        constraints:
+          - keep_project_configuration_reviewed_and_committed
+          - run_after_gofmt_goimports_go_vet_and_go_test_when_practical
+          - document_temporary_exclusions_with_owner_and_expiry
+
   libraries:
     http_routing:
       - name: gorilla_multiplexer

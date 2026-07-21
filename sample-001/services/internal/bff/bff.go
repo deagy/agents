@@ -172,10 +172,10 @@ func (s *Server) proxy(w http.ResponseWriter, r *http.Request) {
 		web.WriteError(w, r, 400, "invalid_request", "request target is not canonical")
 		return
 	}
-	proxy := httputil.NewSingleHostReverseProxy(s.API)
-	original := proxy.Director
-	proxy.Director = func(out *http.Request) {
-		original(out)
+	proxy := &httputil.ReverseProxy{}
+	proxy.Rewrite = func(request *httputil.ProxyRequest) {
+		request.SetURL(s.API)
+		out := request.Out
 		for _, h := range []string{assertion.Header, "X-Tenant-ID", "X-Subject-ID", "X-Session-Version", "X-Authenticated-User"} {
 			out.Header.Del(h)
 		}

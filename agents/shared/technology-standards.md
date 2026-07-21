@@ -29,7 +29,7 @@ These standards specialize `team-profile.yaml`. Where a value remains `not_yet_s
 - Follow `library-standards.yaml` for preferred Go libraries, tools, import paths, constraints, and exception handling.
 - Prefer Go for services, operators, CLIs, and long-lived automation.
 - Use Python when it materially simplifies a bounded task, integration, data transformation, or test utility; document why it is preferable for that component.
-- Pin dependencies, use supported project-defined versions, run formatting/static analysis/tests, and avoid introducing a second implementation path without need.
+- Pin dependencies, use supported project-defined versions, run `gofmt`, `goimports`, `go vet`, `go test`, and `golangci-lint`, and avoid introducing a second implementation path without need.
 - Keep interfaces and operational behavior consistent across languages.
 
 ## React frontends
@@ -40,6 +40,7 @@ These standards specialize `team-profile.yaml`. Where a value remains `not_yet_s
 - Prefer web-platform semantics, accessible HTML, keyboard operation, responsive layouts, explicit loading/error/empty states, and secure browser/API boundaries.
 - Keep authentication material out of browser-persisted storage unless the security design explicitly permits it. Prevent XSS, CSRF, unsafe redirects, dependency injection, and sensitive-data leakage through bundles, logs, analytics, or source maps.
 - Keep API clients typed and generated or validated from an authoritative contract where practical.
+- When running frontend development tooling in read-only local containers, provide explicit tmpfs-backed cache/temp paths and verify the tool's config loader does not write under immutable project or dependency directories.
 
 ## PostgreSQL backends
 
@@ -55,6 +56,7 @@ These standards specialize `team-profile.yaml`. Where a value remains `not_yet_s
 - Treat Docker Compose and Podman Compose as local/development conveniences unless a production architecture explicitly approves them.
 - Validate Compose files with the intended runtime and provider, because Docker Compose, `podman-compose`, Docker Desktop, and rootless Podman differ in labels, dependency cleanup, named-volume behavior, and supported mount options.
 - For rootless Podman or Docker Desktop named volumes, do not assume `chown` or `chmod` will succeed on mounted volume roots. Prefer runtime-compatible initialization, document any local-only relaxed-permission flags, and keep production-shaped images non-root.
+- For read-only local containers, identify all runtime write paths used by language tooling, including frontend bundler caches and generated config-loader files. Redirect those paths to explicit tmpfs mounts rather than weakening the entire filesystem.
 - Cleanup instructions for disposable stacks may remove only project-labeled containers, networks, and volumes. Name the exact labels/resources and call out data loss before removing database or object volumes.
 
 ## Gherkin testing

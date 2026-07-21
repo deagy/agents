@@ -189,7 +189,7 @@ func (p *Postgres) ReserveUpload(ctx context.Context, principal model.Principal,
 	if err != nil {
 		return model.Document{}, false, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	var existingHash string
 	var existingID string
 	err = tx.QueryRow(ctx, `SELECT encode(request_hash,'hex'), document_id::text FROM idempotency_keys WHERE tenant_id=$1 AND subject_id=$2 AND key_hash=$3`, principal.Tenant, principal.Subject, keyDigest(key)).Scan(&existingHash, &existingID)
@@ -238,7 +238,7 @@ func (p *Postgres) CommitUpload(ctx context.Context, principal model.Principal, 
 	if err != nil {
 		return model.Document{}, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1 || chr(0) || $2,0))`, principal.Tenant, principal.Subject); err != nil {
 		return model.Document{}, err
 	}
@@ -301,7 +301,7 @@ func (p *Postgres) MarkDeleting(ctx context.Context, principal model.Principal, 
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	command, err := tx.Exec(ctx, `UPDATE documents SET status='deleting',updated_at=now() WHERE id=$1 AND tenant_id=$2 AND subject_id=$3 AND status <> 'deleted'`, id, principal.Tenant, principal.Subject)
 	if err != nil || command.RowsAffected() != 1 {
 		if err == nil {
@@ -325,7 +325,7 @@ func (p *Postgres) Consume(ctx context.Context, jti, sessionHash, tenant, subjec
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	var active bool
 	err = tx.QueryRow(ctx, `SELECT EXISTS (
 		SELECT 1 FROM active_sessions

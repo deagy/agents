@@ -22,6 +22,18 @@ CONFIG = load_routing(ROOT / "routing.yaml")
 CATALOG = load_catalog(AGENTS_ROOT / "catalog.yaml")
 
 
+def catalog_definitions() -> dict[str, str]:
+    definitions: dict[str, str] = {}
+    current_agent: str | None = None
+    for line in (AGENTS_ROOT / "catalog.yaml").read_text(encoding="utf-8").splitlines():
+        agent_match = line.startswith("  ") and not line.startswith("    ") and line.rstrip().endswith(":")
+        if agent_match:
+            current_agent = line.strip()[:-1]
+        elif current_agent and line.strip().startswith("definition:"):
+            definitions[current_agent] = line.split(":", 1)[1].strip()
+    return definitions
+
+
 def plan(**overrides: object) -> dict[str, object]:
     values = {
         "task": "Change the application",
@@ -33,6 +45,13 @@ def plan(**overrides: object) -> dict[str, object]:
 
 
 class SelectorTests(unittest.TestCase):
+    def test_catalog_definition_paths_exist(self) -> None:
+        definitions = catalog_definitions()
+        self.assertEqual(set(CATALOG), set(definitions))
+        for agent, relative_path in definitions.items():
+            with self.subTest(agent=agent):
+                self.assertTrue((AGENTS_ROOT / relative_path).is_file(), relative_path)
+
     def test_glob_matching_supports_root_and_nested_paths(self) -> None:
         self.assertIsNotNone(glob_to_regex("**/*.go").search("main.go"))
         self.assertIsNotNone(glob_to_regex("**/*.go").search("services/api/main.go"))
@@ -148,6 +167,46 @@ class SelectorTests(unittest.TestCase):
         self.assertIn("backend-engineer", result["agents"]["primary"])
         self.assertIn("infrastructure-provisioner", result["agents"]["primary"])
         self.assertIn("infrastructure-reviewer", result["agents"]["reviewers"])
+
+    def test_selects_black_box_tester_for_external_behavior(self) -> None:
+        result = plan(
+            task="Create black-box end-to-end tests for public API upload behavior",
+            changed_files=["sample-001/tests/features/upload.feature"],
+            classification="internal",
+            task_id="QA-1",
+        )
+        self.assertIn("black-box-tester", result["agents"]["primary"])
+        self.assertIn("test-engineer", result["agents"]["primary"])
+        self.assertEqual(result["knowledge_context"]["status"], "planned")
+        self.assertTrue(
+            any(request["agent"] == "black-box-tester" for request in result["knowledge_context"]["requests"])
+        )
+
+    def test_selects_end_user_and_support_for_uat(self) -> None:
+        result = plan(
+            task="Run UAT for end-user document upload journeys and supportability",
+            changed_files=["docs/uat/document-upload.md"],
+            classification="internal",
+            task_id="UAT-1",
+        )
+        self.assertIn("end-user-tester", result["agents"]["primary"])
+        self.assertIn("technical-writer", result["agents"]["primary"])
+        self.assertIn("support-triage-agent", result["agents"]["support"])
+
+    def test_selects_support_triage_and_escalation_manager_with_human_gate(self) -> None:
+        result = plan(
+            task="Triage a customer report and escalate to human support owner",
+            changed_files=["support/tickets/TICKET-123.md"],
+            classification="confidential",
+            task_id="SUP-123",
+        )
+        self.assertEqual(result["workflow"], "support-escalation")
+        self.assertIn("support-triage-agent", result["agents"]["primary"])
+        self.assertIn("escalation-manager", result["agents"]["support"])
+        self.assertEqual(
+            [gate["id"] for gate in result["human_gates"]],
+            ["accountable-human-escalation"],
+        )
 
     def test_selects_engineering_and_review_for_orchestration_config_only(self) -> None:
         result = plan(

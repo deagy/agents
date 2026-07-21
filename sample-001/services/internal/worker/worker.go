@@ -82,7 +82,7 @@ func (w *Worker) claim(ctx context.Context) (job, error) {
 	if err != nil {
 		return job{}, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	err = tx.QueryRow(ctx, `SELECT j.id,j.fencing_token+1,d.id::text,COALESCE(d.object_key::text,''),COALESCE(d.sha256,''),COALESCE(d.byte_size,0),d.object_version,d.policy_version,d.status::text FROM jobs j JOIN documents d ON d.id=j.document_id WHERE j.kind=$1 AND ((j.status='ready' AND j.available_at<=now()) OR (j.status='leased' AND j.leased_until<now())) ORDER BY j.id FOR UPDATE OF j SKIP LOCKED LIMIT 1`, w.Kind).Scan(&claimed.ID, &claimed.Token, &claimed.DocumentID, &claimed.ObjectKey, &claimed.SHA256, &claimed.Size, &claimed.Version, &claimed.Policy, &claimed.Status)
 	if err != nil {
 		return job{}, err
@@ -106,7 +106,7 @@ func (w *Worker) scan(ctx context.Context, j job) error {
 		return err
 	}
 	defer cancel()
-	defer tx.Rollback(context.Background())
+	defer func() { _ = tx.Rollback(context.Background()) }()
 	rejected, err := w.Objects.ScanQuarantine(j.ObjectKey, j.SHA256, j.Size)
 	if err != nil {
 		return err
@@ -155,7 +155,7 @@ func (w *Worker) promote(ctx context.Context, j job) error {
 		return err
 	}
 	defer cancel()
-	defer tx.Rollback(context.Background())
+	defer func() { _ = tx.Rollback(context.Background()) }()
 	if err := w.Objects.Promote(j.ObjectKey, j.SHA256, j.Size); err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func (w *Worker) delete(ctx context.Context, j job) error {
 		return err
 	}
 	defer cancel()
-	defer tx.Rollback(context.Background())
+	defer func() { _ = tx.Rollback(context.Background()) }()
 	if j.ObjectKey != "" {
 		if err := w.Objects.Delete(j.ObjectKey); err != nil {
 			return err
@@ -207,7 +207,7 @@ func (w *Worker) reconcile(ctx context.Context, j job) error {
 		return err
 	}
 	defer cancel()
-	defer tx.Rollback(context.Background())
+	defer func() { _ = tx.Rollback(context.Background()) }()
 	switch j.Status {
 	case "clean":
 		file, err := w.Objects.OpenClean(j.ObjectKey, j.SHA256, j.Size)

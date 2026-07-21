@@ -122,7 +122,9 @@ func (v Verifier) Verify(ctx context.Context, r *http.Request) (model.Principal,
 	if err != nil || !token.Valid || claims.IssuedAt == nil || claims.NotBefore == nil || claims.ExpiresAt == nil {
 		return model.Principal{}, ErrInvalid
 	}
-	if claims.ExpiresAt.Sub(claims.IssuedAt.Time) > maxTTL || claims.NotBefore.Time.Before(claims.IssuedAt.Time.Add(-Skew)) || claims.NotBefore.Time.After(claims.IssuedAt.Time.Add(Skew)) {
+	issuedAt := claims.IssuedAt.Time
+	notBefore := claims.NotBefore.Time
+	if claims.ExpiresAt.Sub(issuedAt) > maxTTL || notBefore.Before(issuedAt.Add(-Skew)) || notBefore.After(issuedAt.Add(Skew)) {
 		return model.Principal{}, ErrInvalid
 	}
 	if claims.Method != r.Method || claims.Path != r.URL.EscapedPath() || claims.RequestID == "" || claims.RequestID != r.Header.Get("X-Request-ID") || claims.Tenant == "" || claims.Subject == "" || claims.SessionHash == "" || claims.SessionVersion < 1 {

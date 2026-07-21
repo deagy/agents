@@ -238,7 +238,7 @@ func uploadFixture(t *testing.T, ctx context.Context, client *http.Client, baseU
 	request.Header.Set("Idempotency-Key", key)
 	response, err := client.Do(request)
 	require.NoError(t, err)
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	var result struct {
 		Document struct {
 			ID string `json:"id"`
@@ -275,7 +275,7 @@ func TestDatabaseCapabilityRolesDenyCrossServiceAccess(t *testing.T) {
 		t.Run(item.role+item.query, func(t *testing.T) {
 			tx, beginErr := store.Pool.Begin(ctx)
 			require.NoError(t, beginErr)
-			defer tx.Rollback(ctx)
+			defer func() { _ = tx.Rollback(ctx) }()
 			_, setErr := tx.Exec(ctx, "SET LOCAL ROLE "+item.role)
 			require.NoError(t, setErr)
 			var count int

@@ -260,6 +260,7 @@ services:
     environment:
       NODE_ENV: development
       VITE_BFF_ORIGIN: http://127.0.0.1:8080
+      VITE_CACHE_DIR: /tmp/vite-cache
     network_mode: service:loopback
     read_only: true
     cap_drop: [ALL]
