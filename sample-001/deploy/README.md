@@ -4,13 +4,16 @@ These artifacts are review and validation contracts for SAMPLE-001. They do not 
 
 ## Disposable Compose stack
 
-Copy `.env.example` to the ignored `.env.local`, replace every `CHANGE_ME` value, and validate without starting containers:
+From `sample-001/`, generate ignored local/demo credentials, then validate without starting containers:
 
 ```sh
+python deploy/compose/generate-env.py
 podman compose --env-file deploy/compose/.env.local -f deploy/compose/compose.yaml config
 ```
 
-Starting the stack is separately authorized local mutation. All published ports bind to loopback. `podman compose down --volumes` removes the disposable database and object volumes. Never use real documents or credentials.
+On Windows, use `py -3 deploy/compose/generate-env.py` if `python` opens the Microsoft Store alias.
+
+`podman compose` requires a Compose provider on PATH, such as `podman-compose` or Docker Compose. Starting the stack is separately authorized local mutation. All published ports bind to loopback. `podman compose down --volumes` removes the disposable database and object volumes. Never use real documents or credentials.
 
 Compose creates separate BFF, API, scanner, promotion, and deletion database logins from the ignored local environment file. The fake scanner receives only a read-only quarantine subpath; its `/objects/clean` path is an isolated empty tmpfs. The BFF retries fake-provider discovery for a bounded startup window and returns successful callbacks to the configured frontend origin.
 
