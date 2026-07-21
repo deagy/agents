@@ -38,7 +38,7 @@ def _select_workflow(route_ids: list[str], risk_ids: list[str], has_agents: bool
         route_id in {"knowledge-store", "documentation", "testing"} for route_id in route_ids
     ):
         return "knowledge-ingestion"
-    if "support" in route_ids:
+    if "support" in route_ids or "incident-response" in route_ids:
         return "support-escalation"
     if "infrastructure" in route_ids and not any(
         route_id in {"frontend", "backend", "pipeline"} for route_id in route_ids
@@ -57,6 +57,7 @@ def _build_human_gates(risks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         "production-change": "An authorized human must approve the exact production change and target.",
         "destructive-action": "An authorized human must approve the exact destructive action and recovery plan.",
         "accountable-human-escalation": "An accountable human owner or approval group must make the requested decision.",
+        "privileged-identity-change": "An authorized human must approve privileged identity, credential, or break-glass changes.",
     }
     gate_ids = _unique(
         risk["rule"].get("human_gate")

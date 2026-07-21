@@ -36,6 +36,24 @@ agents:
   escalation-manager:
     definition: support/escalation-manager/AGENT.md
     phase: support
+  incident-commander:
+    definition: support/incident-commander/AGENT.md
+    phase: support
+  observability-sre:
+    definition: operations/observability-sre/AGENT.md
+    phase: operations
+  cost-capacity-planner:
+    definition: operations/cost-capacity-planner/AGENT.md
+    phase: planning
+  secrets-identity-engineer:
+    definition: security/secrets-identity-engineer/AGENT.md
+    phase: security
+  policy-as-code-engineer:
+    definition: security/policy-as-code-engineer/AGENT.md
+    phase: security
+  database-reliability-engineer:
+    definition: data/database-reliability-engineer/AGENT.md
+    phase: operations
   release-engineer:
     definition: engineering/release-engineer/AGENT.md
     phase: release
@@ -47,6 +65,9 @@ agents:
     phase: review
   pipeline-security-reviewer:
     definition: review/pipeline-security-reviewer/AGENT.md
+    phase: review
+  supply-chain-security-reviewer:
+    definition: review/supply-chain-security-reviewer/AGENT.md
     phase: review
   security-reviewer:
     definition: review/security-reviewer/AGENT.md

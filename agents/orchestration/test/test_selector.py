@@ -208,6 +208,80 @@ class SelectorTests(unittest.TestCase):
             ["accountable-human-escalation"],
         )
 
+    def test_selects_observability_sre_for_alerting_and_slos(self) -> None:
+        result = plan(
+            task="Define SLO alerts and Grafana dashboards for document upload",
+            changed_files=["observability/alerts/document-upload.yaml"],
+            classification="internal",
+            task_id="OBS-1",
+        )
+        self.assertIn("observability-sre", result["agents"]["primary"])
+        self.assertIn("technical-writer", result["agents"]["reviewers"])
+        self.assertEqual(result["knowledge_context"]["status"], "planned")
+
+    def test_selects_secrets_identity_with_privileged_human_gate(self) -> None:
+        result = plan(
+            task="Rotate a production secret for a Kubernetes service account",
+            changed_files=["identity/rbac/serviceaccount-api.yaml"],
+            classification="restricted",
+            task_id="ID-1",
+        )
+        self.assertIn("secrets-identity-engineer", result["agents"]["primary"])
+        self.assertIn("security-reviewer", result["agents"]["reviewers"])
+        self.assertIn("privileged-identity-change", [gate["id"] for gate in result["human_gates"]])
+
+    def test_selects_database_reliability_for_postgres_recovery(self) -> None:
+        result = plan(
+            task="Review PostgreSQL PITR backup and restore readiness",
+            changed_files=["database/postgres/backup.md"],
+            classification="confidential",
+            task_id="DBRE-1",
+        )
+        self.assertIn("database-reliability-engineer", result["agents"]["primary"])
+        self.assertIn("infrastructure-reviewer", result["agents"]["reviewers"])
+
+    def test_selects_policy_as_code_for_admission_controls(self) -> None:
+        result = plan(
+            task="Add Kyverno policy for restricted security contexts",
+            changed_files=["policy/kyverno/restricted.yaml"],
+            classification="internal",
+            task_id="POL-1",
+        )
+        self.assertIn("policy-as-code-engineer", result["agents"]["primary"])
+        self.assertIn("security-reviewer", result["agents"]["reviewers"])
+
+    def test_selects_supply_chain_reviewer_for_dependency_evidence(self) -> None:
+        result = plan(
+            task="Review dependency SBOM and container image provenance",
+            changed_files=["sample-001/services/go.mod"],
+            classification="internal",
+            task_id="SC-1",
+        )
+        self.assertIn("supply-chain-security-reviewer", result["agents"]["primary"])
+        self.assertIn("security-reviewer", result["agents"]["reviewers"])
+        self.assertIn("release-engineer", result["agents"]["support"])
+
+    def test_selects_incident_commander_for_major_incident(self) -> None:
+        result = plan(
+            task="Coordinate a SEV1 major incident and postmortem",
+            changed_files=["incidents/SEV1-document-upload.md"],
+            classification="confidential",
+            task_id="INC-1",
+        )
+        self.assertEqual(result["workflow"], "support-escalation")
+        self.assertIn("incident-commander", result["agents"]["primary"])
+        self.assertIn("observability-sre", result["agents"]["support"])
+
+    def test_selects_cost_capacity_planner_for_sizing(self) -> None:
+        result = plan(
+            task="Estimate Kubernetes resource limits and storage growth headroom",
+            changed_files=["capacity/document-upload-sizing.md"],
+            classification="internal",
+            task_id="CAP-1",
+        )
+        self.assertIn("cost-capacity-planner", result["agents"]["primary"])
+        self.assertIn("observability-sre", result["agents"]["support"])
+
     def test_selects_engineering_and_review_for_orchestration_config_only(self) -> None:
         result = plan(
             task="Adjust configuration behavior",

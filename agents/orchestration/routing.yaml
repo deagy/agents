@@ -67,6 +67,59 @@
       "support": ["escalation-manager"]
     },
     {
+      "id": "incident-response",
+      "paths": ["incidents/**", "postmortems/**", "**/runbooks/incident/**", "**/incident-response/**"],
+      "keywords": ["incident", "outage", "sev1", "sev2", "major incident", "postmortem", "rollback coordination", "war room"],
+      "primary": ["incident-commander"],
+      "reviewers": ["technical-writer"],
+      "support": ["support-triage-agent", "escalation-manager", "observability-sre"]
+    },
+    {
+      "id": "observability",
+      "paths": ["observability/**", "monitoring/**", "dashboards/**", "alerts/**", "prometheus/**", "grafana/**", "telemetry/**", "**/runbooks/operations/**"],
+      "keywords": ["observability", "slo", "sli", "error budget", "alert", "dashboard", "metrics", "traces", "logs", "monitoring"],
+      "primary": ["observability-sre"],
+      "reviewers": ["technical-writer"],
+      "support": ["support-triage-agent"]
+    },
+    {
+      "id": "secrets-identity",
+      "paths": ["secrets/**", "identity/**", "rbac/**", "iam/**", "oidc/**", "workload-identity/**", "**/serviceaccount*.yaml", "**/rolebinding*.yaml"],
+      "keywords": ["secret", "credential", "key rotation", "workload identity", "rbac", "oidc", "service account", "access review", "gitlab variable"],
+      "primary": ["secrets-identity-engineer"],
+      "reviewers": ["security-reviewer", "compliance-reviewer"]
+    },
+    {
+      "id": "database-reliability",
+      "paths": ["db/**", "database/**", "postgres/**", "**/migrations/**", "**/*.sql", "backup/**", "restore/**"],
+      "keywords": ["postgresql ha", "pitr", "backup", "restore", "migration safety", "schema change", "data retention", "vacuum", "index", "lock"],
+      "primary": ["database-reliability-engineer"],
+      "reviewers": ["backend-engineer", "infrastructure-reviewer"]
+    },
+    {
+      "id": "policy-as-code",
+      "paths": ["policy/**", "policies/**", "opa/**", "kyverno/**", "gatekeeper/**", "conftest/**", "admission/**"],
+      "keywords": ["policy as code", "admission", "opa", "kyverno", "gatekeeper", "conftest", "network policy", "restricted security context"],
+      "primary": ["policy-as-code-engineer"],
+      "reviewers": ["security-reviewer", "infrastructure-reviewer"]
+    },
+    {
+      "id": "supply-chain",
+      "paths": ["go.mod", "go.sum", "**/go.mod", "**/go.sum", "package.json", "package-lock.json", "**/package.json", "**/package-lock.json", "**/Dockerfile", "**/Containerfile", "**/sbom/**", "**/*.lock", "**/charts/Chart.yaml"],
+      "keywords": ["dependency", "sbom", "sboms", "provenance", "signing", "cosign", "slsa", "container image", "terraform provider", "helm dependency", "license"],
+      "primary": ["supply-chain-security-reviewer"],
+      "reviewers": ["security-reviewer"],
+      "support": ["release-engineer"]
+    },
+    {
+      "id": "cost-capacity",
+      "paths": ["capacity/**", "cost/**", "finops/**", "sizing/**", "**/values*.yaml"],
+      "keywords": ["capacity", "sizing", "cost", "finops", "quota", "resource limits", "storage growth", "runner utilization", "headroom"],
+      "primary": ["cost-capacity-planner"],
+      "reviewers": ["infrastructure-reviewer"],
+      "support": ["observability-sre"]
+    },
+    {
       "id": "documentation",
       "paths": ["docs/**", "**/*.md", "**/adr/**"],
       "keywords": ["documentation", "runbook", "adr", "architecture decision", "operator guide"],
@@ -144,6 +197,14 @@
       "paths": [],
       "support": ["escalation-manager"],
       "human_gate": "accountable-human-escalation"
+    },
+    {
+      "id": "identity-privilege",
+      "keywords": ["privileged identity", "service account", "key rotation", "production secret", "break-glass", "root credential"],
+      "paths": ["**/secrets/**", "**/identity/**", "**/rbac/**"],
+      "support": ["secrets-identity-engineer"],
+      "reviewers": ["security-reviewer"],
+      "human_gate": "privileged-identity-change"
     }
   ],
   "cross_stack": {
@@ -164,10 +225,17 @@
     "end-user-tester": "personas, user journeys, UAT decisions, accessibility observations, user-readiness risks, and supportability gaps",
     "support-triage-agent": "prior incidents, user reports, reproduction notes, support runbooks, known workarounds, severity patterns, and ownership history",
     "escalation-manager": "escalation history, approval chains, human owner decisions, unresolved blockers, incident communications, and risk acceptance boundaries",
+    "incident-commander": "incident timelines, severity decisions, mitigation history, communication cadence, owner chains, postmortems, and unresolved blockers",
+    "observability-sre": "SLOs, alerts, dashboards, telemetry decisions, incident signals, operational runbooks, capacity signals, and reliability gaps",
+    "cost-capacity-planner": "capacity models, resource limits, storage growth, runner utilization, cost tradeoffs, quotas, and sizing assumptions",
+    "secrets-identity-engineer": "identity flows, workload identity decisions, RBAC, secret rotation, credential exposure, access reviews, and break-glass ownership",
+    "policy-as-code-engineer": "policy rules, enforcement decisions, exception history, guardrail tests, admission controls, and compliance mappings",
+    "database-reliability-engineer": "PostgreSQL reliability decisions, migration history, backup and restore evidence, PITR, indexes, locks, schema lifecycle, and data retention",
     "release-engineer": "release history, rollback, incidents, dependencies, and verification thresholds",
     "code-reviewer": "prior defects, coding conventions, exceptions, and relevant findings",
     "infrastructure-reviewer": "prior infrastructure findings, drift, incidents, and approved guardrails",
     "pipeline-security-reviewer": "runner, token, dependency, artifact, and pipeline findings",
+    "supply-chain-security-reviewer": "dependency approvals, SBOMs, provenance, signing, vulnerabilities, licenses, base images, Terraform providers, Helm dependencies, and artifact integrity",
     "security-reviewer": "threats, findings, exceptions, incidents, and compensating controls",
     "compliance-reviewer": "control interpretations, mappings, evidence, exceptions, and retention",
     "technical-writer": "approved decisions, current operations, terminology, and audience conventions",

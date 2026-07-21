@@ -29,9 +29,16 @@ This runbook explains how to operate the agent suite. The definitions are runner
 | Validate user journeys and readiness | End-user tester | Technical writer, then support triage agent |
 | Triage user or customer reports | Support triage agent | Escalation manager |
 | Coordinate escalation to owner/human | Escalation manager | Accountable human owner |
+| Command a major incident | Incident commander | Escalation manager, then accountable human owner |
+| Define SLOs, alerts, and telemetry | Observability SRE | Support triage agent or release engineer |
+| Plan capacity, quotas, or cost tradeoffs | Cost & capacity planner | Infrastructure reviewer |
+| Design secrets, identity, or RBAC | Secrets & identity engineer | Security/compliance reviewer |
+| Write or review policy-as-code guardrails | Policy-as-code engineer | Infrastructure/security reviewer |
+| Review PostgreSQL reliability and recovery | Database reliability engineer | Backend or infrastructure reviewer |
 | Review source code | Code reviewer | Security reviewer when risk warrants |
 | Review IaC and plans | Infrastructure reviewer | Security/compliance reviewer |
 | Review CI/CD trust | Pipeline security reviewer | Security reviewer |
+| Review dependencies, SBOMs, provenance, and images | Supply chain security reviewer | Security reviewer, release engineer |
 | Consolidate security risk | Security reviewer | Accountable human risk owner |
 | Map controls and evidence | Compliance reviewer | Control owner and evidence curator |
 | Prepare a release | Release engineer | Authorized human approver |
@@ -202,8 +209,10 @@ verification tasks. Block the handoff for unresolved critical/high threats.
 ```text
 Cloud architect -> Threat modeler
 Frontend engineer + Backend engineer + Infrastructure provisioner + CI/CD engineer
+Secrets & identity engineer + Database reliability engineer + Policy-as-code engineer
 Test engineer + Black-box tester + End-user tester
-Code reviewer + Infrastructure reviewer + Pipeline security reviewer
+Code reviewer + Infrastructure reviewer + Pipeline security reviewer + Supply chain security reviewer
+Observability SRE + Cost & capacity planner
 Support triage agent for user-impacting defects or support-readiness gaps
 Security reviewer -> Compliance reviewer
 Technical writer + Evidence curator
