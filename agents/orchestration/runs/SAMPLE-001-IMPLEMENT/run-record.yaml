@@ -1,0 +1,74 @@
+version: 1
+task_id: SAMPLE-001-IMPLEMENT
+recorded_at: 2026-07-21
+classification: internal
+mode: scoped-repository-edit
+baseline_revision: cee6fe8476d77f879430422128c7ac5cacbc0bdd
+scope: sample-001 local demo only
+disposition: implemented_with_external_validation_gates
+
+knowledge_retrieval:
+  status: unavailable
+  reason: agents/knowledge-store/config.json was not configured
+  influence: none
+
+agents:
+  - role: frontend-engineer
+    result: implemented
+  - role: backend-engineer
+    result: implemented
+  - role: infrastructure-engineer
+    result: implemented
+  - role: code-reviewer
+    result: pass
+  - role: security-reviewer
+    result: no_critical_or_high_findings_remaining_evidence_gates_external
+  - role: infrastructure-reviewer
+    result: pass
+  - role: pipeline-security-reviewer
+    result: pass
+
+validated_locally:
+  - go_mod_verify
+  - go_test_all_packages_with_database_tests_skipped_without_url
+  - go_vet_all_packages
+  - godog_contract_scenarios
+  - frontend_typecheck
+  - frontend_vitest_20_tests
+  - frontend_coverage_thresholds
+  - frontend_build_without_source_maps
+  - npm_production_audit
+  - delivery_contract_tests_8
+  - terraform_guard_tests_4
+  - orchestration_tests_18
+  - knowledge_store_tests_16
+  - git_diff_check
+
+prepared_runner_validations:
+  - disposable_postgresql_goose_up_down_up
+  - real_http_oidc_bff_api_worker_vertical_slice
+  - database_capability_role_allow_deny
+  - go_race_and_vulnerability_scan
+  - playwright_chromium_firefox_webkit
+  - podman_compose_render_and_disposable_start
+  - helm_lint_template_schema_and_policy
+  - terraform_fmt_init_backend_false_validate
+  - sbom_container_scan_and_checksums
+
+unavailable_on_current_host:
+  - podman_socket_inactive
+  - helm_not_installed
+  - terraform_not_installed
+  - kubernetes_not_configured
+  - playwright_browsers_not_installed
+  - go_race_unsupported_on_windows_arm64
+
+human_gates:
+  - production decisions DEC-001 through DEC-009 remain open
+  - no deployment release migration apply persistent data or risk acceptance authorized
+  - external runner trust protected settings artifact access and token scope require review
+  - real identity storage scanner secrets HA recovery observability signing retention and compliance remain blocked
+
+non_blocking_followups:
+  - exercise nonce and PKCE tampering through the disposable real-stack test
+  - add a forced filesystem failure and recovery real-stack case

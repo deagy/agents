@@ -1,0 +1,231 @@
+stages:
+  - validate
+  - test
+  - build
+  - package
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+default:
+  interruptible: true
+  retry: 0
+
+python-contracts:
+  stage: validate
+  image: python:3.14.2-alpine3.23@sha256:31da4cb527055e4e3d7e9e006dffe9329f84ebea79eaca0a1f1c27ce61e40ca5
+  script:
+    - python -B -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
+    - python -B -m unittest discover -s agents/orchestration/test -p "test_*.py"
+    - python -B -m unittest discover -s sample-001/deploy/tests -p "test_*.py"
+    - python -B -m unittest discover -s sample-001/infra/tests -p "test_*.py"
+
+secret-scan:
+  stage: validate
+  image:
+    name: zricethezav/gitleaks:v8.30.0@sha256:691af3c7c5a48b16f187ce3446d5f194838f91238f27270ed36eef6359a574d9
+    entrypoint: [""]
+  script:
+    - gitleaks detect --no-git --redact --source .
+
+compose-render:
+  stage: validate
+  image: docker:28.5.1-cli-alpine3.22@sha256:9190b0613792e658a7783cf14b2d5ace5941bb68ede7276922ea36ee457d76ad
+  variables:
+    POSTGRES_PASSWORD: validation-only
+    BFF_DB_PASSWORD: validation-only
+    API_DB_PASSWORD: validation-only
+    SCANNER_DB_PASSWORD: validation-only
+    PROMOTION_DB_PASSWORD: validation-only
+    DELETION_DB_PASSWORD: validation-only
+    SESSION_ENCRYPTION_KEY: validation-only
+    ASSERTION_PRIVATE_KEY: validation-only
+    ASSERTION_PUBLIC_KEY: validation-only
+    OIDC_CLIENT_SECRET: validation-only
+  script:
+    - docker compose -f sample-001/deploy/compose/compose.yaml config --quiet
+
+helm-render:
+  stage: validate
+  image:
+    name: alpine/helm:3.19.0@sha256:aef9b56f64e866207d9591d0abd8f6d767b36aadd12edf68f8a719716d9d29c9
+    entrypoint: [""]
+  script:
+    - helm lint sample-001/deploy/helm/sample-001 -f sample-001/deploy/helm/sample-001/ci/render-values.yaml
+    - helm template sample-001 sample-001/deploy/helm/sample-001 --namespace sample-001 -f sample-001/deploy/helm/sample-001/ci/render-values.yaml > helm-rendered.yaml
+    - '! grep -E "^kind: (Secret|Job|CronJob|ClusterRole|ClusterRoleBinding|CustomResourceDefinition)$" helm-rendered.yaml'
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths: [helm-rendered.yaml]
+
+terraform-validate:
+  stage: validate
+  image:
+    name: hashicorp/terraform:1.14.5@sha256:96d2bc440714bf2b2f2998ac730fd4612f30746df43fca6f0892b2e2035b11bc
+    entrypoint: [""]
+  script:
+    - terraform fmt -check -recursive sample-001/infra/terraform
+    - terraform -chdir=sample-001/infra/terraform init -backend=false
+    - terraform -chdir=sample-001/infra/terraform validate
+
+frontend-test:
+  stage: test
+  image: node:24.18.0-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436
+  before_script:
+    - cd sample-001/apps/frontend
+    - npm ci --ignore-scripts
+    - test "$(node node_modules/npm/bin/npm-cli.js --version)" = "12.0.1"
+  script:
+    - npm run typecheck
+    - npm test
+    - npm audit --audit-level=high
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - sample-001/apps/frontend/coverage/
+
+browser-test:
+  stage: test
+  image: mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48
+  before_script:
+    - cd sample-001/apps/frontend
+    - npm ci --ignore-scripts
+    - test "$(node node_modules/npm/bin/npm-cli.js --version)" = "12.0.1"
+  script:
+    - npm run test:e2e
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - sample-001/apps/frontend/playwright-report/
+      - sample-001/apps/frontend/test-results/
+
+go-test:
+  stage: test
+  image: golang:1.26.5-alpine3.23@sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc
+  before_script:
+    - cd sample-001/services
+  script:
+    - go mod verify
+    - go vet ./...
+    - go test -race -coverprofile=coverage.out ./...
+    - go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+    - go list -m -json all > dependencies.json
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - sample-001/services/coverage.out
+      - sample-001/services/dependencies.json
+
+migration-test:
+  stage: test
+  image: golang:1.26.5-alpine3.23@sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc
+  services:
+    - name: postgres:18.4-alpine3.23@sha256:996d0920e4ff9df1fc19dacb904492f3c1ec0ec1cc338f0ad7123be7731c5f5e
+      alias: postgres
+  variables:
+    POSTGRES_DB: sample001_test
+    POSTGRES_USER: sample001_test
+    POSTGRES_HOST_AUTH_METHOD: trust
+  script:
+    - cd sample-001/services
+    - go run github.com/pressly/goose/v3/cmd/goose -dir ../db/migrations postgres "postgres://sample001_test@postgres:5432/sample001_test?sslmode=disable" up
+    - SAMPLE001_TEST_DATABASE_URL="postgres://sample001_test@postgres:5432/sample001_test?sslmode=disable" go test ./integration -count=1
+    - go run github.com/pressly/goose/v3/cmd/goose -dir ../db/migrations postgres "postgres://sample001_test@postgres:5432/sample001_test?sslmode=disable" down
+    - go run github.com/pressly/goose/v3/cmd/goose -dir ../db/migrations postgres "postgres://sample001_test@postgres:5432/sample001_test?sslmode=disable" up
+
+frontend-build:
+  stage: build
+  image: node:24.18.0-alpine3.23@sha256:595398b0081eacda8e1c4c5b97b76cd1020e4d58a8ebcb4843b9bca1e79e7436
+  script:
+    - cd sample-001/apps/frontend
+    - npm ci --ignore-scripts
+    - test "$(node node_modules/npm/bin/npm-cli.js --version)" = "12.0.1"
+    - npm run build
+    - '! find dist -type f -name "*.map" -print -quit | grep .'
+  artifacts:
+    expire_in: 7 days
+    paths: [sample-001/apps/frontend/dist/]
+
+go-build:
+  stage: build
+  image: golang:1.26.5-alpine3.23@sha256:622e56dbc11a8cfe87cafa2331e9a201877271cbff918af53d3be315f3da88cc
+  script:
+    - cd sample-001/services
+    - mkdir -p build
+    - for command in bff api scanner promotion deletion reconciliation fake-oidc; do CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o "build/$command" "./cmd/$command"; done
+  artifacts:
+    expire_in: 7 days
+    paths: [sample-001/services/build/]
+
+demo-oci-archives:
+  stage: package
+  image:
+    name: moby/buildkit:v0.24.0-rootless@sha256:995077ff90af1afff56ff23018699d7511d122b2b111041f2011bd12afd5c0fe
+    entrypoint: [""]
+  needs:
+    - job: frontend-build
+      artifacts: true
+    - job: go-build
+      artifacts: true
+  script:
+    - mkdir -p evidence/oci
+    - buildctl-daemonless.sh build --frontend dockerfile.v0 --local context=sample-001/apps/frontend --local dockerfile=sample-001/apps/frontend --opt target=demo-prebuilt --output type=oci,dest=evidence/oci/frontend.tar
+    - for target in bff api promotion deletion reconciliation; do buildctl-daemonless.sh build --frontend dockerfile.v0 --local context=sample-001/services --local dockerfile=sample-001/services --opt target="$target-prebuilt" --output type=oci,dest="evidence/oci/$target.tar"; done
+    - buildctl-daemonless.sh build --frontend dockerfile.v0 --local context=sample-001/services --local dockerfile=sample-001/services --opt target=fake-scanner-prebuilt --output type=oci,dest=evidence/oci/fake-scanner.tar
+  artifacts:
+    expire_in: 7 days
+    paths: [evidence/oci/]
+
+sbom:
+  stage: package
+  image:
+    name: anchore/syft:v1.33.0@sha256:f94e5d9fce1f2278491a8e3a63bd5f6ddb81fdfdbb8bf7a1637565c1d5344357
+    entrypoint: [""]
+  needs:
+    - job: demo-oci-archives
+      artifacts: true
+  script:
+    - mkdir -p evidence/sbom
+    - for archive in evidence/oci/*.tar; do name=$(basename "$archive" .tar); syft "oci-archive:$archive" -o "cyclonedx-json=evidence/sbom/$name.cdx.json"; done
+  artifacts:
+    expire_in: 7 days
+    paths: [evidence/sbom/]
+
+container-scan:
+  stage: package
+  image:
+    name: aquasec/trivy:0.67.2@sha256:e2b22eac59c02003d8749f5b8d9bd073b62e30fefaef5b7c8371204e0a4b0c08
+    entrypoint: [""]
+  needs:
+    - job: demo-oci-archives
+      artifacts: true
+  script:
+    - mkdir -p evidence/vulnerability
+    - for archive in evidence/oci/*.tar; do name=$(basename "$archive" .tar); trivy image --input "$archive" --severity HIGH,CRITICAL --exit-code 1 --format json --output "evidence/vulnerability/$name.json"; done
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths: [evidence/vulnerability/]
+
+checksums:
+  stage: package
+  image: alpine:3.23.2@sha256:865b95f46d98cf867a156fe4a135ad3fe50d2056aa3f25ed31662dff6da4eb62
+  needs:
+    - job: demo-oci-archives
+      artifacts: true
+    - job: sbom
+      artifacts: true
+    - job: container-scan
+      artifacts: true
+  script:
+    - find evidence -type f ! -name SHA256SUMS -exec sha256sum {} + | sort -k2 > evidence/SHA256SUMS
+    - sha256sum -c evidence/SHA256SUMS
+  artifacts:
+    expire_in: 30 days
+    paths: [evidence/]

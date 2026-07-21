@@ -1,2 +1,20 @@
 __pycache__/
 *.py[cod]
+
+# SAMPLE-001 local/demo data and credentials
+sample-001/**/.env.local
+sample-001/**/data/
+sample-001/**/objects/
+sample-001/**/coverage/
+sample-001/**/dist/
+sample-001/**/node_modules/
+sample-001/**/*.tsbuildinfo
+sample-001/**/test-results/
+sample-001/**/playwright-report/
+sample-001/**/*.db
+sample-001/**/*.tfstate*
+sample-001/**/generated-credentials/
+sample-001/services/build/
+sample-001/services/coverage.out
+sample-001/services/dependencies.json
+evidence/

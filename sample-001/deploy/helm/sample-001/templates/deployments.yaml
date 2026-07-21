@@ -1,0 +1,72 @@
+{{- $root := . -}}
+{{- range $name := list "bff" "api" "scanner" "promotion" "deletion" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-001-{{ $name }}
+  labels:
+    {{- include "sample-001.labels" $root | nindent 4 }}
+    app.kubernetes.io/name: sample-001-{{ $name }}
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels: {app.kubernetes.io/name: sample-001-{{ $name }}}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sample-001-{{ $name }}
+        app.kubernetes.io/part-of: sample-001
+    spec:
+      serviceAccountName: sample-001-{{ $name }}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: {{ $name }}
+          image: {{ printf "%s@%s" (index $root.Values.images $name).repository (index $root.Values.images $name).digest | quote }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - {name: SAMPLE001_MODE, value: production}
+            {{- if and (ne $name "bff") (ne $name "api") }}
+            - {name: SAMPLE001_HEALTH_BIND, value: "0.0.0.0:9090"}
+            {{- end }}
+          envFrom:
+            - secretRef: {name: {{ index $root.Values.existingSecrets $name | quote }}}
+          ports:
+            - {name: health, containerPort: 9090, protocol: TCP}
+            {{- if or (eq $name "bff") (eq $name "api") }}
+            - {name: http, containerPort: {{ if eq $name "bff" }}8080{{ else }}8081{{ end }}, protocol: TCP}
+            {{- end }}
+          readinessProbe:
+            httpGet: {path: /readyz, port: {{ if or (eq $name "bff") (eq $name "api") }}http{{ else }}health{{ end }}}
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: {path: /healthz, port: {{ if or (eq $name "bff") (eq $name "api") }}http{{ else }}health{{ end }}}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            {{- toYaml $root.Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {sizeLimit: 64Mi}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: {app.kubernetes.io/name: sample-001-{{ $name }}}
+---
+{{- end }}

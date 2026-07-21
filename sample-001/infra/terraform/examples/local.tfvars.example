@@ -1,0 +1,5 @@
+project_name   = "sample-001"
+environment    = "local"
+cluster_name   = "disposable-review"
+namespace      = "sample-001"
+classification = "internal"

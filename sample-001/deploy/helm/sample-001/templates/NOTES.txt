@@ -1,0 +1,3 @@
+SAMPLE-001 rendered as a review-only contract.
+INSTALLATION IS NOT AUTHORIZED. Production decisions DEC-001 through DEC-009 remain open.
+This chart deliberately excludes development fakes, PostgreSQL, migrations, hooks, CRDs, and cluster-scoped resources.

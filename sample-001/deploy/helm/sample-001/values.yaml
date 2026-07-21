@@ -1,0 +1,26 @@
+contract:
+  renderOnly: true
+  productionApproved: false
+existingSecrets:
+  bff: CHANGE_ME_BFF_SECRET
+  api: CHANGE_ME_API_SECRET
+  scanner: CHANGE_ME_SCANNER_SECRET
+  promotion: CHANGE_ME_PROMOTION_SECRET
+  deletion: CHANGE_ME_DELETION_SECRET
+ingress:
+  className: CHANGE_ME_INGRESS_CLASS
+  host: CHANGE_ME_EXAMPLE_INVALID
+network:
+  identityCidr: 192.0.2.1/32
+  databaseCidr: 192.0.2.2/32
+  objectStorageCidr: 192.0.2.3/32
+  scannerCidr: 192.0.2.4/32
+images:
+  bff: {repository: registry.invalid/sample-001/bff, digest: CHANGE_ME_SHA256_DIGEST}
+  api: {repository: registry.invalid/sample-001/api, digest: CHANGE_ME_SHA256_DIGEST}
+  scanner: {repository: registry.invalid/sample-001/scanner, digest: CHANGE_ME_SHA256_DIGEST}
+  promotion: {repository: registry.invalid/sample-001/promotion, digest: CHANGE_ME_SHA256_DIGEST}
+  deletion: {repository: registry.invalid/sample-001/deletion, digest: CHANGE_ME_SHA256_DIGEST}
+resources:
+  requests: {cpu: 50m, memory: 64Mi}
+  limits: {cpu: 500m, memory: 256Mi}

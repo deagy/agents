@@ -1,0 +1,15 @@
+existingSecrets:
+  bff: sample-001-bff-external
+  api: sample-001-api-external
+  scanner: sample-001-scanner-external
+  promotion: sample-001-promotion-external
+  deletion: sample-001-deletion-external
+ingress:
+  className: review-only
+  host: sample-001.example.invalid
+images:
+  bff: {repository: registry.invalid/sample-001/bff, digest: "sha256:0000000000000000000000000000000000000000000000000000000000000000"}
+  api: {repository: registry.invalid/sample-001/api, digest: "sha256:1111111111111111111111111111111111111111111111111111111111111111"}
+  scanner: {repository: registry.invalid/sample-001/scanner, digest: "sha256:2222222222222222222222222222222222222222222222222222222222222222"}
+  promotion: {repository: registry.invalid/sample-001/promotion, digest: "sha256:3333333333333333333333333333333333333333333333333333333333333333"}
+  deletion: {repository: registry.invalid/sample-001/deletion, digest: "sha256:4444444444444444444444444444444444444444444444444444444444444444"}

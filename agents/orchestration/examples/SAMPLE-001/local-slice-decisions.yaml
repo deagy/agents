@@ -1,0 +1,41 @@
+version: 1
+task_id: SAMPLE-001-IMPLEMENT
+scope: local_demo_only
+recorded_at: 2026-07-21
+decision_authority: repository_requester
+evidence: planning_conversation_for_SAMPLE-001-IMPLEMENT
+production_decisions:
+  register: decision-register.yaml
+  status: unchanged_and_open
+
+decisions:
+  - id: LOCAL-001
+    topic: delivery milestone
+    decision: self_contained_local_vertical_slice
+  - id: LOCAL-002
+    topic: frontend
+    decision: vite_react_typescript_npm_css_modules_wcag_2_2_aa
+  - id: LOCAL-003
+    topic: authorization
+    decision: server_derived_tenant_and_subject_owner_only_no_grants
+  - id: LOCAL-004
+    topic: document policy
+    decision: confidential_pdf_png_jpeg_utf8_text_25_mib_download_only_manual_delete
+  - id: LOCAL-005
+    topic: development dependencies
+    decision: protocol_faithful_oidc_filesystem_and_eicar_fakes_with_postgresql_via_podman
+  - id: LOCAL-006
+    topic: migrations
+    decision: project_local_goose_sql_migrations
+  - id: LOCAL-007
+    topic: service boundary
+    decision: separate_bff_and_api_with_short_lived_ed25519_assertions
+  - id: LOCAL-008
+    topic: delivery contracts
+    decision: render_only_helm_resource_free_terraform_and_no_deploy_gitlab_ci
+
+constraints:
+  - fakes_require_explicit_development_or_test_mode_and_loopback_binding
+  - no_fake_fallback_or_fake_packaging_in_helm_or_production_shaped_images
+  - no_persistent_migration_deployment_state_operation_or_risk_acceptance
+  - production_DEC-001_through_DEC-009_remain_blocking

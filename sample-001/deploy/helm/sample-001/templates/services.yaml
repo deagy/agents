@@ -1,0 +1,17 @@
+{{- $root := . -}}
+{{- range $name := list "bff" "api" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-001-{{ $name }}
+  labels:
+    {{- include "sample-001.labels" $root | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/name: sample-001-{{ $name }}}
+  ports:
+    - name: http
+      port: {{ if eq $name "bff" }}8080{{ else }}8081{{ end }}
+      targetPort: http
+---
+{{- end }}

@@ -1,0 +1,266 @@
+name: sample-001
+
+x-service-base: &service-base
+  restart: "no"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  networks: [backend]
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+
+x-loopback-service: &loopback-service
+  restart: "no"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  network_mode: service:loopback
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+
+x-go-build: &go-build
+  context: ../../services
+  dockerfile: Dockerfile
+
+services:
+  loopback:
+    image: docker.io/library/alpine:3.23.2@sha256:865b95f46d98cf867a156fe4a135ad3fe50d2056aa3f25ed31662dff6da4eb62
+    restart: "no"
+    command: ["sleep", "infinity"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [backend]
+    ports:
+      - "127.0.0.1:5173:5173"
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:8086:8086"
+  postgres:
+    image: docker.io/library/postgres:18.4-alpine3.23@sha256:996d0920e4ff9df1fc19dacb904492f3c1ec0ec1cc338f0ad7123be7731c5f5e
+    restart: "no"
+    environment:
+      POSTGRES_DB: sample001
+      POSTGRES_USER: sample001
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?copy .env.example to .env.local and replace sentinels}
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U sample001 -d sample001"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  migrate:
+    build:
+      <<: *go-build
+      target: migrate-development
+    restart: "no"
+    depends_on:
+      postgres: {condition: service_healthy}
+    command:
+      - -dir
+      - /migrations
+      - postgres
+      - postgres://sample001:${POSTGRES_PASSWORD}@postgres:5432/sample001?sslmode=disable
+      - up
+    networks: [backend]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    volumes:
+      - ../../db/migrations:/migrations:ro
+
+  database-users:
+    image: docker.io/library/postgres:18.4-alpine3.23@sha256:996d0920e4ff9df1fc19dacb904492f3c1ec0ec1cc338f0ad7123be7731c5f5e
+    restart: "no"
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BFF_DB_PASSWORD: ${BFF_DB_PASSWORD:?replace sentinel}
+      API_DB_PASSWORD: ${API_DB_PASSWORD:?replace sentinel}
+      SCANNER_DB_PASSWORD: ${SCANNER_DB_PASSWORD:?replace sentinel}
+      PROMOTION_DB_PASSWORD: ${PROMOTION_DB_PASSWORD:?replace sentinel}
+      DELETION_DB_PASSWORD: ${DELETION_DB_PASSWORD:?replace sentinel}
+    command:
+      - sh
+      - -ec
+      - |
+        psql -h postgres -U sample001 -d sample001 -v ON_ERROR_STOP=1 \
+          -v bff_password="$$BFF_DB_PASSWORD" -v api_password="$$API_DB_PASSWORD" \
+          -v scanner_password="$$SCANNER_DB_PASSWORD" -v promotion_password="$$PROMOTION_DB_PASSWORD" \
+          -v deletion_password="$$DELETION_DB_PASSWORD" <<'SQL'
+        SELECT 'CREATE ROLE sample001_bff_login LOGIN' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname='sample001_bff_login') \gexec
+        SELECT 'CREATE ROLE sample001_api_login LOGIN' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname='sample001_api_login') \gexec
+        SELECT 'CREATE ROLE sample001_scanner_login LOGIN' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname='sample001_scanner_login') \gexec
+        SELECT 'CREATE ROLE sample001_promotion_login LOGIN' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname='sample001_promotion_login') \gexec
+        SELECT 'CREATE ROLE sample001_deletion_login LOGIN' WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname='sample001_deletion_login') \gexec
+        ALTER ROLE sample001_bff_login PASSWORD :'bff_password';
+        ALTER ROLE sample001_api_login PASSWORD :'api_password';
+        ALTER ROLE sample001_scanner_login PASSWORD :'scanner_password';
+        ALTER ROLE sample001_promotion_login PASSWORD :'promotion_password';
+        ALTER ROLE sample001_deletion_login PASSWORD :'deletion_password';
+        GRANT sample001_bff TO sample001_bff_login;
+        GRANT sample001_api TO sample001_api_login;
+        GRANT sample001_scanner TO sample001_scanner_login;
+        GRANT sample001_promotion TO sample001_promotion_login;
+        GRANT sample001_deletion TO sample001_deletion_login;
+        SQL
+    networks: [backend]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+  objects-init:
+    image: docker.io/library/alpine:3.23.2@sha256:865b95f46d98cf867a156fe4a135ad3fe50d2056aa3f25ed31662dff6da4eb62
+    restart: "no"
+    command: ["sh", "-c", "install -d -o 65532 -g 65532 -m 0700 /objects /objects/quarantine /objects/clean"]
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE]
+    security_opt: [no-new-privileges:true]
+    networks: [backend]
+    volumes: ["objects:/objects"]
+
+  fake-oidc:
+    <<: *loopback-service
+    build:
+      <<: *go-build
+      target: fake-oidc-development
+    environment:
+      SAMPLE001_MODE: development
+      SAMPLE001_BIND: 127.0.0.1:8086
+      SAMPLE001_OIDC_ISSUER: http://127.0.0.1:8086
+      SAMPLE001_OIDC_CLIENT_ID: sample-001-local
+      SAMPLE001_OIDC_REDIRECT_URL: http://127.0.0.1:8080/auth/callback
+
+  api:
+    <<: *loopback-service
+    build:
+      <<: *go-build
+      target: api-development
+    depends_on:
+      database-users: {condition: service_completed_successfully}
+      objects-init: {condition: service_completed_successfully}
+    environment:
+      SAMPLE001_MODE: development
+      SAMPLE001_BIND: 127.0.0.1:8081
+      SAMPLE001_DATABASE_URL: postgres://sample001_api_login:${API_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
+      SAMPLE001_ASSERTION_PUBLIC_KEY: ${ASSERTION_PUBLIC_KEY:?replace sentinel}
+      SAMPLE001_STORAGE_ROOT: /objects
+    volumes:
+      - objects:/objects
+
+  bff:
+    <<: *loopback-service
+    build:
+      <<: *go-build
+      target: bff-development
+    depends_on:
+      api: {condition: service_started}
+      fake-oidc: {condition: service_started}
+      database-users: {condition: service_completed_successfully}
+    environment:
+      SAMPLE001_MODE: development
+      SAMPLE001_BIND: 127.0.0.1:8080
+      SAMPLE001_DATABASE_URL: postgres://sample001_bff_login:${BFF_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
+      SAMPLE001_API_URL: http://127.0.0.1:8081
+      SAMPLE001_OIDC_ISSUER: http://127.0.0.1:8086
+      SAMPLE001_OIDC_CLIENT_ID: sample-001-local
+      SAMPLE001_OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?replace sentinel}
+      SAMPLE001_OIDC_REDIRECT_URL: http://127.0.0.1:8080/auth/callback
+      SAMPLE001_ALLOWED_ORIGIN: http://127.0.0.1:5173
+      SAMPLE001_SESSION_KEY: ${SESSION_ENCRYPTION_KEY:?replace sentinel}
+      SAMPLE001_ASSERTION_PRIVATE_KEY: ${ASSERTION_PRIVATE_KEY:?replace sentinel}
+
+  scanner:
+    <<: *service-base
+    build:
+      <<: *go-build
+      target: fake-scanner-development
+    depends_on:
+      database-users: {condition: service_completed_successfully}
+      objects-init: {condition: service_completed_successfully}
+    environment:
+      SAMPLE001_MODE: development
+      SAMPLE001_DATABASE_URL: postgres://sample001_scanner_login:${SCANNER_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
+      SAMPLE001_STORAGE_ROOT: /objects
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /objects/clean:size=1m,mode=0700
+    volumes:
+      - type: volume
+        source: objects
+        target: /objects/quarantine
+        read_only: true
+        volume:
+          subpath: quarantine
+
+  promotion:
+    <<: *service-base
+    build:
+      <<: *go-build
+      target: promotion-development
+    depends_on:
+      database-users: {condition: service_completed_successfully}
+      objects-init: {condition: service_completed_successfully}
+    environment:
+      SAMPLE001_MODE: development
+      SAMPLE001_DATABASE_URL: postgres://sample001_promotion_login:${PROMOTION_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
+      SAMPLE001_STORAGE_ROOT: /objects
+    volumes:
+      - objects:/objects
+
+  deletion:
+    <<: *service-base
+    build:
+      <<: *go-build
+      target: deletion-development
+    depends_on:
+      database-users: {condition: service_completed_successfully}
+      objects-init: {condition: service_completed_successfully}
+    environment:
+      SAMPLE001_MODE: development
+      SAMPLE001_DATABASE_URL: postgres://sample001_deletion_login:${DELETION_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
+      SAMPLE001_STORAGE_ROOT: /objects
+    volumes:
+      - objects:/objects
+
+  reconciliation:
+    <<: *service-base
+    build:
+      <<: *go-build
+      target: reconciliation-development
+    depends_on:
+      database-users: {condition: service_completed_successfully}
+      objects-init: {condition: service_completed_successfully}
+    environment:
+      SAMPLE001_MODE: development
+      SAMPLE001_DATABASE_URL: postgres://sample001_deletion_login:${DELETION_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
+      SAMPLE001_STORAGE_ROOT: /objects
+    volumes:
+      - objects:/objects
+
+  frontend:
+    restart: "no"
+    build:
+      context: ../../apps/frontend
+      dockerfile: Dockerfile
+      target: development
+    environment:
+      NODE_ENV: development
+      VITE_BFF_ORIGIN: http://127.0.0.1:8080
+    network_mode: service:loopback
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+
+networks:
+  backend:
+    internal: true
+
+volumes:
+  postgres-data: {}
+  objects: {}
