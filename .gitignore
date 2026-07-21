@@ -2,9 +2,15 @@ __pycache__/
 *.py[cod]
 
 # SAMPLE-001 local/demo data and credentials
+sample-001/.env.local
 sample-001/**/.env.local
+sample-001/**/compose.override.yaml
+sample-001/**/compose.override.yml
 sample-001/**/data/
 sample-001/**/objects/
+sample-001/**/tmp/
+sample-001/**/.cache/
+sample-001/**/*.log
 sample-001/**/coverage/
 sample-001/**/dist/
 sample-001/**/node_modules/
@@ -17,4 +23,6 @@ sample-001/**/generated-credentials/
 sample-001/services/build/
 sample-001/services/coverage.out
 sample-001/services/dependencies.json
+sample-001/deploy/helm-rendered.yaml
+sample-001/evidence/
 evidence/
