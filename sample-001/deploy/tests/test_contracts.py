@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pathlib
 import re
+import runpy
+from unittest import mock
 import unittest
 
 
@@ -31,9 +33,58 @@ class DeliveryContractTests(unittest.TestCase):
         for role in ("bff", "api", "scanner", "promotion", "deletion"):
             self.assertIn(f"sample001_{role}_login", text)
         scanner = text[text.index("  scanner:"):text.index("  promotion:")]
-        self.assertIn("target: /objects/quarantine", scanner)
+        self.assertIn("target: /objects", scanner)
         self.assertIn("read_only: true", scanner)
         self.assertNotIn('objects:/objects', scanner)
+
+    def test_generated_database_passwords_are_url_safe(self) -> None:
+        with (
+            mock.patch("subprocess.run") as run,
+            mock.patch("pathlib.Path.write_text") as write_text,
+            mock.patch("sys.argv", ["generate-env.py"]),
+        ):
+            run.return_value.stdout = "private-key\npublic-key\n"
+            runpy.run_path(str(SAMPLE / "deploy/compose/generate-env.py"), run_name="__main__")
+        generated = write_text.call_args.args[0]
+        for name in (
+            "POSTGRES_PASSWORD",
+            "BFF_DB_PASSWORD",
+            "API_DB_PASSWORD",
+            "SCANNER_DB_PASSWORD",
+            "PROMOTION_DB_PASSWORD",
+            "DELETION_DB_PASSWORD",
+        ):
+            value = re.search(rf"^{name}=([A-Za-z0-9_-]+)$", generated, re.MULTILINE)
+            self.assertIsNotNone(value, name)
+            encoded = re.search(rf"^{name}_URLENCODED=([A-Za-z0-9_.~-]+)$", generated, re.MULTILINE)
+            self.assertIsNotNone(encoded, f"{name}_URLENCODED")
+
+    def test_preserve_existing_adds_url_encoded_passwords(self) -> None:
+        existing = "\n".join(
+            [
+                "POSTGRES_PASSWORD=raw+/password",
+                "BFF_DB_PASSWORD=bff+/password",
+                "API_DB_PASSWORD=api+/password",
+                "SCANNER_DB_PASSWORD=scanner+/password",
+                "PROMOTION_DB_PASSWORD=promotion+/password",
+                "DELETION_DB_PASSWORD=deletion+/password",
+                "SESSION_ENCRYPTION_KEY=session",
+                "ASSERTION_PRIVATE_KEY=private",
+                "ASSERTION_PUBLIC_KEY=public",
+                "OIDC_CLIENT_SECRET=oidc",
+            ]
+        )
+        argv = ["generate-env.py", "--preserve-existing"]
+        with (
+            mock.patch("pathlib.Path.exists", return_value=True),
+            mock.patch("pathlib.Path.read_text", return_value=existing),
+            mock.patch("pathlib.Path.write_text") as write_text,
+            mock.patch("sys.argv", argv),
+        ):
+            runpy.run_path(str(SAMPLE / "deploy/compose/generate-env.py"), run_name="__main__")
+        generated = write_text.call_args.args[0]
+        self.assertIn("SCANNER_DB_PASSWORD=scanner+/password", generated)
+        self.assertIn("SCANNER_DB_PASSWORD_URLENCODED=scanner%2B%2Fpassword", generated)
 
     def test_compose_preserves_local_volume_compatibility_contract(self) -> None:
         text = (SAMPLE / "deploy/compose/compose.yaml").read_text(encoding="utf-8")

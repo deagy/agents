@@ -22,6 +22,7 @@ This runbook explains how to operate the agent suite. The definitions are runner
 | Build a React browser application | Frontend engineer | Test engineer, then code reviewer |
 | Build a Go/PostgreSQL service | Backend engineer | Test engineer, then code reviewer |
 | Build application code | Application engineer | Test engineer, then code reviewer |
+| Debug code, tests, runtime behavior, or agent routing | Debugging engineer | Test engineer, then code reviewer |
 | Create or change IaC | Infrastructure provisioner | Infrastructure reviewer |
 | Create or change pipelines | CI/CD engineer | Pipeline security reviewer |
 | Design or run tests | Test engineer | Relevant independent reviewer |
@@ -47,6 +48,7 @@ This runbook explains how to operate the agent suite. The definitions are runner
 | Import or retrieve historical knowledge | Knowledge store steward | Security/compliance reviewer |
 
 Use `catalog.yaml` when an orchestrator needs a machine-readable role inventory.
+Use `workflows/debugging.md` when reproducing defects, analyzing runtime failures, or tuning agent definitions/routing.
 
 ### Select agents locally
 
@@ -313,7 +315,30 @@ failure behavior, tests, and reviewer handoff.
 - Can branch, tag, environment, or approval protections be bypassed?
 - Are failed security gates fail-closed and auditable?
 
-## 8. Worked example: code review
+## 8. Worked example: debugging and agent tune-up
+
+Follow `workflows/debugging.md`.
+
+### Debugging engineer brief
+
+```text
+Objective: Debug the failing SAMPLE-001 login flow and tune agent routing if the wrong agents are selected.
+Inputs: failing command or UI action, logs, request IDs, current changed paths, and expected behavior.
+Scope: sample-001 runtime/configuration plus agents/catalog.yaml, orchestration/routing.yaml, and selector tests if agent selection is defective.
+Output: reproduction evidence, root cause, smallest safe fix, regression tests or justified gaps, validation commands, and independent-review handoff.
+Prohibited: production changes, persistent environment mutation, risk acceptance, deleting data, or approving your own fix.
+```
+
+### Independent review handoff
+
+```text
+Review the debugging engineer's exact revision. Confirm the reproduced issue,
+root cause, fix scope, regression coverage, and that any agent-routing tune-up
+preserves catalog integrity, knowledge focus, human gates, and independent
+review separation. Do not approve work you materially changed.
+```
+
+## 9. Worked example: code review
 
 ```text
 Act as the code reviewer for revision <SHA>.
@@ -345,7 +370,7 @@ Example finding:
 }
 ```
 
-## 9. Worked example: black-box, UAT, and support escalation
+## 10. Worked example: black-box, UAT, and support escalation
 
 ### Black-box tester brief
 
@@ -389,7 +414,7 @@ Agents must stop before human-only decisions: production action, persistent
 mutation, destructive operation, privileged access, risk acceptance, policy
 exception, or unresolved critical/high finding.
 
-## 10. Worked example: security and compliance review
+## 11. Worked example: security and compliance review
 
 ### Security reviewer brief
 
@@ -412,7 +437,7 @@ approval and do not invent missing evidence.
 
 The accountable control or risk owner—not an agent—approves exceptions. Every exception needs justification, compensating controls, owner, expiry, and remediation plan.
 
-## 11. Worked example: documentation and evidence
+## 12. Worked example: documentation and evidence
 
 ### Technical writer brief
 
@@ -434,7 +459,7 @@ Report missing, stale, contradictory, or overexposed evidence. Do not copy
 secrets into the evidence bundle.
 ```
 
-## 12. Worked example: import chat history into the knowledge store
+## 13. Worked example: import chat history into the knowledge store
 
 Follow `workflows/knowledge-ingestion.md` and read `knowledge-store/SECURITY.md` first.
 
@@ -493,7 +518,7 @@ Question: What prior decisions constrain private connectivity for this service?
 
 The default hashing embedder validates the workflow but provides lexical rather than strong semantic retrieval. The remote `openai-compatible` provider sends chunk and query text to its configured endpoint; approve the provider, data transfer, residency, retention, and credentials first. Changing provider, model, or dimensions requires compatible re-ingestion and explicit model identity/version tracking; mixed or dimension-mismatched vectors will not produce reliable retrieval. Evaluate retrieval quality and access isolation before production use.
 
-## 13. Production release checklist
+## 14. Production release checklist
 
 Before the release engineer requests human approval, confirm:
 
@@ -508,7 +533,7 @@ Before the release engineer requests human approval, confirm:
 
 Use `workflows/production-release.md`. Invoke `workflows/rollback.md` or incident response immediately when a stop condition occurs.
 
-## 14. Current team profile and remaining decisions
+## 15. Current team profile and remaining decisions
 
 The active profile uses self-hosted Proxmox, Terraform, Talos, Kubernetes, Helm, Go/Python/PostgreSQL backends, React/TypeScript frontends, Gherkin integration/regression behavior, and GitLab for VCS and CI/CD. Preferred Go dependencies are Gorilla Mux, Viper, pgx, cenkalti/backoff, Godog, Mockery with Testify mocks, and Testify `require`/`assert`; the exact paths and constraints are in `shared/library-standards.yaml`. The default autonomy policy permits scoped repository edits and local validation, but requires explicit authorization for shared-system reads and human approval for persistent environment mutations.
 

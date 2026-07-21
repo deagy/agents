@@ -66,6 +66,21 @@ func NewFilesystem(root string) (*Filesystem, error) {
 	return &Filesystem{root: absolute, quarantine: filepath.Join(absolute, "quarantine"), clean: filepath.Join(absolute, "clean")}, nil
 }
 
+func NewQuarantineReader(root string) (*Filesystem, error) {
+	absolute, err := filepath.Abs(root)
+	if err != nil {
+		return nil, err
+	}
+	quarantine := filepath.Join(absolute, "quarantine")
+	for _, dir := range []string{absolute, quarantine} {
+		info, err := os.Lstat(dir)
+		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+			return nil, ErrUnsafePath
+		}
+	}
+	return &Filesystem{root: absolute, quarantine: quarantine, clean: filepath.Join(absolute, "clean")}, nil
+}
+
 func (f *Filesystem) Stage(name string, src io.Reader) (staged Staged, err error) {
 	key := uuid.NewString()
 	if err := validateName(name); err != nil {

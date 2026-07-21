@@ -14,6 +14,9 @@ func TestDevelopmentAdapterFailsClosed(t *testing.T) {
 	unsafe := base
 	unsafe.Bind = "0.0.0.0:8080"
 	require.Error(t, unsafe.RequireDevelopmentAdapter())
+	unsafe.AllowContainerWildcardBind = true
+	t.Setenv("SAMPLE001_CONTAINER_RUNTIME", "compose")
+	require.NoError(t, unsafe.RequireDevelopmentAdapter())
 	t.Setenv("KUBERNETES_SERVICE_HOST", "10.0.0.1")
 	require.Error(t, base.RequireDevelopmentAdapter())
 }

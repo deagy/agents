@@ -73,3 +73,13 @@ func TestEICARFixtureIsRejected(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, rejected)
 }
+
+func TestQuarantineReaderDoesNotCreateCleanDirectory(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.Mkdir(filepath.Join(root, "quarantine"), 0o700))
+	objects, err := NewQuarantineReader(root)
+	require.NoError(t, err)
+	require.Equal(t, filepath.Join(root, "quarantine"), objects.quarantine)
+	_, err = os.Stat(filepath.Join(root, "clean"))
+	require.ErrorIs(t, err, os.ErrNotExist)
+}

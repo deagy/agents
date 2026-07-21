@@ -64,7 +64,9 @@ func New(ctx context.Context, sessions *session.Store, issuer, clientID, clientS
 	if err != nil {
 		return nil, err
 	}
-	oauth := oauth2.Config{ClientID: clientID, ClientSecret: clientSecret, Endpoint: provider.Endpoint(), RedirectURL: redirectURL, Scopes: []string{oidc.ScopeOpenID, "profile"}}
+	endpoint := provider.Endpoint()
+	endpoint.AuthStyle = oauth2.AuthStyleInParams
+	oauth := oauth2.Config{ClientID: clientID, ClientSecret: clientSecret, Endpoint: endpoint, RedirectURL: redirectURL, Scopes: []string{oidc.ScopeOpenID, "profile"}}
 	return &Server{Sessions: sessions, Provider: provider, Verifier: provider.Verifier(&oidc.Config{ClientID: clientID, SupportedSigningAlgs: []string{"EdDSA"}}), OAuth: oauth, API: target, Signer: signer, Origin: origin, AEAD: aead, Now: time.Now}, nil
 }
 

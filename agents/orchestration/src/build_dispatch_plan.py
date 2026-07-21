@@ -40,6 +40,8 @@ def _select_workflow(route_ids: list[str], risk_ids: list[str], has_agents: bool
         return "knowledge-ingestion"
     if "support" in route_ids or "incident-response" in route_ids:
         return "support-escalation"
+    if "debugging" in route_ids:
+        return "debugging"
     if "infrastructure" in route_ids and not any(
         route_id in {"frontend", "backend", "pipeline"} for route_id in route_ids
     ):

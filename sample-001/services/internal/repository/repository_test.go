@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -21,4 +22,9 @@ func TestMemoryOwnerDocumentQuota(t *testing.T) {
 	require.ErrorIs(t, err, ErrQuota)
 	_, _, err = store.ReserveUpload(context.Background(), model.Principal{Tenant: "alpha", Subject: "other"}, "independent", fmt.Sprintf("%064x", 1000), "doc.txt", "demo-v1")
 	require.NoError(t, err)
+}
+
+func TestOwnerLockSQLAvoidsPostgresNullCharacters(t *testing.T) {
+	require.NotContains(t, ownerLockSQL, "chr(0)")
+	require.True(t, strings.Contains(ownerLockSQL, "chr(31)"))
 }

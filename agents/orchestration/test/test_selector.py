@@ -182,6 +182,45 @@ class SelectorTests(unittest.TestCase):
             any(request["agent"] == "black-box-tester" for request in result["knowledge_context"]["requests"])
         )
 
+    def test_selects_debugging_engineer_for_root_cause_work(self) -> None:
+        result = plan(
+            task="Debug a panic and identify the root cause from the stack trace",
+            changed_files=["sample-001/services/internal/repository/regression/panic_test.go"],
+            classification="internal",
+            task_id="DBG-1",
+        )
+        self.assertIn("debugging-engineer", result["agents"]["primary"])
+        self.assertEqual(result["workflow"], "debugging")
+        self.assertIn("test-engineer", result["agents"]["primary"])
+        self.assertIn("code-reviewer", result["agents"]["reviewers"])
+        self.assertEqual(result["knowledge_context"]["status"], "planned")
+        self.assertTrue(
+            any(request["agent"] == "debugging-engineer" for request in result["knowledge_context"]["requests"])
+        )
+
+    def test_selects_debugging_engineer_for_agent_tune_up(self) -> None:
+        result = plan(
+            task="Inspect agents, find routing issues, and tune agent definitions",
+            changed_files=["agents/orchestration/routing.yaml", "agents/engineering/debugging-engineer/AGENT.md"],
+            classification="internal",
+            task_id="AGENT-DBG-1",
+        )
+        self.assertIn("debugging-engineer", result["agents"]["primary"])
+        self.assertEqual(result["workflow"], "debugging")
+        self.assertIn("application-engineer", result["agents"]["primary"])
+        self.assertIn("code-reviewer", result["agents"]["reviewers"])
+
+    def test_selects_debugging_engineer_for_agent_definition_path_only(self) -> None:
+        result = plan(
+            task="Update role guidance",
+            changed_files=["agents/engineering/frontend-engineer/AGENT.md"],
+            classification="internal",
+            task_id="AGENT-PATH-1",
+        )
+        self.assertEqual(result["workflow"], "debugging")
+        self.assertIn("debugging-engineer", result["agents"]["primary"])
+        self.assertIn("technical-writer", result["agents"]["primary"])
+
     def test_selects_end_user_and_support_for_uat(self) -> None:
         result = plan(
             task="Run UAT for end-user document upload journeys and supportability",

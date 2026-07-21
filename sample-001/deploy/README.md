@@ -17,6 +17,8 @@ On Windows, use `py -3 deploy/compose/generate-env.py` if `python` opens the Mic
 
 Compose creates separate BFF, API, scanner, promotion, and deletion database logins from the ignored local environment file. The fake scanner receives only a read-only quarantine subpath; its `/objects/clean` path is an isolated empty tmpfs. The BFF retries fake-provider discovery for a bounded startup window and returns successful callbacks to the configured frontend origin.
 
+The loopback service publishes only `127.0.0.1` host ports. Services that must be reachable through Docker/Podman port forwarding bind to `0.0.0.0` inside the shared container network namespace with `SAMPLE001_ALLOW_CONTAINER_WILDCARD_BIND=true` and `SAMPLE001_CONTAINER_RUNTIME=compose`. This is a local/demo-only exception so host access still remains loopback-only.
+
 Some Docker Desktop and rootless Podman volume backends reject chmod/chown on named volume roots. The local compose stack therefore initializes object directories with `mkdir`, sets `SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS=true` only for object-storage services, and overrides those local demo containers to run as root inside the container. The production-shaped images and Helm contract remain non-root. If an older failed run created the object volume with incompatible metadata, remove the disposable volume before retrying:
 
 ```powershell

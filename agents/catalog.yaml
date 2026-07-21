@@ -21,6 +21,9 @@ agents:
   cicd-engineer:
     definition: engineering/cicd-engineer/AGENT.md
     phase: build
+  debugging-engineer:
+    definition: engineering/debugging-engineer/AGENT.md
+    phase: build
   test-engineer:
     definition: engineering/test-engineer/AGENT.md
     phase: verify

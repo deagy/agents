@@ -62,7 +62,7 @@ services:
       - -dir
       - /migrations
       - postgres
-      - postgres://sample001:${POSTGRES_PASSWORD}@postgres:5432/sample001?sslmode=disable
+      - postgres://sample001:${POSTGRES_PASSWORD_URLENCODED}@postgres:5432/sample001?sslmode=disable
       - up
     networks: [backend]
     read_only: true
@@ -129,7 +129,9 @@ services:
       target: fake-oidc-development
     environment:
       SAMPLE001_MODE: development
-      SAMPLE001_BIND: 127.0.0.1:8086
+      SAMPLE001_BIND: 0.0.0.0:8086
+      SAMPLE001_CONTAINER_RUNTIME: compose
+      SAMPLE001_ALLOW_CONTAINER_WILDCARD_BIND: "true"
       SAMPLE001_OIDC_ISSUER: http://127.0.0.1:8086
       SAMPLE001_OIDC_CLIENT_ID: sample-001-local
       SAMPLE001_OIDC_REDIRECT_URL: http://127.0.0.1:8080/auth/callback
@@ -144,8 +146,10 @@ services:
       objects-init: {condition: service_completed_successfully}
     environment:
       SAMPLE001_MODE: development
-      SAMPLE001_BIND: 127.0.0.1:8081
-      SAMPLE001_DATABASE_URL: postgres://sample001_api_login:${API_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
+      SAMPLE001_BIND: 0.0.0.0:8081
+      SAMPLE001_CONTAINER_RUNTIME: compose
+      SAMPLE001_ALLOW_CONTAINER_WILDCARD_BIND: "true"
+      SAMPLE001_DATABASE_URL: postgres://sample001_api_login:${API_DB_PASSWORD_URLENCODED}@postgres:5432/sample001?sslmode=disable
       SAMPLE001_ASSERTION_PUBLIC_KEY: ${ASSERTION_PUBLIC_KEY:?replace sentinel}
       SAMPLE001_STORAGE_ROOT: /objects
       SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS: "true"
@@ -164,8 +168,10 @@ services:
       database-users: {condition: service_completed_successfully}
     environment:
       SAMPLE001_MODE: development
-      SAMPLE001_BIND: 127.0.0.1:8080
-      SAMPLE001_DATABASE_URL: postgres://sample001_bff_login:${BFF_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
+      SAMPLE001_BIND: 0.0.0.0:8080
+      SAMPLE001_CONTAINER_RUNTIME: compose
+      SAMPLE001_ALLOW_CONTAINER_WILDCARD_BIND: "true"
+      SAMPLE001_DATABASE_URL: postgres://sample001_bff_login:${BFF_DB_PASSWORD_URLENCODED}@postgres:5432/sample001?sslmode=disable
       SAMPLE001_API_URL: http://127.0.0.1:8081
       SAMPLE001_OIDC_ISSUER: http://127.0.0.1:8086
       SAMPLE001_OIDC_CLIENT_ID: sample-001-local
@@ -185,7 +191,7 @@ services:
       objects-init: {condition: service_completed_successfully}
     environment:
       SAMPLE001_MODE: development
-      SAMPLE001_DATABASE_URL: postgres://sample001_scanner_login:${SCANNER_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
+      SAMPLE001_DATABASE_URL: postgres://sample001_scanner_login:${SCANNER_DB_PASSWORD_URLENCODED}@postgres:5432/sample001?sslmode=disable
       SAMPLE001_STORAGE_ROOT: /objects
       SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS: "true"
     user: "0:0"
@@ -195,10 +201,8 @@ services:
     volumes:
       - type: volume
         source: objects
-        target: /objects/quarantine
+        target: /objects
         read_only: true
-        volume:
-          subpath: quarantine
 
   promotion:
     <<: *service-base
@@ -210,7 +214,7 @@ services:
       objects-init: {condition: service_completed_successfully}
     environment:
       SAMPLE001_MODE: development
-      SAMPLE001_DATABASE_URL: postgres://sample001_promotion_login:${PROMOTION_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
+      SAMPLE001_DATABASE_URL: postgres://sample001_promotion_login:${PROMOTION_DB_PASSWORD_URLENCODED}@postgres:5432/sample001?sslmode=disable
       SAMPLE001_STORAGE_ROOT: /objects
       SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS: "true"
     user: "0:0"
@@ -227,7 +231,7 @@ services:
       objects-init: {condition: service_completed_successfully}
     environment:
       SAMPLE001_MODE: development
-      SAMPLE001_DATABASE_URL: postgres://sample001_deletion_login:${DELETION_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
+      SAMPLE001_DATABASE_URL: postgres://sample001_deletion_login:${DELETION_DB_PASSWORD_URLENCODED}@postgres:5432/sample001?sslmode=disable
       SAMPLE001_STORAGE_ROOT: /objects
       SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS: "true"
     user: "0:0"
@@ -244,7 +248,7 @@ services:
       objects-init: {condition: service_completed_successfully}
     environment:
       SAMPLE001_MODE: development
-      SAMPLE001_DATABASE_URL: postgres://sample001_deletion_login:${DELETION_DB_PASSWORD}@postgres:5432/sample001?sslmode=disable
+      SAMPLE001_DATABASE_URL: postgres://sample001_deletion_login:${DELETION_DB_PASSWORD_URLENCODED}@postgres:5432/sample001?sslmode=disable
       SAMPLE001_STORAGE_ROOT: /objects
       SAMPLE001_ALLOW_RELAXED_STORAGE_PERMISSIONS: "true"
     user: "0:0"

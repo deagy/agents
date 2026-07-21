@@ -111,7 +111,12 @@ func Worker(kind string) error {
 		return err
 	}
 	defer store.Pool.Close()
-	objects, err := storage.NewFilesystem(cfg.StorageRoot)
+	var objects *storage.Filesystem
+	if kind == "scan" {
+		objects, err = storage.NewQuarantineReader(cfg.StorageRoot)
+	} else {
+		objects, err = storage.NewFilesystem(cfg.StorageRoot)
+	}
 	if err != nil {
 		return err
 	}

@@ -26,6 +26,7 @@ var (
 
 const maxOwnerDocuments = 20
 const maxOwnerBytes int64 = 250 * 1024 * 1024
+const ownerLockSQL = `SELECT pg_advisory_xact_lock(hashtextextended($1 || chr(31) || $2,0))`
 
 type Store interface {
 	ReserveUpload(ctx context.Context, principal model.Principal, idempotencyKey, requestHash, name, policy string) (model.Document, bool, error)
@@ -203,7 +204,7 @@ func (p *Postgres) ReserveUpload(ctx context.Context, principal model.Principal,
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return model.Document{}, false, err
 	}
-	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1 || chr(0) || $2,0))`, principal.Tenant, principal.Subject); err != nil {
+	if _, err = tx.Exec(ctx, ownerLockSQL, principal.Tenant, principal.Subject); err != nil {
 		return model.Document{}, false, err
 	}
 	var owned int
@@ -239,7 +240,7 @@ func (p *Postgres) CommitUpload(ctx context.Context, principal model.Principal, 
 		return model.Document{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1 || chr(0) || $2,0))`, principal.Tenant, principal.Subject); err != nil {
+	if _, err = tx.Exec(ctx, ownerLockSQL, principal.Tenant, principal.Subject); err != nil {
 		return model.Document{}, err
 	}
 	var currentBytes int64

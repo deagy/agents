@@ -15,26 +15,27 @@ import (
 )
 
 type Config struct {
-	Service              string
-	Mode                 string
-	Bind                 string
-	HealthBind           string
-	DatabaseURL          string
-	StorageRoot          string
-	APIURL               string
-	OIDCIssuer           string
-	OIDCClientID         string
-	OIDCClientSecret     string
-	OIDCRedirectURL      string
-	AllowedOrigin        string
-	AssertionIssuer      string
-	AssertionAudience    string
-	AssertionKeyID       string
-	AssertionPrivateKey  []byte
-	AssertionPublicKey   []byte
-	SessionKey           []byte
-	ScannerFailureSHA256 string
-	ShutdownTimeout      time.Duration
+	Service                    string
+	Mode                       string
+	Bind                       string
+	HealthBind                 string
+	DatabaseURL                string
+	StorageRoot                string
+	APIURL                     string
+	OIDCIssuer                 string
+	OIDCClientID               string
+	OIDCClientSecret           string
+	OIDCRedirectURL            string
+	AllowedOrigin              string
+	AssertionIssuer            string
+	AssertionAudience          string
+	AssertionKeyID             string
+	AssertionPrivateKey        []byte
+	AssertionPublicKey         []byte
+	SessionKey                 []byte
+	ScannerFailureSHA256       string
+	ShutdownTimeout            time.Duration
+	AllowContainerWildcardBind bool
 }
 
 func Load(service string) (Config, error) {
@@ -50,6 +51,7 @@ func Load(service string) (Config, error) {
 	v.SetDefault("assertion_audience", "sample-001-document-api")
 	v.SetDefault("assertion_key_id", "sample-001-dev-1")
 	v.SetDefault("shutdown_timeout", "10s")
+	v.SetDefault("allow_container_wildcard_bind", false)
 
 	privateKey, err := decodeOptional(v.GetString("assertion_private_key"))
 	if err != nil {
@@ -64,7 +66,7 @@ func Load(service string) (Config, error) {
 		return Config{}, fmt.Errorf("session key: %w", err)
 	}
 	cfg := Config{
-		Service: service, Mode: strings.ToLower(v.GetString("mode")), Bind: v.GetString("bind"), HealthBind: v.GetString("health_bind"), DatabaseURL: v.GetString("database_url"), StorageRoot: v.GetString("storage_root"), APIURL: v.GetString("api_url"), OIDCIssuer: v.GetString("oidc_issuer"), OIDCClientID: v.GetString("oidc_client_id"), OIDCClientSecret: v.GetString("oidc_client_secret"), OIDCRedirectURL: v.GetString("oidc_redirect_url"), AllowedOrigin: v.GetString("allowed_origin"), AssertionIssuer: v.GetString("assertion_issuer"), AssertionAudience: v.GetString("assertion_audience"), AssertionKeyID: v.GetString("assertion_key_id"), AssertionPrivateKey: privateKey, AssertionPublicKey: publicKey, SessionKey: sessionKey, ScannerFailureSHA256: strings.ToLower(v.GetString("scanner_failure_sha256")), ShutdownTimeout: v.GetDuration("shutdown_timeout"),
+		Service: service, Mode: strings.ToLower(v.GetString("mode")), Bind: v.GetString("bind"), HealthBind: v.GetString("health_bind"), DatabaseURL: v.GetString("database_url"), StorageRoot: v.GetString("storage_root"), APIURL: v.GetString("api_url"), OIDCIssuer: v.GetString("oidc_issuer"), OIDCClientID: v.GetString("oidc_client_id"), OIDCClientSecret: v.GetString("oidc_client_secret"), OIDCRedirectURL: v.GetString("oidc_redirect_url"), AllowedOrigin: v.GetString("allowed_origin"), AssertionIssuer: v.GetString("assertion_issuer"), AssertionAudience: v.GetString("assertion_audience"), AssertionKeyID: v.GetString("assertion_key_id"), AssertionPrivateKey: privateKey, AssertionPublicKey: publicKey, SessionKey: sessionKey, ScannerFailureSHA256: strings.ToLower(v.GetString("scanner_failure_sha256")), ShutdownTimeout: v.GetDuration("shutdown_timeout"), AllowContainerWildcardBind: v.GetBool("allow_container_wildcard_bind"),
 	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
@@ -110,6 +112,15 @@ func (c Config) RequireDevelopmentAdapter() error {
 		return fmt.Errorf("development adapter bind: %w", err)
 	}
 	ip := net.ParseIP(host)
+	if host == "localhost" || (ip != nil && ip.IsLoopback()) {
+		return nil
+	}
+	if ip != nil && ip.IsUnspecified() && c.AllowContainerWildcardBind && os.Getenv("SAMPLE001_CONTAINER_RUNTIME") == "compose" {
+		return nil
+	}
+	if ip != nil && ip.IsUnspecified() {
+		return errors.New("development adapter wildcard bind requires explicit container wildcard opt-in")
+	}
 	if host != "localhost" && (ip == nil || !ip.IsLoopback()) {
 		return errors.New("development adapter must bind to loopback")
 	}

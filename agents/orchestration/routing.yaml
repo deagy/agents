@@ -44,6 +44,13 @@
       "reviewers": ["code-reviewer"]
     },
     {
+      "id": "debugging",
+      "paths": ["debug/**", "diagnostics/**", "repro/**", "agents/catalog.yaml", "agents/**/AGENT.md", ".agents/skills/agent-authoring/**", "**/fixtures/bugs/**", "**/regression/**"],
+      "keywords": ["debug", "debugging", "bug", "root cause", "reproduce", "reproduction", "failing test", "failing command", "stack trace", "crash", "panic", "race condition", "flaky test", "test failure", "runtime failure", "tooling failure", "tune agent", "agent tune-up", "inspect agents", "agent issue", "agent definition", "agent prompt", "role defect", "routing issue", "selector regression", "misroute", "dispatch bug"],
+      "primary": ["debugging-engineer"],
+      "reviewers": ["test-engineer", "code-reviewer"]
+    },
+    {
       "id": "black-box-testing",
       "paths": ["**/black-box/**", "**/blackbox/**", "**/e2e/**", "**/playwright/**", "**/postman/**", "**/*.feature"],
       "keywords": ["black-box", "black box", "external behavior", "public api test", "opaque system", "end-to-end test", "e2e"],
@@ -220,6 +227,7 @@
     "backend-engineer": "Go patterns, PostgreSQL decisions, schemas, migrations, APIs, and operational lessons",
     "infrastructure-provisioner": "Proxmox, Terraform, Talos, Kubernetes, Helm, storage, and networking patterns",
     "cicd-engineer": "GitLab pipelines, runners, artifacts, signing, deployments, and rollback",
+    "debugging-engineer": "prior defects, repro steps, failure signatures, root-cause notes, regression tests, selector regressions, agent routing issues, prompt/role defects, and tune-up history",
     "test-engineer": "Gherkin scenarios, regressions, failure cases, and quality history",
     "black-box-tester": "externally visible behavior, public API and UI contracts, black-box regressions, client compatibility, and reproducible defects",
     "end-user-tester": "personas, user journeys, UAT decisions, accessibility observations, user-readiness risks, and supportability gaps",
