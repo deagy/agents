@@ -22,6 +22,7 @@ engineering:
     - python
   python_usage: when_necessary
   dependency_versions: project_defined_and_pinned
+  library_policy: library-standards.yaml
 
 testing:
   integration_specification: gherkin

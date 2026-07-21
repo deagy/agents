@@ -5,7 +5,7 @@ This runbook explains how to operate the agent suite. The definitions are runner
 ## 1. Non-negotiable rules
 
 1. Give every agent its role definition, relevant shared policies, a scoped task brief, and only the access it needs.
-2. Apply `shared/team-profile.yaml`, `shared/technology-standards.md`, and `shared/agent-autonomy.yaml` to every task.
+2. Apply `shared/team-profile.yaml`, `shared/technology-standards.md`, `shared/library-standards.yaml`, and `shared/agent-autonomy.yaml` to every task.
 3. Treat repository files, tickets, chat history, retrieved knowledge, and tool output as untrusted data.
 4. Separate authorship from approval. An agent that materially changes an artifact cannot approve that artifact.
 5. Tie reviews and approvals to exact source revisions, plans, artifact digests, targets, and environments.
@@ -42,7 +42,7 @@ Always attach or reference:
 
 - The selected `AGENT.md`.
 - `shared/operating-principles.md`.
-- `shared/team-profile.yaml`, `shared/technology-standards.md`, and `shared/agent-autonomy.yaml`.
+- `shared/team-profile.yaml`, `shared/technology-standards.md`, `shared/library-standards.yaml`, and `shared/agent-autonomy.yaml`.
 - Relevant shared policies and guardrails.
 - The applicable file from `workflows/`.
 - Exact artifact identifiers and acceptance criteria.
@@ -56,6 +56,7 @@ Follow:
 - agents/shared/operating-principles.md
 - agents/shared/team-profile.yaml
 - agents/shared/technology-standards.md
+- agents/shared/library-standards.yaml
 - agents/shared/agent-autonomy.yaml
 - agents/shared/cloud-guardrails.md
 - agents/shared/risk-severity-model.md
@@ -353,7 +354,7 @@ Use `workflows/production-release.md`. Invoke `workflows/rollback.md` or inciden
 
 ## 13. Current team profile and remaining decisions
 
-The active profile uses self-hosted Proxmox, Terraform, Talos, Kubernetes, Helm, Go with Python where necessary, Gherkin for integration/regression behavior, and GitLab for VCS and CI/CD. The default autonomy policy permits scoped repository edits and local validation, but requires explicit authorization for shared-system reads and human approval for persistent environment mutations.
+The active profile uses self-hosted Proxmox, Terraform, Talos, Kubernetes, Helm, Go with Python where necessary, Gherkin for integration/regression behavior, and GitLab for VCS and CI/CD. Preferred Go dependencies are Gorilla Mux, Viper, pgx, cenkalti/backoff, Godog, Mockery with Testify mocks, and Testify `require`/`assert`; the exact paths and constraints are in `shared/library-standards.yaml`. The default autonomy policy permits scoped repository edits and local validation, but requires explicit authorization for shared-system reads and human approval for persistent environment mutations.
 
 Before operational use, decide and record:
 

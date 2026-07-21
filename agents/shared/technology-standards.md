@@ -26,6 +26,7 @@ These standards specialize `team-profile.yaml`. Where a value remains `not_yet_s
 
 ## Go and Python
 
+- Follow `library-standards.yaml` for preferred Go libraries, tools, import paths, constraints, and exception handling.
 - Prefer Go for services, operators, CLIs, and long-lived automation.
 - Use Python when it materially simplifies a bounded task, integration, data transformation, or test utility; document why it is preferable for that component.
 - Pin dependencies, use supported project-defined versions, run formatting/static analysis/tests, and avoid introducing a second implementation path without need.

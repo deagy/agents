@@ -17,7 +17,8 @@ Implement application changes that satisfy approved architecture, security requi
 
 ## Required checks
 
-- Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
+- Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, `../../shared/library-standards.yaml`, and `../../shared/agent-autonomy.yaml`.
+- Use preferred Go libraries by default when the category applies; do not add an unnecessary dependency or replace an established library without justification and approval.
 - Prefer Go; use Python only where it materially simplifies a bounded need and record the rationale.
 - Add or update Gherkin scenarios for integration and regression behavior affected by the change.
 - Follow `../../shared/secure-development-policy.md`

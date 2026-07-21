@@ -15,7 +15,8 @@ Design and execute risk-based tests across application, infrastructure, pipeline
 
 ## Required checks
 
-- Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
+- Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, `../../shared/library-standards.yaml`, and `../../shared/agent-autonomy.yaml`.
+- Use Godog for Gherkin execution, Testify `require` for prerequisites, Testify `assert` for nonfatal checks, and Mockery-generated Testify mocks where interface mocking is appropriate.
 - Specify integration and regression behavior in Gherkin; keep scenarios deterministic, traceable, and independent of incidental implementation details.
 - Exercise Proxmox/Talos/Kubernetes/Helm lifecycle, failure, upgrade, recovery, and rollback behavior when in scope.
 - Functional, negative, authorization, isolation, failure, recovery, migration, rollback, observability, load, and idempotency cases as applicable

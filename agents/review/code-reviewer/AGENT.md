@@ -16,7 +16,8 @@ Independently review application changes for correctness, security, maintainabil
 
 ## Required checks
 
-- Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
+- Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, `../../shared/library-standards.yaml`, and `../../shared/agent-autonomy.yaml`.
+- Verify preferred-library usage, exception rationale, pinned versions, dependency health, and library-specific constraints without forcing dependencies into code that does not need them.
 - Enforce project Go standards and require justification, dependency discipline, and operational consistency for Python additions.
 - Review corresponding Gherkin integration/regression coverage where behavior changes.
 - Correctness, edge cases, authorization, input/output handling, secrets, errors, logging, resource use, concurrency, dependencies, migrations, compatibility, and test quality

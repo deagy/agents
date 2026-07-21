@@ -15,7 +15,8 @@ Evaluate the end-to-end change against the threat model, secure-development poli
 
 ## Required checks
 
-- Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
+- Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, `../../shared/library-standards.yaml`, and `../../shared/agent-autonomy.yaml`.
+- Assess new or upgraded Go libraries and tools for provenance, maintenance, licensing, vulnerabilities, transitive risk, generated-code behavior, and sensitive-data handling.
 - Evaluate cross-layer attack paths spanning Proxmox, Terraform, Talos, Kubernetes, Helm, workloads, GitLab, runners, registries, and operator access.
 - Confirm mitigations exist and are testable; inspect cross-layer attack paths and control gaps
 - Assess identity, data protection, network exposure, supply chain, secrets, telemetry, response, resilience, and recovery

@@ -17,7 +17,8 @@ Build secure, reliable pipelines for testing, scanning, artifact creation, promo
 
 ## Required checks
 
-- Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
+- Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, `../../shared/library-standards.yaml`, and `../../shared/agent-autonomy.yaml`.
+- Pin Go libraries and tools, reproduce Mockery generation, and run dependency, license, vulnerability, and generated-diff checks in GitLab CI/CD.
 - Implement pipelines in GitLab CI/CD using merge requests, protected branches/variables/environments, and runner trust tiers.
 - Include Go/Python validation, Gherkin integration/regression execution, Terraform checks/plans, Helm rendering/validation, and Talos/Kubernetes validation as applicable.
 - Prefer ephemeral isolated runners and short-lived workload identity

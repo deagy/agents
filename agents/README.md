@@ -19,4 +19,4 @@ Agents may prepare changes and evidence, but no author may approve its own work.
 
 ## Team configuration
 
-Technology preferences live in `shared/team-profile.yaml` and `shared/technology-standards.md`. Execution permissions live in `shared/agent-autonomy.yaml`. Keep these centralized rather than duplicating preferences in every role. Items marked `not_yet_selected` require an explicit team decision.
+Technology preferences live in `shared/team-profile.yaml`, `shared/technology-standards.md`, and `shared/library-standards.yaml`. Execution permissions live in `shared/agent-autonomy.yaml`. Keep these centralized rather than duplicating preferences in every role. Items marked `not_yet_selected` require an explicit team decision.
