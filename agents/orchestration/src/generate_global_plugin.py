@@ -16,12 +16,15 @@ plugins/secure-cloud-agents/skills/, discoverable once the plugin is installed
 at global/user scope (see plugins/agentic-sdlc/contracts/runner-adapters.md).
 
 Agent-role wrappers are NOT symmetric, because the two runners differ here:
-- Claude Code supports plugin-bundled subagents (a plugin.json "agents" field),
-  so the 30 role wrappers go under plugins/secure-cloud-agents/agents/*.md and
-  become global automatically when the plugin is installed at user scope.
+- Claude Code supports plugin-bundled subagents, auto-discovered from the
+  plugin's default agents/ directory (do NOT also declare an "agents" field in
+  plugin.json for this — that field expects individual file paths, not a
+  directory, and a bare directory string fails manifest validation), so the
+  role wrappers go under plugins/secure-cloud-agents/agents/*.md and become
+  global automatically when the plugin is installed at user scope.
 - Codex CLI has no such mechanism — custom agents are only discovered from
   .codex/agents/ (project) or ~/.codex/agents/ (global) on disk, never from a
-  plugin manifest. The 30 *.toml wrappers are generated to the repo-tracked
+  plugin manifest. The *.toml wrappers are generated to the repo-tracked
   staging directory plugins/secure-cloud-agents/codex-agents/ instead; copying
   them into ~/.codex/agents/ is a separate, explicit step (see
   plugins/secure-cloud-agents/README.md) rather than something this script does
