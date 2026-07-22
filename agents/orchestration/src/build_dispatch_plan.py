@@ -1,4 +1,4 @@
-"""Build the stable version 1 agent dispatch-plan document."""
+"""Build the stable version 2 agent dispatch-plan document."""
 
 from __future__ import annotations
 
@@ -34,16 +34,30 @@ def _select_workflow(route_ids: list[str], risk_ids: list[str], has_agents: bool
         return "needs-triage"
     if "production" in risk_ids:
         return "production-release"
+    if "support" in route_ids or "incident-response" in route_ids:
+        return "support-escalation"
+    if "runtime-assurance" in route_ids:
+        return "runtime-assurance"
     if "knowledge-store" in route_ids and all(
         route_id in {"knowledge-store", "documentation", "testing"} for route_id in route_ids
     ):
         return "knowledge-ingestion"
-    if "support" in route_ids or "incident-response" in route_ids:
-        return "support-escalation"
     if "agent-suite-governance" in route_ids:
         return "debugging"
     if "debugging" in route_ids:
         return "debugging"
+    product_intake_routes = {
+        "product-intent",
+        "requirements-baseline",
+        "documentation",
+        "testing",
+    }
+    if (
+        any(route_id in {"product-intent", "requirements-baseline"} for route_id in route_ids)
+        and all(route_id in product_intake_routes for route_id in route_ids)
+        and "architecture-change" not in risk_ids
+    ):
+        return "product-intake"
     if "infrastructure" in route_ids and not any(
         route_id in {"frontend", "backend", "pipeline"} for route_id in route_ids
     ):
@@ -75,6 +89,33 @@ def _build_human_gates(risks: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "reason": descriptions.get(gate_id, "An authorized human decision is required."),
         }
         for gate_id in gate_ids
+    ]
+
+
+def _build_quality_gates(
+    config: dict[str, Any], routes: list[dict[str, Any]], risks: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Aggregate lifecycle gates without conflating them with human mutation gates."""
+    definitions = config.get("quality_gates", {})
+    contributors: dict[str, list[str]] = {}
+    for match in [*routes, *risks]:
+        for gate_id in match["rule"].get("quality_gates", []):
+            if gate_id not in definitions:
+                raise ValueError(f"Routing references an unknown quality gate: {gate_id}")
+            contributors.setdefault(gate_id, []).append(match["id"])
+
+    def gate_order(gate_id: str) -> tuple[int, str]:
+        suffix = gate_id.removeprefix("G")
+        return (int(suffix), gate_id) if suffix.isdigit() else (999, gate_id)
+
+    return [
+        {
+            "id": gate_id,
+            "required": True,
+            "reason": definitions[gate_id],
+            "contributing_routes": _unique(contributors[gate_id]),
+        }
+        for gate_id in sorted(contributors, key=gate_order)
     ]
 
 
@@ -195,7 +236,7 @@ def build_dispatch_plan(
     generated_at = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "task_id": task_id,
         "generated_at": generated_at,
         "status": "ready" if selected_agents else "needs-triage",
@@ -211,6 +252,7 @@ def build_dispatch_plan(
         "matched_routes": [{"id": match["id"], "reasons": _reasons(match)} for match in matched_routes],
         "matched_risks": [{"id": match["id"], "reasons": _reasons(match)} for match in matched_risks],
         "agents": groups,
+        "required_quality_gates": _build_quality_gates(config, matched_routes, matched_risks),
         "human_gates": _build_human_gates(matched_risks),
         "knowledge_context": _build_knowledge_context(config, selected_agents, normalized_input),
     }

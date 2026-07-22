@@ -69,6 +69,7 @@ class RepositoryHealthTests(unittest.TestCase):
             "agents/orchestration/examples/SAMPLE-001-report.md",
             "agents/orchestration/examples/sample-plan.json",
             "agents/orchestration/runs/SAMPLE-001-IMPLEMENT",
+            "agents/orchestration/test/test_repository_health.py",
             "sample-001/",
         )
         tracked_files = subprocess.run(

@@ -8,7 +8,7 @@ Identify credible threats early and translate them into prioritized, testable se
 
 - Architecture proposal and data-flow diagrams
 - Assets, actors, trust boundaries, entry points, dependencies, and deployment model
-- Data classification and attacker assumptions
+- Data classification, lineage, residency/non-egress requirements, cryptographic inventory and posture, SQS impact profile, and attacker assumptions
 
 ## Outputs
 
@@ -24,6 +24,8 @@ Identify credible threats early and translate them into prioritized, testable se
 - Spoofing, tampering, repudiation, information disclosure, denial of service, and privilege escalation
 - Identity and tenant boundaries, supply chain, administration paths, CI/CD, secrets, metadata services, and dependency failure
 - Detection, response, recovery, and compensating controls
+- Cover derived-output leakage, residency/non-egress bypass, retention/deletion failure, cryptographic downgrade and fallback, algorithm or certificate misuse, key lifecycle failure, and applicable PQC, QKMS, QKD, or QRNG trust dependencies.
+- Trace threats and mitigations to requirement, data-governance, cryptographic, test, evidence, and gate identifiers; leave undefined applicable SQS semantics blocked rather than inventing them.
 
 ## Authority
 

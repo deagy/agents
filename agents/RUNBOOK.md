@@ -17,6 +17,11 @@ This runbook explains how to operate the agent suite. The definitions are runner
 
 | Need | Primary agent | Typical next agent |
 |---|---|---|
+| Structure a mission or product objective | Product intent agent | Human Product Owner, then requirements agent |
+| Decompose approved intent into traceable requirements | Requirements agent | Test engineer and cloud architect |
+| Plan policy, jurisdiction, accreditation, and evidence obligations | Governance planner | Compliance reviewer and human Governance Lead |
+| Define classification, lineage, residency, non-egress, and retention requirements | Data governance engineer | Compliance and security reviewers |
+| Define cryptographic posture, agility, key lifecycle, and downgrade requirements | Cryptographic assurance engineer | Security reviewer and human Security Lead |
 | Design a platform or workload system | Cloud architect | Threat modeler |
 | Analyze threats | Threat modeler | Application or infrastructure engineer |
 | Build a React browser application | Frontend engineer | Test engineer, then code reviewer |
@@ -52,7 +57,7 @@ Use `workflows/debugging.md` when reproducing defects, analyzing runtime failure
 
 ### Select agents locally
 
-The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. It creates a dispatch plan but does not retrieve knowledge, invoke agents, merge, deploy, or mutate infrastructure. Internal tools require Python 3.10 or newer; this does not establish an organization-wide Python version.
+The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. Schema version 2 plans include lifecycle `required_quality_gates` separately from mutation-oriented `human_gates`. The selector creates a dispatch plan but does not retrieve knowledge, invoke agents, approve gates, merge, deploy, or mutate infrastructure. Internal tools require Python 3.10 or newer; this does not establish an organization-wide Python version.
 
 ```powershell
 $AgentPython = $null
@@ -94,7 +99,7 @@ cd agents/orchestration
 "$AGENT_PYTHON" -B src/select_agents.py --task "Update Terraform" --files main.tf
 ```
 
-Omit `--files` to inspect Git status, including staged, unstaged, and untracked paths. Alternatively, `--base main` classifies committed `main...HEAD` changes and excludes dirty worktree changes. Always review emitted `inputs.changed_files`; Git rename parsing and explicit scope still deserve human confirmation. `--output plan.json` creates missing parent directories and overwrites an existing file, so use it only when run-artifact writes are authorized. The selector emits matched routes and evidence, primary/review/support agents, workflow, human gates, and a planned knowledge-store request per selected agent. If no rule matches, it returns `needs-triage` rather than guessing.
+Omit `--files` to inspect Git status, including staged, unstaged, and untracked paths. Alternatively, `--base main` classifies committed `main...HEAD` changes and excludes dirty worktree changes. Always review emitted `inputs.changed_files`; Git rename parsing and explicit scope still deserve human confirmation. `--output plan.json` creates missing parent directories and overwrites an existing file, so use it only when run-artifact writes are authorized. The selector emits matched routes and evidence, primary/review/support agents, workflow, required lifecycle quality gates, mutation-oriented human gates, and a planned knowledge-store request per selected agent. If no rule matches, it returns `needs-triage` rather than guessing.
 
 Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the dependency-free Python selector parses its JSON-compatible content with the standard library. A planned knowledge invocation contains a host-neutral Python 3.10+ `launcher` contract and an argv array beginning with `src/cli.py context`. The runner replaces the launcher with the interpreter path and prefix arguments established by the probe above, runs the argv directly from `agents/knowledge-store` without a shell, and attaches the authorized result to the agent brief. Selection rejects `--top` outside 1–20; required knowledge-store configuration must fail closed.
 
@@ -123,6 +128,9 @@ Always attach or reference:
 - Relevant shared policies and guardrails.
 - The applicable file from `workflows/`.
 - Exact artifact identifiers and acceptance criteria.
+- Approved intent and requirements-baseline identifiers when the task has entered design.
+- Lifecycle phase, applicable quality gates, and the authoritative run-record location.
+- The SQS impact profile when any supplied Platform category may apply; `unknown` applicable items fail closed.
 
 ### Generic dispatch prompt
 
@@ -177,6 +185,24 @@ For review work, capture:
 
 Follow `workflows/new-service.md`.
 
+The merged lifecycle is:
+
+```text
+Intent -> Requirements -> Architecture -> Governance/Data -> Security/Crypto
+-> Build -> Verification -> Evidence -> Release Readiness
+-> Deployment Authorization -> Runtime Conformance -> Feedback
+```
+
+Use `workflows/product-intake.md` while work is limited to intent and requirements. Use `workflows/runtime-assurance.md` for deployed-behavior conformance and feedback. Repository run records validated structurally by `orchestration/run-record.schema.json` and semantically by `orchestration/src/validate_run_record.py` are the authoritative gate-state index; they reference rather than replace human approval evidence.
+
+Validate a YAML or JSON run record before handoff:
+
+```powershell
+py -3 agents/orchestration/src/validate_run_record.py agents/orchestration/runs/<task-id>/run-record.yaml
+```
+
+Run-record validation requires the pinned YAML and Draft 2020-12 dependencies in `orchestration/requirements-validation.txt`. The validator enforces the complete JSON Schema (including formats, nested types, and closed objects), gate order, gate-specific reviewer and human authority, explicit conditional-authority applicability, author/verifier/approver separation, blocking findings, exceptions and expiry, SQS/BOM uniqueness and fail-closed state, and downstream invalidation.
+
 ### Cloud architect brief
 
 ```text
@@ -209,7 +235,9 @@ verification tasks. Block the handoff for unresolved critical/high threats.
 ### Implementation and review sequence
 
 ```text
-Cloud architect -> Threat modeler
+Product intent agent -> Human Product Owner -> Requirements agent
+Governance planner + Data governance engineer + Cryptographic assurance engineer
+Cloud architect -> Human System Architect -> Threat modeler
 Frontend engineer + Backend engineer + Infrastructure provisioner + CI/CD engineer
 Secrets & identity engineer + Database reliability engineer + Policy-as-code engineer
 Test engineer + Black-box tester + End-user tester
@@ -522,7 +550,8 @@ The default hashing embedder validates the workflow but provides lexical rather 
 
 Before the release engineer requests human approval, confirm:
 
-- Architecture and threat-model requirements are satisfied.
+- Lifecycle gates G1 through G8 are approved for the exact revision and target, or explicitly not applicable with accountable rationale.
+- Architecture, governance/data, security/crypto, verification/test, and evidence criteria are satisfied.
 - Required code, infrastructure, pipeline, security, and compliance reviews identify the exact approved revisions and artifacts.
 - Critical/high findings are resolved or formally excepted by authorized humans.
 - Tests, scans, SBOM, provenance, signatures, plans, and evidence are complete.
@@ -530,6 +559,8 @@ Before the release engineer requests human approval, confirm:
 - Backup, rollback, monitoring, incident contacts, and objective stop thresholds are ready.
 - The deployed artifact will be the immutable reviewed artifact.
 - Post-deployment verification and evidence capture are assigned.
+- G9 deployment authorization will bind the exact artifact, environment, identity, plan, window, rollback, and verification thresholds.
+- G10 runtime-conformance ownership, observation window, signals, and feedback route are recorded.
 
 Use `workflows/production-release.md`. Invoke `workflows/rollback.md` or incident response immediately when a stop condition occurs.
 
@@ -546,6 +577,7 @@ Before operational use, decide and record:
 - Compliance frameworks, control owners, and evidence retention rules.
 - Named support escalation levels, human owner groups, customer communication expectations, and emergency contacts.
 - Data classifications, tenant boundaries, approved embedding services, and knowledge-store retention/deletion procedures.
+- Authoritative definitions and owners for SQS impact categories and any required CBOM, QBOM, AI-BOM, Trust-BOM, or Time-BOM formats.
 - Named human approval groups and emergency escalation contacts.
 
 Keep organization-wide requirements under `shared/`; keep role authority in each `AGENT.md`; keep change-specific facts in task briefs.

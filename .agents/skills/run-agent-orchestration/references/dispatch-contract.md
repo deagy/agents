@@ -10,6 +10,7 @@ Each dispatch prompt must include:
 - task ID, objective, execution mode, classification, scope, exclusions, and acceptance criteria;
 - exact files, source revision, plan, artifact digest, target, or environment when applicable;
 - applicable shared policies, workflow, quality gates, and escalation policy;
+- selector-emitted lifecycle `required_quality_gates`, mutation-oriented `human_gates`, and current gate-state records;
 - the planned Python knowledge-store invocation and its result status; resolve its Python 3.10+ launcher at execution and preserve the supplied argv without shell interpretation;
 - retrieved passages with `source`, `conversation_id`, `message_id`, `chunk_id`, `content_hash`, `created_at`, and `classification` citations, plus the retrieved bundle and its integrity hash as point-in-time evidence;
 - nested citation `source_uri` omitted or redacted by default, and included only when separately authorized and necessary because it may reveal a local path;
@@ -54,7 +55,7 @@ and handoff to <receiver>.
 
 ## Consolidated run record
 
-Use this minimal structure when saving a run record:
+Use `agents/orchestration/run-record.schema.json` as the authoritative structure when saving a run record. At minimum, preserve this summary together with the schema-required lifecycle, impact-profile, gate, evidence, exception, and invalidation fields:
 
 ```yaml
 task_id: <id>
@@ -68,6 +69,7 @@ knowledge:
   status_by_agent: {}
 findings: []
 human_gates: []
+required_quality_gates: []
 artifacts: []
 validation: []
 disposition: <approve|request-changes|needs-information|blocked|plan-only>

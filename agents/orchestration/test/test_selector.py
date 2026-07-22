@@ -45,6 +45,10 @@ def plan(**overrides: object) -> dict[str, object]:
 
 
 class SelectorTests(unittest.TestCase):
+    @staticmethod
+    def quality_gate_ids(result: dict[str, object]) -> list[str]:
+        return [gate["id"] for gate in result["required_quality_gates"]]
+
     def test_catalog_definition_paths_exist(self) -> None:
         definitions = catalog_definitions()
         self.assertEqual(set(CATALOG), set(definitions))
@@ -84,6 +88,99 @@ class SelectorTests(unittest.TestCase):
         }
         self.assertTrue(all(request["invocation"]["launcher"] == expected_launcher for request in requests))
         self.assertTrue(all(request["invocation"]["args"][:2] == ["src/cli.py", "context"] for request in requests))
+
+    def test_emits_schema_v2_quality_gates_separately_from_human_gates(self) -> None:
+        result = plan(
+            task="Deploy to production with Terraform",
+            changed_files=["terraform/service/main.tf"],
+        )
+        self.assertEqual(result["schema_version"], 2)
+        self.assertEqual(result["workflow"], "production-release")
+        self.assertEqual(self.quality_gate_ids(result), ["G3", "G4", "G5", "G6", "G7", "G8", "G9"])
+        production_gate = next(
+            gate for gate in result["required_quality_gates"] if gate["id"] == "G9"
+        )
+        self.assertEqual(production_gate["contributing_routes"], ["production"])
+        self.assertEqual([gate["id"] for gate in result["human_gates"]], ["production-change"])
+
+    def test_selects_product_intake_agents_and_gates_for_intent_only(self) -> None:
+        result = plan(task="Capture product intent and requirements decomposition", changed_files=[])
+        self.assertEqual(result["workflow"], "product-intake")
+        self.assertIn("product-intent-agent", result["agents"]["primary"])
+        self.assertIn("requirements-agent", result["agents"]["primary"])
+        self.assertEqual(self.quality_gate_ids(result), ["G1", "G2"])
+
+    def test_combined_product_intent_and_architecture_uses_new_service(self) -> None:
+        result = plan(task="Capture product intent and define the service architecture", changed_files=[])
+        self.assertEqual(result["workflow"], "new-service")
+        self.assertIn("product-intent-agent", result["agents"]["primary"])
+        self.assertIn("cloud-architect", result["agents"]["support"])
+        self.assertEqual(self.quality_gate_ids(result), ["G1", "G3"])
+
+    def test_selects_governance_data_and_crypto_specialists_narrowly(self) -> None:
+        governance = plan(task="Assess governance impact and prepare an accreditation plan", changed_files=[])
+        data = plan(task="Define non-egress and data residency controls", changed_files=[])
+        crypto = plan(task="Assess PQC crypto agility and downgrade risk", changed_files=[])
+
+        self.assertIn("governance-planner", governance["agents"]["primary"])
+        self.assertIn("compliance-reviewer", governance["agents"]["reviewers"])
+        self.assertIn("data-governance-engineer", data["agents"]["primary"])
+        self.assertIn("security-reviewer", data["agents"]["reviewers"])
+        self.assertIn("compliance-reviewer", data["agents"]["reviewers"])
+        self.assertIn("cryptographic-assurance-engineer", crypto["agents"]["primary"])
+        self.assertIn("security-reviewer", crypto["agents"]["reviewers"])
+        self.assertIn("threat-modeler", crypto["agents"]["support"])
+        self.assertTrue(
+            set(crypto["agents"]["primary"]).isdisjoint(crypto["agents"]["reviewers"])
+        )
+
+    def test_selects_runtime_assurance_without_production_release(self) -> None:
+        result = plan(task="Observe production runtime for deployed behavior conformance", changed_files=[])
+        self.assertEqual(result["workflow"], "runtime-assurance")
+        self.assertEqual(result["agents"]["primary"], ["observability-sre"])
+        self.assertIn("security-reviewer", result["agents"]["reviewers"])
+        self.assertIn("compliance-reviewer", result["agents"]["reviewers"])
+        self.assertIn("support-triage-agent", result["agents"]["support"])
+        self.assertEqual(self.quality_gate_ids(result), ["G10"])
+        self.assertNotIn("production-change", [gate["id"] for gate in result["human_gates"]])
+
+    def test_workflow_precedence_keeps_support_ahead_of_runtime_assurance(self) -> None:
+        result = plan(
+            task="Triage a customer incident during runtime assurance",
+            changed_files=["incidents/INC-9.md"],
+        )
+        self.assertEqual(result["workflow"], "support-escalation")
+
+    def test_runtime_failure_still_uses_debugging_workflow(self) -> None:
+        result = plan(task="Debug a production runtime failure", changed_files=["diagnostics/error.log"])
+        self.assertEqual(result["workflow"], "debugging")
+        self.assertIn("debugging-engineer", result["agents"]["primary"])
+
+    def test_narrow_lifecycle_routes_avoid_generic_collisions(self) -> None:
+        cases = [
+            ("Update README requirements", ["README.md"]),
+            ("Review package dependencies", ["services/go.mod"]),
+            ("Configure TLS", ["services/api/config.go"]),
+            ("Review database data retention", ["database/postgres/backup.md"]),
+            ("Fix ordinary runtime behavior", ["services/api/main.go"]),
+        ]
+        specialist_agents = {
+            "product-intent-agent",
+            "requirements-agent",
+            "governance-planner",
+            "data-governance-engineer",
+            "cryptographic-assurance-engineer",
+        }
+        for task, changed_files in cases:
+            with self.subTest(task=task):
+                result = plan(task=task, changed_files=changed_files)
+                selected = {
+                    *result["agents"]["primary"],
+                    *result["agents"]["reviewers"],
+                    *result["agents"]["support"],
+                }
+                self.assertTrue(specialist_agents.isdisjoint(selected))
+                self.assertNotEqual(result["workflow"], "runtime-assurance")
 
     def test_knowledge_invocation_preserves_argv_and_output_contract(self) -> None:
         result = plan(
@@ -394,6 +491,16 @@ class SelectorTests(unittest.TestCase):
         self.assertEqual(result["agents"]["primary"], ["application-engineer", "debugging-engineer"])
         self.assertIn("test-engineer", result["agents"]["reviewers"])
         self.assertIn("code-reviewer", result["agents"]["reviewers"])
+
+    def test_orchestration_example_architecture_does_not_select_agent_suite_debugging(self) -> None:
+        result = plan(
+            task="Resolve architecture decisions for OIDC and PostgreSQL recovery",
+            changed_files=["agents/orchestration/examples/example/architecture.md"],
+            classification="internal",
+            task_id="EXAMPLE-ARCH",
+        )
+        self.assertEqual(result["workflow"], "new-service")
+        self.assertNotIn("debugging-engineer", result["agents"]["primary"])
 
     def test_explicit_files_support_repeat_comma_and_stable_deduplication(self) -> None:
         self.assertEqual(

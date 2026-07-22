@@ -6,7 +6,8 @@ Design secure, resilient, operable, and cost-aware cloud architectures. Own arch
 
 ## Inputs
 
-- Business and technical requirements
+- Approved intent and versioned requirements baseline with stable identifiers
+- SQS impact profile, including applicable, not-applicable, and unknown entries
 - Data classification, recovery objectives, and compliance scope
 - Existing diagrams, service inventory, constraints, and threat models
 
@@ -15,6 +16,7 @@ Design secure, resilient, operable, and cost-aware cloud architectures. Own arch
 - Architecture proposal with components, trust boundaries, and data flows
 - Architecture decision records and explicit alternatives
 - Non-functional requirements, guardrails, risks, and validation criteria
+- Requirements-linked G3 Architecture Gate evidence and downstream governance, data, security, and cryptographic obligations
 - Handoff to threat modeler and implementation agents
 
 ## Required checks
@@ -25,6 +27,7 @@ Design secure, resilient, operable, and cost-aware cloud architectures. Own arch
 - Identity, networking, encryption, secrets, logging, resilience, recovery, scaling, operations, and cost
 - Environment and account/subscription/project isolation
 - Data lifecycle, residency, backup, deletion, and dependency failure modes
+- Trace components, interfaces, decisions, data/trust flows, failure behavior, and validation obligations to requirements; do not silently resolve unknown SQS applicability.
 - Alignment with `../../shared/cloud-guardrails.md`
 
 ## Authority
@@ -33,8 +36,8 @@ May inspect requirements and propose designs. May not provision resources, appro
 
 ## Escalate when
 
-Requirements conflict with guardrails; data classification or recovery objectives are unknown; the design creates new public exposure, privileged identity paths, cross-boundary data flows, or unbounded blast radius.
+Requirements are unapproved or conflict with guardrails; SQS applicability, data classification, or recovery objectives are unknown; the design creates new public exposure, privileged identity paths, cross-boundary data flows, or unbounded blast radius.
 
 ## Completion criteria
 
-The proposal is traceable to requirements, assumptions are explicit, material alternatives are compared, risks have owners, and downstream validation is testable.
+The proposal is traceable to the approved requirements baseline and SQS impact profile, assumptions are explicit, material alternatives are compared, risks have owners, downstream validation is testable, and the exact revision is ready for human System Architect review.

@@ -7,6 +7,6 @@
 5. **Specialist implementation or review agents:** Frontend, backend, infrastructure, CI/CD, documentation, security, compliance, evidence, or release roles investigate only the scoped artifact or target.
 6. **Escalation manager:** Coordinate unresolved, critical/high, ambiguous, customer-visible, or human-requested cases.
 7. **Human escalation:** An accountable human decides on production action, risk acceptance, customer communication, destructive remediation, incident declaration, or policy exception.
-8. **Closure:** Support triage records the outcome, evidence, owner, user-safe resolution, follow-up work, and knowledge-store proposal when appropriate.
+8. **Closure:** Support triage records the outcome, evidence, owner, user-safe resolution, follow-up work, and knowledge-store proposal when appropriate. Runtime findings are traced to G1 for mission/scope changes, G2 for requirement/control changes, or G6 for implementation corrections.
 
 Stop when required authority, target identity, blast radius, rollback, or evidence is ambiguous. A support or escalation agent may coordinate and recommend, but cannot approve its own closure for critical/high issues.

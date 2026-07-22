@@ -1,5 +1,20 @@
 version: 1
 agents:
+  product-intent-agent:
+    definition: planning/product-intent-agent/AGENT.md
+    phase: planning
+  requirements-agent:
+    definition: planning/requirements-agent/AGENT.md
+    phase: planning
+  governance-planner:
+    definition: governance/governance-planner/AGENT.md
+    phase: design
+  data-governance-engineer:
+    definition: data/data-governance-engineer/AGENT.md
+    phase: design
+  cryptographic-assurance-engineer:
+    definition: security/cryptographic-assurance-engineer/AGENT.md
+    phase: security
   cloud-architect:
     definition: architecture/cloud-architect/AGENT.md
     phase: design

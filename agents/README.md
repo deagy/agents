@@ -6,18 +6,19 @@ The `knowledge-store/` subsystem is the shared agent retrieval layer for authori
 
 Start with `RUNBOOK.md` for operating instructions and worked examples.
 
-The dependency-free selector component requires Python 3.10 or newer, without establishing an organization-wide Python version. From the repository root, run `python3 agents/orchestration/src/select_agents.py --task "..."` on Unix or `py -3 agents/orchestration/src/select_agents.py --task "..."` with a qualifying Windows launcher. See `RUNBOOK.md` for robust interpreter probes. The selector evaluates task text and Git changes, validates roles against `catalog.yaml`, and emits a reviewable plan; it does not execute agents or retrieve knowledge.
+The dependency-free selector component requires Python 3.10 or newer, without establishing an organization-wide Python version. From the repository root, run `python3 agents/orchestration/src/select_agents.py --task "..."` on Unix or `py -3 agents/orchestration/src/select_agents.py --task "..."` with a qualifying Windows launcher. See `RUNBOOK.md` for robust interpreter probes. The schema version 2 selector evaluates task text and Git changes, validates roles against `catalog.yaml`, and emits a reviewable plan with required lifecycle quality gates kept separate from mutation-oriented human gates; it does not execute agents, approve gates, or retrieve knowledge.
 
 ## Operating model
 
-1. Select the workflow in `workflows/` that matches the change.
-2. Retrieve authorized, role-specific knowledge context and record its status and query identifiers.
-3. Give each participating agent its `AGENT.md`, task context, knowledge bundle, and only the access it needs.
-4. Exchange findings using `shared/output-schemas/finding.schema.json`.
-5. Enforce the gates in `orchestration/quality-gates.md`.
-6. Require a human decision wherever an agent reaches an escalation condition.
-7. Route user reports and externally observed failures through support triage, then the incident commander or escalation manager when multiple owners, high impact, major-incident coordination, or a human gate is involved.
-8. Permit authorized retrieval and its operational audit/SQLite writes, but route content and lifecycle mutations through the knowledge-store steward.
+1. Capture human-owned intent and establish traceable requirements before architecture and implementation.
+2. Select the workflow in `workflows/` that matches the lifecycle phase or change.
+3. Retrieve authorized, role-specific knowledge context and record its status and query identifiers.
+4. Give each participating agent its `AGENT.md`, task context, knowledge bundle, and only the access it needs.
+5. Exchange findings using `shared/output-schemas/finding.schema.json` and bind artifacts through `orchestration/agentic-sdlc-artifact-contract.md`.
+6. Enforce the lifecycle decisions and specialist attestations in `orchestration/quality-gates.md`; record gate state in a schema-valid repository run record.
+7. Require a human decision wherever an agent reaches an escalation condition or human-only gate.
+8. Route runtime nonconformance through observability, support, incident, security, compliance, and debugging roles into traced remediation or backlog work.
+9. Permit authorized retrieval and its operational audit/SQLite writes, but route content and lifecycle mutations through the knowledge-store steward.
 
 Agents may prepare changes and evidence, but no author may approve its own work. Production deployment is performed by a narrowly scoped deployment identity after the required approvals.
 

@@ -50,9 +50,9 @@ done
 "$AGENT_PYTHON" agents/orchestration/src/select_agents.py --task "<objective>" --task-id "<id>" --classification "<level>" --files "<comma-separated paths>"
 ```
 
-Omit `--files` to use Git status, including staged, unstaged, and untracked paths. Alternatively, use `--base <ref>` for committed `<ref>...HEAD` changes; that mode excludes dirty worktree changes. Review the emitted `inputs.changed_files` before dispatch. `--output <path>` creates parent directories and overwrites the file, so use it only when run-artifact writes are authorized. Do not invent changed paths. If the selector returns `needs-triage`, stop dispatch and request the missing scope. Validate every selected role against `agents/catalog.yaml`.
+Omit `--files` to use Git status, including staged, unstaged, and untracked paths. Alternatively, use `--base <ref>` for committed `<ref>...HEAD` changes; that mode excludes dirty worktree changes. Review the emitted `inputs.changed_files` before dispatch. `--output <path>` creates parent directories and overwrites the file, so use it only when run-artifact writes are authorized. Do not invent changed paths. Schema version 2 emits lifecycle `required_quality_gates` separately from mutation-oriented `human_gates`; attach both to each applicable brief. If the selector returns `needs-triage`, stop dispatch and request the missing scope. Validate every selected role against `agents/catalog.yaml`.
 
-Read the selected workflow under `agents/workflows/` plus `agents/orchestration/quality-gates.md`, `escalation-policy.md`, and `handoff-contracts.md`. Use the detailed contract in [references/dispatch-contract.md](references/dispatch-contract.md).
+Read the selected workflow under `agents/workflows/` plus `agents/orchestration/quality-gates.md`, `agentic-sdlc-artifact-contract.md`, `escalation-policy.md`, and `handoff-contracts.md`. Use the detailed contract in [references/dispatch-contract.md](references/dispatch-contract.md). Record lifecycle gate state in a run record conforming to `agents/orchestration/run-record.schema.json` and the cross-field checks in `agents/orchestration/src/validate_run_record.py`; the record indexes but does not replace human approval evidence.
 
 ## Retrieve Agent Context
 
@@ -69,7 +69,7 @@ Use the available subagent mechanism and respect platform concurrency limits. Di
 3. Test, code, infrastructure, and pipeline review by agents that did not author the artifact.
 4. Security, compliance, documentation, evidence, and release consolidation as applicable.
 
-Adapt waves to the selector plan and workflow dependencies. Do not claim a role ran when it was deferred or unavailable. Do not let an author approve its own work. If a review returns `request-changes`, `blocked`, or unresolved critical/high findings, stop dependent release work and report the required next safe action.
+Adapt waves to the selector plan, required quality gates, and workflow dependencies. Do not claim a role ran when it was deferred or unavailable. Do not let an author approve its own work. A reviewer who materially changes an artifact loses approval authority for that revision. If a review returns `request-changes`, `blocked`, or unresolved critical/high findings, invalidate dependent downstream gates, stop dependent release work, and report the earliest gate that must be re-entered.
 
 ## Consolidate Results
 

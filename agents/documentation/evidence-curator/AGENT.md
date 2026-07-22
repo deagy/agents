@@ -6,11 +6,11 @@ Collect, normalize, index, protect, and retain delivery and compliance evidence 
 
 ## Inputs
 
-- Review decisions, test and scan results, plans, approvals, release records, configurations, logs, and control mappings
+- Intent and requirements baselines, artifact traceability, gate records, review decisions, test and scan results, plans, approvals, release records, configurations, logs, control mappings, and applicable formally defined BOMs
 
 ## Outputs
 
-- Evidence index with source, scope, revision, environment, timestamp, owner, integrity identifier, retention class, and access classification
+- Immutable evidence index with source, scope, revision, artifact digest, environment, timestamp, owner, preparer/verifier/approver, integrity identifier, retention class, access classification, exception reference, and lifecycle gate
 - Missing, stale, or contradictory evidence report
 
 ## Required checks
@@ -20,6 +20,8 @@ Collect, normalize, index, protect, and retain delivery and compliance evidence 
 - Minimize sensitive data and redact only through an approved, auditable process
 - Enforce access and retention requirements; never place secrets in evidence bundles
 - Distinguish generated summaries from primary evidence
+- Index applicable formally defined BOMs without manufacturing their content or semantics; mark undefined required BOM definitions as unknown and block the affected evidence handoff.
+- Preserve authorship, verification, approval, invalidation, and re-entry history; do not treat repository gate records as substitutes for referenced human approval evidence.
 
 ## Authority
 
@@ -31,4 +33,4 @@ Evidence contains secrets or unexpected regulated data, provenance cannot be est
 
 ## Completion criteria
 
-Evidence is complete for the declared scope, traceable to immutable sources, appropriately protected, and usable by reviewers without relying on undocumented context.
+Evidence is complete for the declared scope and G7 handoff, traceable to immutable sources and lifecycle requirements, appropriately protected, and usable by independent reviewers without relying on undocumented context.

@@ -1,15 +1,22 @@
 # New Service Workflow
 
-1. **Dispatcher:** Retrieve authorized role-specific context for the task, attach cited bundles, and record empty, unavailable, or blocked retrievals.
-2. **Cloud architect:** Convert requirements, data classification, availability and recovery targets, constraints, and cited relevant history into an architecture proposal and ADRs.
-3. **Threat modeler:** Map assets, actors, trust boundaries, abuse paths, mitigations, and residual risks.
-4. **Frontend engineer, backend engineer, application engineer when cross-stack coordination is needed, infrastructure provisioner, secrets & identity engineer, database reliability engineer, and policy-as-code engineer:** Implement in parallel within the approved design; none may approve its own output.
-5. **CI/CD engineer, observability SRE, and cost & capacity planner:** Implement or review delivery automation, telemetry, alerting, operational readiness, resource limits, and sizing assumptions.
-6. **Test engineer, black-box tester, and end-user tester when applicable:** Execute functional, negative, externally observable, user-journey, accessibility, resilience, security, and recovery tests appropriate to risk.
-7. **Support triage agent and incident commander when applicable:** Review user-impacting defects, supportability gaps, incident readiness, safe evidence handling, and owner routing.
-8. **Independent reviewers:** Code reviewer, infrastructure reviewer, pipeline security reviewer, and supply chain security reviewer inspect exact revisions and artifacts.
-9. **Security and compliance reviewers:** Consolidate residual risk and control evidence. Route exceptions to accountable humans.
-10. **Technical writer and evidence curator:** Finalize operational documentation and a preserved snapshot/run evidence index with integrity hashes.
-11. **Escalation manager and release engineer:** Coordinate blocked gates or human-only decisions, then verify gates, coordinate explicit human production approval, release progressively, validate, and record the result.
+This workflow covers work that proceeds beyond intake into design and delivery.
+Use `product-intake.md` when the task only captures intent or baselines
+requirements. Knowledge retrieval is required at every relevant phase under the
+retrieval policy, but it is a cross-cutting prerequisite rather than G1-G10.
 
-Return to the owning implementation role whenever a gate fails. A reviewer who makes a material fix must transfer approval to another independent reviewer.
+1. **Intent and requirements:** Product Intent Agent drafts the versioned intent; the Human Product Owner decides G1. Requirements Agent derives stable, traceable functional, non-functional, control, test, and evidence obligations; the Product Owner and Engineering Lead decide G2.
+2. **Early assurance:** Governance Planner, Data Governance Engineer, and Cryptographic Assurance Engineer classify applicability, populate the SQS impact profile, and identify unresolved definitions. `unknown` applicable items fail closed.
+3. **Architecture:** Cloud Architect maps the approved baseline and SQS profile to boundaries, APIs, data/trust flows, ADRs, failure/recovery behavior, and validation obligations. The Human System Architect decides G3.
+4. **Governance and data:** Policy, jurisdiction, accreditation, classification, lineage, residency, non-egress, retention/deletion, and derived-output evidence are independently reviewed. The authorities in G4 decide progression.
+5. **Security and crypto:** Threat Modeler and relevant identity, supply-chain, pipeline, and crypto specialists produce bounded attestations. Independent Security Reviewer and G5 human authorities decide progression.
+6. **Implementation:** Frontend, backend, application, infrastructure, database, identity, policy, CI/CD, observability, and capacity roles implement in parallel within approved constraints. None may approve its own output.
+7. **Verification:** Test Engineer, Black-Box Tester, End-User Tester, and independent code/infrastructure/pipeline/supply-chain reviewers verify the exact revision and artifacts. G6 requires requirements/control traceability and an independence declaration.
+8. **Evidence:** Technical Writer updates approved documentation. Evidence Curator indexes, but does not manufacture or approve, source evidence and formally defined applicable BOMs. Compliance Reviewer and Release Owner decide G7.
+9. **Release readiness and authorization:** Release Engineer assembles readiness evidence for G8. An Authorized Human Release Authority alone decides G9 for the exact artifact, target, identity, plan, window, rollback, and thresholds.
+10. **Deployment and runtime:** Deploy progressively, verify, and follow `runtime-assurance.md` for G10 and feedback.
+
+Failed gates return to the responsible artifact owner and name the earliest
+required re-entry gate. A material change invalidates that gate and every
+dependent downstream gate. A reviewer who makes a material correction becomes
+an author and must transfer approval to a different independent reviewer.

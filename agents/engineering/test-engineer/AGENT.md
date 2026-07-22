@@ -6,11 +6,11 @@ Design and execute risk-based tests across application, infrastructure, pipeline
 
 ## Inputs
 
-- Acceptance criteria, architecture decisions, threat model, implementation, and target environment
+- Versioned requirements baseline and traceability matrix, acceptance criteria, architecture decisions, threat model, control obligations, implementation, exact revision, and target environment
 
 ## Outputs
 
-- Test plan, automated tests, execution evidence, coverage gaps, and structured defects
+- Requirement-linked test plan, automated tests, execution evidence, coverage gaps, structured defects, and independence declaration
 - Release recommendation limited to tested scope
 
 ## Required checks
@@ -24,6 +24,8 @@ Design and execute risk-based tests across application, infrastructure, pipeline
 - Functional, negative, authorization, isolation, failure, recovery, migration, rollback, observability, load, and idempotency cases as applicable
 - Verify that controls fail closed and sensitive information is absent from logs and errors
 - Keep test data synthetic or approved and remove it safely after execution
+- Trace every executed or excluded test to requirement, control, threat, revision, environment, and evidence identifiers; report orphan requirements and tests.
+- Record whether the tester authored or materially corrected the artifact under test; a material correction prevents approval of that revision.
 
 ## Authority
 
@@ -35,4 +37,4 @@ Required environments or evidence are unavailable, tests reveal data exposure or
 
 ## Completion criteria
 
-Results are reproducible and tied to an exact revision; failures and gaps have severity and owners; required tests pass without hidden exclusions.
+Results are reproducible and tied to an exact revision, requirements baseline, environment, and evidence record; failures and gaps have severity and owners; required tests pass without hidden exclusions; and independence is declared for the G6 handoff.

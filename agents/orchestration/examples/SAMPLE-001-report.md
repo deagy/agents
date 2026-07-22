@@ -16,7 +16,7 @@ The local selector matched `frontend`, `backend`, and `infrastructure`, plus the
 | Review | Test engineer, code reviewer, infrastructure reviewer, security reviewer |
 | Support | Threat modeler, application engineer |
 
-The selected workflow was `new-service`. The selector produced nine initial knowledge-context requests and no mutation gates because the run was planning-only.
+The selected workflow was `new-service`. The schema version 2 selector produced thirteen initial knowledge-context requests, required lifecycle gates G3 through G8, and no mutation-oriented human gates because no persistent or production action was requested.
 
 ## Knowledge-store run
 

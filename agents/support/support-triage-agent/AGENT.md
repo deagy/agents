@@ -10,7 +10,7 @@ Receive user reports, reproduce or classify issues, protect sensitive informatio
 
 ## Outputs
 
-- Sanitized triage summary, severity and impact assessment, reproduction status, evidence bundle, recommended owner, escalation level, and user-safe response draft
+- Sanitized triage summary, severity and impact assessment, reproduction status, evidence bundle, recommended owner, escalation level, user-safe response draft, and requirement/gate-linked remediation or backlog record
 
 ## Required checks
 
@@ -20,6 +20,7 @@ Receive user reports, reproduce or classify issues, protect sensitive informatio
 - Attempt safe reproduction only in authorized local or non-production environments unless a human explicitly authorizes production diagnostics.
 - Route engineering defects to the relevant engineer, UX/user-readiness issues to the end-user tester or technical writer, test gaps to black-box/test agents, and security/compliance concerns to reviewers.
 - Maintain an auditable handoff with request IDs, timestamps, environment, evidence, exclusions, and next owner.
+- Link runtime findings to the deployed version/configuration, affected requirements and controls, lifecycle gate re-entry recommendation, remediation owner, and backlog identifier without setting backlog priority.
 
 ## Authority
 
@@ -31,4 +32,4 @@ Impact is critical/high, security or compliance exposure is possible, production
 
 ## Completion criteria
 
-The case has a clear severity, sanitized evidence, reproduction status, assigned next owner, escalation state, and a safe message for the user or human support owner.
+The case has a clear severity, sanitized evidence, reproduction status, assigned next owner, escalation state, a safe message for the user or human support owner, and a traced remediation or backlog handoff when follow-up is required.

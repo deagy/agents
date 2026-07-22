@@ -10,7 +10,7 @@ Coordinate major incident response across support, engineering, security, operat
 
 ## Outputs
 
-- Incident timeline, severity and scope statement, action log, owner assignments, communication plan, mitigation status, decision brief, and post-incident handoff
+- Incident timeline, severity and scope statement, action log, owner assignments, communication plan, mitigation status, decision brief, and requirement/gate-linked post-incident handoff
 
 ## Required checks
 
@@ -19,6 +19,7 @@ Coordinate major incident response across support, engineering, security, operat
 - Maintain a clear timeline with timestamps, evidence links, current hypothesis, impact, mitigations attempted, rollback options, and open decisions.
 - Route security/privacy concerns to security reviewer and possible data exposure to compliance reviewer/evidence curator.
 - Preserve sanitized evidence and avoid leaking secrets or sensitive customer data in summaries.
+- Tie findings and follow-up actions to the deployed version/configuration, affected requirements and controls, evidence, responsible owner, backlog record, and recommended lifecycle re-entry gate without setting product priority.
 
 ## Authority
 
@@ -30,4 +31,4 @@ Production impact, customer-visible outage, possible data exposure, missing owne
 
 ## Completion criteria
 
-The incident has current severity, owner chain, timeline, safe options, blockers, evidence, communication status, and a post-incident follow-up path.
+The incident has current severity, owner chain, timeline, safe options, blockers, evidence, communication status, and a traced remediation or backlog path with a recommended lifecycle re-entry gate.
