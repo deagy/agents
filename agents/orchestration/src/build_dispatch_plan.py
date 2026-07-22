@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Iterable
 
 from risk_classifier import apply_cross_stack, classify_risks
@@ -11,6 +12,8 @@ from routing import match_routes
 
 CLASSIFICATIONS = {"public", "internal", "confidential", "restricted"}
 MAXIMUM_KNOWLEDGE_TOP = 20
+KNOWLEDGE_STORE_ROOT = Path(__file__).resolve().parents[2] / "knowledge-store"
+DEFAULT_KNOWLEDGE_SOURCE = Path(__file__).resolve().parents[3].name
 
 
 def _unique(values: Iterable[str]) -> list[str]:
@@ -160,17 +163,15 @@ def _build_knowledge_context(
             classification,
             "--top",
             str(top),
-            "--config",
-            "config.json",
+            "--source",
+            input_data.get("source") or DEFAULT_KNOWLEDGE_SOURCE,
         ]
-        if input_data.get("source"):
-            args.extend(["--source", input_data["source"]])
         requests.append(
             {
                 "agent": agent,
                 "query": query,
                 "invocation": {
-                    "cwd": "agents/knowledge-store",
+                    "cwd": str(KNOWLEDGE_STORE_ROOT),
                     "launcher": {
                         "runtime": "python",
                         "minimum_version": "3.10",

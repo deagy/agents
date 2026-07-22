@@ -104,6 +104,25 @@ class SelectorTests(unittest.TestCase):
         self.assertTrue(all(request["invocation"]["launcher"] == expected_launcher for request in requests))
         self.assertTrue(all(request["invocation"]["args"][:2] == ["src/cli.py", "context"] for request in requests))
 
+    def test_knowledge_invocation_defaults_source_to_repository_name_when_unset(self) -> None:
+        from build_dispatch_plan import DEFAULT_KNOWLEDGE_SOURCE, KNOWLEDGE_STORE_ROOT
+
+        result = plan(
+            task="Add a React upload form backed by a PostgreSQL API",
+            changed_files=["frontend/src/Upload.tsx"],
+            classification="internal",
+            task_id="NO-SOURCE-1",
+        )
+        requests = result["knowledge_context"]["requests"]
+        self.assertTrue(requests)
+        for request in requests:
+            args = request["invocation"]["args"]
+            self.assertIn("--source", args)
+            self.assertEqual(DEFAULT_KNOWLEDGE_SOURCE, args[args.index("--source") + 1])
+            self.assertEqual(str(KNOWLEDGE_STORE_ROOT), request["invocation"]["cwd"])
+            self.assertNotIn("--config", args)
+            self.assertTrue(Path(request["invocation"]["cwd"]).is_absolute())
+
     def test_emits_schema_v2_quality_gates_separately_from_human_gates(self) -> None:
         result = plan(
             task="Deploy to production with Terraform",
@@ -220,7 +239,7 @@ class SelectorTests(unittest.TestCase):
                     "accessibility, API contracts, and browser security."
                 ),
                 "invocation": {
-                    "cwd": "agents/knowledge-store",
+                    "cwd": str(AGENTS_ROOT / "knowledge-store"),
                     "launcher": {
                         "runtime": "python",
                         "minimum_version": "3.10",
@@ -242,8 +261,6 @@ class SelectorTests(unittest.TestCase):
                         "confidential",
                         "--top",
                         "3",
-                        "--config",
-                        "config.json",
                         "--source",
                         "approved-decisions",
                     ],

@@ -1,4 +1,4 @@
-"""Repository-level packaging checks for the portable Codex plugin."""
+"""Repository-level packaging checks for the portable plugin (Codex CLI and Claude Code)."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from pathlib import Path
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY_ROOT = PLUGIN_ROOT.parents[1]
 MARKETPLACE = REPOSITORY_ROOT / ".agents" / "plugins" / "marketplace.json"
+CLAUDE_MARKETPLACE = REPOSITORY_ROOT / ".claude-plugin" / "marketplace.json"
 EXPECTED_SKILLS = {
     "initialize-agentic-sdlc",
     "orchestrate-agentic-sdlc",
@@ -33,6 +34,17 @@ class PluginPackageTests(unittest.TestCase):
         self.assertEqual("AVAILABLE", entry["policy"]["installation"])
         self.assertEqual("ON_INSTALL", entry["policy"]["authentication"])
         source = entry["source"]["path"].removeprefix("./")
+        self.assertEqual(PLUGIN_ROOT.resolve(), (REPOSITORY_ROOT / source).resolve())
+
+    def test_claude_manifest_and_marketplace_are_consistent(self) -> None:
+        manifest_path = PLUGIN_ROOT / ".claude-plugin" / "plugin.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        marketplace = json.loads(CLAUDE_MARKETPLACE.read_text(encoding="utf-8"))
+        self.assertEqual("agentic-sdlc", manifest["name"])
+        self.assertRegex(manifest["version"], r"^\d+\.\d+\.\d+$")
+        self.assertEqual("./skills/", manifest["skills"])
+        entry = next(item for item in marketplace["plugins"] if item["name"] == manifest["name"])
+        source = entry["source"].removeprefix("./")
         self.assertEqual(PLUGIN_ROOT.resolve(), (REPOSITORY_ROOT / source).resolve())
 
     def test_all_skills_have_valid_minimal_metadata(self) -> None:

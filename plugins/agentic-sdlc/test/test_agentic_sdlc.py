@@ -50,6 +50,34 @@ class PortableCliTests(unittest.TestCase):
         self.assertEqual("web-service", result["proposed_profile"])
         self.assertFalse((self.root / ".agentic-sdlc").exists())
 
+    def test_detect_proposes_quick_absent_a_stronger_signal(self):
+        (self.root / "README.md").write_text("# demo\n", encoding="utf-8")
+        result = self.run_cli("detect")
+        self.assertEqual("quick", result["proposed_profile"])
+
+    def test_init_auto_profile_defaults_to_quick(self):
+        result = self.run_cli("init", "--profile", "auto")
+        self.assertEqual("initialized", result["status"])
+        self.assertEqual("quick", result["profile"])
+        project = self.load(".agentic-sdlc/project.json")
+        self.assertEqual("quick", project["profile"])
+
+    def test_quick_profile_plan_has_no_required_quality_gates_for_ordinary_work(self):
+        self.run_cli("init", "--profile", "quick")
+        plan = self.run_cli("plan", "--task-id", "QUICK-1", "--task", "Fix a failing login test")
+        self.assertEqual([], plan["required_quality_gates"])
+        self.assertEqual([], plan["human_gates"])
+
+    def test_quick_profile_still_enforces_mutation_gates(self):
+        self.run_cli("init", "--profile", "quick")
+        plan = self.run_cli("plan", "--task-id", "QUICK-2", "--task", "Prepare a production deployment for the backend API")
+        self.assertIn("production-deployment", [gate["id"] for gate in plan["human_gates"]])
+
+    def test_runner_flag_selects_which_wrapper_set_is_generated(self):
+        self.run_cli("init", "--profile", "quick", "--runner", "claude")
+        self.assertTrue((self.root / ".claude" / "agents" / "security-reviewer.md").exists())
+        self.assertFalse((self.root / ".codex").exists())
+
     def test_init_creates_overlay_wrappers_and_preserves_agents_content(self):
         original = "# Existing rules\n\nKeep this.\n"
         (self.root / "AGENTS.md").write_text(original, encoding="utf-8")
@@ -59,6 +87,10 @@ class PortableCliTests(unittest.TestCase):
             self.assertTrue((self.root / ".agentic-sdlc" / name).exists())
         self.assertTrue((self.root / ".agentic-sdlc" / "runs").is_dir())
         self.assertTrue((self.root / ".codex" / "agents" / "security-reviewer.toml").exists())
+        self.assertTrue((self.root / ".claude" / "agents" / "security-reviewer.md").exists())
+        claude_wrapper = (self.root / ".claude" / "agents" / "security-reviewer.md").read_text(encoding="utf-8")
+        self.assertIn("name: security-reviewer", claude_wrapper)
+        self.assertIn("cannot ask the human directly", claude_wrapper)
         agents = (self.root / "AGENTS.md").read_text(encoding="utf-8")
         self.assertIn("Keep this.", agents)
         self.assertEqual(1, agents.count("<!-- agentic-sdlc:start -->"))

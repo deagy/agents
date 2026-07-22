@@ -1,0 +1,16 @@
+{
+  "name": "agents-team",
+  "owner": {
+    "name": "Agents maintainers"
+  },
+  "plugins": [
+    {
+      "name": "agentic-sdlc",
+      "source": "./plugins/agentic-sdlc"
+    },
+    {
+      "name": "secure-cloud-agents",
+      "source": "./plugins/secure-cloud-agents"
+    }
+  ]
+}

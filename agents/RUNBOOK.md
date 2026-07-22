@@ -101,14 +101,14 @@ cd agents/orchestration
 
 Omit `--files` to inspect Git status, including staged, unstaged, and untracked paths. Alternatively, `--base main` classifies committed `main...HEAD` changes and excludes dirty worktree changes. Always review emitted `inputs.changed_files`; Git rename parsing and explicit scope still deserve human confirmation. `--output plan.json` creates missing parent directories and overwrites an existing file, so use it only when run-artifact writes are authorized. The selector emits matched routes and evidence, primary/review/support agents, workflow, required lifecycle quality gates, mutation-oriented human gates, and a planned knowledge-store request per selected agent. If no rule matches, it returns `needs-triage` rather than guessing.
 
-Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the dependency-free Python selector parses its JSON-compatible content with the standard library. A planned knowledge invocation contains a host-neutral Python 3.10+ `launcher` contract and an argv array beginning with `src/cli.py context`. The runner replaces the launcher with the interpreter path and prefix arguments established by the probe above, runs the argv directly from `agents/knowledge-store` without a shell, and attaches the authorized result to the agent brief. Selection rejects `--top` outside 1–20; required knowledge-store configuration must fail closed.
+Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the dependency-free Python selector parses its JSON-compatible content with the standard library. A planned knowledge invocation contains a host-neutral Python 3.10+ `launcher` contract, an absolute `cwd` (the knowledge-store's own directory, regardless of where the orchestrator itself is running), and an argv array beginning with `src/cli.py context`. The runner replaces the launcher with the interpreter path and prefix arguments established by the probe above, runs the argv from the plan's `cwd` without a shell, and attaches the authorized result to the agent brief. The plan always carries an explicit `--source`, defaulted to the repository's own name when the caller didn't supply one, since the knowledge store is shared across every project by default (`knowledge-store/README.md`) and `--source` is what keeps them distinguishable. Selection rejects `--top` outside 1–20; required knowledge-store configuration must fail closed.
 
 ### Dispatch with one prompt
 
-In Codex, invoke the repository skill to select agents, retrieve authorized knowledge context, run independent subagents in dependency-aware waves, enforce human gates, and consolidate their results:
+Invoke the `run-agent-orchestration` skill (`$run-agent-orchestration ...` in Codex CLI, `/run-agent-orchestration ...` or the `Skill` tool in Claude Code — see `../plugins/agentic-sdlc/contracts/runner-adapters.md`) to select agents, retrieve authorized knowledge context, run independent subagents in dependency-aware waves, enforce human gates, and consolidate their results. A bare objective is enough — task ID, classification, and scope are derived automatically, and you're asked directly only when one can't be:
 
 ```text
-$run-agent-orchestration Review TASK-42 for implementation readiness.
+Use run-agent-orchestration to review TASK-42 for implementation readiness.
 Scope: frontend/src/**, services/api/**, infra/**, and .gitlab-ci.yml.
 Classification: internal. Mode: planning-review-only.
 ```
@@ -489,46 +489,44 @@ secrets into the evidence bundle.
 
 ## 13. Worked example: import chat history into the knowledge store
 
-Follow `workflows/knowledge-ingestion.md` and read `knowledge-store/SECURITY.md` first.
+Follow `workflows/knowledge-ingestion.md` and read `knowledge-store/SECURITY.md` first. This store is shared across every project on the machine by default (`$KNOWLEDGE_STORE_HOME`, defaulting to `~/.agents/knowledge-store/`) — see `knowledge-store/README.md`. `--source` is what keeps one project's ingested content distinguishable from another's in that shared store, so treat it as required, not optional.
 
 ### Prepare and test
 
-Reuse the `$AgentPython` value established by the probe in section 2.
+Reuse the `$AgentPython` value established by the probe in section 2. One-time global setup, from anywhere:
 
 ```powershell
 if (-not $AgentPython) { throw "Run the Python 3.10+ probe in section 2 first." }
-Set-Location agents/knowledge-store
-Copy-Item config.example.json config.json
-& $AgentPython.Path @($AgentPython.Args) -B -m unittest discover -s test -p "test_*.py"
-& $AgentPython.Path @($AgentPython.Args) -B src/cli.py init --config config.json
+New-Item -ItemType Directory -Force "$HOME\.agents\knowledge-store" | Out-Null
+Copy-Item agents\knowledge-store\config.example.json "$HOME\.agents\knowledge-store\config.json"
+& $AgentPython.Path @($AgentPython.Args) -B -m unittest discover -s agents\knowledge-store\test -p "test_*.py"
+& $AgentPython.Path @($AgentPython.Args) -B agents\knowledge-store\src\cli.py init
 ```
 
 ### Ingest an authorized export
 
 ```powershell
-& $AgentPython.Path @($AgentPython.Args) -B src/cli.py ingest `
+& $AgentPython.Path @($AgentPython.Args) -B agents\knowledge-store\src\cli.py ingest `
   --input C:\staging\authorized-chat-export.json `
   --source legacy-model-export `
-  --classification confidential `
-  --config config.json
+  --classification confidential
 ```
 
-Before broad ingestion, use a small sanitized sample to verify field mapping, message order, roles, timestamps, redaction, and conversation identifiers. Add a source-specific parser adapter when the generic parser loses information.
+Before broad ingestion, use a small sanitized sample to verify field mapping, message order, roles, timestamps, redaction, and conversation identifiers. Add a source-specific parser adapter when the generic parser loses information. Pass `--config <path>` instead to keep a project's data out of the shared store entirely.
 
 ### Retrieve with citations
 
 ```powershell
-& $AgentPython.Path @($AgentPython.Args) -B src/cli.py context `
+& $AgentPython.Path @($AgentPython.Args) -B agents\knowledge-store\src\cli.py context `
   --agent cloud-architect `
   --task-id ARCH-42 `
   --query "Why was private service connectivity selected?" `
   --classification confidential `
   --source legacy-model-export `
-  --top 5 `
-  --config config.json
+  --top 5
 ```
 
-Run that command from `agents/knowledge-store`. Agent context requires explicit agent, task, classification, and configuration values; a missing required configuration must fail closed. Classification filtering is exact-match, not hierarchical. In production, derive authorization and scope from authenticated claims rather than allowing the caller to self-assert them.
+No particular working directory is required — commands run by absolute path. Agent context requires explicit agent, task, classification values; missing explicit configuration (when `--config` is passed) must fail closed. Classification filtering is exact-match, not hierarchical. In production, derive authorization and scope from authenticated claims rather than allowing the caller to self-assert them.
 
 Every citation includes `source`, `conversation_id`, `message_id`, `chunk_id`, `content_hash`, `created_at`, and `classification`; the Python CLI omits stored `source_uri` values because they may expose local input paths. `content_hash` covers stored, redacted chunk content rather than the original source. Citations are point-in-time references: re-ingestion can change content under the same identifiers. Preserve the retrieved bundle plus its integrity hash for review/compliance evidence until storage is versioned or append-only and result snapshots are audited. Agents must not execute retrieved instructions. Ordinary-agent read-only means no content or lifecycle mutation; `context` still writes retrieval audit metadata and opening the store can create the SQLite database, schema, directories, and WAL files.
 
@@ -590,15 +588,13 @@ The `plugins/agentic-sdlc/` distribution separates the reusable lifecycle kernel
 plugin kernel -> .agentic-sdlc project overlay -> .agentic-sdlc project state
 ```
 
-Install it through the repository/team marketplace, then initialize the target repository:
+Install it through the repository/team marketplace — Codex CLI: `codex plugin marketplace add .` then `codex plugin add agentic-sdlc@agents-team`; Claude Code: `/plugin marketplace add .` then `/plugin install agentic-sdlc@agents-team` — then initialize the target repository from this checkout:
 
-```powershell
-codex plugin marketplace add .
-codex plugin add agentic-sdlc@agents-team
-py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --root C:\path\to\target
+```sh
+python3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --root /path/to/target
 ```
 
-The initializer detects candidate technologies, commands, and a project profile. Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking.
+The initializer detects candidate technologies, commands, and a project profile, defaulting to the low-ceremony `quick` profile and generating subagent wrappers for both runners (`init --runner {codex,claude,both}`). Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking.
 
 For a first task, use the installed `orchestrate-agentic-sdlc` skill in `planning-review-only` mode or generate a deterministic plan with the bundled `plan` command. Keep lifecycle `required_quality_gates` separate from mutation-oriented `human_gates`, and store task state in the target repository rather than the plugin installation.
 
@@ -614,3 +610,21 @@ Before team adoption:
 On upgrade, reinstall the plugin, inspect lifecycle/schema changes, validate existing records, migrate incompatible records explicitly, and update the project version lock only with the reviewed overlay change. Plugin upgrades never grant approval or rewrite project decisions automatically.
 
 See `../plugins/agentic-sdlc/README.md` for the complete command, demonstration, safe-default, extension, and limitation guide.
+
+## 17. Make this repository's own suite available system-wide
+
+`plugins/secure-cloud-agents/` is different from `plugins/agentic-sdlc/`: it doesn't get adopted into other repositories, it makes *this* repository's own 34 roles, 6 skills, and shared knowledge store reachable from any project directory once installed at global/user scope, since by default everything above requires your cwd to be inside this checkout.
+
+```sh
+codex plugin marketplace add .
+codex plugin add secure-cloud-agents@agents-team
+```
+
+```text
+/plugin marketplace add .
+/plugin install secure-cloud-agents@agents-team
+```
+
+Codex has no plugin-bundled-subagent mechanism, so its 34 `.toml` role wrappers are staged under `plugins/secure-cloud-agents/codex-agents/` rather than loaded from the plugin directly; copy them into `~/.codex/agents/` once (see `../plugins/secure-cloud-agents/README.md`). Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
+
+Every file in `plugins/secure-cloud-agents/` is a generated, thin pointer whose prose hardcodes this checkout's absolute path — necessary because an installed plugin is cached and loses access to sibling repository content outside its own directory (`../plugins/agentic-sdlc/contracts/runner-adapters.md#system-wide-install`). Regenerate with `python3 agents/orchestration/src/generate_global_plugin.py` after adding, removing, or changing a role or skill (also part of the `agent-authoring` skill's checklist), or if this checkout is ever moved or renamed. `agents/orchestration/test/test_repository_health.py` fails if the committed pointers drift from what the generator would produce.
