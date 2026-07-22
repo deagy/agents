@@ -105,7 +105,9 @@ codex plugin add secure-cloud-agents@agents-team
 /plugin install secure-cloud-agents@agents-team
 ```
 
-Then, once, make the shared knowledge store's config exist:
+`run-agent-orchestration` and `knowledge-ingestion` create the shared
+knowledge store's config automatically the first time either runs, if it
+doesn't already exist. To do it yourself instead of waiting for that:
 
 ```sh
 mkdir -p ~/.agents/knowledge-store
@@ -130,8 +132,9 @@ function agents { & "C:\path\to\this\checkout\bin\agents.ps1" @args }
 ```
 
 See [plugins/secure-cloud-agents/README.md](plugins/secure-cloud-agents/README.md)
-for the Codex-specific extra step its subagents need (Codex has no
-plugin-bundled-agent mechanism) and for how to regenerate after adding a role.
+for how Codex's subagent wrappers get into `~/.codex/agents/` (Codex has no
+plugin-bundled-agent mechanism, but this now syncs automatically on first
+orchestration dispatch) and for how to regenerate after adding a role.
 
 ## Agent orchestration
 

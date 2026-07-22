@@ -36,15 +36,22 @@ Claude Code (pass `--scope user` explicitly, or choose "user" when prompted):
 ```
 
 This makes the 6 skills — and, in Claude Code, the 34 role subagents under
-`agents/*.md` — available in every project you open afterward.
+`agents/*.md` — available in every project you open afterward. Claude Code
+also auto-discovers this plugin's `bin/agents` onto the Bash tool's PATH for
+the session (convention-based, no manifest field needed), so an orchestrating
+Claude Code agent gets `agents <subcommand>` without the "System-wide install"
+`PATH` setup below — that setup is still needed for a human typing `agents` in
+their own terminal, since no plugin can modify a user's shell profile.
 
-### Codex CLI: one extra step for subagents
+### Codex CLI: subagent wrappers sync automatically on first dispatch
 
 Codex has no plugin-bundled-subagent mechanism; custom agents are only
 discovered from `.codex/agents/` (project-scoped) or `~/.codex/agents/`
 (global). The 34 `.toml` wrappers under `codex-agents/` in this plugin are a
-repo-tracked staging copy — Codex does not load them from here directly. Make
-them globally available once with:
+repo-tracked staging copy — Codex does not load them from here directly.
+`run-agent-orchestration`'s "Bootstrap Local Setup" step copies whatever is
+missing or stale into `~/.codex/agents/` the first time it runs each session,
+so this is normally zero-touch. To do it yourself instead (or ahead of time):
 
 ```sh
 mkdir -p ~/.codex/agents
@@ -52,7 +59,8 @@ cp plugins/secure-cloud-agents/codex-agents/*.toml ~/.codex/agents/
 ```
 
 Re-run this copy step after regenerating (below) if you've added, removed, or
-changed a role.
+changed a role, if you'd rather not wait for the next orchestration dispatch
+to pick it up.
 
 ## Regenerating
 

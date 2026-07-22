@@ -1,0 +1,3 @@
+#!/bin/sh
+# This absolute path is specific to this machine's checkout. If it moves, regenerate this plugin with `agents generate-plugin` (bin/agents at the repository root).
+exec "/home/deagy/sdk/agents/bin/agents" "$@"

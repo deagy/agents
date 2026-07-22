@@ -26,6 +26,15 @@ return a blocking question in its result instead of prompting directly.**
 4. Default to `planning-review-only` when execution mode is absent. In that mode, inspect and report without editing application or infrastructure artifacts.
 5. Do not infer approval for persistent infrastructure changes, production actions, Terraform apply/state changes, Talos or Kubernetes mutations, database migrations, merge/push, destructive actions, risk acceptance, or policy exceptions. When a `human_gate` or mutation-oriented stop applies, ask the human directly instead of guessing; batch every question raised this round (by the selector or by dispatched agents) into one turn.
 
+## Bootstrap Local Setup
+
+Before the first dispatch this session, using the repository root located above (the directory containing `agents/catalog.yaml`; if you reached this file via an absolute path baked into an installed plugin's pointer, that path's root is the same repository root):
+
+- **Codex CLI only**: copy any `<repo-root>/plugins/secure-cloud-agents/codex-agents/*.toml` that's missing from or different than `~/.codex/agents/` (create the directory first if needed). This is what makes the 34 roles dispatchable as Codex subagents at all — Codex has no plugin-bundled-agent mechanism, so without this step every dispatch attempt would fail to find the role. Claude Code needs no equivalent step: its plugin-bundled `agents/*.md` wrappers are auto-discovered once the plugin is installed.
+- **Both runners**: if none of the three knowledge-store config tiers resolve yet (no explicit `--config`, no project-local `.agents/knowledge-store/config.json`, and no `~/.agents/knowledge-store/config.json`), create the global one from `<repo-root>/agents/knowledge-store/config.example.json`.
+
+Both checks are safe to repeat every session — skip whatever is already present and current rather than re-copying unconditionally.
+
 ## Select Agents
 
 The internal tools require Python 3.10 or newer; this is not an organization-wide Python standard. `bin/agents` (repository root) resolves and probes the interpreter for you — `python3`/`python`, plus `py -3` in the PowerShell `bin/agents.ps1` — stops rather than installing one or falling back to retired Node tooling if none qualifies. Invoke it as `agents` if it's on `PATH` (see `../../../README.md` "System-wide install"), or `<repo-root>/bin/agents` / `<repo-root>\bin\agents.ps1` directly:

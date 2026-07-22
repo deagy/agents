@@ -109,6 +109,7 @@ class RepositoryHealthTests(unittest.TestCase):
             "agents/orchestration/examples/SAMPLE-001",
             "agents/orchestration/examples/SAMPLE-001-report.md",
             "agents/orchestration/examples/sample-plan.json",
+            "agents/orchestration/runs/.gitignore",
             "agents/orchestration/runs/SAMPLE-001-IMPLEMENT",
             "agents/orchestration/test/test_repository_health.py",
             "agents/orchestration/test/test_run_record_validation.py",
@@ -256,6 +257,40 @@ class RepositoryHealthTests(unittest.TestCase):
         )
         self.assertNotEqual(0, result.returncode)
         self.assertIn("unknown subcommand", result.stderr)
+
+    def test_secure_cloud_agents_plugin_bin_wrapper_matches_direct_invocation(self) -> None:
+        wrapper = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents" / "bin" / "agents"
+        self.assertTrue(wrapper.is_file(), str(wrapper))
+        self.assertTrue(os.access(wrapper, os.X_OK), f"{wrapper} is not executable")
+        selector = ROOT / "orchestration" / "src" / "select_agents.py"
+        arguments = [
+            "--task", "Update the React navigation",
+            "--files", "frontend/src/Nav.tsx",
+            "--classification", "internal",
+            "--task-id", "WRAPPER-HEALTH-4",
+        ]
+        direct = subprocess.run(
+            [sys.executable, str(selector), *arguments],
+            cwd=REPOSITORY_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            via_plugin_wrapper = subprocess.run(
+                [str(wrapper), "select", *arguments],
+                cwd=temporary_directory,
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+        direct_payload = json.loads(direct.stdout)
+        wrapper_payload = json.loads(via_plugin_wrapper.stdout)
+        direct_payload.pop("generated_at", None)
+        wrapper_payload.pop("generated_at", None)
+        self.assertEqual(direct_payload, wrapper_payload)
 
     def test_bin_agents_subcommand_table_is_the_single_source_of_truth(self) -> None:
         table = REPOSITORY_ROOT / "bin" / "subcommands.tsv"
