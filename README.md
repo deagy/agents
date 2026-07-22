@@ -41,7 +41,7 @@ Every role definition, routing rule, quality gate, and orchestration tool in thi
 
 ## Quick start
 
-Read [AGENTS.md](AGENTS.md) first. `bin/agents` resolves a Python 3.10+ interpreter for you (checks `python3`, `python`, `py -3`) — see "System-wide install" to put it on `PATH`, or run it as `./bin/agents` (`.\bin\agents.ps1` in PowerShell) from the repository root. Then validate the internal orchestration tools:
+Read [AGENTS.md](AGENTS.md) first. `bin/agents` resolves a Python 3.10+ interpreter for you (checks `python3`/`python`; `.\bin\agents.ps1` also checks `py -3` in PowerShell) — see "System-wide install" to put it on `PATH`, or run it as `./bin/agents` (`.\bin\agents.ps1` in PowerShell) from the repository root. Then validate the internal orchestration tools:
 
 ```sh
 python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"
@@ -153,12 +153,7 @@ No agent may approve its own work, accept risk, bypass a required gate, or autho
 
 ## Validation
 
-Common local checks:
-
-```powershell
-py -3 -B -m unittest discover -s agents/orchestration/test -p "test_*.py"
-py -3 -B -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
-```
+Common local checks: the same two commands from "Quick start" above.
 
 Component-level checks should run from the relevant project directory and may include Go, frontend, Gherkin, Helm, Terraform, vulnerability scanning, SBOM generation, or browser-engine validation. Never target a persistent environment without explicit approval.
 

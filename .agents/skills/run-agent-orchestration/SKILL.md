@@ -28,7 +28,7 @@ return a blocking question in its result instead of prompting directly.**
 
 ## Select Agents
 
-The internal tools require Python 3.10 or newer; this is not an organization-wide Python standard. `bin/agents` (repository root) resolves and probes the interpreter for you across `python3`/`python`/`py -3` — stops rather than installing one or falling back to retired Node tooling if none qualifies. Invoke it as `agents` if it's on `PATH` (see `../../../README.md` "System-wide install"), or `<repo-root>/bin/agents` / `<repo-root>\bin\agents.ps1` directly:
+The internal tools require Python 3.10 or newer; this is not an organization-wide Python standard. `bin/agents` (repository root) resolves and probes the interpreter for you — `python3`/`python`, plus `py -3` in the PowerShell `bin/agents.ps1` — stops rather than installing one or falling back to retired Node tooling if none qualifies. Invoke it as `agents` if it's on `PATH` (see `../../../README.md` "System-wide install"), or `<repo-root>/bin/agents` / `<repo-root>\bin\agents.ps1` directly:
 
 ```sh
 agents select --task "<objective>" --task-id "<id>" --classification "<level>" --files "<comma-separated paths>"
