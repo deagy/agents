@@ -10,9 +10,11 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 .
 ├── AGENTS.md                 # Repository-wide contributor and safety rules
 ├── agents/                   # Agent roles, policies, workflows, orchestration, support, tests
-├── .agents/skills/           # Publishable Codex skills for this repository
-├── .agents/plugins/          # Repository/team marketplace metadata
-├── plugins/agentic-sdlc/     # Portable Agentic SDLC plugin
+├── .agents/skills/           # Publishable skills for this repository (Codex CLI; pointed to from .claude/skills/)
+├── .agents/plugins/          # Codex CLI repository/team marketplace metadata
+├── .claude/skills/           # Thin pointers to .agents/skills/* for Claude Code discovery
+├── .claude-plugin/           # Claude Code repository/team marketplace metadata
+├── plugins/agentic-sdlc/     # Portable Agentic SDLC plugin (Codex CLI and Claude Code)
 ├── .gitlab-ci.yml            # Validate/test/build/package-only GitLab pipeline
 └── README.md                 # This overview
 ```
@@ -26,8 +28,12 @@ Key areas:
 - [agents/workflows/](agents/workflows/) defines workflows for new services, infrastructure, CI/CD, releases, rollback, knowledge ingestion, and support escalation.
 - [agents/knowledge-store/](agents/knowledge-store/) contains the retrieval layer for approved historical context.
 - [agents/testing/](agents/testing/) and [agents/support/](agents/support/) define black-box testing, end-user testing, support triage, and escalation roles.
-- [.agents/skills/](.agents/skills/) contains Codex skill packaging for repository orchestration.
-- [plugins/agentic-sdlc/](plugins/agentic-sdlc/) packages the portable lifecycle kernel, initializer, validator, and Codex skills for use in other repositories.
+- [.agents/skills/](.agents/skills/) contains this repository's skills, packaged for Codex CLI directly and pointed to from `.claude/skills/` for Claude Code.
+- [plugins/agentic-sdlc/](plugins/agentic-sdlc/) packages the portable lifecycle kernel, initializer, validator, and skills (Codex CLI and Claude Code) for use in other repositories.
+
+## Supported runners
+
+Every role definition, routing rule, quality gate, and orchestration tool in this repository is plain text and data with no model or runner dependency. Two runners are packaged out of the box — Codex CLI and Claude Code — sharing the same skill and role content through per-runner plugin manifests. See [plugins/agentic-sdlc/contracts/runner-adapters.md](plugins/agentic-sdlc/contracts/runner-adapters.md) for the exact mapping (skill invocation, asking the human, subagent dispatch, plugin installation) and for how to use the suite manually from any other runner.
 
 ## Quick start
 
@@ -52,13 +58,27 @@ The selector emits a plan only. It does not run agents, retrieve knowledge, depl
 
 ## Portable plugin quick start
 
-The `agentic-sdlc` plugin packages the reusable G1–G10 lifecycle separately from this repository's cloud-specific configuration. Install it from the repository marketplace, initialize it in a target Git repository, then review the generated overlay before orchestration:
+The `agentic-sdlc` plugin packages the reusable G1–G10 lifecycle separately from this repository's cloud-specific configuration. Install it from the repository marketplace, initialize it in a target Git repository, then review the generated overlay before orchestration. Codex CLI:
 
-```powershell
+```sh
 codex plugin marketplace add .
 codex plugin add agentic-sdlc@agents-team
-py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --root C:\path\to\target
 ```
+
+Claude Code:
+
+```text
+/plugin marketplace add .
+/plugin install agentic-sdlc@agents-team
+```
+
+Either way, initialize the target repository from this repository's checkout:
+
+```sh
+python3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --root /path/to/target
+```
+
+This defaults to the low-ceremony `quick` profile and generates subagent wrappers for both runners (`init --runner {codex,claude,both}`).
 
 Initialization detects candidate technologies and validation commands, but deliberately leaves human authorities, compliance applicability, persistent/production environment classification, and other consequential decisions unresolved. The target project owns those decisions and its lifecycle records under `.agentic-sdlc/`.
 

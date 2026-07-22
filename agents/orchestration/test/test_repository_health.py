@@ -62,6 +62,43 @@ class RepositoryHealthTests(unittest.TestCase):
             )
             self.assertNotEqual(ignored.returncode, 0, f"{skill_dir} is ignored")
 
+    def test_claude_skill_pointers_match_the_canonical_codex_skill(self) -> None:
+        skills_root = REPOSITORY_ROOT / ".agents" / "skills"
+        claude_skills_root = REPOSITORY_ROOT / ".claude" / "skills"
+        for skill_file in skills_root.glob("*/SKILL.md"):
+            skill_name = skill_file.parent.name
+            with self.subTest(skill=skill_name):
+                pointer_file = claude_skills_root / skill_name / "SKILL.md"
+                self.assertTrue(pointer_file.is_file(), str(pointer_file))
+
+                def frontmatter(path: Path) -> dict[str, str]:
+                    content = path.read_text(encoding="utf-8")
+                    block = content.split("---", 2)[1]
+                    return dict(
+                        (part.strip() for part in line.split(":", 1))
+                        for line in block.splitlines()
+                        if line.strip()
+                    )
+
+                canonical = frontmatter(skill_file)
+                pointer = frontmatter(pointer_file)
+                self.assertEqual(canonical["name"], pointer["name"])
+                self.assertEqual(canonical["description"], pointer["description"])
+                self.assertIn(
+                    f".agents/skills/{skill_name}/SKILL.md",
+                    pointer_file.read_text(encoding="utf-8"),
+                )
+
+                tracked = subprocess.run(
+                    ["git", "ls-files", "--error-unmatch", str(pointer_file.relative_to(REPOSITORY_ROOT))],
+                    cwd=REPOSITORY_ROOT,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                )
+                self.assertEqual(tracked.returncode, 0, tracked.stderr)
+
     def test_sample_references_are_limited_to_allowed_archives(self) -> None:
         allowed_prefixes = (
             ".gitignore",

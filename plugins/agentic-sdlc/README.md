@@ -1,6 +1,6 @@
 # Agentic SDLC plugin
 
-This plugin makes the repository's G1–G10 Agentic SDLC portable. It supplies a versioned lifecycle kernel, deterministic planning and validation tools, and Codex skills while leaving project-specific authority and lifecycle state in the target repository.
+This plugin makes the repository's G1–G10 Agentic SDLC portable. It supplies a versioned lifecycle kernel, deterministic planning and validation tools, and skills packaged for both Codex CLI and Claude Code, while leaving project-specific authority and lifecycle state in the target repository. See [runner-adapters.md](contracts/runner-adapters.md) for exactly how each runner maps to skill invocation, human questions, and subagent dispatch.
 
 The intended adoption path is:
 
@@ -13,14 +13,23 @@ Initialization makes a project immediately usable for planning, artifact prepara
 
 ## Install from the team marketplace
 
-The repository marketplace is `.agents/plugins/marketplace.json` and is named `agents-team`. From this repository root, add the marketplace and install the plugin with the Codex CLI:
+Two equivalent marketplace manifests point at the same plugin: `.agents/plugins/marketplace.json` for Codex CLI and `.claude-plugin/marketplace.json` for Claude Code, both named `agents-team`. From this repository root, add the marketplace and install the plugin:
 
-```powershell
+Codex CLI:
+
+```sh
 codex plugin marketplace add .
 codex plugin add agentic-sdlc@agents-team
 ```
 
-Use the equivalent shell commands on macOS or Linux. If your team publishes this marketplace from a shared Git source, use that marketplace source instead of the local checkout. Installation exposes the bundled skills in Codex; it does not edit a target repository.
+Claude Code:
+
+```text
+/plugin marketplace add .
+/plugin install agentic-sdlc@agents-team
+```
+
+If your team publishes this marketplace from a shared Git source, use that marketplace source instead of the local checkout. Installation exposes the bundled skills (and, once a target project is initialized, the generated subagent wrappers); it does not edit a target repository.
 
 ## Initialize a project
 
@@ -63,11 +72,12 @@ Initialization creates or manages this target-repository structure:
 └── runs/<task-id>/
     ├── dispatch-plan.json
     └── run-record.json
-.codex/agents/                 # Profile-selected project agent wrappers
+.codex/agents/                 # Profile-selected project agent wrappers (Codex CLI)
+.claude/agents/                # Profile-selected project agent wrappers (Claude Code)
 AGENTS.md                      # Small managed Agentic SDLC instruction block
 ```
 
-Existing custom agent wrapper files are not overwritten. Use `init --force` only after reviewing its help: it refreshes managed overlay files and can replace project decisions stored in those managed files.
+`init --runner {codex,claude,both}` (default `both`) controls which wrapper set is generated; both are safe to keep even if only one runner is in active use. Existing custom agent wrapper files are not overwritten. Use `init --force` only after reviewing its help: it refreshes managed overlay files and can replace project decisions stored in those managed files.
 
 ## Safe defaults
 
@@ -87,7 +97,9 @@ These defaults allow work products to be prepared immediately while preventing a
 
 ## Profiles and extensions
 
-A profile supplies candidate routing, artifact, gate, and validation defaults for a recognizable project shape. The current kernel includes `generic` and `web-service`; `--profile auto` proposes one from observable repository files. A human reviews the result. Check `init --help` because later releases may add profiles.
+A profile supplies candidate routing, artifact, gate, and validation defaults for a recognizable project shape. The current kernel includes `quick`, `generic`, and `web-service`; `--profile auto` proposes one from observable repository files, favoring `quick` absent a stronger signal. A human reviews the result. Check `init --help` because later releases may add profiles.
+
+`quick` is the recommended starting point for "give it a task and let it orchestrate" use: a small agent set, and routes that carry no required G1-G10 lifecycle gate. `mutation-gates.json` is evaluated independently of profile, so production, destructive, persistent-migration, privileged-identity, and risk-acceptance requests still stop for human approval no matter which profile is active. `generic` and `web-service` are the heavier, opt-in profiles for teams that want the full lifecycle-gate ceremony from the start; see `agents/orchestration/quality-gates.md` in the source repository for what G1-G10 mean.
 
 SQS is an optional impact-profile extension, not a requirement of the portable kernel. Enable it during initialization with `--extension sqs-platform`. Projects that enable it receive the SQS category and specialized BOM applicability questions. Projects that do not use SQS retain the generic lifecycle; they should record the extension as not applicable with an owner and rationale when organizational policy requires that decision. Enabling SQS never supplies missing definitions: unresolved applicable terms remain `unknown` and block their affected gates.
 
@@ -133,7 +145,7 @@ Initialization, detection, planning, status, and invalidation work with Python 3
 py -3 -m pip install -r plugins/agentic-sdlc/requirements-validation.txt
 ```
 
-The plugin also exposes these Codex skills:
+The plugin also exposes these skills, packaged for both Codex CLI and Claude Code:
 
 - `initialize-agentic-sdlc`
 - `orchestrate-agentic-sdlc`
@@ -142,7 +154,7 @@ The plugin also exposes these Codex skills:
 - `invalidate-lifecycle-gates`
 - `runtime-assurance-status`
 
-Use a skill for the guided Codex workflow and the command for deterministic generation, inspection, validation, and CI integration.
+Use a skill for the guided workflow and the command for deterministic generation, inspection, validation, and CI integration.
 
 ## Team demonstration
 
@@ -157,14 +169,21 @@ Use a synthetic or non-production repository for the first demonstration:
 7. Validate and display the project-owned run record.
 8. Change a material upstream assumption and demonstrate downstream invalidation without granting a new approval.
 
-A suitable prompt is:
+A suitable prompt is (see [runner-adapters.md](contracts/runner-adapters.md) for the `$skill-name` vs `/skill-name` distinction):
 
 ```text
-Use $orchestrate-agentic-sdlc in planning-review-only mode.
+Use orchestrate-agentic-sdlc in planning-review-only mode.
 Task ID: TEAM-DEMO-001
 Objective: Define and review a small internal order-processing API.
 Prepare intent, traceable requirements, architecture, governance/data,
 security/crypto, test, and evidence obligations. Do not deploy or approve gates.
+```
+
+A basic prompt also works without a task ID, classification, or explicit mode —
+the skill derives them and asks only when something is genuinely ambiguous:
+
+```text
+Use orchestrate-agentic-sdlc to review whether the order-processing API is ready to ship.
 ```
 
 ## Upgrades and version lock

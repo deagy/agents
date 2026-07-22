@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-Agent roles, policies, workflows, orchestration, testing, support/escalation, and the knowledge store live under `agents/`; publishable repository skills live under `.agents/skills/`. Portable Codex plugins live under `plugins/`, with repo/team marketplace metadata under `.agents/plugins/`. Keep product/application code, tests, migrations, deployment contracts, and infrastructure contracts in clearly scoped project directories.
+Agent roles, policies, workflows, orchestration, testing, support/escalation, and the knowledge store live under `agents/`; publishable repository skills live under `.agents/skills/` (Codex CLI), with thin pointer files under `.claude/skills/` for Claude Code. Portable plugins for both runners live under `plugins/`, with marketplace metadata under `.agents/plugins/` (Codex CLI) and `.claude-plugin/` (Claude Code). Keep product/application code, tests, migrations, deployment contracts, and infrastructure contracts in clearly scoped project directories.
 
 Read `agents/RUNBOOK.md` for orchestration and any project-local `AGENTS.md` before product changes. Keep role definitions and `agents/catalog.yaml` synchronized.
 

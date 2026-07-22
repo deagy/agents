@@ -105,10 +105,10 @@ Edit `orchestration/routing.yaml` to add repository-specific path conventions. A
 
 ### Dispatch with one prompt
 
-In Codex, invoke the repository skill to select agents, retrieve authorized knowledge context, run independent subagents in dependency-aware waves, enforce human gates, and consolidate their results:
+Invoke the `run-agent-orchestration` skill (`$run-agent-orchestration ...` in Codex CLI, `/run-agent-orchestration ...` or the `Skill` tool in Claude Code — see `../plugins/agentic-sdlc/contracts/runner-adapters.md`) to select agents, retrieve authorized knowledge context, run independent subagents in dependency-aware waves, enforce human gates, and consolidate their results. A bare objective is enough — task ID, classification, and scope are derived automatically, and you're asked directly only when one can't be:
 
 ```text
-$run-agent-orchestration Review TASK-42 for implementation readiness.
+Use run-agent-orchestration to review TASK-42 for implementation readiness.
 Scope: frontend/src/**, services/api/**, infra/**, and .gitlab-ci.yml.
 Classification: internal. Mode: planning-review-only.
 ```
@@ -590,15 +590,13 @@ The `plugins/agentic-sdlc/` distribution separates the reusable lifecycle kernel
 plugin kernel -> .agentic-sdlc project overlay -> .agentic-sdlc project state
 ```
 
-Install it through the repository/team marketplace, then initialize the target repository:
+Install it through the repository/team marketplace — Codex CLI: `codex plugin marketplace add .` then `codex plugin add agentic-sdlc@agents-team`; Claude Code: `/plugin marketplace add .` then `/plugin install agentic-sdlc@agents-team` — then initialize the target repository from this checkout:
 
-```powershell
-codex plugin marketplace add .
-codex plugin add agentic-sdlc@agents-team
-py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --root C:\path\to\target
+```sh
+python3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --root /path/to/target
 ```
 
-The initializer detects candidate technologies, commands, and a project profile. Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking.
+The initializer detects candidate technologies, commands, and a project profile, defaulting to the low-ceremony `quick` profile and generating subagent wrappers for both runners (`init --runner {codex,claude,both}`). Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking.
 
 For a first task, use the installed `orchestrate-agentic-sdlc` skill in `planning-review-only` mode or generate a deterministic plan with the bundled `plan` command. Keep lifecycle `required_quality_gates` separate from mutation-oriented `human_gates`, and store task state in the target repository rather than the plugin installation.
 

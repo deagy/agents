@@ -125,7 +125,7 @@ def detect_repository(root: Path) -> dict[str, Any]:
     directories = {path.name for path in root.iterdir() if path.is_dir()} if root.exists() else set()
     service_layout = bool(web_markers.intersection(names) and {"src", "app", "api", "cmd", "internal"}.intersection(directories))
     multi_tier_markers = "package.json" in names and ("go.mod" in names or "requirements.txt" in names or "pyproject.toml" in names)
-    proposed = "web-service" if service_layout or multi_tier_markers else "generic"
+    proposed = "web-service" if service_layout or multi_tier_markers else "quick"
     commands: dict[str, list[str]] = {}
     if "python" in stacks:
         commands["test"] = [sys.executable, "-m", "unittest", "discover"]
@@ -193,8 +193,19 @@ def toml_string(value: str) -> str:
     return json.dumps(value)
 
 
-def write_agent_wrappers(root: Path, profile: dict[str, Any]) -> list[str]:
-    catalog = load_json(CONTRACTS / "agent-catalog.json")["agents"]
+def agent_wrapper_instructions(agent_id: str, reviewer: bool) -> str:
+    return (
+        f"Act as the portable Agentic SDLC role {agent_id}. "
+        "Bind work to the task revision and lifecycle gate. "
+        "Never approve a lifecycle or mutation gate. "
+        + ("Remain independent and do not modify the artifact under review." if reviewer else "Prepare artifacts for independent review; do not self-review.")
+        + " You are a dispatched subagent: you cannot ask the human directly. If you reach a"
+        " decision only a human can make, stop and return a clearly labeled blocking question"
+        " in your result instead of guessing or proceeding."
+    )
+
+
+def write_codex_agent_wrappers(root: Path, profile: dict[str, Any], catalog: dict[str, Any]) -> list[str]:
     created: list[str] = []
     wrapper_dir = confined_path(root, ".codex", "agents")
     wrapper_dir.mkdir(parents=True, exist_ok=True)
@@ -206,21 +217,51 @@ def write_agent_wrappers(root: Path, profile: dict[str, Any]) -> list[str]:
         if target.exists():
             continue
         reviewer = metadata["kind"] == "reviewer"
-        instructions = (
-            f"Act as the portable Agentic SDLC role {agent_id}. "
-            "Bind work to the task revision and lifecycle gate. "
-            "Never approve a lifecycle or mutation gate. "
-            + ("Remain independent and do not modify the artifact under review." if reviewer else "Prepare artifacts for independent review; do not self-review.")
-        )
         content = "\n".join([
             f"name = {toml_string(agent_id)}",
             f"description = {toml_string('Portable Agentic SDLC ' + metadata['kind'] + ' for ' + metadata['phase'])}",
             f"sandbox_mode = {toml_string('read-only' if reviewer else 'workspace-write')}",
-            f"developer_instructions = {toml_string(instructions)}",
+            f"developer_instructions = {toml_string(agent_wrapper_instructions(agent_id, reviewer))}",
             "",
         ])
         target.write_text(content, encoding="utf-8")
         created.append(str(target.relative_to(root)))
+    return created
+
+
+def write_claude_agent_wrappers(root: Path, profile: dict[str, Any], catalog: dict[str, Any]) -> list[str]:
+    created: list[str] = []
+    wrapper_dir = confined_path(root, ".claude", "agents")
+    wrapper_dir.mkdir(parents=True, exist_ok=True)
+    for agent_id in profile.get("agents", []):
+        metadata = catalog.get(agent_id)
+        if not metadata:
+            continue
+        target = wrapper_dir / f"{agent_id}.md"
+        if target.exists():
+            continue
+        reviewer = metadata["kind"] == "reviewer"
+        description = "Portable Agentic SDLC " + metadata["kind"] + " for " + metadata["phase"]
+        frontmatter = "\n".join([
+            "---",
+            f"name: {agent_id}",
+            f"description: {description}",
+            f"tools: {'Read, Grep, Glob, Bash' if reviewer else 'Read, Grep, Glob, Bash, Edit, Write'}",
+            "---",
+            "",
+        ])
+        target.write_text(frontmatter + agent_wrapper_instructions(agent_id, reviewer) + "\n", encoding="utf-8")
+        created.append(str(target.relative_to(root)))
+    return created
+
+
+def write_agent_wrappers(root: Path, profile: dict[str, Any], runner: str = "both") -> list[str]:
+    catalog = load_json(CONTRACTS / "agent-catalog.json")["agents"]
+    created: list[str] = []
+    if runner in ("codex", "both"):
+        created.extend(write_codex_agent_wrappers(root, profile, catalog))
+    if runner in ("claude", "both"):
+        created.extend(write_claude_agent_wrappers(root, profile, catalog))
     return created
 
 
@@ -294,7 +335,7 @@ def initialize(args: argparse.Namespace) -> int:
         )
         created.append(f"{OVERLAY}/version.lock")
     update_agents_md(root)
-    wrappers = write_agent_wrappers(root, profile)
+    wrappers = write_agent_wrappers(root, profile, args.runner)
     print(json.dumps({"status": "initialized", "root": str(root), "profile": profile_id, "created": created, "agent_wrappers_created": wrappers, "ready": False, "blockers": ["Human authorities and impact applicability require explicit decisions."]}, indent=2))
     return 0
 
@@ -790,10 +831,11 @@ def build_parser() -> argparse.ArgumentParser:
     detect.set_defaults(handler=lambda args: (print(json.dumps(detect_repository(Path(args.root)), indent=2)) or 0))
     init = subparsers.add_parser("init", help="Initialize a conservative project overlay")
     init.add_argument("--root", default=".")
-    init.add_argument("--profile", choices=["auto", "generic", "web-service"], default="auto")
+    init.add_argument("--profile", choices=["auto", "quick", "generic", "web-service"], default="auto")
     init.add_argument("--extension", action="append", choices=["sqs-platform"])
     init.add_argument("--project-id")
     init.add_argument("--classification", default="internal")
+    init.add_argument("--runner", choices=["codex", "claude", "both"], default="both", help="Which agent runner(s) to generate subagent wrappers for")
     init.add_argument("--force", action="store_true", help="Refresh managed overlay files; never overwrites custom agent wrappers")
     init.set_defaults(handler=initialize)
     plan = subparsers.add_parser("plan", help="Create a dispatch plan and pending run record")

@@ -1,0 +1,12 @@
+{
+  "name": "agents-team",
+  "owner": {
+    "name": "Agents maintainers"
+  },
+  "plugins": [
+    {
+      "name": "agentic-sdlc",
+      "source": "./plugins/agentic-sdlc"
+    }
+  ]
+}
