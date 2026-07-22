@@ -171,6 +171,26 @@ class KnowledgeStoreTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Invalid classification"):
             search_store(db, config, "release", {"classification": "secret"})
 
+    def test_default_config_path_honors_knowledge_store_home_env_var(self) -> None:
+        home = self.directory / "global-store"
+        (home).mkdir()
+        (home / "config.json").write_text(
+            json.dumps({"database": "store.db", "embedding": {"dimensions": 128}}), encoding="utf-8"
+        )
+        with mock.patch.dict(os.environ, {"KNOWLEDGE_STORE_HOME": str(home)}):
+            config = load_config()
+        self.assertEqual(str((home / "store.db").resolve()), config["database"])
+
+    def test_default_config_path_falls_back_to_home_directory_when_unset(self) -> None:
+        fake_home = self.directory / "fake-home"
+        fake_home.mkdir()
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("KNOWLEDGE_STORE_HOME", None)
+            with mock.patch("config.Path.home", return_value=fake_home):
+                config = load_config()
+        expected = fake_home / ".agents" / "knowledge-store" / "data" / "knowledge.db"
+        self.assertEqual(str(expected.resolve()), config["database"])
+
     def test_cli_utf8_json_and_no_raw_query_on_stderr(self) -> None:
         config_path = self._write_json("config.json", {"database": "store.db", "embedding": {"dimensions": 128}})
         output = run(["init", "--config", str(config_path)])

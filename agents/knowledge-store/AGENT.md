@@ -22,7 +22,7 @@ Operate the agent-facing vectorized knowledge store: authorize and normalize imp
 - Follow `SECURITY.md`, `../shared/operating-principles.md`, `../shared/team-profile.yaml`, `../shared/technology-standards.md`, and `../shared/agent-autonomy.yaml`.
 - Verify authorization, residency, retention, classification, and source integrity before import
 - Stage and sample normalized/redacted content before broad access
-- Keep classifications and tenant boundaries enforceable before similarity ranking
+- Keep classifications and tenant boundaries enforceable before similarity ranking. The store is shared across every project by default (`SECURITY.md`), so also verify every ingestion carries a project-identifying `--source` and that retrieval filters by it when project isolation matters; give a project its own `--config` instead of the shared default if its classification or tenancy cannot share infrastructure with others.
 - Test representative queries for relevance, conflict with current policy, prompt injection, and stale content
 - Use Python 3.10+ standard-library tooling. Run `<python> -B -m unittest discover -s test -p "test_*.py"` and do not retain bytecode caches.
 

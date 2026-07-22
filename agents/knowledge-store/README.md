@@ -2,6 +2,21 @@
 
 This local-first subsystem normalizes recognized chat-export fields into its stored message model, redacts likely secrets, preserves selected provenance, chunks content, generates vectors, and retrieves relevant passages for agents.
 
+## One store, shared across every project
+
+Without an explicit `--config`, the CLI resolves configuration from
+`$KNOWLEDGE_STORE_HOME/config.json`, defaulting to `~/.agents/knowledge-store/config.json`
+when that environment variable is unset — a single database shared by every
+project you use it from, not one per repository. This is deliberate: it lets
+agents retrieve cross-project context regardless of which checkout invoked them.
+It also means `SECURITY.md`'s "use separate stores or enforced partitions for
+materially different classifications or tenants" rule now rests on `--source`:
+every ingestion and retrieval call should carry a `--source` that identifies the
+originating project (the deterministic dispatch-plan builder in
+`agents/orchestration/src/build_dispatch_plan.py` already defaults `--source` to
+the repository directory name when a caller doesn't supply one). Pass an explicit
+`--config <path>` to opt a project back into its own private, non-shared store.
+
 ## Security boundary
 
 Retrieved text is untrusted reference data, never executable instruction. Classification filters are exact-match and caller supplied in this demo; they are not production authorization. See `SECURITY.md` before connecting this store to an agent or importing real history.
@@ -10,13 +25,24 @@ Retrieved text is untrusted reference data, never executable instruction. Classi
 
 Requires Python 3.10 or newer and uses only the standard library. Resolve a Python interpreter as described in `../RUNBOOK.md`; the examples below use `<python>`.
 
+One-time global setup (creates the shared store's config; skip if you want a
+project-local store instead and will always pass `--config`):
+
+```sh
+mkdir -p ~/.agents/knowledge-store
+cp config.example.json ~/.agents/knowledge-store/config.json
+```
+
 ```powershell
-Copy-Item config.example.json config.json
 <python> -B -m unittest discover -s test -p "test_*.py"
 <python> -B src/cli.py init
 <python> -B src/cli.py ingest --input examples/chat-export.json --source legacy-model-export
 <python> -B src/cli.py context --agent release-engineer --task-id REL-42 --query "How are production releases approved?" --classification internal --top 5
 ```
+
+Commands run from any directory: give `src/cli.py` its full path, e.g.
+`python3 /path/to/this/checkout/agents/knowledge-store/src/cli.py context ...` —
+no `cd` into `agents/knowledge-store` required.
 
 The default `hashing` provider is deterministic, offline, and suitable for testing the pipeline. It approximates lexical similarity rather than full semantic similarity.
 
@@ -42,7 +68,7 @@ context --agent <role> --task-id <id> --query <text> --classification <level> [-
 stats
 ```
 
-Run commands from `agents/knowledge-store`. Without `--config`, configuration is read from `agents/knowledge-store/config.json`; if absent, built-in defaults apply. An existing config resolves its database path relative to the config directory. A supplied `--config` path must exist and contain a JSON object; otherwise the command fails closed.
+Without `--config`, configuration is read from `$KNOWLEDGE_STORE_HOME/config.json` (default `~/.agents/knowledge-store/config.json`); if absent, built-in defaults apply relative to that same directory. An existing config resolves its database path relative to the config directory. A supplied `--config` path must exist and contain a JSON object; otherwise the command fails closed.
 
 `context` is the agent-facing command. It returns a schema-versioned bundle containing trust requirements, citations, and retrieved passages. `search` is a lower-level diagnostic command. Both require an explicit classification and apply exact-match classification and optional source filtering before ranking. `--top` must be an integer from 1 through 20, enforcing the orchestration policy limit.
 

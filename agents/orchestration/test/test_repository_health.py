@@ -134,6 +134,58 @@ class RepositoryHealthTests(unittest.TestCase):
 
         self.assertEqual(offenders, [])
 
+    def test_secure_cloud_agents_plugin_is_generated_and_in_sync(self) -> None:
+        generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_global_plugin.py"
+        result = subprocess.run(
+            ["python3", str(generator)],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        diff = subprocess.run(
+            ["git", "diff", "--exit-code", "--stat", "--", "plugins/secure-cloud-agents"],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        self.assertEqual(
+            0,
+            diff.returncode,
+            "plugins/secure-cloud-agents is stale; run "
+            "agents/orchestration/src/generate_global_plugin.py and commit the result:\n" + diff.stdout,
+        )
+
+    def test_secure_cloud_agents_plugin_covers_every_catalog_agent_and_skill(self) -> None:
+        catalog_agents: dict[str, str] = {}
+        current_agent: str | None = None
+        for line in (ROOT / "catalog.yaml").read_text(encoding="utf-8").splitlines():
+            if line.startswith("  ") and not line.startswith("    ") and line.rstrip().endswith(":"):
+                current_agent = line.strip()[:-1]
+                catalog_agents[current_agent] = ""
+
+        plugin_root = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents"
+        for agent_id in catalog_agents:
+            with self.subTest(agent=agent_id):
+                md_path = plugin_root / "agents" / f"{agent_id}.md"
+                toml_path = plugin_root / "codex-agents" / f"{agent_id}.toml"
+                self.assertTrue(md_path.is_file(), str(md_path))
+                self.assertTrue(toml_path.is_file(), str(toml_path))
+                self.assertIn(f"name: {agent_id}", md_path.read_text(encoding="utf-8"))
+                self.assertIn(f'name = "{agent_id}"', toml_path.read_text(encoding="utf-8"))
+
+        skills_root = REPOSITORY_ROOT / ".agents" / "skills"
+        for skill_file in skills_root.glob("*/SKILL.md"):
+            skill_name = skill_file.parent.name
+            with self.subTest(skill=skill_name):
+                pointer = plugin_root / "skills" / skill_name / "SKILL.md"
+                self.assertTrue(pointer.is_file(), str(pointer))
+                self.assertIn(f"name: {skill_name}", pointer.read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()

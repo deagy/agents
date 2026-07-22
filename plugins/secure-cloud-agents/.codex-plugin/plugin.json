@@ -1,0 +1,25 @@
+{
+  "name": "secure-cloud-agents",
+  "version": "0.1.0",
+  "description": "System-wide access to this repository's secure cloud agent suite: 30 specialist roles, orchestration skills, and the shared knowledge store, reachable from any project once installed at global scope.",
+  "author": {
+    "name": "Agents maintainers",
+    "url": "https://github.com/deagy/agents"
+  },
+  "homepage": "https://github.com/deagy/agents",
+  "repository": "https://github.com/deagy/agents",
+  "keywords": ["secure-cloud-agents", "orchestration", "system-wide", "knowledge-store"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Secure Cloud Agents",
+    "shortDescription": "System-wide secure cloud agent suite and orchestration.",
+    "longDescription": "Makes this repository's 30 specialist roles, orchestration skills, and knowledge-store retrieval available in every project, not just this checkout. Every bundled skill and role wrapper is a thin pointer to this checkout's canonical files; regenerate with agents/orchestration/src/generate_global_plugin.py after adding a role or moving the checkout.",
+    "developerName": "Agents maintainers",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": [
+      "Use run-agent-orchestration to review this task through the secure cloud agent suite.",
+      "Ingest or retrieve context from the shared knowledge store."
+    ]
+  }
+}

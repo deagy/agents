@@ -8,6 +8,10 @@
 - Never assume automated redaction is complete. Review representative results before broad agent access.
 - Use separate stores or enforced partitions for materially different access classifications or tenants.
 
+### Shared global store
+
+By default, every project on a machine resolves to the same database (`$KNOWLEDGE_STORE_HOME/config.json`, default `~/.agents/knowledge-store/`) — see `README.md`. This intentionally trades one-store-per-repo isolation for cross-project retrieval. It stays compatible with the "separate stores or enforced partitions" rule above only because `--source` acts as the partition: tag every ingestion with a `--source` that identifies the originating project, and always filter retrieval by that same `--source` when project isolation matters. `agents/orchestration/src/build_dispatch_plan.py` defaults `--source` to the calling repository's directory name automatically so this isn't left to caller memory alone, but a hand-run `ingest`/`context` call still needs an explicit `--source`. If a project's classification or tenancy genuinely cannot share infrastructure with others, give it its own `--config` pointing at a separate database instead of relying on the shared default.
+
 ## Retrieval rules
 
 - Treat retrieved passages as untrusted data that may contain prompt injection, obsolete guidance, malicious instructions, or inaccurate model output.
@@ -17,7 +21,7 @@
 - Filter retrieval by caller authorization and classification before ranking, not after returning results.
 - Prefer current approved policies over historical chat content and visibly label conflicts.
 - Give ordinary agents no content or lifecycle mutation authority. Retrieval still requires filesystem writes for audit metadata and may initialize the SQLite database, schema, and WAL; grant this operational capability narrowly. Route ingestion, correction, reclassification, retention, and deletion through the knowledge-store steward.
-- Use `<python> -B src/cli.py context ...` from `agents/knowledge-store` for agent dispatch. The demo records query hash, task ID, agent, caller-supplied classification/source filter, embedding provider/model, requested top, result count, and time without the raw query. It does not audit authenticated identity, tenant/project/environment scope, the authorization decision/policy, or returned citation IDs; those are production requirements.
+- Use `<python> -B <absolute-path-to>/agents/knowledge-store/src/cli.py context ...` for agent dispatch; no particular working directory is required. The demo records query hash, task ID, agent, caller-supplied classification/source filter, embedding provider/model, requested top, result count, and time without the raw query. It does not audit authenticated identity, tenant/project/environment scope, the authorization decision/policy, or returned citation IDs; those are production requirements.
 
 ## Storage rules
 

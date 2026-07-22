@@ -1,0 +1,15 @@
+{
+  "name": "secure-cloud-agents",
+  "displayName": "Secure Cloud Agents",
+  "version": "0.1.0",
+  "description": "System-wide access to this repository's secure cloud agent suite: 30 specialist roles, orchestration skills, and the shared knowledge store, reachable from any project once installed at global scope.",
+  "author": {
+    "name": "Agents maintainers",
+    "url": "https://github.com/deagy/agents"
+  },
+  "homepage": "https://github.com/deagy/agents",
+  "repository": "https://github.com/deagy/agents",
+  "keywords": ["secure-cloud-agents", "orchestration", "system-wide", "knowledge-store"],
+  "skills": "./skills/",
+  "agents": "./agents/"
+}

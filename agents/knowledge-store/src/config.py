@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 from pathlib import Path
 from typing import Any
 
 
-PACKAGE_ROOT = Path(__file__).resolve().parent.parent
 DEFAULTS: dict[str, Any] = {
     "database": "./data/knowledge.db",
     "embedding": {
@@ -40,6 +40,18 @@ def _positive_integer(value: Any, name: str, minimum: int = 1) -> None:
         raise ValueError(f"{name} must be an integer of at least {minimum}")
 
 
+def default_config_path() -> Path:
+    """Resolve the implicit config location: KNOWLEDGE_STORE_HOME, else ~/.agents/knowledge-store.
+
+    This is a single store shared across every project on the machine, by design —
+    see agents/knowledge-store/SECURITY.md for the source-based partitioning this
+    requires of callers.
+    """
+    home = os.environ.get("KNOWLEDGE_STORE_HOME")
+    base = Path(home).expanduser() if home else Path.home() / ".agents" / "knowledge-store"
+    return base / "config.json"
+
+
 def load_config(config_path: str | None = None) -> dict[str, Any]:
     """Load config, failing closed when an explicit path does not exist."""
     if config_path:
@@ -47,7 +59,7 @@ def load_config(config_path: str | None = None) -> dict[str, Any]:
         if not selected.is_file():
             raise FileNotFoundError(f"Explicit config file does not exist: {selected}")
     else:
-        selected = PACKAGE_ROOT / "config.json"
+        selected = default_config_path()
 
     supplied: dict[str, Any] = {}
     if selected.is_file():
@@ -63,7 +75,7 @@ def load_config(config_path: str | None = None) -> dict[str, Any]:
             raise ValueError(f"{section} must be a JSON object")
     if not isinstance(config.get("database"), str) or not config["database"].strip():
         raise ValueError("database must be a non-empty string")
-    base_directory = selected.parent if selected.is_file() else PACKAGE_ROOT
+    base_directory = selected.parent
     database = Path(config["database"])
     config["database"] = str((base_directory / database).resolve() if not database.is_absolute() else database.resolve())
 

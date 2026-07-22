@@ -2,7 +2,7 @@
 
 This directory defines an agent team for designing, building, observing, operating, black-box testing, end-user testing, supporting, escalating, reviewing, documenting, and releasing the team's self-hosted Proxmox, Talos, Kubernetes, Terraform, Helm, Go/Python/PostgreSQL backends, React/TypeScript frontends, Gherkin tests, and GitLab delivery platform.
 
-The `knowledge-store/` subsystem is the shared agent retrieval layer for authorized historical material. The selector plans role-specific queries; the orchestration runner resolves Python 3.10+ and executes `src/cli.py context ...` from `knowledge-store/`, then attaches cited results before agent execution. Retrieved content is untrusted reference data and never overrides current policies or agent authority.
+The `knowledge-store/` subsystem is the shared agent retrieval layer for authorized historical material, shared across every project on the machine by default (see `knowledge-store/README.md`). The selector plans role-specific queries with an absolute `cwd` and an explicit `--source`; the orchestration runner resolves Python 3.10+ and executes `src/cli.py context ...`, then attaches cited results before agent execution. Retrieved content is untrusted reference data and never overrides current policies or agent authority.
 
 Start with `RUNBOOK.md` for operating instructions and worked examples.
 
@@ -37,3 +37,7 @@ py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --root C:\path\to\target
 ```
 
 The portable initializer proposes detectable values and leaves consequential unknowns unresolved. Human authority, compliance applicability, environment persistence/production status, risk acceptance, and SQS applicability must be assigned or decided by accountable humans. See `../plugins/agentic-sdlc/README.md` for the installation and upgrade guide, and the portable-use section of `RUNBOOK.md` for operational handoff.
+
+## System-wide adoption
+
+Unlike the portable kernel above, `../plugins/secure-cloud-agents/` does not get copied into other repositories — it makes *this* suite (roles, skills, knowledge store) reachable from any project directory on the machine once installed at global/user scope, since none of it is discoverable from outside this checkout by default. See `../plugins/secure-cloud-agents/README.md` and `RUNBOOK.md` section 17.
