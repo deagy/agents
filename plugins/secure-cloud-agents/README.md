@@ -71,6 +71,16 @@ in CI rather than discovered later. Commit the regenerated files (and re-run
 the Codex copy step above) as part of the same change that touched the role or
 skill.
 
+## Extensions
+
+`extensions/` here is hand-maintained, not generated. It holds this
+repository's optional `agentic-sdlc` impact-profile extensions (currently
+`sqs-platform`) — kept here rather than in the portable
+`plugins/agentic-sdlc/` kernel so that plugin can stay generic. See
+[`../agentic-sdlc/README.md`](../agentic-sdlc/README.md#profiles-and-extensions)
+for how `--extension <id>` resolves against a sibling plugin's `extensions/`
+directory.
+
 ## Using it
 
 Once installed, invoke `run-agent-orchestration` (or any of the other five

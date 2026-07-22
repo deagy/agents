@@ -17,7 +17,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 ├── .claude-plugin/           # Claude Code repository/team marketplace metadata
 ├── plugins/agentic-sdlc/     # Portable Agentic SDLC plugin (Codex CLI and Claude Code)
 ├── plugins/secure-cloud-agents/ # This repo's own suite, packaged for system-wide install
-├── .gitlab-ci.yml            # Validate/test/build/package-only GitLab pipeline
+├── .github/workflows/        # Validate-only GitHub Actions pipeline (tests, bin/agents smoke test, secret scan)
 └── README.md                 # This overview
 ```
 

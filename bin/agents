@@ -21,6 +21,8 @@ resolve_script_dir() {
 
 BIN_DIR=$(resolve_script_dir "$0")
 REPO_ROOT=$(CDPATH= cd -- "$BIN_DIR/.." && pwd)
+SUBCOMMANDS="$BIN_DIR/subcommands.tsv"
+TAB=$(printf '\t')
 
 AGENT_PYTHON=
 for candidate in python3 python; do
@@ -33,44 +35,35 @@ done
 [ -n "$AGENT_PYTHON" ] || { echo "agents: Python 3.10+ is required (checked python3, python)" >&2; exit 1; }
 
 usage() {
-  cat <<'EOF'
-Usage: agents <subcommand> [args...]
-
-Subcommands:
-  select           Deterministic agent/gate selection (select_agents.py)
-  knowledge        Vectorized knowledge store CLI (knowledge-store/src/cli.py)
-  sdlc             Portable Agentic SDLC CLI (agentic_sdlc.py)
-  validate-run     Validate a repository-suite run record (validate_run_record.py)
-  generate-plugin  Regenerate plugins/secure-cloud-agents/ (generate_global_plugin.py)
-  help             Show this message
-
-Each subcommand's own --help documents its arguments, e.g. `agents sdlc plan --help`.
-EOF
+  echo "Usage: agents <subcommand> [args...]"
+  echo
+  echo "Subcommands:"
+  while IFS="$TAB" read -r name _script description; do
+    printf '  %-16s %s\n' "$name" "$description"
+  done < "$SUBCOMMANDS"
+  printf '  %-16s %s\n' help "Show this message"
+  echo
+  echo "Each subcommand's own --help documents its arguments, e.g. \`agents sdlc plan --help\`."
 }
 
 command="${1:-help}"
 [ "$#" -gt 0 ] && shift || true
 
 case "$command" in
-  select)
-    exec "$AGENT_PYTHON" "$REPO_ROOT/agents/orchestration/src/select_agents.py" "$@"
-    ;;
-  knowledge)
-    exec "$AGENT_PYTHON" "$REPO_ROOT/agents/knowledge-store/src/cli.py" "$@"
-    ;;
-  sdlc)
-    exec "$AGENT_PYTHON" "$REPO_ROOT/plugins/agentic-sdlc/scripts/agentic_sdlc.py" "$@"
-    ;;
-  validate-run)
-    exec "$AGENT_PYTHON" "$REPO_ROOT/agents/orchestration/src/validate_run_record.py" "$@"
-    ;;
-  generate-plugin)
-    exec "$AGENT_PYTHON" "$REPO_ROOT/agents/orchestration/src/generate_global_plugin.py" "$@"
-    ;;
   help|-h|--help)
     usage
     ;;
   *)
+    script=""
+    while IFS="$TAB" read -r name path _description; do
+      if [ "$name" = "$command" ]; then
+        script="$path"
+        break
+      fi
+    done < "$SUBCOMMANDS"
+    if [ -n "$script" ]; then
+      exec "$AGENT_PYTHON" "$REPO_ROOT/$script" "$@"
+    fi
     echo "agents: unknown subcommand '$command'" >&2
     usage >&2
     exit 1

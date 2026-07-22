@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -247,6 +248,75 @@ class RepositoryHealthTests(unittest.TestCase):
         wrapper = REPOSITORY_ROOT / "bin" / "agents"
         result = subprocess.run(
             [str(wrapper), "not-a-real-subcommand"],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("unknown subcommand", result.stderr)
+
+    def test_bin_agents_subcommand_table_is_the_single_source_of_truth(self) -> None:
+        table = REPOSITORY_ROOT / "bin" / "subcommands.tsv"
+        self.assertTrue(table.is_file(), str(table))
+        rows = [line.split("\t") for line in table.read_text(encoding="utf-8").splitlines() if line]
+        self.assertTrue(rows)
+        for name, script, description in rows:
+            with self.subTest(subcommand=name):
+                self.assertTrue((REPOSITORY_ROOT / script).is_file(), script)
+                self.assertTrue(description)
+        sh_source = (REPOSITORY_ROOT / "bin" / "agents").read_text(encoding="utf-8")
+        ps1_source = (REPOSITORY_ROOT / "bin" / "agents.ps1").read_text(encoding="utf-8")
+        for source in (sh_source, ps1_source):
+            self.assertIn("subcommands.tsv", source)
+            for _name, script, _description in rows:
+                self.assertNotIn(script, source, "subcommand table must not also be hardcoded in the wrapper")
+
+    def _powershell_interpreter(self) -> str | None:
+        return shutil.which("pwsh") or shutil.which("powershell")
+
+    def test_bin_agents_ps1_wrapper_dispatches_select_matching_direct_invocation(self) -> None:
+        interpreter = self._powershell_interpreter()
+        if interpreter is None:
+            self.skipTest("no PowerShell interpreter (pwsh/powershell) available")
+        wrapper = REPOSITORY_ROOT / "bin" / "agents.ps1"
+        selector = ROOT / "orchestration" / "src" / "select_agents.py"
+        arguments = [
+            "--task", "Update the React navigation",
+            "--files", "frontend/src/Nav.tsx",
+            "--classification", "internal",
+            "--task-id", "WRAPPER-HEALTH-3",
+        ]
+        direct = subprocess.run(
+            [sys.executable, str(selector), *arguments],
+            cwd=REPOSITORY_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        via_wrapper = subprocess.run(
+            [interpreter, "-File", str(wrapper), "select", *arguments],
+            cwd=REPOSITORY_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        direct_payload = json.loads(direct.stdout)
+        wrapper_payload = json.loads(via_wrapper.stdout)
+        direct_payload.pop("generated_at", None)
+        wrapper_payload.pop("generated_at", None)
+        self.assertEqual(direct_payload, wrapper_payload)
+
+    def test_bin_agents_ps1_wrapper_rejects_unknown_subcommand(self) -> None:
+        interpreter = self._powershell_interpreter()
+        if interpreter is None:
+            self.skipTest("no PowerShell interpreter (pwsh/powershell) available")
+        wrapper = REPOSITORY_ROOT / "bin" / "agents.ps1"
+        result = subprocess.run(
+            [interpreter, "-File", str(wrapper), "not-a-real-subcommand"],
             cwd=REPOSITORY_ROOT,
             check=False,
             capture_output=True,

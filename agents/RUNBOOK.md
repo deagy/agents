@@ -100,6 +100,7 @@ Always attach or reference:
 - Approved intent and requirements-baseline identifiers when the task has entered design.
 - Lifecycle phase, applicable quality gates, and the authoritative run-record location.
 - The SQS impact profile when any supplied Platform category may apply; `unknown` applicable items fail closed.
+- `shared/definition-of-done.md` for the completion criteria a reviewer checks against.
 
 ### Generic dispatch prompt
 
@@ -115,6 +116,7 @@ Follow:
 - agents/shared/agent-autonomy.yaml
 - agents/shared/cloud-guardrails.md
 - agents/shared/risk-severity-model.md
+- agents/shared/definition-of-done.md
 - agents/orchestration/escalation-policy.md
 
 Task brief: <paste the completed task brief>
@@ -514,7 +516,7 @@ The default hashing embedder validates the workflow but provides lexical rather 
 
 ## 14. Production release checklist
 
-Before the release engineer requests human approval, confirm:
+The general completion bar is `shared/definition-of-done.md`; before the release engineer requests human approval, confirm the release-specific form of it:
 
 - Lifecycle gates G1 through G8 are approved for the exact revision and target, or explicitly not applicable with accountable rationale.
 - Architecture, governance/data, security/crypto, verification/test, and evidence criteria are satisfied.

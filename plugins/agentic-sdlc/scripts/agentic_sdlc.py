@@ -19,6 +19,10 @@ PLUGIN_ROOT = Path(__file__).resolve().parent.parent
 CONTRACTS = PLUGIN_ROOT / "contracts"
 PROFILES = PLUGIN_ROOT / "profiles"
 EXTENSIONS = PLUGIN_ROOT / "extensions"
+# Extensions are optional impact-profile add-ons. The portable kernel ships none of
+# its own; this repository's own domain plugin contributes them from its own
+# directory when present alongside this one, without agentic-sdlc depending on it.
+EXTENSIONS_SEARCH_PATH = [EXTENSIONS, PLUGIN_ROOT.parent / "secure-cloud-agents" / "extensions"]
 OVERLAY = ".agentic-sdlc"
 GATE_IDS = [f"G{number}" for number in range(1, 11)]
 REQUIRED_AUTHORITY_ROLES = {
@@ -287,8 +291,11 @@ def initialize(args: argparse.Namespace) -> int:
     impact = [impact_item(item_id, "generic-software") for item_id in profile.get("impact_categories", [])]
     specialized_boms: list[dict[str, Any]] = []
     for extension_id in extension_ids:
-        extension_path = EXTENSIONS / extension_id / "extension.json"
-        if not extension_path.exists():
+        extension_path = next(
+            (candidate for path in EXTENSIONS_SEARCH_PATH if (candidate := path / extension_id / "extension.json").exists()),
+            None,
+        )
+        if extension_path is None:
             raise ValueError(f"unknown extension: {extension_id}")
         extension = load_json(extension_path)
         impact.extend(impact_item(item_id, extension_id) for item_id in extension.get("impact_categories", []))
@@ -832,7 +839,7 @@ def build_parser() -> argparse.ArgumentParser:
     init = subparsers.add_parser("init", help="Initialize a conservative project overlay")
     init.add_argument("--root", default=".")
     init.add_argument("--profile", choices=["auto", "quick", "generic", "web-service"], default="auto")
-    init.add_argument("--extension", action="append", choices=["sqs-platform"])
+    init.add_argument("--extension", action="append", help="Enable an impact-profile extension by id (resolved at init time; see EXTENSIONS_SEARCH_PATH)")
     init.add_argument("--project-id")
     init.add_argument("--classification", default="internal")
     init.add_argument("--runner", choices=["codex", "claude", "both"], default="both", help="Which agent runner(s) to generate subagent wrappers for")

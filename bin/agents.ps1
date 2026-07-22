@@ -3,6 +3,11 @@
 # $PROFILE function so it can be invoked as bare `agents`.
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
+$SubcommandsPath = Join-Path $PSScriptRoot "subcommands.tsv"
+$Subcommands = Get-Content $SubcommandsPath | Where-Object { $_ -ne "" } | ForEach-Object {
+  $Fields = $_ -split "`t"
+  [pscustomobject]@{ Name = $Fields[0]; Script = $Fields[1]; Description = $Fields[2] }
+}
 
 $AgentPython = $null
 foreach ($Candidate in @(
@@ -19,32 +24,28 @@ foreach ($Candidate in @(
 if (-not $AgentPython) { throw "agents: Python 3.10+ is required (checked python, python3, py -3)" }
 
 function Show-Usage {
-  @"
-Usage: agents <subcommand> [args...]
-
-Subcommands:
-  select           Deterministic agent/gate selection (select_agents.py)
-  knowledge        Vectorized knowledge store CLI (knowledge-store/src/cli.py)
-  sdlc             Portable Agentic SDLC CLI (agentic_sdlc.py)
-  validate-run     Validate a repository-suite run record (validate_run_record.py)
-  generate-plugin  Regenerate plugins/secure-cloud-agents/ (generate_global_plugin.py)
-  help             Show this message
-
-Each subcommand's own --help documents its arguments, e.g. `agents sdlc plan --help`.
-"@
+  Write-Output "Usage: agents <subcommand> [args...]"
+  Write-Output ""
+  Write-Output "Subcommands:"
+  foreach ($Sub in $Subcommands) {
+    Write-Output ("  {0,-16} {1}" -f $Sub.Name, $Sub.Description)
+  }
+  Write-Output ("  {0,-16} {1}" -f "help", "Show this message")
+  Write-Output ""
+  Write-Output "Each subcommand's own --help documents its arguments, e.g. ``agents sdlc plan --help``."
 }
 
 $Command, $Rest = $args
 if (-not $Command) { $Command = "help" }
 
-switch ($Command) {
-  "select"          { & $AgentPython.Path @($AgentPython.Args) "$RepoRoot\agents\orchestration\src\select_agents.py" @Rest }
-  "knowledge"       { & $AgentPython.Path @($AgentPython.Args) "$RepoRoot\agents\knowledge-store\src\cli.py" @Rest }
-  "sdlc"            { & $AgentPython.Path @($AgentPython.Args) "$RepoRoot\plugins\agentic-sdlc\scripts\agentic_sdlc.py" @Rest }
-  "validate-run"    { & $AgentPython.Path @($AgentPython.Args) "$RepoRoot\agents\orchestration\src\validate_run_record.py" @Rest }
-  "generate-plugin" { & $AgentPython.Path @($AgentPython.Args) "$RepoRoot\agents\orchestration\src\generate_global_plugin.py" @Rest }
-  { $_ -in "help", "-h", "--help" } { Show-Usage }
-  default {
+if ($Command -in @("help", "-h", "--help")) {
+  Show-Usage
+} else {
+  $Match = $Subcommands | Where-Object { $_.Name -eq $Command } | Select-Object -First 1
+  if ($Match) {
+    $ScriptPath = Join-Path $RepoRoot ($Match.Script -replace "/", [System.IO.Path]::DirectorySeparatorChar)
+    & $AgentPython.Path @($AgentPython.Args) $ScriptPath @Rest
+  } else {
     Write-Error "agents: unknown subcommand '$Command'"
     Show-Usage
     exit 1
