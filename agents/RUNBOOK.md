@@ -57,51 +57,20 @@ Use `workflows/debugging.md` when reproducing defects, analyzing runtime failure
 
 ### Select agents locally
 
-The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. Schema version 2 plans include lifecycle `required_quality_gates` separately from mutation-oriented `human_gates`. The selector creates a dispatch plan but does not retrieve knowledge, invoke agents, approve gates, merge, deploy, or mutate infrastructure. Internal tools require Python 3.10 or newer; this does not establish an organization-wide Python version.
-
-```powershell
-$AgentPython = $null
-foreach ($Candidate in @(
-  [pscustomobject]@{ Name = "python"; Args = @() },
-  [pscustomobject]@{ Name = "python3"; Args = @() },
-  [pscustomobject]@{ Name = "py"; Args = @("-3") }
-)) {
-  $Command = Get-Command $Candidate.Name -ErrorAction SilentlyContinue
-  if ($Command) {
-    & $Command.Source @($Candidate.Args) -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" 2>$null
-    if ($LASTEXITCODE -eq 0) { $AgentPython = [pscustomobject]@{ Path = $Command.Source; Args = $Candidate.Args }; break }
-  }
-}
-if (-not $AgentPython) { throw "Python 3.10+ is required for internal tools." }
-
-Push-Location agents/orchestration
-try {
-  & $AgentPython.Path @($AgentPython.Args) -B -m unittest discover -s test -p "test_*.py"
-  & $AgentPython.Path @($AgentPython.Args) -B src/select_agents.py `
-  --task "Add a React upload form backed by a PostgreSQL API" `
-  --files frontend/src/Upload.tsx,services/upload/main.go `
-  --task-id APP-42 `
-  --classification internal
-} finally { Pop-Location }
-```
-
-On Unix:
+The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. Schema version 2 plans include lifecycle `required_quality_gates` separately from mutation-oriented `human_gates`. The selector creates a dispatch plan but does not retrieve knowledge, invoke agents, approve gates, merge, deploy, or mutate infrastructure. Run it through `bin/agents` (repository root), which resolves a Python 3.10+ interpreter for you across `python3`/`python`/`py -3`; this does not establish an organization-wide Python version. Put it on `PATH` first (see `../README.md` "System-wide install") or invoke it as `../bin/agents` / `..\bin\agents.ps1` from this directory.
 
 ```sh
-AGENT_PYTHON=
-for candidate in python3 python; do
-  command -v "$candidate" >/dev/null 2>&1 || continue
-  "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' && AGENT_PYTHON="$candidate" && break
-done
-[ -n "${AGENT_PYTHON:-}" ] || { echo "Python 3.10+ is required" >&2; exit 1; }
-cd agents/orchestration
-"$AGENT_PYTHON" -B -m unittest discover -s test -p 'test_*.py'
-"$AGENT_PYTHON" -B src/select_agents.py --task "Update Terraform" --files main.tf
+python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"
+agents select \
+  --task "Add a React upload form backed by a PostgreSQL API" \
+  --files frontend/src/Upload.tsx,services/upload/main.go \
+  --task-id APP-42 \
+  --classification internal
 ```
 
 Omit `--files` to inspect Git status, including staged, unstaged, and untracked paths. Alternatively, `--base main` classifies committed `main...HEAD` changes and excludes dirty worktree changes. Always review emitted `inputs.changed_files`; Git rename parsing and explicit scope still deserve human confirmation. `--output plan.json` creates missing parent directories and overwrites an existing file, so use it only when run-artifact writes are authorized. The selector emits matched routes and evidence, primary/review/support agents, workflow, required lifecycle quality gates, mutation-oriented human gates, and a planned knowledge-store request per selected agent. If no rule matches, it returns `needs-triage` rather than guessing.
 
-Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the dependency-free Python selector parses its JSON-compatible content with the standard library. A planned knowledge invocation contains a host-neutral Python 3.10+ `launcher` contract and an argv array beginning with the knowledge-store CLI's absolute path (`src/cli.py`), runnable without changing directory — that also means `Path.cwd()` inside `cli.py` reflects wherever the caller actually is, which is what lets its project-local-vs-global config resolution work. The runner replaces the launcher with the interpreter path and prefix arguments established by the probe above and attaches the authorized result to the agent brief. The plan always carries an explicit `--source`, defaulted to the repository's own name when the caller didn't supply one, since the knowledge store falls back to a store shared across every project by default (`knowledge-store/README.md`) and `--source` is what keeps them distinguishable there. Selection rejects `--top` outside 1–20; required knowledge-store configuration must fail closed.
+Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the dependency-free Python selector parses its JSON-compatible content with the standard library. A planned knowledge invocation contains a host-neutral Python 3.10+ `launcher` contract and an argv array beginning with the knowledge-store CLI's absolute path (`src/cli.py`), runnable without changing directory — that also means `Path.cwd()` inside `cli.py` reflects wherever the caller actually is, which is what lets its project-local-vs-global config resolution work. `bin/agents knowledge ...` runs the same script; the plan itself embeds the interpreter-agnostic launcher contract for callers that substitute their own probed interpreter path instead. The plan always carries an explicit `--source`, defaulted to the repository's own name when the caller didn't supply one, since the knowledge store falls back to a store shared across every project by default (`knowledge-store/README.md`) and `--source` is what keeps them distinguishable there. Selection rejects `--top` outside 1–20; required knowledge-store configuration must fail closed.
 
 ### Dispatch with one prompt
 
@@ -197,8 +166,8 @@ Use `workflows/product-intake.md` while work is limited to intent and requiremen
 
 Validate a YAML or JSON run record before handoff:
 
-```powershell
-py -3 agents/orchestration/src/validate_run_record.py agents/orchestration/runs/<task-id>/run-record.yaml
+```sh
+agents validate-run agents/orchestration/runs/<task-id>/run-record.yaml
 ```
 
 Run-record validation requires the pinned YAML and Draft 2020-12 dependencies in `orchestration/requirements-validation.txt`. The validator enforces the complete JSON Schema (including formats, nested types, and closed objects), gate order, gate-specific reviewer and human authority, explicit conditional-authority applicability, author/verifier/approver separation, blocking findings, exceptions and expiry, SQS/BOM uniqueness and fail-closed state, and downstream invalidation.
@@ -493,22 +462,21 @@ Follow `workflows/knowledge-ingestion.md` and read `knowledge-store/SECURITY.md`
 
 ### Prepare and test
 
-Reuse the `$AgentPython` value established by the probe in section 2. One-time global setup, from anywhere:
+`bin/agents` resolves the Python 3.10+ interpreter for you. One-time global setup, from anywhere `agents` is on `PATH` (see "System-wide install" in `../README.md`):
 
-```powershell
-if (-not $AgentPython) { throw "Run the Python 3.10+ probe in section 2 first." }
-New-Item -ItemType Directory -Force "$HOME\.agents\knowledge-store" | Out-Null
-Copy-Item agents\knowledge-store\config.example.json "$HOME\.agents\knowledge-store\config.json"
-& $AgentPython.Path @($AgentPython.Args) -B -m unittest discover -s agents\knowledge-store\test -p "test_*.py"
-& $AgentPython.Path @($AgentPython.Args) -B agents\knowledge-store\src\cli.py init
+```sh
+mkdir -p ~/.agents/knowledge-store
+cp agents/knowledge-store/config.example.json ~/.agents/knowledge-store/config.json
+python3 -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
+agents knowledge init
 ```
 
 ### Ingest an authorized export
 
-```powershell
-& $AgentPython.Path @($AgentPython.Args) -B agents\knowledge-store\src\cli.py ingest `
-  --input C:\staging\authorized-chat-export.json `
-  --source legacy-model-export `
+```sh
+agents knowledge ingest \
+  --input /staging/authorized-chat-export.json \
+  --source legacy-model-export \
   --classification confidential
 ```
 
@@ -516,13 +484,13 @@ Before broad ingestion, use a small sanitized sample to verify field mapping, me
 
 ### Retrieve with citations
 
-```powershell
-& $AgentPython.Path @($AgentPython.Args) -B agents\knowledge-store\src\cli.py context `
-  --agent cloud-architect `
-  --task-id ARCH-42 `
-  --query "Why was private service connectivity selected?" `
-  --classification confidential `
-  --source legacy-model-export `
+```sh
+agents knowledge context \
+  --agent cloud-architect \
+  --task-id ARCH-42 \
+  --query "Why was private service connectivity selected?" \
+  --classification confidential \
+  --source legacy-model-export \
   --top 5
 ```
 
@@ -591,7 +559,7 @@ plugin kernel -> .agentic-sdlc project overlay -> .agentic-sdlc project state
 Install it through the repository/team marketplace — Codex CLI: `codex plugin marketplace add .` then `codex plugin add agentic-sdlc@agents-team`; Claude Code: `/plugin marketplace add .` then `/plugin install agentic-sdlc@agents-team` — then initialize the target repository from this checkout:
 
 ```sh
-python3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --root /path/to/target
+agents sdlc init --root /path/to/target
 ```
 
 The initializer detects candidate technologies, commands, and a project profile, defaulting to the low-ceremony `quick` profile and generating subagent wrappers for both runners (`init --runner {codex,claude,both}`). Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking.
@@ -627,4 +595,4 @@ codex plugin add secure-cloud-agents@agents-team
 
 Codex has no plugin-bundled-subagent mechanism, so its 34 `.toml` role wrappers are staged under `plugins/secure-cloud-agents/codex-agents/` rather than loaded from the plugin directly; copy them into `~/.codex/agents/` once (see `../plugins/secure-cloud-agents/README.md`). Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
 
-Every file in `plugins/secure-cloud-agents/` is a generated, thin pointer whose prose hardcodes this checkout's absolute path — necessary because an installed plugin is cached and loses access to sibling repository content outside its own directory (`../plugins/agentic-sdlc/contracts/runner-adapters.md#system-wide-install`). Regenerate with `python3 agents/orchestration/src/generate_global_plugin.py` after adding, removing, or changing a role or skill (also part of the `agent-authoring` skill's checklist), or if this checkout is ever moved or renamed. `agents/orchestration/test/test_repository_health.py` fails if the committed pointers drift from what the generator would produce.
+Every file in `plugins/secure-cloud-agents/` is a generated, thin pointer whose prose hardcodes this checkout's absolute path — necessary because an installed plugin is cached and loses access to sibling repository content outside its own directory (`../plugins/agentic-sdlc/contracts/runner-adapters.md#system-wide-install`). Regenerate with `agents generate-plugin` after adding, removing, or changing a role or skill (also part of the `agent-authoring` skill's checklist), or if this checkout is ever moved or renamed. `agents/orchestration/test/test_repository_health.py` fails if the committed pointers drift from what the generator would produce.

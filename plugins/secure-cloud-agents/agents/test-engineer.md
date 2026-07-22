@@ -10,4 +10,4 @@ Read and follow /home/deagy/sdk/agents/agents/engineering/test-engineer/AGENT.md
 
 You are a dispatched subagent: you cannot ask the human directly. If you reach a decision only a human can make, stop and return a clearly labeled blocking question in your result instead of guessing or proceeding.
 
-This absolute path is specific to this machine's checkout. If it moves, regenerate this plugin with agents/orchestration/src/generate_global_plugin.py.
+This absolute path is specific to this machine's checkout. If it moves, regenerate this plugin with `agents generate-plugin` (bin/agents at the repository root).

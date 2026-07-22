@@ -9,6 +9,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 ```text
 .
 ├── AGENTS.md                 # Repository-wide contributor and safety rules
+├── bin/agents                # CLI dispatcher for every Python tool below (bin/agents.ps1 for PowerShell)
 ├── agents/                   # Agent roles, policies, workflows, orchestration, support, tests
 ├── .agents/skills/           # Publishable skills for this repository (Codex CLI; pointed to from .claude/skills/)
 ├── .agents/plugins/          # Codex CLI repository/team marketplace metadata
@@ -22,6 +23,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 
 Key areas:
 
+- [bin/agents](bin/agents) dispatches every Python tool in this repository (`agents select`, `agents knowledge`, `agents sdlc`, `agents validate-run`, `agents generate-plugin`) so nothing below needs to be invoked as `python3 <path>` directly; see "System-wide install".
 - [agents/catalog.yaml](agents/catalog.yaml) is the machine-readable role inventory.
 - [agents/RUNBOOK.md](agents/RUNBOOK.md) explains how to select, dispatch, review, and escalate agent work.
 - [agents/orchestration/](agents/orchestration/) contains routing rules, quality gates, handoff contracts, escalation policy, selectors, and tests.
@@ -39,20 +41,20 @@ Every role definition, routing rule, quality gate, and orchestration tool in thi
 
 ## Quick start
 
-Read [AGENTS.md](AGENTS.md) first. Then validate the internal orchestration tools with Python 3.10+:
+Read [AGENTS.md](AGENTS.md) first. `bin/agents` resolves a Python 3.10+ interpreter for you (checks `python3`, `python`, `py -3`) — see "System-wide install" to put it on `PATH`, or run it as `./bin/agents` (`.\bin\agents.ps1` in PowerShell) from the repository root. Then validate the internal orchestration tools:
 
-```powershell
-py -3 -B -m unittest discover -s agents/orchestration/test -p "test_*.py"
-py -3 -B -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
+```sh
+python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"
+python3 -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
 ```
 
 Generate a reviewable dispatch plan:
 
-```powershell
-py -3 agents/orchestration/src/select_agents.py `
-  --task "Review a React and Go upload feature" `
-  --files frontend/src/App.tsx,services/internal/api/api.go `
-  --classification internal `
+```sh
+agents select \
+  --task "Review a React and Go upload feature" \
+  --files frontend/src/App.tsx,services/internal/api/api.go \
+  --classification internal \
   --task-id EXAMPLE-1
 ```
 
@@ -77,7 +79,7 @@ Claude Code:
 Either way, initialize the target repository from this repository's checkout:
 
 ```sh
-python3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --root /path/to/target
+agents sdlc init --root /path/to/target
 ```
 
 This defaults to the low-ceremony `quick` profile and generates subagent wrappers for both runners (`init --runner {codex,claude,both}`).
@@ -108,6 +110,23 @@ Then, once, make the shared knowledge store's config exist:
 ```sh
 mkdir -p ~/.agents/knowledge-store
 cp agents/knowledge-store/config.example.json ~/.agents/knowledge-store/config.json
+```
+
+And put `bin/agents` on `PATH` so the `agents` command in this README and
+`agents/RUNBOOK.md` works from any directory, not just this checkout. Symlink
+it (a copy would break its reach-back into this repository) into a directory
+already on `PATH`, e.g.:
+
+```sh
+mkdir -p ~/.local/bin
+ln -s "$(pwd)/bin/agents" ~/.local/bin/agents   # ensure ~/.local/bin is on PATH
+```
+
+PowerShell has no bare-name script execution by default; wrap `bin/agents.ps1`
+in a `$PROFILE` function instead:
+
+```powershell
+function agents { & "C:\path\to\this\checkout\bin\agents.ps1" @args }
 ```
 
 See [plugins/secure-cloud-agents/README.md](plugins/secure-cloud-agents/README.md)

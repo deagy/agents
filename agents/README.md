@@ -6,7 +6,7 @@ The `knowledge-store/` subsystem is the shared agent retrieval layer for authori
 
 Start with `RUNBOOK.md` for operating instructions and worked examples.
 
-The dependency-free selector component requires Python 3.10 or newer, without establishing an organization-wide Python version. From the repository root, run `python3 agents/orchestration/src/select_agents.py --task "..."` on Unix or `py -3 agents/orchestration/src/select_agents.py --task "..."` with a qualifying Windows launcher. See `RUNBOOK.md` for robust interpreter probes. The schema version 2 selector evaluates task text and Git changes, validates roles against `catalog.yaml`, and emits a reviewable plan with required lifecycle quality gates kept separate from mutation-oriented human gates; it does not execute agents, approve gates, or retrieve knowledge.
+The dependency-free selector component requires Python 3.10 or newer, without establishing an organization-wide Python version. `bin/agents` (repository root) resolves an interpreter for you — run `agents select --task "..."` from anywhere it's on `PATH`, or `../bin/agents select --task "..."` (`..\bin\agents.ps1` in PowerShell) from this directory. See `RUNBOOK.md` for the wrapper's interpreter-probe details. The schema version 2 selector evaluates task text and Git changes, validates roles against `catalog.yaml`, and emits a reviewable plan with required lifecycle quality gates kept separate from mutation-oriented human gates; it does not execute agents, approve gates, or retrieve knowledge.
 
 ## Operating model
 
@@ -32,8 +32,8 @@ The repository-local suite remains the source implementation for this project. T
 
 Initialize a target project from the repository checkout with:
 
-```powershell
-py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --root C:\path\to\target
+```sh
+agents sdlc init --root /path/to/target
 ```
 
 The portable initializer proposes detectable values and leaves consequential unknowns unresolved. Human authority, compliance applicability, environment persistence/production status, risk acceptance, and SQS applicability must be assigned or decided by accountable humans. See `../plugins/agentic-sdlc/README.md` for the installation and upgrade guide, and the portable-use section of `RUNBOOK.md` for operational handoff.

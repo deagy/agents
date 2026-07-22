@@ -1,0 +1,78 @@
+#!/bin/sh
+# Dispatcher for this repository's Python tools. Run `agents help` for the
+# subcommand list. Safe to invoke via a symlink on PATH (see README.md
+# "System-wide install") or directly as ./bin/agents from this checkout.
+set -eu
+
+# Portable symlink resolution (no GNU-only `readlink -f`): follow symlinks
+# until the target is a real file, then take that file's directory.
+resolve_script_dir() {
+  target="$1"
+  while [ -L "$target" ]; do
+    dir=$(CDPATH= cd -- "$(dirname -- "$target")" && pwd)
+    target=$(readlink -- "$target")
+    case "$target" in
+      /*) ;;
+      *) target="$dir/$target" ;;
+    esac
+  done
+  CDPATH= cd -- "$(dirname -- "$target")" && pwd
+}
+
+BIN_DIR=$(resolve_script_dir "$0")
+REPO_ROOT=$(CDPATH= cd -- "$BIN_DIR/.." && pwd)
+
+AGENT_PYTHON=
+for candidate in python3 python; do
+  command -v "$candidate" >/dev/null 2>&1 || continue
+  if "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; then
+    AGENT_PYTHON="$candidate"
+    break
+  fi
+done
+[ -n "$AGENT_PYTHON" ] || { echo "agents: Python 3.10+ is required (checked python3, python)" >&2; exit 1; }
+
+usage() {
+  cat <<'EOF'
+Usage: agents <subcommand> [args...]
+
+Subcommands:
+  select           Deterministic agent/gate selection (select_agents.py)
+  knowledge        Vectorized knowledge store CLI (knowledge-store/src/cli.py)
+  sdlc             Portable Agentic SDLC CLI (agentic_sdlc.py)
+  validate-run     Validate a repository-suite run record (validate_run_record.py)
+  generate-plugin  Regenerate plugins/secure-cloud-agents/ (generate_global_plugin.py)
+  help             Show this message
+
+Each subcommand's own --help documents its arguments, e.g. `agents sdlc plan --help`.
+EOF
+}
+
+command="${1:-help}"
+[ "$#" -gt 0 ] && shift || true
+
+case "$command" in
+  select)
+    exec "$AGENT_PYTHON" "$REPO_ROOT/agents/orchestration/src/select_agents.py" "$@"
+    ;;
+  knowledge)
+    exec "$AGENT_PYTHON" "$REPO_ROOT/agents/knowledge-store/src/cli.py" "$@"
+    ;;
+  sdlc)
+    exec "$AGENT_PYTHON" "$REPO_ROOT/plugins/agentic-sdlc/scripts/agentic_sdlc.py" "$@"
+    ;;
+  validate-run)
+    exec "$AGENT_PYTHON" "$REPO_ROOT/agents/orchestration/src/validate_run_record.py" "$@"
+    ;;
+  generate-plugin)
+    exec "$AGENT_PYTHON" "$REPO_ROOT/agents/orchestration/src/generate_global_plugin.py" "$@"
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    echo "agents: unknown subcommand '$command'" >&2
+    usage >&2
+    exit 1
+    ;;
+esac

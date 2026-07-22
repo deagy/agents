@@ -33,18 +33,21 @@ If your team publishes this marketplace from a shared Git source, use that marke
 
 ## Initialize a project
 
-The repository-hosted development command is:
+The repository-hosted development command is (`bin/agents` at this repository's
+root resolves the interpreter and dispatches to `scripts/agentic_sdlc.py`;
+`agents sdlc ...` works from any directory once it's on `PATH` — see
+`../../README.md` "System-wide install"):
 
-```powershell
-py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --root C:\path\to\target
+```sh
+agents sdlc init --root /path/to/target
 ```
 
 From an installed plugin, invoke the `initialize-agentic-sdlc` skill and identify the target repository. The skill detects candidate stack and command information, calls the initializer, preserves unknowns and unassigned authorities, and then runs validation. The CLI `init` command itself writes the overlay and reports blockers; run `validate` separately when using the CLI directly. Review generated files before using them as policy.
 
 Use `--help` for the exact options supported by the installed plugin version:
 
-```powershell
-py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --help
+```sh
+agents sdlc init --help
 ```
 
 ## Portable architecture
@@ -118,22 +121,22 @@ invalidate  Record a material change and invalidate the earliest affected gate a
 
 Always inspect command-specific help before scripting an interface:
 
-```powershell
-py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py --help
-py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py plan --help
+```sh
+agents sdlc --help
+agents sdlc plan --help
 ```
 
 Task IDs are preserved exactly and must already use only letters, numbers, dots, underscores, and hyphens. The CLI rejects lossy normalization so distinct external IDs cannot share lifecycle state.
 
 Representative invocations are:
 
-```powershell
-py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py detect --root C:\path\to\target
-py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --root C:\path\to\target --profile auto --classification internal
-py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py plan --root C:\path\to\target --task-id TEAM-DEMO-001 --task "Define requirements traceability for the order API"
-py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py validate --root C:\path\to\target
-py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py status --root C:\path\to\target --task-id TEAM-DEMO-001
-py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py invalidate --root C:\path\to\target --task-id TEAM-DEMO-001 --earliest-gate G2 --reason "Approved intent changed" --actor "product-owner"
+```sh
+agents sdlc detect --root /path/to/target
+agents sdlc init --root /path/to/target --profile auto --classification internal
+agents sdlc plan --root /path/to/target --task-id TEAM-DEMO-001 --task "Define requirements traceability for the order API"
+agents sdlc validate --root /path/to/target
+agents sdlc status --root /path/to/target --task-id TEAM-DEMO-001
+agents sdlc invalidate --root /path/to/target --task-id TEAM-DEMO-001 --earliest-gate G2 --reason "Approved intent changed" --actor "product-owner"
 ```
 
 `validate` exits with `0` when valid and ready, `2` when structurally valid but blocked by unresolved decisions, and `1` for errors. Treat both `1` and `2` as non-ready in CI.
@@ -141,8 +144,8 @@ py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py invalidate --root C:\path\to\
 Initialization, detection, planning, status, and invalidation work with Python 3.10+ and the standard library. Install the pinned validation dependencies before using `validate`; validation fails closed when they are absent. Enable complete Draft
 2020-12 structural validation in CI or assurance environments with:
 
-```powershell
-py -3 -m pip install -r plugins/agentic-sdlc/requirements-validation.txt
+```sh
+python3 -m pip install -r plugins/agentic-sdlc/requirements-validation.txt
 ```
 
 The plugin also exposes these skills, packaged for both Codex CLI and Claude Code:
