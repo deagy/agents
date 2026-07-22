@@ -28,37 +28,10 @@ return a blocking question in its result instead of prompting directly.**
 
 ## Select Agents
 
-The internal tools require Python 3.10 or newer; this is not an organization-wide Python standard. Resolve and probe one interpreter for selection and authorized retrieval. Stop when none qualifies—do not install an interpreter or fall back to retired Node tooling. Run these commands from the repository root.
-
-PowerShell:
-
-```powershell
-$AgentPython = $null
-foreach ($Candidate in @(
-  [pscustomobject]@{ Name = "python"; Args = @() },
-  [pscustomobject]@{ Name = "python3"; Args = @() },
-  [pscustomobject]@{ Name = "py"; Args = @("-3") }
-)) {
-  $Command = Get-Command $Candidate.Name -ErrorAction SilentlyContinue
-  if ($Command) {
-    & $Command.Source @($Candidate.Args) -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)" 2>$null
-    if ($LASTEXITCODE -eq 0) { $AgentPython = [pscustomobject]@{ Path = $Command.Source; Args = $Candidate.Args }; break }
-  }
-}
-if (-not $AgentPython) { throw "Python 3.10+ is required for agent selection." }
-& $AgentPython.Path @($AgentPython.Args) agents/orchestration/src/select_agents.py --task "<objective>" --task-id "<id>" --classification "<level>" --files "<comma-separated paths>"
-```
-
-Unix:
+The internal tools require Python 3.10 or newer; this is not an organization-wide Python standard. `bin/agents` (repository root) resolves and probes the interpreter for you across `python3`/`python`/`py -3` — stops rather than installing one or falling back to retired Node tooling if none qualifies. Invoke it as `agents` if it's on `PATH` (see `../../../README.md` "System-wide install"), or `<repo-root>/bin/agents` / `<repo-root>\bin\agents.ps1` directly:
 
 ```sh
-AGENT_PYTHON=
-for candidate in python3 python; do
-  command -v "$candidate" >/dev/null 2>&1 || continue
-  "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' && AGENT_PYTHON="$candidate" && break
-done
-[ -n "${AGENT_PYTHON:-}" ] || { echo "Python 3.10+ is required for agent selection." >&2; exit 1; }
-"$AGENT_PYTHON" agents/orchestration/src/select_agents.py --task "<objective>" --task-id "<id>" --classification "<level>" --files "<comma-separated paths>"
+agents select --task "<objective>" --task-id "<id>" --classification "<level>" --files "<comma-separated paths>"
 ```
 
 Omit `--files` to use Git status, including staged, unstaged, and untracked paths. Alternatively, use `--base <ref>` for committed `<ref>...HEAD` changes; that mode excludes dirty worktree changes. Review the emitted `inputs.changed_files` before dispatch. `--output <path>` creates parent directories and overwrites the file, so use it only when run-artifact writes are authorized. Do not invent changed paths. Schema version 2 emits lifecycle `required_quality_gates` separately from mutation-oriented `human_gates`; attach both to each applicable brief. If the selector returns `needs-triage`, stop dispatch and request the missing scope. Validate every selected role against `agents/catalog.yaml`.

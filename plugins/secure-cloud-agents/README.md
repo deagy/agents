@@ -62,7 +62,7 @@ moved or renamed (the absolute paths baked into every pointer would otherwise
 go stale):
 
 ```sh
-python3 agents/orchestration/src/generate_global_plugin.py
+agents generate-plugin
 ```
 
 `agents/orchestration/test/test_repository_health.py::test_secure_cloud_agents_plugin_is_generated_and_in_sync`

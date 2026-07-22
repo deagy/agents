@@ -24,7 +24,7 @@ By default, a project without its own `.agents/knowledge-store/config.json` reso
 - Filter retrieval by caller authorization and classification before ranking, not after returning results.
 - Prefer current approved policies over historical chat content and visibly label conflicts.
 - Give ordinary agents no content or lifecycle mutation authority. Retrieval still requires filesystem writes for audit metadata and may initialize the SQLite database, schema, and WAL; grant this operational capability narrowly. Route ingestion, correction, reclassification, retention, and deletion through the knowledge-store steward.
-- Use `<python> -B <absolute-path-to>/agents/knowledge-store/src/cli.py context ...` for agent dispatch; no particular working directory is required. The demo records query hash, task ID, agent, caller-supplied classification/source filter, embedding provider/model, requested top, result count, and time without the raw query. It does not audit authenticated identity, tenant/project/environment scope, the authorization decision/policy, or returned citation IDs; those are production requirements.
+- Use `agents knowledge context ...` (`bin/agents` at the repository root; see `README.md`) for agent dispatch; no particular working directory is required. The demo records query hash, task ID, agent, caller-supplied classification/source filter, embedding provider/model, requested top, result count, and time without the raw query. It does not audit authenticated identity, tenant/project/environment scope, the authorization decision/policy, or returned citation IDs; those are production requirements.
 
 ## Storage rules
 

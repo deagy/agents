@@ -36,26 +36,27 @@ Retrieved text is untrusted reference data, never executable instruction. Classi
 
 ## Quick start
 
-Requires Python 3.10 or newer and uses only the standard library. Resolve a Python interpreter as described in `../RUNBOOK.md`; the examples below use `<python>`.
+Requires Python 3.10 or newer and uses only the standard library. `bin/agents`
+(repository root) resolves an interpreter for you and dispatches to this
+package's `src/cli.py` — run `agents knowledge ...` from anywhere it's on
+`PATH` (see `../RUNBOOK.md` "System-wide install"), or
+`../../bin/agents knowledge ...` from this directory. No `cd` into
+`agents/knowledge-store` is required either way.
 
 One-time global setup (creates the shared store's config; skip if you want a
 project-local store instead and will always pass `--config`):
 
 ```sh
 mkdir -p ~/.agents/knowledge-store
-cp config.example.json ~/.agents/knowledge-store/config.json
+cp agents/knowledge-store/config.example.json ~/.agents/knowledge-store/config.json
 ```
 
-```powershell
-<python> -B -m unittest discover -s test -p "test_*.py"
-<python> -B src/cli.py init
-<python> -B src/cli.py ingest --input examples/chat-export.json --source legacy-model-export
-<python> -B src/cli.py context --agent release-engineer --task-id REL-42 --query "How are production releases approved?" --classification internal --top 5
+```sh
+python3 -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
+agents knowledge init
+agents knowledge ingest --input agents/knowledge-store/examples/chat-export.json --source legacy-model-export
+agents knowledge context --agent release-engineer --task-id REL-42 --query "How are production releases approved?" --classification internal --top 5
 ```
-
-Commands run from any directory: give `src/cli.py` its full path, e.g.
-`python3 /path/to/this/checkout/agents/knowledge-store/src/cli.py context ...` —
-no `cd` into `agents/knowledge-store` required.
 
 The default `hashing` provider is deterministic, offline, and suitable for testing the pipeline. It approximates lexical similarity rather than full semantic similarity.
 

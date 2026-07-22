@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -185,6 +188,73 @@ class RepositoryHealthTests(unittest.TestCase):
                 pointer = plugin_root / "skills" / skill_name / "SKILL.md"
                 self.assertTrue(pointer.is_file(), str(pointer))
                 self.assertIn(f"name: {skill_name}", pointer.read_text(encoding="utf-8"))
+
+    def test_bin_agents_wrapper_is_executable(self) -> None:
+        wrapper = REPOSITORY_ROOT / "bin" / "agents"
+        self.assertTrue(wrapper.is_file(), str(wrapper))
+        self.assertTrue(os.access(wrapper, os.X_OK), f"{wrapper} is not executable")
+
+    @unittest.skipUnless(sys.platform != "win32", "bin/agents is a POSIX sh script")
+    def test_bin_agents_wrapper_dispatches_select_matching_direct_invocation(self) -> None:
+        wrapper = REPOSITORY_ROOT / "bin" / "agents"
+        selector = ROOT / "orchestration" / "src" / "select_agents.py"
+        arguments = [
+            "--task", "Update the React navigation",
+            "--files", "frontend/src/Nav.tsx",
+            "--classification", "internal",
+            "--task-id", "WRAPPER-HEALTH-1",
+        ]
+        direct = subprocess.run(
+            [sys.executable, str(selector), *arguments],
+            cwd=REPOSITORY_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        via_wrapper = subprocess.run(
+            [str(wrapper), "select", *arguments],
+            cwd=REPOSITORY_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        direct_payload = json.loads(direct.stdout)
+        wrapper_payload = json.loads(via_wrapper.stdout)
+        direct_payload.pop("generated_at", None)
+        wrapper_payload.pop("generated_at", None)
+        self.assertEqual(direct_payload, wrapper_payload)
+
+    @unittest.skipUnless(sys.platform != "win32", "bin/agents is a POSIX sh script")
+    def test_bin_agents_wrapper_resolves_correctly_through_a_symlink(self) -> None:
+        wrapper = REPOSITORY_ROOT / "bin" / "agents"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            link = Path(temporary_directory) / "agents"
+            link.symlink_to(wrapper)
+            result = subprocess.run(
+                [str(link), "select", "--task", "Capture product intent", "--classification", "internal", "--task-id", "WRAPPER-HEALTH-2"],
+                cwd=temporary_directory,
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+            self.assertEqual("ready", json.loads(result.stdout)["status"])
+
+    @unittest.skipUnless(sys.platform != "win32", "bin/agents is a POSIX sh script")
+    def test_bin_agents_wrapper_rejects_unknown_subcommand(self) -> None:
+        wrapper = REPOSITORY_ROOT / "bin" / "agents"
+        result = subprocess.run(
+            [str(wrapper), "not-a-real-subcommand"],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("unknown subcommand", result.stderr)
 
 
 if __name__ == "__main__":

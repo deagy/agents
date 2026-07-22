@@ -33,7 +33,10 @@ Agent-role wrappers are NOT symmetric, because the two runners differ here:
 Regenerate after adding/removing a role in agents/catalog.yaml or a skill under
 .agents/skills/, or if this checkout is ever moved or renamed:
 
-    python3 agents/orchestration/src/generate_global_plugin.py
+    agents generate-plugin
+
+(bin/agents at the repository root; or `python3 agents/orchestration/src/generate_global_plugin.py`
+directly if bin/agents isn't set up yet).
 """
 
 from __future__ import annotations
@@ -57,7 +60,8 @@ SHARED_POLICIES = [
 ]
 REGENERATE_NOTE = (
     "This absolute path is specific to this machine's checkout. If it moves, "
-    "regenerate this plugin with agents/orchestration/src/generate_global_plugin.py."
+    "regenerate this plugin with `agents generate-plugin` (bin/agents at the "
+    "repository root)."
 )
 ASK_HUMAN_RULE = (
     "You are a dispatched subagent: you cannot ask the human directly. If you "
