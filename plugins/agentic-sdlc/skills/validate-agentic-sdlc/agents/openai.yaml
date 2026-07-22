@@ -1,0 +1,4 @@
+interface:
+  display_name: "Validate Agentic SDLC"
+  short_description: "Validate overlays and lifecycle records"
+  default_prompt: "Use $validate-agentic-sdlc to validate this project overlay and its Agentic SDLC records."

@@ -63,6 +63,21 @@ class SelectorTests(unittest.TestCase):
         self.assertIsNotNone(glob_to_regex(".gitlab-ci.yml").search(".gitlab-ci.yml"))
         self.assertIsNone(glob_to_regex("**/*.go").search("main.ts"))
 
+    def test_plugin_packaging_routes_to_agent_suite_governance(self) -> None:
+        result = plan(
+            task="Package the portable Agentic SDLC plugin",
+            changed_files=[
+                "plugins/agentic-sdlc/.codex-plugin/plugin.json",
+                ".agents/plugins/marketplace.json",
+            ],
+            classification="internal",
+            task_id="PLUGIN-1",
+        )
+        self.assertEqual(result["workflow"], "debugging")
+        self.assertIn("application-engineer", result["agents"]["primary"])
+        self.assertIn("debugging-engineer", result["agents"]["primary"])
+        self.assertIn("test-engineer", result["agents"]["reviewers"])
+
     def test_selects_frontend_and_backend_with_cross_stack_coordination(self) -> None:
         result = plan(
             task="Add a React upload form backed by a PostgreSQL API",

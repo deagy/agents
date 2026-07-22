@@ -1,0 +1,4 @@
+interface:
+  display_name: "Runtime Assurance Status"
+  short_description: "Assess deployed runtime conformance status"
+  default_prompt: "Use $runtime-assurance-status to assess runtime conformance and route any resulting findings."

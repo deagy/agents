@@ -1,0 +1,13 @@
+{
+  "id": "sqs-platform",
+  "description": "Optional SQS applicability extension; all undefined concepts fail closed.",
+  "impact_categories": [
+    "platform-phase", "platform-component", "participant-digital-ecosystem-relevance",
+    "digital-domain-impact", "governance-policy-impact", "trust-impact", "time-impact",
+    "qkms-crypto-impact", "data-jurisdiction-impact", "meridian-impact",
+    "ron-persistence-impact", "layer-0-impact", "evidence-requirement", "accreditation-relevance"
+  ],
+  "specialized_boms": ["SBOM", "CBOM", "QBOM", "AI-BOM", "Trust-BOM", "Time-BOM"],
+  "initial_applicability": "unknown",
+  "blocking_gates": ["G4", "G5", "G7"]
+}

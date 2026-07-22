@@ -25,3 +25,15 @@ Agents may prepare changes and evidence, but no author may approve its own work.
 ## Team configuration
 
 Technology preferences live in `shared/team-profile.yaml`, `shared/technology-standards.md`, and `shared/library-standards.yaml`. Execution permissions live in `shared/agent-autonomy.yaml`. Keep these centralized rather than duplicating preferences in every role. Items marked `not_yet_selected` require an explicit team decision.
+
+## Portable adoption
+
+The repository-local suite remains the source implementation for this project. The sibling `plugins/agentic-sdlc/` package extracts its stable lifecycle kernel, schemas, catalog, command interface, and guided skills for other repositories. A target repository receives only a small `.agentic-sdlc/` overlay and owns its run records and evidence references; cloud-stack assumptions from `shared/` are not silently copied into unrelated projects.
+
+Initialize a target project from the repository checkout with:
+
+```powershell
+py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --root C:\path\to\target
+```
+
+The portable initializer proposes detectable values and leaves consequential unknowns unresolved. Human authority, compliance applicability, environment persistence/production status, risk acceptance, and SQS applicability must be assigned or decided by accountable humans. See `../plugins/agentic-sdlc/README.md` for the installation and upgrade guide, and the portable-use section of `RUNBOOK.md` for operational handoff.

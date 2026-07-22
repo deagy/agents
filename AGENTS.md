@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-Agent roles, policies, workflows, orchestration, testing, support/escalation, and the knowledge store live under `agents/`; publishable skills live under `.agents/skills/`. Keep product/application code, tests, migrations, deployment contracts, and infrastructure contracts in clearly scoped project directories.
+Agent roles, policies, workflows, orchestration, testing, support/escalation, and the knowledge store live under `agents/`; publishable repository skills live under `.agents/skills/`. Portable Codex plugins live under `plugins/`, with repo/team marketplace metadata under `.agents/plugins/`. Keep product/application code, tests, migrations, deployment contracts, and infrastructure contracts in clearly scoped project directories.
 
 Read `agents/RUNBOOK.md` for orchestration and any project-local `AGENTS.md` before product changes. Keep role definitions and `agents/catalog.yaml` synchronized.
 
@@ -13,6 +13,8 @@ Resolve Python 3.10+ as documented in the runbook. From each internal-tool compo
 ```powershell
 <python> -B -m unittest discover -s test -p "test_*.py"
 ```
+
+For the portable Agentic SDLC plugin, run its tests under `plugins/agentic-sdlc/test`, validate every bundled skill, and validate the plugin manifest before handoff.
 
 For Go services, use `gofmt`, `go tool goimports`, `go vet ./...`, `go test ./...`, `go test -race ./...`, and `go tool golangci-lint run ./...`. For React frontends, use the project-pinned package manager for install, test, typecheck, and build commands. Podman, PostgreSQL migrations, Helm, and Terraform remain disposable or validation-only unless a project has explicit production approval; follow the component README and never target a persistent environment without approval.
 

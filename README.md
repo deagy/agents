@@ -11,6 +11,8 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 ├── AGENTS.md                 # Repository-wide contributor and safety rules
 ├── agents/                   # Agent roles, policies, workflows, orchestration, support, tests
 ├── .agents/skills/           # Publishable Codex skills for this repository
+├── .agents/plugins/          # Repository/team marketplace metadata
+├── plugins/agentic-sdlc/     # Portable Agentic SDLC plugin
 ├── .gitlab-ci.yml            # Validate/test/build/package-only GitLab pipeline
 └── README.md                 # This overview
 ```
@@ -25,6 +27,7 @@ Key areas:
 - [agents/knowledge-store/](agents/knowledge-store/) contains the retrieval layer for approved historical context.
 - [agents/testing/](agents/testing/) and [agents/support/](agents/support/) define black-box testing, end-user testing, support triage, and escalation roles.
 - [.agents/skills/](.agents/skills/) contains Codex skill packaging for repository orchestration.
+- [plugins/agentic-sdlc/](plugins/agentic-sdlc/) packages the portable lifecycle kernel, initializer, validator, and Codex skills for use in other repositories.
 
 ## Quick start
 
@@ -46,6 +49,20 @@ py -3 agents/orchestration/src/select_agents.py `
 ```
 
 The selector emits a plan only. It does not run agents, retrieve knowledge, deploy, mutate infrastructure, merge, push, or approve anything.
+
+## Portable plugin quick start
+
+The `agentic-sdlc` plugin packages the reusable G1–G10 lifecycle separately from this repository's cloud-specific configuration. Install it from the repository marketplace, initialize it in a target Git repository, then review the generated overlay before orchestration:
+
+```powershell
+codex plugin marketplace add .
+codex plugin add agentic-sdlc@agents-team
+py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --root C:\path\to\target
+```
+
+Initialization detects candidate technologies and validation commands, but deliberately leaves human authorities, compliance applicability, persistent/production environment classification, and other consequential decisions unresolved. The target project owns those decisions and its lifecycle records under `.agentic-sdlc/`.
+
+See [the portable plugin guide](plugins/agentic-sdlc/README.md) for installation, commands, team demonstration steps, upgrades, and current limitations.
 
 ## Agent orchestration
 
