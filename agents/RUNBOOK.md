@@ -581,3 +581,36 @@ Before operational use, decide and record:
 - Named human approval groups and emergency escalation contacts.
 
 Keep organization-wide requirements under `shared/`; keep role authority in each `AGENT.md`; keep change-specific facts in task briefs.
+
+## 16. Use the portable plugin in another project
+
+The `plugins/agentic-sdlc/` distribution separates the reusable lifecycle kernel from the target project's configuration and records:
+
+```text
+plugin kernel -> .agentic-sdlc project overlay -> .agentic-sdlc project state
+```
+
+Install it through the repository/team marketplace, then initialize the target repository:
+
+```powershell
+codex plugin marketplace add .
+codex plugin add agentic-sdlc@agents-team
+py -3 plugins/agentic-sdlc/scripts/agentic_sdlc.py init --root C:\path\to\target
+```
+
+The initializer detects candidate technologies, commands, and a project profile. Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking.
+
+For a first task, use the installed `orchestrate-agentic-sdlc` skill in `planning-review-only` mode or generate a deterministic plan with the bundled `plan` command. Keep lifecycle `required_quality_gates` separate from mutation-oriented `human_gates`, and store task state in the target repository rather than the plugin installation.
+
+Before team adoption:
+
+- Review the detected profile, repository paths, and validation commands.
+- Assign the required Product Owner, Engineering Lead, System Architect, Governance Lead, Security Lead, Release Owner, Release Authority, and Service Owner roles. Explicitly decide applicability for the Data/Control Owner, Human Key Owner, UAT Product Owner, and runtime-implicated Security and Governance Lead roles; applicable roles require named assignees, while `not-applicable` requires a rationale.
+- Decide which environments are disposable, persistent, and production.
+- Decide generic and optional SQS impact-profile applicability; do not invent undefined SQS or BOM semantics.
+- Configure authoritative approval and evidence references.
+- Run the plugin `validate` command and preserve the version lock with the reviewed overlay.
+
+On upgrade, reinstall the plugin, inspect lifecycle/schema changes, validate existing records, migrate incompatible records explicitly, and update the project version lock only with the reviewed overlay change. Plugin upgrades never grant approval or rewrite project decisions automatically.
+
+See `../plugins/agentic-sdlc/README.md` for the complete command, demonstration, safe-default, extension, and limitation guide.

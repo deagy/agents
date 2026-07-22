@@ -1,0 +1,4 @@
+interface:
+  display_name: "Orchestrate Agentic SDLC"
+  short_description: "Plan and coordinate lifecycle agent work"
+  default_prompt: "Use $orchestrate-agentic-sdlc to plan and coordinate this project task through its applicable lifecycle gates."

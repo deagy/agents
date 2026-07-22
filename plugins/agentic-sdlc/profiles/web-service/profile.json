@@ -1,0 +1,11 @@
+{
+  "id": "web-service",
+  "description": "Web frontend or API service profile.",
+  "extends": "generic",
+  "agents": ["frontend-engineer", "backend-engineer"],
+  "routing": [
+    {"id": "frontend", "phrases": ["frontend component", "user interface", "web accessibility"], "agents": ["frontend-engineer"], "reviewers": ["code-reviewer", "test-engineer"], "gates": ["G3", "G5", "G6", "G7"]},
+    {"id": "backend", "phrases": ["backend api", "http api", "database migration"], "agents": ["backend-engineer"], "reviewers": ["code-reviewer", "test-engineer"], "gates": ["G3", "G4", "G5", "G6", "G7"]}
+  ],
+  "detect": {"files": ["package.json", "vite.config.*", "next.config.*", "go.mod", "requirements.txt", "pyproject.toml"], "directories": ["src", "app", "api", "cmd", "internal"]}
+}

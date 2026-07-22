@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "agents": {
+    "product-intent-agent": {"phase": "planning", "kind": "author"},
+    "requirements-agent": {"phase": "planning", "kind": "author"},
+    "governance-planner": {"phase": "design", "kind": "author"},
+    "data-governance-engineer": {"phase": "design", "kind": "author"},
+    "cryptographic-assurance-engineer": {"phase": "security", "kind": "author"},
+    "cloud-architect": {"phase": "design", "kind": "author"},
+    "threat-modeler": {"phase": "design", "kind": "author"},
+    "application-engineer": {"phase": "build", "kind": "author"},
+    "frontend-engineer": {"phase": "build", "kind": "author"},
+    "backend-engineer": {"phase": "build", "kind": "author"},
+    "test-engineer": {"phase": "verify", "kind": "reviewer"},
+    "security-reviewer": {"phase": "review", "kind": "reviewer"},
+    "compliance-reviewer": {"phase": "review", "kind": "reviewer"},
+    "code-reviewer": {"phase": "review", "kind": "reviewer"},
+    "evidence-curator": {"phase": "evidence", "kind": "curator"},
+    "release-engineer": {"phase": "release", "kind": "author"},
+    "observability-sre": {"phase": "operations", "kind": "author"},
+    "support-triage-agent": {"phase": "support", "kind": "support"},
+    "debugging-engineer": {"phase": "build", "kind": "author"},
+    "incident-commander": {"phase": "support", "kind": "support"}
+  }
+}

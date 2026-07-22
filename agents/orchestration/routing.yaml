@@ -54,7 +54,7 @@
     },
     {
       "id": "agent-suite-governance",
-      "paths": ["agents/catalog.yaml", "agents/**/AGENT.md", "agents/workflows/**", "agents/shared/**", "agents/orchestration/routing.yaml", "agents/orchestration/selection.schema.json", "agents/orchestration/run-record.schema.json", "agents/orchestration/quality-gates.md", "agents/orchestration/handoff-contracts.md", "agents/orchestration/task-brief-template.md", "agents/orchestration/agentic-sdlc-artifact-contract.md", "agents/orchestration/src/**", "agents/orchestration/test/**", ".agents/skills/**", "README.md", "AGENTS.md"],
+      "paths": ["agents/catalog.yaml", "agents/**/AGENT.md", "agents/workflows/**", "agents/shared/**", "agents/orchestration/routing.yaml", "agents/orchestration/selection.schema.json", "agents/orchestration/run-record.schema.json", "agents/orchestration/quality-gates.md", "agents/orchestration/handoff-contracts.md", "agents/orchestration/task-brief-template.md", "agents/orchestration/agentic-sdlc-artifact-contract.md", "agents/orchestration/src/**", "agents/orchestration/test/**", ".agents/skills/**", ".agents/plugins/**", "plugins/**", "README.md", "AGENTS.md"],
       "keywords": ["review project", "review repository", "repo structure", "repository structure", "project structure", "agent suite", "agents skills structure", "agents, skills, structure", "review agents", "audit agents", "audit publishable skills", "publishable skills", "skill packaging", "workflow mapping", "orchestration quality", "catalog integrity", "routing coverage", "governance review"],
       "primary": ["application-engineer", "debugging-engineer"],
       "reviewers": ["test-engineer", "code-reviewer"],
