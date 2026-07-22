@@ -8,9 +8,12 @@
 - Never assume automated redaction is complete. Review representative results before broad agent access.
 - Use separate stores or enforced partitions for materially different access classifications or tenants.
 
-### Shared global store
+### Global default, project-local override
 
-By default, every project on a machine resolves to the same database (`$KNOWLEDGE_STORE_HOME/config.json`, default `~/.agents/knowledge-store/`) — see `README.md`. This intentionally trades one-store-per-repo isolation for cross-project retrieval. It stays compatible with the "separate stores or enforced partitions" rule above only because `--source` acts as the partition: tag every ingestion with a `--source` that identifies the originating project, and always filter retrieval by that same `--source` when project isolation matters. `agents/orchestration/src/build_dispatch_plan.py` defaults `--source` to the calling repository's directory name automatically so this isn't left to caller memory alone, but a hand-run `ingest`/`context` call still needs an explicit `--source`. If a project's classification or tenancy genuinely cannot share infrastructure with others, give it its own `--config` pointing at a separate database instead of relying on the shared default.
+By default, a project without its own `.agents/knowledge-store/config.json` resolves to the same shared database as every other such project (`$KNOWLEDGE_STORE_HOME/config.json`, default `~/.agents/knowledge-store/`) — see `README.md`. This intentionally trades one-store-per-repo isolation for cross-project retrieval, for projects that don't need stronger isolation. Two mechanisms keep it compatible with the "separate stores or enforced partitions" rule above:
+
+- A project whose classification or tenancy genuinely cannot share infrastructure with others should create its own `.agents/knowledge-store/config.json` (a real partition — its own database, not just a filter) instead of relying on the shared default.
+- For projects that do use the shared default, `--source` acts as a lighter-weight partition: tag every ingestion with a `--source` that identifies the originating project, and always filter retrieval by that same `--source` when project isolation matters. `agents/orchestration/src/build_dispatch_plan.py` defaults `--source` to the calling repository's directory name automatically so this isn't left to caller memory alone, but a hand-run `ingest`/`context` call still needs an explicit `--source`.
 
 ## Retrieval rules
 

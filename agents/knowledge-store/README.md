@@ -2,20 +2,33 @@
 
 This local-first subsystem normalizes recognized chat-export fields into its stored message model, redacts likely secrets, preserves selected provenance, chunks content, generates vectors, and retrieves relevant passages for agents.
 
-## One store, shared across every project
+## Global by default, project-local overrides
 
-Without an explicit `--config`, the CLI resolves configuration from
-`$KNOWLEDGE_STORE_HOME/config.json`, defaulting to `~/.agents/knowledge-store/config.json`
-when that environment variable is unset — a single database shared by every
-project you use it from, not one per repository. This is deliberate: it lets
-agents retrieve cross-project context regardless of which checkout invoked them.
-It also means `SECURITY.md`'s "use separate stores or enforced partitions for
-materially different classifications or tenants" rule now rests on `--source`:
-every ingestion and retrieval call should carry a `--source` that identifies the
-originating project (the deterministic dispatch-plan builder in
-`agents/orchestration/src/build_dispatch_plan.py` already defaults `--source` to
-the repository directory name when a caller doesn't supply one). Pass an explicit
-`--config <path>` to opt a project back into its own private, non-shared store.
+Without an explicit `--config`, the CLI resolves configuration in this order:
+
+1. **Project-local**: walk up from the current directory looking for
+   `.agents/knowledge-store/config.json`, stopping at the first `.git` boundary
+   (or after 64 levels if none is found). A project opts into its own private
+   store simply by creating that file at its own repository root — nothing else
+   changes; every command works identically once it exists.
+2. **Global**: `$KNOWLEDGE_STORE_HOME/config.json`, defaulting to
+   `~/.agents/knowledge-store/config.json` when that environment variable is
+   unset — a single database shared by every project that hasn't opted into its
+   own store. This is deliberate: it lets agents retrieve cross-project context
+   regardless of which checkout invoked them, without every project needing to
+   set anything up.
+
+An explicit `--config <path>` always wins over both tiers.
+
+Because the global tier is shared, `SECURITY.md`'s "use separate stores or
+enforced partitions for materially different classifications or tenants" rule
+rests on two mechanisms together: a project with materially different
+requirements should use tier 1 (its own store) rather than the shared default,
+and every ingestion/retrieval call against the shared store should carry a
+`--source` that identifies the originating project (the deterministic
+dispatch-plan builder in `agents/orchestration/src/build_dispatch_plan.py`
+already defaults `--source` to the repository directory name when a caller
+doesn't supply one).
 
 ## Security boundary
 
@@ -68,7 +81,7 @@ context --agent <role> --task-id <id> --query <text> --classification <level> [-
 stats
 ```
 
-Without `--config`, configuration is read from `$KNOWLEDGE_STORE_HOME/config.json` (default `~/.agents/knowledge-store/config.json`); if absent, built-in defaults apply relative to that same directory. An existing config resolves its database path relative to the config directory. A supplied `--config` path must exist and contain a JSON object; otherwise the command fails closed.
+Without `--config`, configuration is read using the project-local-then-global resolution above; if no config file exists at the resolved location, built-in defaults apply relative to that same directory. An existing config resolves its database path relative to the config directory. A supplied `--config` path must exist and contain a JSON object; otherwise the command fails closed.
 
 `context` is the agent-facing command. It returns a schema-versioned bundle containing trust requirements, citations, and retrieved passages. `search` is a lower-level diagnostic command. Both require an explicit classification and apply exact-match classification and optional source filtering before ranking. `--top` must be an integer from 1 through 20, enforcing the orchestration policy limit.
 

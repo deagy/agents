@@ -40,13 +40,46 @@ def _positive_integer(value: Any, name: str, minimum: int = 1) -> None:
         raise ValueError(f"{name} must be an integer of at least {minimum}")
 
 
-def default_config_path() -> Path:
-    """Resolve the implicit config location: KNOWLEDGE_STORE_HOME, else ~/.agents/knowledge-store.
+PROJECT_LOCAL_RELATIVE_PATH = Path(".agents") / "knowledge-store" / "config.json"
+MAXIMUM_WALK_DEPTH = 64
 
-    This is a single store shared across every project on the machine, by design —
-    see agents/knowledge-store/SECURITY.md for the source-based partitioning this
-    requires of callers.
+
+def find_project_local_config(start: Path) -> Path | None:
+    """Walk upward from `start` for a project-local `.agents/knowledge-store/config.json`.
+
+    Stops at the first directory containing `.git` (the project boundary) or
+    after MAXIMUM_WALK_DEPTH levels if no `.git` is found, so a config file
+    above the project root is never picked up.
     """
+    current = start.resolve()
+    for _ in range(MAXIMUM_WALK_DEPTH):
+        candidate = current / PROJECT_LOCAL_RELATIVE_PATH
+        if candidate.is_file():
+            return candidate
+        if (current / ".git").exists():
+            return None
+        parent = current.parent
+        if parent == current:
+            return None
+        current = parent
+    return None
+
+
+def default_config_path() -> Path:
+    """Resolve the implicit config location.
+
+    Priority: a project-local `.agents/knowledge-store/config.json` found by
+    walking up from the current working directory to the project's `.git`
+    boundary, else KNOWLEDGE_STORE_HOME, else ~/.agents/knowledge-store. The
+    global tier is a single store shared across every project on the machine
+    by design — see agents/knowledge-store/SECURITY.md for the source-based
+    partitioning this requires of callers when no project-local override
+    exists. A project opts into its own private store simply by creating the
+    project-local file.
+    """
+    project_local = find_project_local_config(Path.cwd())
+    if project_local:
+        return project_local
     home = os.environ.get("KNOWLEDGE_STORE_HOME")
     base = Path(home).expanduser() if home else Path.home() / ".agents" / "knowledge-store"
     return base / "config.json"

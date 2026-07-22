@@ -87,3 +87,30 @@ on disk. `plugins/secure-cloud-agents/codex-agents/*.toml` is therefore a
 repo-tracked staging copy, not something Codex loads directly from the plugin;
 copying (or symlinking) those files into `~/.codex/agents/` is a separate,
 explicit step a human runs once, documented in that plugin's `README.md`.
+
+## Project-local overrides
+
+Global-by-default doesn't mean a project can't have its own version of a role.
+The two runners handle this differently, and the difference matters for how an
+override actually gets enforced:
+
+- **Claude Code**: plugin-installed agents/skills are namespaced by the
+  runner itself (`secure-cloud-agents:code-reviewer`), per the plugin
+  reference's "cannot collide with other levels." A project's own bare
+  `.claude/agents/code-reviewer.md` is a *different identifier*, not an
+  override — both remain simultaneously invocable. There is no runner-level
+  shadowing to rely on.
+- **Codex CLI**: project-scoped (`.codex/agents/`) and global-scoped
+  (`~/.codex/agents/`) custom agents share the same bare name, so a
+  project-local `.codex/agents/code-reviewer.toml` is a genuine same-name
+  collision with the copy under `~/.codex/agents/code-reviewer.toml` — Codex's
+  own project-before-global resolution decides the winner.
+
+Because Claude Code gives no free shadowing to lean on, `run-agent-orchestration`
+(`.agents/skills/run-agent-orchestration/SKILL.md`, "Dispatch in Waves")
+enforces the override itself: before dispatching a role, it checks for a
+project-local `.claude/agents/<role-id>.md` or `.codex/agents/<role-id>.toml`
+and dispatches that in preference to the global plugin version when one
+exists. The knowledge store takes the same global-default,
+project-local-override shape through a real code-level mechanism instead — see
+`agents/knowledge-store/README.md`.
