@@ -23,6 +23,13 @@ EXTENSIONS = PLUGIN_ROOT / "extensions"
 # its own; this repository's own domain plugin contributes them from its own
 # directory when present alongside this one, without agentic-sdlc depending on it.
 EXTENSIONS_SEARCH_PATH = [EXTENSIONS, PLUGIN_ROOT.parent / "secure-cloud-agents" / "extensions"]
+# Same pattern as EXTENSIONS_SEARCH_PATH: the built-in catalog covers the generic
+# roles the kernel ships with; a sibling secure-cloud-agents contributes richer,
+# real role definitions when present, without this plugin depending on it.
+AGENT_CATALOG_SEARCH_PATH = [
+    CONTRACTS / "agent-catalog.json",
+    PLUGIN_ROOT.parent / "secure-cloud-agents" / "agent-catalog.json",
+]
 OVERLAY = ".agentic-sdlc"
 GATE_IDS = [f"G{number}" for number in range(1, 11)]
 REQUIRED_AUTHORITY_ROLES = {
@@ -197,16 +204,52 @@ def toml_string(value: str) -> str:
     return json.dumps(value)
 
 
+ASK_HUMAN_RULE = (
+    "You are a dispatched subagent: you cannot ask the human directly. If you reach a "
+    "decision only a human can make, stop and return a clearly labeled blocking question "
+    "in your result instead of guessing or proceeding."
+)
+
+RICH_CONTENT_ADAPTATION_NOTE = (
+    "Adapted from a cloud/GitLab-specific role definition bundled with secure-cloud-agents. "
+    "Its shared-policy references (agents/shared/*.md paths) belong to that source "
+    "repository and will not resolve here — review and tailor this role for this "
+    "project's own stack, policies, and gates before relying on it."
+)
+
+
 def agent_wrapper_instructions(agent_id: str, reviewer: bool) -> str:
     return (
         f"Act as the portable Agentic SDLC role {agent_id}. "
         "Bind work to the task revision and lifecycle gate. "
         "Never approve a lifecycle or mutation gate. "
         + ("Remain independent and do not modify the artifact under review." if reviewer else "Prepare artifacts for independent review; do not self-review.")
-        + " You are a dispatched subagent: you cannot ask the human directly. If you reach a"
-        " decision only a human can make, stop and return a clearly labeled blocking question"
-        " in your result instead of guessing or proceeding."
+        + " " + ASK_HUMAN_RULE
     )
+
+
+def load_agent_catalog() -> dict[str, Any]:
+    merged: dict[str, Any] = {}
+    for path in AGENT_CATALOG_SEARCH_PATH:
+        if path.exists():
+            merged.update(load_json(path)["agents"])
+    return merged
+
+
+def rich_agent_content(metadata: dict[str, Any]) -> str | None:
+    definition = metadata.get("definition")
+    if not definition:
+        return None
+    path = Path(definition)
+    return path.read_text(encoding="utf-8").strip() if path.is_file() else None
+
+
+def agent_wrapper_body(agent_id: str, reviewer: bool, metadata: dict[str, Any], profile: dict[str, Any]) -> str:
+    if profile.get("rich_content_source"):
+        rich = rich_agent_content(metadata)
+        if rich is not None:
+            return "\n\n".join([rich, RICH_CONTENT_ADAPTATION_NOTE, ASK_HUMAN_RULE])
+    return agent_wrapper_instructions(agent_id, reviewer)
 
 
 def write_codex_agent_wrappers(root: Path, profile: dict[str, Any], catalog: dict[str, Any]) -> list[str]:
@@ -225,7 +268,7 @@ def write_codex_agent_wrappers(root: Path, profile: dict[str, Any], catalog: dic
             f"name = {toml_string(agent_id)}",
             f"description = {toml_string('Portable Agentic SDLC ' + metadata['kind'] + ' for ' + metadata['phase'])}",
             f"sandbox_mode = {toml_string('read-only' if reviewer else 'workspace-write')}",
-            f"developer_instructions = {toml_string(agent_wrapper_instructions(agent_id, reviewer))}",
+            f"developer_instructions = {toml_string(agent_wrapper_body(agent_id, reviewer, metadata, profile))}",
             "",
         ])
         target.write_text(content, encoding="utf-8")
@@ -254,13 +297,13 @@ def write_claude_agent_wrappers(root: Path, profile: dict[str, Any], catalog: di
             "---",
             "",
         ])
-        target.write_text(frontmatter + agent_wrapper_instructions(agent_id, reviewer) + "\n", encoding="utf-8")
+        target.write_text(frontmatter + agent_wrapper_body(agent_id, reviewer, metadata, profile) + "\n", encoding="utf-8")
         created.append(str(target.relative_to(root)))
     return created
 
 
 def write_agent_wrappers(root: Path, profile: dict[str, Any], runner: str = "both") -> list[str]:
-    catalog = load_json(CONTRACTS / "agent-catalog.json")["agents"]
+    catalog = load_agent_catalog()
     created: list[str] = []
     if runner in ("codex", "both"):
         created.extend(write_codex_agent_wrappers(root, profile, catalog))
@@ -838,7 +881,7 @@ def build_parser() -> argparse.ArgumentParser:
     detect.set_defaults(handler=lambda args: (print(json.dumps(detect_repository(Path(args.root)), indent=2)) or 0))
     init = subparsers.add_parser("init", help="Initialize a conservative project overlay")
     init.add_argument("--root", default=".")
-    init.add_argument("--profile", choices=["auto", "quick", "generic", "web-service"], default="auto")
+    init.add_argument("--profile", choices=["auto"] + sorted(path.name for path in PROFILES.iterdir() if path.is_dir()), default="auto")
     init.add_argument("--extension", action="append", help="Enable an impact-profile extension by id (resolved at init time; see EXTENSIONS_SEARCH_PATH)")
     init.add_argument("--project-id")
     init.add_argument("--classification", default="internal")

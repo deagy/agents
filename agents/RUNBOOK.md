@@ -566,6 +566,8 @@ agents sdlc init --root /path/to/target
 
 The initializer detects candidate technologies, commands, and a project profile, defaulting to the low-ceremony `quick` profile and generating subagent wrappers for both runners (`init --runner {codex,claude,both}`). Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking.
 
+If the target project uses this repository's own cloud stack, use `--profile secure-cloud` instead of the default: it extends `generic` with this repository's 14 cloud-specific roles and, when `plugins/secure-cloud-agents/` sits alongside `plugins/agentic-sdlc/`, bakes the real `AGENT.md` content into the generated wrappers instead of the generic stub — a static, project-owned copy from that point on, not a live link back to this checkout. This is the recommended way to get this repository's 34 roles into a project; see "17. Make this repository's own suite available system-wide" below only for the narrower case of wanting them in *every* project unconditionally.
+
 For a first task, use the installed `orchestrate-agentic-sdlc` skill in `planning-review-only` mode or generate a deterministic plan with the bundled `plan` command. Keep lifecycle `required_quality_gates` separate from mutation-oriented `human_gates`, and store task state in the target repository rather than the plugin installation.
 
 Before team adoption:
@@ -583,7 +585,7 @@ See `../plugins/agentic-sdlc/README.md` for the complete command, demonstration,
 
 ## 17. Make this repository's own suite available system-wide
 
-`plugins/secure-cloud-agents/` is different from `plugins/agentic-sdlc/`: it doesn't get adopted into other repositories, it makes *this* repository's own 34 roles, 6 skills, and shared knowledge store reachable from any project directory once installed at global/user scope, since by default everything above requires your cwd to be inside this checkout.
+Most projects want §16's `agents sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 34 roles, 6 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
 
 ```sh
 codex plugin marketplace add .
@@ -595,6 +597,6 @@ codex plugin add secure-cloud-agents@agents-team
 /plugin install secure-cloud-agents@agents-team
 ```
 
-Codex has no plugin-bundled-subagent mechanism, so its 34 `.toml` role wrappers are staged under `plugins/secure-cloud-agents/codex-agents/` rather than loaded from the plugin directly; copy them into `~/.codex/agents/` once (see `../plugins/secure-cloud-agents/README.md`). Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
+Codex has no plugin-bundled-subagent mechanism, so its 34 `.toml` role wrappers are staged under `plugins/secure-cloud-agents/codex-agents/` rather than loaded from the plugin directly; `run-agent-orchestration`'s bootstrap step syncs whatever is missing into `~/.codex/agents/` on first dispatch each session, so this is normally zero-touch (see `../plugins/secure-cloud-agents/README.md` to do it yourself instead of waiting for that). Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
 
 Every file in `plugins/secure-cloud-agents/` is a generated, thin pointer whose prose hardcodes this checkout's absolute path — necessary because an installed plugin is cached and loses access to sibling repository content outside its own directory (`../plugins/agentic-sdlc/contracts/runner-adapters.md#system-wide-install`). Regenerate with `agents generate-plugin` after adding, removing, or changing a role or skill (also part of the `agent-authoring` skill's checklist), or if this checkout is ever moved or renamed. `agents/orchestration/test/test_repository_health.py` fails if the committed pointers drift from what the generator would produce.

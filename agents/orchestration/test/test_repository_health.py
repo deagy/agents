@@ -191,6 +191,23 @@ class RepositoryHealthTests(unittest.TestCase):
                 self.assertTrue(pointer.is_file(), str(pointer))
                 self.assertIn(f"name: {skill_name}", pointer.read_text(encoding="utf-8"))
 
+    def test_secure_cloud_agents_agent_catalog_export_covers_every_role(self) -> None:
+        catalog_agents: dict[str, str] = {}
+        current_agent: str | None = None
+        for line in (ROOT / "catalog.yaml").read_text(encoding="utf-8").splitlines():
+            if line.startswith("  ") and not line.startswith("    ") and line.rstrip().endswith(":"):
+                current_agent = line.strip()[:-1]
+                catalog_agents[current_agent] = ""
+
+        export_path = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents" / "agent-catalog.json"
+        export = json.loads(export_path.read_text(encoding="utf-8"))["agents"]
+        self.assertEqual(set(catalog_agents), set(export))
+        for agent_id, metadata in export.items():
+            with self.subTest(agent=agent_id):
+                self.assertIn(metadata["kind"], {"author", "reviewer", "curator", "support"})
+                self.assertTrue(metadata["phase"])
+                self.assertTrue(Path(metadata["definition"]).is_file(), metadata["definition"])
+
     def test_bin_agents_wrapper_is_executable(self) -> None:
         wrapper = REPOSITORY_ROOT / "bin" / "agents"
         self.assertTrue(wrapper.is_file(), str(wrapper))

@@ -39,6 +39,13 @@ README.md "System-wide install"; no plugin can modify a user's shell profile).
 Codex CLI has no equivalent bin/ auto-discovery, so this is a Claude-Code-only
 convenience layered on top of the manual PATH setup, not a replacement for it.
 
+A generated agent-catalog.json (id -> {phase, kind, definition-as-absolute-path})
+is also included: plugins/agentic-sdlc/scripts/agentic_sdlc.py's
+AGENT_CATALOG_SEARCH_PATH picks it up when this plugin sits alongside it, which
+is what lets that portable kernel's "secure-cloud" profile bake real AGENT.md
+content into a target project's generated wrappers instead of a generic stub —
+see rich_agent_content() there. Every other profile ignores this file entirely.
+
 Regenerate after adding/removing a role in agents/catalog.yaml or a skill under
 .agents/skills/, or if this checkout is ever moved or renamed:
 
@@ -194,6 +201,34 @@ def generate_agent_pointers(catalog: dict[str, dict[str, str]]) -> list[Path]:
     return written
 
 
+def derive_kind(definition: str) -> str:
+    if definition.startswith("review/"):
+        return "reviewer"
+    if definition.startswith("support/"):
+        return "support"
+    if definition in {"documentation/evidence-curator/AGENT.md", "knowledge-store/AGENT.md"}:
+        return "curator"
+    return "author"
+
+
+def generate_agent_catalog_export(catalog: dict[str, dict[str, str]]) -> Path:
+    """Absolute-path catalog export consumed by plugins/agentic-sdlc's
+    AGENT_CATALOG_SEARCH_PATH, so a project that opts into the "secure-cloud"
+    portable profile gets real role content instead of the generic stub —
+    see agentic_sdlc.py's rich_agent_content()."""
+    agents = {
+        agent_id: {
+            "phase": metadata.get("phase", "unknown"),
+            "kind": derive_kind(metadata["definition"]),
+            "definition": str(AGENTS_ROOT / metadata["definition"]),
+        }
+        for agent_id, metadata in sorted(catalog.items())
+    }
+    target = PLUGIN_ROOT / "agent-catalog.json"
+    write(target, json.dumps({"agents": agents}, indent=2) + "\n")
+    return target
+
+
 def generate_bin_wrapper() -> Path:
     real_wrapper = REPOSITORY_ROOT / "bin" / "agents"
     target = PLUGIN_ROOT / "bin" / "agents"
@@ -212,7 +247,10 @@ def generate_bin_wrapper() -> Path:
 
 def main() -> int:
     catalog = load_catalog(AGENTS_ROOT / "catalog.yaml")
-    written = generate_skill_pointers() + generate_agent_pointers(catalog) + [generate_bin_wrapper()]
+    written = generate_skill_pointers() + generate_agent_pointers(catalog) + [
+        generate_bin_wrapper(),
+        generate_agent_catalog_export(catalog),
+    ]
     print(f"Generated {len(written)} pointer files under {PLUGIN_ROOT}")
     return 0
 

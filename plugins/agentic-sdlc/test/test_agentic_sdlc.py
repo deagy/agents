@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -77,6 +78,45 @@ class PortableCliTests(unittest.TestCase):
         self.run_cli("init", "--profile", "quick", "--runner", "claude")
         self.assertTrue((self.root / ".claude" / "agents" / "security-reviewer.md").exists())
         self.assertFalse((self.root / ".codex").exists())
+
+    def test_secure_cloud_profile_covers_all_34_catalog_roles(self):
+        catalog_path = PLUGIN_ROOT.parents[1] / "agents" / "catalog.yaml"
+        catalog_ids = {
+            line.strip().rstrip(":")
+            for line in catalog_path.read_text(encoding="utf-8").splitlines()
+            if line.startswith("  ") and not line.startswith("    ") and line.rstrip().endswith(":")
+        }
+        self.run_cli("init", "--profile", "secure-cloud", "--runner", "claude")
+        generated_ids = {path.stem for path in (self.root / ".claude" / "agents").glob("*.md")}
+        self.assertEqual(catalog_ids, generated_ids)
+
+    def test_secure_cloud_profile_bakes_in_real_role_content(self):
+        self.run_cli("init", "--profile", "secure-cloud", "--runner", "claude")
+        wrapper = (self.root / ".claude" / "agents" / "backend-engineer.md").read_text(encoding="utf-8")
+        self.assertIn("## Authority", wrapper)
+        self.assertIn("pgx", wrapper)
+        self.assertNotIn("Act as the portable Agentic SDLC role", wrapper)
+        self.assertIn("You are a dispatched subagent", wrapper)
+
+    def test_non_secure_cloud_profiles_are_unaffected_by_rich_content_availability(self):
+        self.run_cli("init", "--profile", "generic", "--runner", "claude")
+        wrapper = (self.root / ".claude" / "agents" / "application-engineer.md").read_text(encoding="utf-8")
+        self.assertIn("Act as the portable Agentic SDLC role application-engineer", wrapper)
+
+    def test_secure_cloud_profile_falls_back_to_generic_stub_without_sibling_plugin(self):
+        with tempfile.TemporaryDirectory() as isolated_parent:
+            isolated_plugin = Path(isolated_parent) / "agentic-sdlc"
+            shutil.copytree(PLUGIN_ROOT, isolated_plugin)
+            isolated_cli = isolated_plugin / "scripts" / "agentic_sdlc.py"
+            result = subprocess.run(
+                [sys.executable, str(isolated_cli), "init", "--profile", "secure-cloud", "--runner", "claude", "--root", str(self.root)],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(0, result.returncode, result.stderr or result.stdout)
+        wrapper = (self.root / ".claude" / "agents" / "backend-engineer.md").read_text(encoding="utf-8")
+        self.assertIn("Act as the portable Agentic SDLC role backend-engineer", wrapper)
 
     def test_init_creates_overlay_wrappers_and_preserves_agents_content(self):
         original = "# Existing rules\n\nKeep this.\n"

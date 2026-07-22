@@ -1,0 +1,25 @@
+{
+  "id": "secure-cloud",
+  "extends": "generic",
+  "description": "Extends generic with this repository's own cloud-platform roles (Proxmox, Talos, Kubernetes, Helm, Terraform, GitLab CI, PostgreSQL). Wrapper generation uses the real role definitions from secure-cloud-agents when it is present alongside this plugin, falling back to generic stubs otherwise.",
+  "rich_content_source": "secure-cloud-agents",
+  "agents": ["frontend-engineer", "backend-engineer", "infrastructure-provisioner", "cicd-engineer", "black-box-tester", "end-user-tester", "escalation-manager", "cost-capacity-planner", "secrets-identity-engineer", "policy-as-code-engineer", "database-reliability-engineer", "infrastructure-reviewer", "pipeline-security-reviewer", "supply-chain-security-reviewer", "technical-writer", "knowledge-store-steward"],
+  "routing": [
+    {"id": "frontend", "phrases": ["react", "typescript", "javascript", "frontend", "browser", "accessibility", "user interface"], "agents": ["frontend-engineer"], "reviewers": ["test-engineer", "code-reviewer"], "gates": ["G3", "G5", "G6", "G7"]},
+    {"id": "backend", "phrases": ["backend", "api", "golang", "postgres", "postgresql", "pgx", "database", "migration"], "agents": ["backend-engineer"], "reviewers": ["test-engineer", "code-reviewer"], "gates": ["G3", "G4", "G5", "G6", "G7"]},
+    {"id": "infrastructure", "phrases": ["proxmox", "terraform", "talos", "kubernetes", "k8s", "helm", "infrastructure", "docker compose", "podman compose", "compose.yaml", "named volume", "container storage"], "agents": ["infrastructure-provisioner"], "reviewers": ["infrastructure-reviewer"], "gates": ["G3", "G4", "G5", "G6", "G7", "G8"]},
+    {"id": "pipeline", "phrases": ["gitlab ci", "pipeline", "runner", "build job", "deployment job"], "agents": ["cicd-engineer"], "reviewers": ["pipeline-security-reviewer"], "gates": ["G5", "G6", "G7", "G8"]},
+    {"id": "black-box-testing", "phrases": ["black-box", "black box", "external behavior", "public api test", "opaque system", "end-to-end test", "e2e"], "agents": ["black-box-tester"], "reviewers": ["test-engineer", "code-reviewer"]},
+    {"id": "end-user-testing", "phrases": ["uat", "user acceptance", "end-user", "end user", "persona", "user journey", "usability", "user readiness"], "agents": ["end-user-tester"], "reviewers": ["technical-writer"], "support": ["support-triage-agent"], "gates": ["G6"]},
+    {"id": "support-escalation", "phrases": ["support", "triage", "user report", "customer report", "incident ticket", "reproduction steps", "workaround"], "agents": ["support-triage-agent"], "support": ["escalation-manager"]},
+    {"id": "incident-response", "phrases": ["incident", "outage", "sev1", "sev2", "major incident", "postmortem", "rollback coordination", "war room"], "agents": ["incident-commander"], "support": ["escalation-manager", "support-triage-agent", "observability-sre"]},
+    {"id": "cost-capacity", "phrases": ["capacity", "sizing", "cost", "finops", "quota", "resource limits", "storage growth", "runner utilization", "headroom"], "agents": ["cost-capacity-planner"], "reviewers": ["infrastructure-reviewer"], "support": ["observability-sre"]},
+    {"id": "secrets-identity", "phrases": ["secret", "credential", "key rotation", "workload identity", "rbac", "oidc", "service account", "access review", "gitlab variable"], "agents": ["secrets-identity-engineer"], "reviewers": ["security-reviewer", "compliance-reviewer"]},
+    {"id": "policy-as-code", "phrases": ["policy as code", "admission", "opa", "kyverno", "gatekeeper", "conftest", "network policy", "restricted security context"], "agents": ["policy-as-code-engineer"], "reviewers": ["security-reviewer", "infrastructure-reviewer"]},
+    {"id": "database-reliability", "phrases": ["postgresql ha", "pitr", "backup", "restore", "migration safety", "schema change", "data retention", "vacuum", "index", "lock"], "agents": ["database-reliability-engineer"], "reviewers": ["backend-engineer", "infrastructure-reviewer"]},
+    {"id": "supply-chain", "phrases": ["dependency", "sbom", "sboms", "provenance", "signing", "cosign", "slsa", "container image", "terraform provider", "helm dependency", "license"], "agents": ["supply-chain-security-reviewer"], "reviewers": ["security-reviewer"], "support": ["release-engineer"]},
+    {"id": "documentation", "phrases": ["documentation", "runbook", "adr", "architecture decision", "operator guide"], "agents": ["technical-writer"], "reviewers": []},
+    {"id": "knowledge-store", "phrases": ["knowledge store", "chat history", "embedding", "vector search", "retrieval", "rag"], "agents": ["knowledge-store-steward"], "reviewers": ["security-reviewer", "compliance-reviewer"]}
+  ],
+  "impact_categories": []
+}

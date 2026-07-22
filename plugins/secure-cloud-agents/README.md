@@ -1,5 +1,13 @@
 # Secure Cloud Agents plugin
 
+Most projects that want this repository's roles should use
+`agents sdlc init --root <target> --profile secure-cloud` instead of this
+plugin — see [`../agentic-sdlc/README.md`](../agentic-sdlc/README.md#profiles-and-extensions).
+That path is scoped to one project and generates static, project-owned role
+wrappers rather than a live link back to this checkout. This plugin remains
+the right choice for the narrower case of wanting all 34 roles reachable from
+*every* project on the machine unconditionally.
+
 This plugin makes this repository's own agent suite — 34 specialist roles
 (`agents/catalog.yaml`), 6 orchestration/authoring/knowledge skills
 (`.agents/skills/`), and the shared knowledge store — reachable from any

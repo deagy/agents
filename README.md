@@ -23,7 +23,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 
 Key areas:
 
-- [bin/agents](bin/agents) dispatches every Python tool in this repository (`agents select`, `agents knowledge`, `agents sdlc`, `agents validate-run`, `agents generate-plugin`) so nothing below needs to be invoked as `python3 <path>` directly; see "System-wide install".
+- [bin/agents](bin/agents) dispatches every Python tool in this repository (`agents select`, `agents knowledge`, `agents sdlc`, `agents validate-run`, `agents generate-plugin`) so nothing below needs to be invoked as `python3 <path>` directly; see "Put `agents` on `PATH`".
 - [agents/catalog.yaml](agents/catalog.yaml) is the machine-readable role inventory.
 - [agents/RUNBOOK.md](agents/RUNBOOK.md) explains how to select, dispatch, review, and escalate agent work.
 - [agents/orchestration/](agents/orchestration/) contains routing rules, quality gates, handoff contracts, escalation policy, selectors, and tests.
@@ -32,7 +32,7 @@ Key areas:
 - [agents/knowledge-store/](agents/knowledge-store/) contains the retrieval layer for approved historical context.
 - [agents/testing/](agents/testing/) and [agents/support/](agents/support/) define black-box testing, end-user testing, support triage, and escalation roles.
 - [.agents/skills/](.agents/skills/) contains this repository's skills, packaged for Codex CLI directly and pointed to from `.claude/skills/` for Claude Code.
-- [plugins/agentic-sdlc/](plugins/agentic-sdlc/) packages the portable lifecycle kernel, initializer, validator, and skills (Codex CLI and Claude Code) for use in other repositories.
+- [plugins/agentic-sdlc/](plugins/agentic-sdlc/) packages the portable lifecycle kernel, initializer, validator, and skills (Codex CLI and Claude Code) for use in other repositories — including, via `--profile secure-cloud`, a project-scoped way to get this repository's own 34 roles without a global install.
 - [plugins/secure-cloud-agents/](plugins/secure-cloud-agents/) packages *this* repository's own suite for system-wide use — install it once and its skills, roles, and the knowledge store become reachable from any project directory, not just this checkout.
 
 ## Supported runners
@@ -41,7 +41,7 @@ Every role definition, routing rule, quality gate, and orchestration tool in thi
 
 ## Quick start
 
-Read [AGENTS.md](AGENTS.md) first. `bin/agents` resolves a Python 3.10+ interpreter for you (checks `python3`/`python`; `.\bin\agents.ps1` also checks `py -3` in PowerShell) — see "System-wide install" to put it on `PATH`, or run it as `./bin/agents` (`.\bin\agents.ps1` in PowerShell) from the repository root. Then validate the internal orchestration tools:
+Read [AGENTS.md](AGENTS.md) first. `bin/agents` resolves a Python 3.10+ interpreter for you (checks `python3`/`python`; `.\bin\agents.ps1` also checks `py -3` in PowerShell) — see "Put `agents` on `PATH`" to put it on `PATH`, or run it as `./bin/agents` (`.\bin\agents.ps1` in PowerShell) from the repository root. Then validate the internal orchestration tools:
 
 ```sh
 python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"
@@ -84,16 +84,27 @@ agents sdlc init --root /path/to/target
 
 This defaults to the low-ceremony `quick` profile and generates subagent wrappers for both runners (`init --runner {codex,claude,both}`).
 
+If the target project actually uses this repository's own cloud stack (Proxmox, Talos, Kubernetes, Helm, Terraform, GitLab CI, PostgreSQL), use `--profile secure-cloud` instead of the default. This is the **recommended** way to get this repository's 34 roles into a project — scoped to that one project, generated once as static files the project owns from that point on (no live link back to this checkout, so a later role edit here doesn't silently change that project's behavior):
+
+```sh
+agents sdlc init --root /path/to/target --profile secure-cloud
+```
+
+A project with a different stack should stay on `quick`/`generic`/`web-service` — `secure-cloud` extends `generic` with 14 roles opinionated toward this repository's own infrastructure, and installing it onto an unrelated stack forces subagents shaped around infrastructure that project doesn't have.
+
 Initialization detects candidate technologies and validation commands, but deliberately leaves human authorities, compliance applicability, persistent/production environment classification, and other consequential decisions unresolved. The target project owns those decisions and its lifecycle records under `.agentic-sdlc/`.
 
 See [the portable plugin guide](plugins/agentic-sdlc/README.md) for installation, commands, team demonstration steps, upgrades, and current limitations.
 
-## System-wide install
+## Advanced: install every role globally
 
-By default everything in this repository — the 34 roles, the 6 skills, and the
-knowledge store — only works when your current directory is inside this
-checkout. `plugins/secure-cloud-agents/` makes it all reachable from any
-project instead, via the same global/user-scope plugin install mechanism:
+Most projects want the per-project `--profile secure-cloud` path above instead
+of this section — it avoids forcing this repository's cloud-specific roles
+onto projects with a different stack, and each project's generated wrappers
+are static files it owns, not a live link back to this checkout. This section
+is for the narrower case of genuinely wanting all 34 roles, the 6 skills, and
+the knowledge store reachable from *every* project on the machine
+unconditionally, via the same global/user-scope plugin install mechanism:
 
 ```sh
 codex plugin marketplace add .
@@ -105,19 +116,22 @@ codex plugin add secure-cloud-agents@agents-team
 /plugin install secure-cloud-agents@agents-team
 ```
 
-`run-agent-orchestration` and `knowledge-ingestion` create the shared
-knowledge store's config automatically the first time either runs, if it
-doesn't already exist. To do it yourself instead of waiting for that:
+The first `run-agent-orchestration` or `knowledge-ingestion` invocation with no
+knowledge-store config anywhere asks whether to create an isolated project-local
+one or use this shared global one — it does not create the global one silently.
+See [plugins/secure-cloud-agents/README.md](plugins/secure-cloud-agents/README.md)
+for how Codex's subagent wrappers get into `~/.codex/agents/` (Codex has no
+plugin-bundled-agent mechanism, but this now syncs automatically on first
+orchestration dispatch) and for how to regenerate after adding a role.
 
-```sh
-mkdir -p ~/.agents/knowledge-store
-cp agents/knowledge-store/config.example.json ~/.agents/knowledge-store/config.json
-```
+## Put `agents` on `PATH`
 
-And put `bin/agents` on `PATH` so the `agents` command in this README and
-`agents/RUNBOOK.md` works from any directory, not just this checkout. Symlink
-it (a copy would break its reach-back into this repository) into a directory
-already on `PATH`, e.g.:
+Optional, and useful regardless of which path above you took: put `bin/agents`
+on `PATH` so the `agents` command in this README and `agents/RUNBOOK.md` works
+from any directory, not just this checkout (an orchestrating Claude Code agent
+doesn't need this — the installed plugins already put `bin/agents` on the Bash
+tool's PATH for it). Symlink it (a copy would break its reach-back into this
+repository) into a directory already on `PATH`, e.g.:
 
 ```sh
 mkdir -p ~/.local/bin
@@ -130,11 +144,6 @@ in a `$PROFILE` function instead:
 ```powershell
 function agents { & "C:\path\to\this\checkout\bin\agents.ps1" @args }
 ```
-
-See [plugins/secure-cloud-agents/README.md](plugins/secure-cloud-agents/README.md)
-for how Codex's subagent wrappers get into `~/.codex/agents/` (Codex has no
-plugin-bundled-agent mechanism, but this now syncs automatically on first
-orchestration dispatch) and for how to regenerate after adding a role.
 
 ## Agent orchestration
 
