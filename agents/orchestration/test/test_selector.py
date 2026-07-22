@@ -102,7 +102,8 @@ class SelectorTests(unittest.TestCase):
             "resolution": "runner-probed",
         }
         self.assertTrue(all(request["invocation"]["launcher"] == expected_launcher for request in requests))
-        self.assertTrue(all(request["invocation"]["args"][:2] == ["src/cli.py", "context"] for request in requests))
+        self.assertTrue(all(Path(request["invocation"]["args"][0]).is_absolute() for request in requests))
+        self.assertTrue(all(request["invocation"]["args"][1] == "context" for request in requests))
 
     def test_knowledge_invocation_defaults_source_to_repository_name_when_unset(self) -> None:
         from build_dispatch_plan import DEFAULT_KNOWLEDGE_SOURCE, KNOWLEDGE_STORE_ROOT
@@ -119,9 +120,9 @@ class SelectorTests(unittest.TestCase):
             args = request["invocation"]["args"]
             self.assertIn("--source", args)
             self.assertEqual(DEFAULT_KNOWLEDGE_SOURCE, args[args.index("--source") + 1])
-            self.assertEqual(str(KNOWLEDGE_STORE_ROOT), request["invocation"]["cwd"])
+            self.assertEqual(str(KNOWLEDGE_STORE_ROOT / "src" / "cli.py"), args[0])
             self.assertNotIn("--config", args)
-            self.assertTrue(Path(request["invocation"]["cwd"]).is_absolute())
+            self.assertNotIn("cwd", request["invocation"])
 
     def test_emits_schema_v2_quality_gates_separately_from_human_gates(self) -> None:
         result = plan(
@@ -239,14 +240,13 @@ class SelectorTests(unittest.TestCase):
                     "accessibility, API contracts, and browser security."
                 ),
                 "invocation": {
-                    "cwd": str(AGENTS_ROOT / "knowledge-store"),
                     "launcher": {
                         "runtime": "python",
                         "minimum_version": "3.10",
                         "resolution": "runner-probed",
                     },
                     "args": [
-                        "src/cli.py",
+                        str(AGENTS_ROOT / "knowledge-store" / "src" / "cli.py"),
                         "context",
                         "--agent",
                         "frontend-engineer",

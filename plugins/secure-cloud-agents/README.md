@@ -80,8 +80,21 @@ generated role subagents/wrappers already carry the ask-the-human rule from
 `runner-adapters.md`: they will return a labeled blocking question rather than
 attempt to prompt a human directly.
 
-The shared knowledge store (`agents/knowledge-store/`) is available from
-anywhere by design once this plugin is installed — see
-`agents/knowledge-store/README.md` for its global-by-default configuration and
-the `--source` convention that keeps different projects' content distinguishable
-in that one shared database.
+### Project-local overrides
+
+Global-by-default doesn't mean every project has to use the global role or
+knowledge store. See
+[`../agentic-sdlc/contracts/runner-adapters.md`](../agentic-sdlc/contracts/runner-adapters.md#project-local-overrides)
+for the full explanation; in short:
+
+- **Roles**: give a project its own `.claude/agents/<role-id>.md` or
+  `.codex/agents/<role-id>.toml` and `run-agent-orchestration` will dispatch
+  that instead of the global `secure-cloud-agents:<role-id>` (Claude Code) or
+  `~/.codex/agents/<role-id>.toml` copy (Codex) when working in that project.
+- **Knowledge store**: give a project its own `.agents/knowledge-store/config.json`
+  at its repository root and every command run from inside that project
+  resolves to it automatically instead of the shared global store — see
+  `agents/knowledge-store/README.md` for the full three-tier resolution
+  (explicit `--config` > project-local > global) and the `--source` convention
+  that keeps different projects' content distinguishable when they *do* use
+  the shared store.

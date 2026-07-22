@@ -151,7 +151,7 @@ def _build_knowledge_context(
             raise ValueError(f"Missing knowledge focus for selected agent: {agent}")
         query = f"Task: {normalized_task}. Retrieve {focus}."
         args = [
-            "src/cli.py",
+            str(KNOWLEDGE_STORE_ROOT / "src" / "cli.py"),
             "context",
             "--agent",
             agent,
@@ -171,7 +171,6 @@ def _build_knowledge_context(
                 "agent": agent,
                 "query": query,
                 "invocation": {
-                    "cwd": str(KNOWLEDGE_STORE_ROOT),
                     "launcher": {
                         "runtime": "python",
                         "minimum_version": "3.10",

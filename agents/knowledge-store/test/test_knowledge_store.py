@@ -191,6 +191,58 @@ class KnowledgeStoreTests(unittest.TestCase):
         expected = fake_home / ".agents" / "knowledge-store" / "data" / "knowledge.db"
         self.assertEqual(str(expected.resolve()), config["database"])
 
+    def test_project_local_config_overrides_global_default(self) -> None:
+        project = self.directory / "project"
+        nested = project / "src" / "deeply" / "nested"
+        nested.mkdir(parents=True)
+        (project / ".git").mkdir()
+        local_store = project / ".agents" / "knowledge-store"
+        local_store.mkdir(parents=True)
+        (local_store / "config.json").write_text(
+            json.dumps({"database": "project.db", "embedding": {"dimensions": 128}}), encoding="utf-8"
+        )
+        global_home = self.directory / "global-home"
+        global_home.mkdir()
+
+        with mock.patch.dict(os.environ, {"KNOWLEDGE_STORE_HOME": str(global_home)}):
+            with mock.patch("config.Path.cwd", return_value=nested):
+                config = load_config()
+        self.assertEqual(str((local_store / "project.db").resolve()), config["database"])
+
+    def test_explicit_config_still_wins_over_project_local(self) -> None:
+        project = self.directory / "project-explicit"
+        project.mkdir()
+        (project / ".git").mkdir()
+        local_store = project / ".agents" / "knowledge-store"
+        local_store.mkdir(parents=True)
+        (local_store / "config.json").write_text(
+            json.dumps({"database": "project.db", "embedding": {"dimensions": 128}}), encoding="utf-8"
+        )
+        explicit_path = self._write_json("explicit.json", {"database": "explicit.db", "embedding": {"dimensions": 128}})
+
+        with mock.patch("config.Path.cwd", return_value=project):
+            config = load_config(str(explicit_path))
+        self.assertEqual(str((self.directory / "explicit.db").resolve()), config["database"])
+
+    def test_project_local_walk_stops_at_git_boundary(self) -> None:
+        outer = self.directory / "outer"
+        inner_repo = outer / "inner-repo"
+        nested = inner_repo / "src"
+        nested.mkdir(parents=True)
+        (inner_repo / ".git").mkdir()
+        outer_store = outer / ".agents" / "knowledge-store"
+        outer_store.mkdir(parents=True)
+        (outer_store / "config.json").write_text(
+            json.dumps({"database": "outer.db", "embedding": {"dimensions": 128}}), encoding="utf-8"
+        )
+        global_home = self.directory / "global-home-2"
+        global_home.mkdir()
+
+        with mock.patch.dict(os.environ, {"KNOWLEDGE_STORE_HOME": str(global_home)}):
+            with mock.patch("config.Path.cwd", return_value=nested):
+                config = load_config()
+        self.assertEqual(str((global_home / "data" / "knowledge.db").resolve()), config["database"])
+
     def test_cli_utf8_json_and_no_raw_query_on_stderr(self) -> None:
         config_path = self._write_json("config.json", {"database": "store.db", "embedding": {"dimensions": 128}})
         output = run(["init", "--config", str(config_path)])
