@@ -4,7 +4,7 @@ description: Create or update this repository's agent definitions, catalog entri
 ---
 
 Read and follow the full instructions in
-`/home/deagy/sdk/agents/.agents/skills/agent-authoring/SKILL.md`. Do not duplicate or summarize them here —
+`C:\Users\gingy\sdk\agents\.agents\skills\agent-authoring\SKILL.md`. Do not duplicate or summarize them here —
 treat that file as authoritative.
 
 This absolute path is specific to this machine's checkout. If it moves, regenerate this plugin with `agents generate-plugin` (bin/agents at the repository root).

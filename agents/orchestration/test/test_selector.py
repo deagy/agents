@@ -63,6 +63,27 @@ class SelectorTests(unittest.TestCase):
         self.assertIsNotNone(glob_to_regex(".gitlab-ci.yml").search(".gitlab-ci.yml"))
         self.assertIsNone(glob_to_regex("**/*.go").search("main.ts"))
 
+
+    def test_glob_matches_character_classes(self):
+        # [a-z] matches single lowercase letter (first char of path)
+        self.assertIsNotNone(glob_to_regex('[a-z]/x.go').search('a/x.go'))
+        self.assertIsNone(glob_to_regex('[a-z]/x.go').search('1/x.go'))
+    def test_glob_matches_brace_expansion(self):
+        # {app,lib} alternates between two names
+        p = glob_to_regex('{app,lib}/src/**')
+        self.assertIsNotNone(p.search('app/src/main.go'))
+        self.assertIsNotNone(p.search('lib/src/util.py'))
+        self.assertIsNone(p.search('other/x.py'))
+        # [a-z] works with * for multi-char directory names
+        self.assertIsNotNone(glob_to_regex('[a-z]*/x.go').search('abc/x.go'))
+        self.assertIsNone(glob_to_regex('[a-z]/main.go').search('123/main.go'))
+
+    def test_glob_matches_brace_expansion(self):
+        p = glob_to_regex('{app,lib}/src/**')
+        self.assertIsNotNone(p.search('app/src/main.go'))
+        self.assertIsNotNone(p.search('lib/src/util.py'))
+        self.assertIsNone(p.search('other/x.py'))
+
     def test_plugin_packaging_routes_to_agent_suite_governance(self) -> None:
         result = plan(
             task="Package the portable Agentic SDLC plugin",
@@ -663,3 +684,7 @@ class SelectorTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
+

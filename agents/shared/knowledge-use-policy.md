@@ -18,3 +18,17 @@ The knowledge store is the shared retrieval layer for agents. Use it to supply r
 ## Failure behavior
 
 Record whether retrieval was completed, unavailable, empty, or blocked by authorization. Do not broaden access or omit required citations to compensate for missing context. Escalate when material decisions depend on unavailable, conflicting, or unauthorized knowledge.
+
+
+## Classification model
+
+The knowledge store uses a **flat** (non-hierarchical) classification model. Each retrieval filter matches exactly the requested classification — it does not implicitly grant access to broader or narrower classifications.
+
+| Requested classification | Matches | Does NOT match |
+|--------------------------|---------|----------------|
+| public | public | internal, confidential, estricted |
+| internal | internal | public, confidential, estricted |
+| confidential | confidential | public, internal, estricted |
+| estricted | estricted | public, internal, confidential |
+
+Downstream consumers that need hierarchical access (e.g., a "confidential" request also receiving "public" results) must implement this logic themselves rather than relying on the store's filter. The store's classification field is always preserved verbatim in citation metadata.

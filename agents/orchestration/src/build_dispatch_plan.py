@@ -15,6 +15,9 @@ MAXIMUM_KNOWLEDGE_TOP = 20
 KNOWLEDGE_STORE_ROOT = Path(__file__).resolve().parents[2] / "knowledge-store"
 DEFAULT_KNOWLEDGE_SOURCE = Path(__file__).resolve().parents[3].name
 
+# Recommendation #5: Default concurrency limit for knowledge retrievals.
+DEFAULT_RETRIEVAL_CONCURRENCY = 4
+
 
 def _unique(values: Iterable[str]) -> list[str]:
     return list(dict.fromkeys(values))
@@ -255,4 +258,11 @@ def build_dispatch_plan(
         "required_quality_gates": _build_quality_gates(config, matched_routes, matched_risks),
         "human_gates": _build_human_gates(matched_risks),
         "knowledge_context": _build_knowledge_context(config, selected_agents, normalized_input),
+        "retrieval": {
+            "max_concurrency": min(DEFAULT_RETRIEVAL_CONCURRENCY, len(groups["primary"]) + len(groups["reviewers"]) + len(groups["support"])) if groups["primary"] or groups["reviewers"] or groups["support"] else 0,
+            "total_requests": len(selected_agents),
+            "rate_limit_seconds": config.get("embedding", {}).get("rate_limit_seconds"),
+        },
     }
+
+

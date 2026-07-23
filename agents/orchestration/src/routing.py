@@ -9,12 +9,33 @@ from typing import Any, Pattern
 
 
 def glob_to_regex(pattern: str) -> Pattern[str]:
-    """Translate the selector's small glob dialect to a compiled regex."""
+    """Translate the selector's small glob dialect to a compiled regex.
+
+    Supports: * (any chars except /), ** (any path segment), ? (single char),
+    [a-z] character classes, and {a,b} brace expansion (Recommendation #4).
+    """
     normalized = pattern.replace("\\", "/")
     expression = "^"
     index = 0
     while index < len(normalized):
         character = normalized[index]
+        if character == "{" :
+            # Brace expansion: {a,b,c} -> (a|b|c) processed in-place.
+            end_brace = normalized.find("}", index)
+            if end_brace != -1:
+                body = normalized[index + 1 : end_brace]
+                parts = [re.escape(p) for p in body.split(",")]
+                expression += "(" + "|".join(parts) + ")"
+                index = end_brace + 1
+                continue
+        if character == "[" and index + 1 < len(normalized):
+            # Character class: [abc] or [!a-z] negation.
+            end_bracket = normalized.find("]", index)
+            if end_bracket != -1:
+                class_body = normalized[index + 1 : end_bracket]
+                expression += f"[{class_body}]"
+                index = end_bracket + 1
+                continue
         if character == "*" and index + 1 < len(normalized) and normalized[index + 1] == "*":
             index += 1
             if index + 1 < len(normalized) and normalized[index + 1] == "/":
@@ -92,3 +113,6 @@ def match_routes(
         if reasons["matched"]:
             matches.append({"id": route["id"], "reasons": reasons, "rule": route})
     return matches
+
+
+

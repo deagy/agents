@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from content import chunk_text, protect_content
-from database import begin_run, complete_run, fail_run, load_chunks, record_retrieval, save_message
+from database import begin_run, checkpoint as db_checkpoint, complete_run, fail_run, load_chunks, record_retrieval, save_message
 from embeddings import cosine_similarity, embed_texts
 from normalize import normalize_file
 
@@ -50,7 +50,8 @@ def ingest_file(db: Any, config: dict[str, Any], options: dict[str, Any]) -> dic
             vectors = embed_texts(chunks, config["embedding"])
             save_message(db, message, protected, chunks, vectors, config["embedding"])
             chunk_count += len(chunks)
-        complete_run(db, run_id, len(messages), chunk_count)
+        # Recommendation #1: Auto-checkpoint after ingestion to prevent WAL bloat.
+        complete_run(db, run_id, len(messages), chunk_count, checkpoint_after=True)
         return {"run_id": run_id, "messages": len(messages), "chunks": chunk_count}
     except Exception as error:
         fail_run(db, run_id, error)
@@ -63,9 +64,16 @@ def search_store(db: Any, config: dict[str, Any], query: str, options: dict[str,
         raise ValueError("A classification filter is required")
     _validate_classification(options["classification"])
     limit = top_limit(options.get("top"))
+    # Build filters for load_chunks; pass max_age_seconds from config for staleness (Recommendation #2).
+    filters: dict[str, Any] = {"classification": options["classification"]}
+    if options.get("source"):
+        filters["source"] = options["source"]
+    max_age = config["embedding"].get("max_age_seconds")
+    if max_age is not None:
+        filters["max_age_seconds"] = max_age
     query_vector = embed_texts([query], config["embedding"])[0]
     results: list[dict[str, Any]] = []
-    for row in load_chunks(db, config["embedding"], options):
+    for row in load_chunks(db, config["embedding"], filters):
         try:
             stored_vector = json.loads(row["embedding_json"])
             if not isinstance(stored_vector, list):
@@ -135,3 +143,8 @@ def build_agent_context(db: Any, config: dict[str, Any], query: str, options: di
         ],
         "results": results,
     }
+
+
+def checkpoint_db(db: Any, mode: str = "TRUNCATE") -> int:
+    """Explicit checkpoint wrapper for CLI and external callers."""
+    return db_checkpoint(db, mode)

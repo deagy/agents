@@ -45,10 +45,10 @@ MAXIMUM_WALK_DEPTH = 64
 
 
 def find_project_local_config(start: Path) -> Path | None:
-    """Walk upward from `start` for a project-local `.agents/knowledge-store/config.json`.
+    """Walk upward from start for a project-local .agents/knowledge-store/config.json.
 
-    Stops at the first directory containing `.git` (the project boundary) or
-    after MAXIMUM_WALK_DEPTH levels if no `.git` is found, so a config file
+    Stops at the first directory containing .git (the project boundary) or
+    after MAXIMUM_WALK_DEPTH levels if no .git is found, so a config file
     above the project root is never picked up.
     """
     current = start.resolve()
@@ -68,8 +68,8 @@ def find_project_local_config(start: Path) -> Path | None:
 def default_config_path() -> Path:
     """Resolve the implicit config location.
 
-    Priority: a project-local `.agents/knowledge-store/config.json` found by
-    walking up from the current working directory to the project's `.git`
+    Priority: a project-local .agents/knowledge-store/config.json found by
+    walking up from the current working directory to the project's .git
     boundary, else KNOWLEDGE_STORE_HOME, else ~/.agents/knowledge-store. The
     global tier is a single store shared across every project on the machine
     by design — see agents/knowledge-store/SECURITY.md for the source-based
@@ -122,6 +122,18 @@ def load_config(config_path: str | None = None) -> dict[str, Any]:
         raise ValueError("embedding.timeout_seconds must be greater than 0 and at most 300")
     if not isinstance(embedding.get("model"), str) or not embedding["model"].strip():
         raise ValueError("embedding.model must be a non-empty string")
+
+    # Recommendation #2: Optional staleness TTL for retrieved knowledge.
+    max_age = embedding.get("max_age_seconds")
+    if max_age is not None:
+        _positive_integer(max_age, "embedding.max_age_seconds")
+        config["embedding"]["max_age_seconds"] = max_age
+
+    # Recommendation #5: Optional rate limiting for retrieval concurrency.
+    rate_limit = embedding.get("rate_limit_seconds")
+    if rate_limit is not None:
+        _positive_integer(rate_limit, "embedding.rate_limit_seconds")
+        config["embedding"]["rate_limit_seconds"] = rate_limit
 
     chunking = config["chunking"]
     _positive_integer(chunking["max_characters"], "chunking.max_characters")

@@ -6,7 +6,7 @@ import hashlib
 import json
 import sqlite3
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +17,17 @@ def _hash(value: str) -> str:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+# Base schema with migration versioning support. Version 1 adds __migrations__ table.
+BASE_SCHEMA_VERSION = 1
+
+MIGRATION_1_SCHEMA = """
+CREATE TABLE IF NOT EXISTS __migrations__ (
+  version INTEGER PRIMARY KEY,
+  applied_at TEXT NOT NULL
+);
+"""
 
 
 SCHEMA = """
@@ -54,6 +65,27 @@ CREATE INDEX IF NOT EXISTS idx_retrieval_runs_task ON retrieval_runs(task_id, ag
 """
 
 
+def _run_migrations(db: sqlite3.Connection) -> None:
+    """Apply any pending schema migrations. Called once per open_store()."""
+    try:
+        existing_version = db.execute("SELECT version FROM __migrations__ ORDER BY version DESC LIMIT 1").fetchone()
+        current_migration_version = existing_version["version"] if existing_version else 0
+    except sqlite3.OperationalError:
+        # Table does not exist yet — need to create it via migration 1
+        current_migration_version = 0
+
+    pending: list[tuple[int, str]] = []
+    if current_migration_version < 1:
+        pending.append((1, MIGRATION_1_SCHEMA))
+
+    for version, migration_sql in pending:
+        db.executescript(migration_sql)
+        db.execute(
+            "INSERT INTO __migrations__ (version, applied_at) VALUES (?, ?)",
+            (version, _now()),
+        )
+
+
 def open_store(database_path: str) -> sqlite3.Connection:
     path = Path(database_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -61,8 +93,25 @@ def open_store(database_path: str) -> sqlite3.Connection:
     db.row_factory = sqlite3.Row
     db.execute("PRAGMA foreign_keys = ON")
     db.execute("PRAGMA journal_mode = WAL")
+    # Run schema migrations before base schema (migrations may add tables/cols the base needs)
+    _run_migrations(db)
     db.executescript(SCHEMA)
     return db
+
+
+def checkpoint(db: sqlite3.Connection, mode: str = "TRUNCATE") -> int:
+    """Checkpoint the WAL and return the number of frames checkpointed.
+
+    Args:
+        db: Active database connection (must be using WAL journal mode).
+        mode: One of PASSIVE, FULL, TRUNCATE, or PENDING. Defaults to TRUNCATE
+              which removes WAL content that has been successfully checkpointed,
+              keeping the WAL file small.
+
+    Returns:
+        Number of frames checkpointed (0 means nothing was idle).
+    """
+    return db.execute(f"PRAGMA wal_checkpoint({mode})").fetchone()[""]
 
 
 def begin_run(db: sqlite3.Connection, source: str, source_uri: str | None) -> str:
@@ -72,9 +121,15 @@ def begin_run(db: sqlite3.Connection, source: str, source_uri: str | None) -> st
     return run_id
 
 
-def complete_run(db: sqlite3.Connection, run_id: str, message_count: int, chunk_count: int) -> None:
+def complete_run(db: sqlite3.Connection, run_id: str, message_count: int, chunk_count: int, checkpoint_after: bool = True) -> None:
     with db:
         db.execute("UPDATE ingestion_runs SET completed_at = ?, status = 'complete', message_count = ?, chunk_count = ? WHERE id = ?", (_now(), message_count, chunk_count, run_id))
+    # Recommendation #1: Trigger WAL checkpoint after large ingestion runs to prevent bloat.
+    if checkpoint_after and chunk_count > 0:
+        try:
+            checkpoint(db)
+        except Exception:
+            pass
 
 
 def fail_run(db: sqlite3.Connection, run_id: str, error: Exception) -> None:
@@ -128,6 +183,12 @@ def load_chunks(db: sqlite3.Connection, embedding: dict[str, Any], filters: dict
         raise ValueError("A classification filter is required")
     clauses.append("m.classification = ?")
     values.append(filters["classification"])
+    # Apply TTL filter for stale knowledge exclusion (Recommendation #2).
+    max_age_seconds: int | None = filters.get("max_age_seconds")
+    if max_age_seconds is not None and max_age_seconds > 0:
+        cutoff = (datetime.now(timezone.utc) - timedelta(seconds=max_age_seconds)).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        clauses.append("m.ingested_at > ?")
+        values.append(cutoff)
     return db.execute(f"""SELECT c.id AS chunk_id, c.ordinal, c.content, c.content_hash,
       c.embedding_json, m.source, m.source_uri, m.conversation_id, m.conversation_title,
       m.source_message_id AS message_id, m.role, m.created_at, m.classification, m.injection_risk
@@ -157,3 +218,12 @@ def store_stats(db: sqlite3.Connection) -> dict[str, Any]:
       (SELECT COUNT(*) FROM ingestion_runs WHERE status = 'failed') AS failed_runs""").fetchone()
     sources = [dict(row) for row in db.execute("SELECT source, COUNT(*) AS messages FROM messages GROUP BY source ORDER BY source")]
     return {**dict(counts), "sources": sources}
+
+
+def schema_version(db: sqlite3.Connection) -> int | None:
+    """Return the highest applied migration version, or None if no migrations table exists."""
+    try:
+        row = db.execute("SELECT MAX(version) FROM __migrations__").fetchone()
+        return row[0] if row else None
+    except sqlite3.OperationalError:
+        return None
