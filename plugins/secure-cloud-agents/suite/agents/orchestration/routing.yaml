@@ -60,7 +60,7 @@
     },
     {
       "id": "agent-suite-governance",
-      "paths": ["agents/catalog.yaml", "agents/**/AGENT.md", "agents/workflows/**", "agents/shared/**", "agents/orchestration/routing.yaml", "agents/orchestration/selection.schema.json", "agents/orchestration/run-record.schema.json", "agents/orchestration/quality-gates.md", "agents/orchestration/handoff-contracts.md", "agents/orchestration/task-brief-template.md", "agents/orchestration/agentic-sdlc-artifact-contract.md", "agents/orchestration/src/**", "agents/orchestration/test/**", ".agents/skills/**", ".agents/plugins/**", "plugins/**", "README.md", "AGENTS.md"],
+      "paths": ["agents/catalog.yaml", "agents/**/AGENT.md", "agents/workflows/**", "agents/shared/**", "agents/orchestration/routing.yaml", "agents/orchestration/selection.schema.json", "agents/orchestration/handoff-contracts.md", "agents/orchestration/task-brief-template.md", "agents/orchestration/src/**", "agents/orchestration/test/**", ".agents/skills/**", ".agents/plugins/**", "plugins/**", "README.md", "AGENTS.md"],
       "keywords": ["review project", "review repository", "repo structure", "repository structure", "project structure", "agent suite", "agents skills structure", "agents, skills, structure", "review agents", "audit agents", "audit publishable skills", "publishable skills", "skill packaging", "workflow mapping", "orchestration quality", "catalog integrity", "routing coverage", "governance review"],
       "primary": ["application-engineer", "debugging-engineer"],
       "reviewers": ["test-engineer", "code-reviewer"],
@@ -334,17 +334,5 @@
     "governance-planner": "governance impacts, jurisdictions, accreditation plans, control interpretations, evidence obligations, and accountable owner decisions",
     "data-governance-engineer": "data classifications, inventories, lineage, residency, non-egress, retention and deletion, derived outputs, and enforcement decisions",
     "cryptographic-assurance-engineer": "cryptographic inventories, algorithms, key lifecycles, certificates, crypto agility, downgrade risks, PQC, QKMS, QKD, and QRNG applicability"
-  },
-  "quality_gates": {
-    "G1": "Intent is versioned, owned, prioritized, scoped, classified, constrained, environment-specific, and measurable.",
-    "G2": "Requirements have stable identifiers, acceptance criteria, dependencies, non-functional requirements, obligations, applicability, and bidirectional traceability.",
-    "G3": "Architecture is requirements-linked and defines boundaries, interfaces, flows, decisions, failure recovery, technology choices, and validation obligations.",
-    "G4": "Governance and data evidence defines controls, jurisdictions, accreditation, lineage, residency, non-egress, retention, derived outputs, enforcement, and applicability.",
-    "G5": "Security and cryptographic evidence covers threats, identities, dependencies, algorithms, keys, certificates, agility, downgrade analysis, mitigations, tests, and residual risk.",
-    "G6": "Independent verification binds requirement-linked tests, scans, defect dispositions, and acceptance evidence to the exact revision.",
-    "G7": "The immutable evidence index binds provenance, reviews, tests, decisions, exceptions, documentation, retention, classification, and defined BOMs.",
-    "G8": "Release readiness binds prior approvals, an immutable artifact, target compatibility, deployment and rollback plans, telemetry, capacity, support, thresholds, and window.",
-    "G9": "An authorized human approves the exact artifact, environment, identity, plan, window, blast radius, rollback, and verification thresholds.",
-    "G10": "Runtime conformance binds deployed identity, observation window, service and assurance signals, drift, incidents, findings, owners, and traced backlog updates."
   }
 }

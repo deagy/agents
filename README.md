@@ -37,10 +37,10 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 
 Key areas:
 
-- [bin/agents](bin/agents) dispatches every Python tool in this repository (`agents select`, `agents knowledge`, `agents sdlc`, `agents validate-run`, `agents generate-plugin`) so nothing below needs to be invoked as `python3 <path>` directly; see "Put `agents` on `PATH`".
+- [bin/agents](bin/agents) dispatches the suite tools (`agents select`, `agents knowledge`, `agents sdlc`, and `agents generate-plugin`); lifecycle validation is provided by the standalone `agentic-sdlc` CLI.
 - [agents/catalog.yaml](agents/catalog.yaml) is the machine-readable role inventory.
 - [agents/RUNBOOK.md](agents/RUNBOOK.md) explains how to select, dispatch, review, and escalate agent work.
-- [agents/orchestration/](agents/orchestration/) contains routing rules, quality gates, handoff contracts, escalation policy, selectors, and tests.
+- [agents/orchestration/](agents/orchestration/) contains routing rules, lifecycle applicability mappings, handoff contracts, escalation policy, selectors, and tests.
 - [agents/shared/](agents/shared/) contains operating principles, autonomy policy, technology standards, library standards, knowledge-store rules, and risk guidance.
 - [agents/workflows/](agents/workflows/) defines workflows for new services, infrastructure, CI/CD, releases, rollback, knowledge ingestion, and support escalation.
 - [agents/knowledge-store/](agents/knowledge-store/) contains the retrieval layer for approved historical context.

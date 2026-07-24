@@ -67,7 +67,7 @@ Use `workflows/debugging.md` when reproducing defects, analyzing runtime failure
 
 ### Select agents locally
 
-The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. Schema version 2 plans include lifecycle `required_quality_gates` separately from mutation-oriented `human_gates`. The selector creates a dispatch plan but does not retrieve knowledge, invoke agents, approve gates, merge, deploy, or mutate infrastructure. Run it through `bin/agents` (repository root), which resolves a Python 3.10+ interpreter for you across `python3`/`python`/`py -3`; this does not establish an organization-wide Python version. Put it on `PATH` first (see `../README.md` "Put `agents` on `PATH`") or invoke it as `../bin/agents` / `..\bin\agents.ps1` from this directory.
+The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. Schema version 2 plans include provider lifecycle applicability in `required_quality_gates` separately from mutation-oriented `human_gates`; gate semantics and state are owned by the standalone Agentic SDLC kernel. The selector creates a dispatch plan but does not retrieve knowledge, invoke agents, approve gates, merge, deploy, or mutate infrastructure. Run it through `bin/agents` (repository root), which resolves a Python 3.10+ interpreter for you across `python3`/`python`/`py -3`; this does not establish an organization-wide Python version. Put it on `PATH` first (see `../README.md` "Put `agents` on `PATH`") or invoke it as `../bin/agents` / `..\bin\agents.ps1` from this directory.
 
 ```sh
 python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"
@@ -78,7 +78,7 @@ agents select \
   --classification internal
 ```
 
-Omit `--files` to inspect Git status, including staged, unstaged, and untracked paths. Alternatively, `--base main` classifies committed `main...HEAD` changes and excludes dirty worktree changes. Always review emitted `inputs.changed_files`; Git rename parsing and explicit scope still deserve human confirmation. `--output plan.json` creates missing parent directories and overwrites an existing file, so use it only when run-artifact writes are authorized. The selector emits matched routes and evidence, primary/review/support agents, workflow, required lifecycle quality gates, mutation-oriented human gates, and a planned knowledge-store request per selected agent. If no rule matches, it returns `needs-triage` rather than guessing.
+Omit `--files` to inspect Git status, including staged, unstaged, and untracked paths. Alternatively, `--base main` classifies committed `main...HEAD` changes and excludes dirty worktree changes. Always review emitted `inputs.changed_files`; Git rename parsing and explicit scope still deserve human confirmation. `--output plan.json` creates missing parent directories and overwrites an existing file, so use it only when run-artifact writes are authorized. The selector emits matched routes and evidence, primary/review/support agents, workflow, provider lifecycle applicability, mutation-oriented human gates, and a planned knowledge-store request per selected agent. If no rule matches, it returns `needs-triage` rather than guessing.
 
 Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the dependency-free Python selector parses its JSON-compatible content with the standard library. A planned knowledge invocation contains a host-neutral Python 3.10+ `launcher` contract and an argv array beginning with the knowledge-store CLI's absolute path (`src/cli.py`), runnable without changing directory — that also means `Path.cwd()` inside `cli.py` reflects wherever the caller actually is, which is what lets its project-local-vs-global config resolution work. `bin/agents knowledge ...` runs the same script; the plan itself embeds the interpreter-agnostic launcher contract for callers that substitute their own probed interpreter path instead. The plan always carries an explicit `--source`, defaulted to the repository's own name when the caller didn't supply one, since the knowledge store falls back to a store shared across every project by default (`knowledge-store/README.md`) and `--source` is what keeps them distinguishable there. Selection rejects `--top` outside 1–20; required knowledge-store configuration must fail closed.
 
@@ -108,7 +108,7 @@ Always attach or reference:
 - The applicable file from `workflows/`.
 - Exact artifact identifiers and acceptance criteria.
 - Approved intent and requirements-baseline identifiers when the task has entered design.
-- Lifecycle phase, applicable quality gates, and the authoritative run-record location.
+- Lifecycle phase, applicable provider gate mappings, and the target project's authoritative run-record location.
 - The SQS impact profile when any supplied Platform category may apply; `unknown` applicable items fail closed.
 - `shared/definition-of-done.md` for the completion criteria a reviewer checks against.
 
@@ -174,15 +174,7 @@ Intent -> Requirements -> Architecture -> Governance/Data -> Security/Crypto
 -> Deployment Authorization -> Runtime Conformance -> Feedback
 ```
 
-Use `workflows/product-intake.md` while work is limited to intent and requirements. Use `workflows/runtime-assurance.md` for deployed-behavior conformance and feedback. Repository run records validated structurally by `orchestration/run-record.schema.json` and semantically by `orchestration/src/validate_run_record.py` are the authoritative gate-state index; they reference rather than replace human approval evidence.
-
-Validate a YAML or JSON run record before handoff:
-
-```sh
-agents validate-run agents/orchestration/runs/<task-id>/run-record.yaml
-```
-
-Run-record validation requires the pinned YAML and Draft 2020-12 dependencies in `orchestration/requirements-validation.txt`. The validator enforces the complete JSON Schema (including formats, nested types, and closed objects), gate order, gate-specific reviewer and human authority, explicit conditional-authority applicability, author/verifier/approver separation, blocking findings, exceptions and expiry, SQS/BOM uniqueness and fail-closed state, and downstream invalidation.
+Use `workflows/product-intake.md` while work is limited to intent and requirements. Use `workflows/runtime-assurance.md` for deployed-behavior conformance and feedback. Target-project lifecycle records and gate validation are owned by the standalone Agentic SDLC kernel. Use `agentic-sdlc validate --root <project>` before handoff; this suite only contributes dispatch inputs and agent evidence.
 
 ### Cloud architect brief
 

@@ -211,6 +211,18 @@ class RepositoryHealthTests(unittest.TestCase):
                 offenders.append(str(path.relative_to(plugin_root)))
         self.assertEqual([], offenders)
 
+    def test_suite_does_not_duplicate_lifecycle_authority(self) -> None:
+        forbidden = [
+            ROOT / "orchestration" / "quality-gates.md",
+            ROOT / "orchestration" / "run-record.schema.json",
+            ROOT / "orchestration" / "src" / "validate_run_record.py",
+            ROOT / "orchestration" / "agentic-sdlc-artifact-contract.md",
+            REPOSITORY_ROOT / ".agentic-sdlc",
+        ]
+        for path in forbidden:
+            with self.subTest(path=path):
+                self.assertFalse(path.exists(), str(path))
+
     def test_secure_cloud_agents_plugin_covers_every_catalog_agent_and_skill(self) -> None:
         catalog_agents: dict[str, str] = {}
         current_agent: str | None = None
@@ -312,7 +324,12 @@ class RepositoryHealthTests(unittest.TestCase):
         self.assertTrue((plugin_root / "suite" / "agents" / "catalog.yaml").is_file())
         offenders = []
         for path in plugin_root.rglob("*"):
-            if path.is_file() and str(REPOSITORY_ROOT) in path.read_text(encoding="utf-8", errors="ignore"):
+            if (
+                path.is_file()
+                and path.suffix not in {".pyc", ".pyo"}
+                and "__pycache__" not in path.parts
+                and str(REPOSITORY_ROOT) in path.read_text(encoding="utf-8", errors="ignore")
+            ):
                 offenders.append(str(path.relative_to(plugin_root)))
         self.assertEqual([], offenders)
 

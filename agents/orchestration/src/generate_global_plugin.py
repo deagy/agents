@@ -285,8 +285,7 @@ def generate_bin_wrapper(plugin_root: Path) -> Path:
             'case "$command_name" in',
             '  select) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/select_agents.py" "$@" ;;',
             '  knowledge) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/knowledge-store/src/cli.py" "$@" ;;',
-            '  validate-run) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/validate_run_record.py" "$@" ;;',
-            '  help|-h|--help) echo "Usage: agents {select|knowledge|sdlc|validate-run} [args...]" ;;',
+            '  help|-h|--help) echo "Usage: agents {select|knowledge|sdlc} [args...]" ;;',
             '  *) echo "agents: unknown subcommand $command_name" >&2; exit 1 ;;',
             "esac",
             "",
@@ -298,14 +297,18 @@ def generate_bin_wrapper(plugin_root: Path) -> Path:
 
 
 def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -> list[Path]:
-    tracked = set(subprocess.run(
+    tracked = {
+        relative
+        for relative in subprocess.run(
         ["git", "ls-files", "agents"],
         cwd=REPOSITORY_ROOT,
         check=True,
         capture_output=True,
         text=True,
         encoding="utf-8",
-    ).stdout.splitlines())
+        ).stdout.splitlines()
+        if (REPOSITORY_ROOT / relative).is_file()
+    }
     contract_helper = "agents/orchestration/src/agentic_sdlc_contracts.py"
     if (REPOSITORY_ROOT / contract_helper).is_file():
         tracked.add(contract_helper)

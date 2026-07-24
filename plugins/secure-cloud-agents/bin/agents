@@ -20,7 +20,6 @@ done
 case "$command_name" in
   select) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/select_agents.py" "$@" ;;
   knowledge) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/knowledge-store/src/cli.py" "$@" ;;
-  validate-run) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/validate_run_record.py" "$@" ;;
-  help|-h|--help) echo "Usage: agents {select|knowledge|sdlc|validate-run} [args...]" ;;
+  help|-h|--help) echo "Usage: agents {select|knowledge|sdlc} [args...]" ;;
   *) echo "agents: unknown subcommand $command_name" >&2; exit 1 ;;
 esac

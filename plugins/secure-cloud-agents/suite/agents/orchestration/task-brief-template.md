@@ -39,7 +39,7 @@
 - Required output format:
 - Receiving agent or human approver:
 - Artifact IDs, upstream/downstream trace links, and evidence hashes:
-- Required run-record updates and re-entry behavior:
+- Required target-project lifecycle-record updates and re-entry behavior:
 
 ## Knowledge context
 
