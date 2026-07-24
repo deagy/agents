@@ -1,6 +1,8 @@
 {
   "id": "secure-cloud",
+  "version": "0.3.0",
   "extends": "generic",
+  "gate_bindings": {},
   "description": "External Agentic SDLC provider profile for this suite's cloud-platform roles (Proxmox, Talos, Kubernetes, Helm, Terraform, GitLab CI, PostgreSQL).",
   "rich_content_source": "secure-cloud-agents",
   "agents": ["frontend-engineer", "backend-engineer", "infrastructure-provisioner", "cicd-engineer", "black-box-tester", "end-user-tester", "escalation-manager", "cost-capacity-planner", "secrets-identity-engineer", "policy-as-code-engineer", "database-reliability-engineer", "infrastructure-reviewer", "pipeline-security-reviewer", "supply-chain-security-reviewer", "technical-writer", "knowledge-store-steward"],

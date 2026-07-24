@@ -5,6 +5,7 @@
 | Agent definition | The canonical `AGENT.md` describing one role's purpose, inputs, authority, escalation conditions, and completion criteria. |
 | Catalog | `agents/catalog.yaml`, the machine-readable inventory of role IDs, definition paths, and phases. |
 | Provider | A package that supplies roles, profiles, and extensions to the portable Agentic SDLC kernel. |
+| Provider repository | A lifecycle-exempt distribution project that supplies provider resources and dispatch inputs; it does not own a lifecycle overlay or run record. |
 | Profile | A selectable lifecycle configuration that combines a kernel baseline with project-relevant roles and defaults. |
 | Workflow | A documented sequence for a class of work, such as a new service, debugging, release, or incident. |
 | Dispatch plan | A reviewable selector output identifying roles, reviewers, workflow, gates, evidence, and handoffs. |
@@ -28,5 +29,6 @@ Secure Cloud provider
 ```
 
 The kernel owns lifecycle state and gate transitions. This repository owns the
-Secure Cloud provider content. A provider or agent cannot grant itself human
-authority.
+Secure Cloud provider content and is lifecycle-exempt. Consuming target
+projects own their overlays and run records. A provider or agent cannot grant
+itself human authority.

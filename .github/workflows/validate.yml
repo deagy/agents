@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: deagy/agentic-sdlc
-          ref: v0.2.0
+          ref: 4a726668735649400670f1c19e7d280c14d67d2b
           path: .dependencies/agentic-sdlc
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -30,8 +30,22 @@ jobs:
       - run: pip install --no-cache-dir --require-hashes -r .github/requirements-validation.lock
       - run: python -B -m unittest discover -s agents/orchestration/test -p "test_*.py"
       - run: python -B -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
+      - run: test ! -e .agentic-sdlc
       - run: ./bin/agents help
       - run: ./bin/agents select --task "CI wrapper smoke test" --files README.md --classification internal --task-id CI-SMOKE-1 >/dev/null
+      - run: ./bin/agents generate-plugin --check
+      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc --version
+      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc provider list
+      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc profile list
+      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc extension list
+      - run: |
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract provider.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract profile.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract extension.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract selection.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract agent-catalog.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract artifact.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract dispatch-bindings.schema >/dev/null
 
   secret-scan:
     runs-on: ubuntu-latest
@@ -40,4 +54,4 @@ jobs:
       - run: >
           docker run --rm -v "$PWD:/repo"
           zricethezav/gitleaks:v8.30.0@sha256:691af3c7c5a48b16f187ce3446d5f194838f91238f27270ed36eef6359a574d9
-          detect --no-git --redact --source /repo
+          detect --redact --source /repo

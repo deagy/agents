@@ -17,6 +17,12 @@ REPOSITORY_ROOT = ROOT.parent
 
 
 class RepositoryHealthTests(unittest.TestCase):
+    @staticmethod
+    def _require_agentic_sdlc() -> None:
+        if os.environ.get("AGENTIC_SDLC_BIN") or shutil.which("agentic-sdlc"):
+            return
+        raise unittest.SkipTest("Agentic SDLC executable is not configured")
+
     def test_catalog_definitions_and_agent_files_stay_in_sync(self) -> None:
         catalog_agents: dict[str, str] = {}
         current_agent: str | None = None
@@ -262,7 +268,7 @@ class RepositoryHealthTests(unittest.TestCase):
         self.assertEqual(set(catalog_agents), set(export))
         for agent_id, metadata in export.items():
             with self.subTest(agent=agent_id):
-                self.assertIn(metadata["kind"], {"author", "reviewer", "curator", "support"})
+                self.assertIn(metadata["kind"], {"author", "reviewer", "specialist"})
                 self.assertTrue(metadata["phase"])
                 self.assertTrue((export_path.parent / metadata["definition"]).is_file(), metadata["definition"])
 
@@ -320,7 +326,7 @@ class RepositoryHealthTests(unittest.TestCase):
         plugin_root = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents"
         provider = json.loads((plugin_root / "provider.json").read_text(encoding="utf-8"))
         self.assertEqual("secure-cloud-agents", provider["id"])
-        self.assertEqual("0.2.0", provider["version"])
+        self.assertEqual("0.3.0", provider["version"])
         self.assertTrue((plugin_root / "suite" / "agents" / "catalog.yaml").is_file())
         offenders = []
         for path in plugin_root.rglob("*"):
@@ -339,9 +345,7 @@ class RepositoryHealthTests(unittest.TestCase):
         self.assertTrue(os.access(wrapper, os.X_OK), f"{wrapper} is not executable")
 
     def test_bin_agents_delegates_sdlc_to_standalone_kernel(self) -> None:
-        executable = os.environ.get("AGENTIC_SDLC_BIN")
-        if not executable:
-            self.skipTest("AGENTIC_SDLC_BIN is not configured")
+        self._require_agentic_sdlc()
         result = subprocess.run(
             [str(REPOSITORY_ROOT / "bin" / "agents"), "sdlc", "--version"],
             cwd=REPOSITORY_ROOT,
@@ -351,10 +355,11 @@ class RepositoryHealthTests(unittest.TestCase):
             encoding="utf-8",
             env=os.environ.copy(),
         )
-        self.assertEqual("0.2.0", result.stdout.strip())
+        self.assertEqual("0.3.0", result.stdout.strip())
 
     @unittest.skipUnless(sys.platform != "win32", "bin/agents is a POSIX sh script")
     def test_bin_agents_wrapper_dispatches_select_matching_direct_invocation(self) -> None:
+        self._require_agentic_sdlc()
         wrapper = REPOSITORY_ROOT / "bin" / "agents"
         selector = ROOT / "orchestration" / "src" / "select_agents.py"
         arguments = [
@@ -387,6 +392,7 @@ class RepositoryHealthTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform != "win32", "bin/agents is a POSIX sh script")
     def test_bin_agents_wrapper_resolves_correctly_through_a_symlink(self) -> None:
+        self._require_agentic_sdlc()
         wrapper = REPOSITORY_ROOT / "bin" / "agents"
         with tempfile.TemporaryDirectory() as temporary_directory:
             link = Path(temporary_directory) / "agents"
@@ -416,6 +422,7 @@ class RepositoryHealthTests(unittest.TestCase):
         self.assertIn("unknown subcommand", result.stderr)
 
     def test_secure_cloud_agents_plugin_bin_wrapper_matches_direct_invocation(self) -> None:
+        self._require_agentic_sdlc()
         wrapper = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents" / "bin" / "agents"
         self.assertTrue(wrapper.is_file(), str(wrapper))
         self.assertTrue(os.access(wrapper, os.X_OK), f"{wrapper} is not executable")

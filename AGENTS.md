@@ -37,11 +37,16 @@ workflow. Include CLI or UI evidence when behavior changes.
 
 Never commit secrets, raw chat exports, real documents, local environment files, databases, object data, generated credentials, Terraform state, or rendered secrets. Preserve independent review and human gates for persistent mutations, production, risk acceptance, and release.
 
-<!-- agentic-sdlc:start -->
 ## Agentic SDLC
 
-This repository uses the portable Agentic SDLC project overlay in `.agentic-sdlc/`.
-Use its orchestration skill or CLI for multi-role delivery work. Run records are authoritative.
-Never infer gate approval, production/destructive authority, risk acceptance, or compliance applicability.
-Artifact authors must remain separate from independent reviewers and human approvers.
-<!-- agentic-sdlc:end -->
+This repository is lifecycle-exempt: it is a provider/plugin distribution, not
+a consuming target project. It supplies provider resources and dispatch inputs;
+consuming projects own their `.agentic-sdlc/` overlays, run records, gate
+approvals, and lifecycle decisions. The standalone kernel remains a dependency
+for provider and schema validation.
+
+Do not copy lifecycle schemas, run-record validators, gate authorities, or
+kernel authority into this repository. Never infer gate approval,
+production/destructive authority, risk acceptance, or compliance applicability.
+Artifact authors must remain separate from independent reviewers and human
+approvers.

@@ -41,7 +41,7 @@ usage() {
   while IFS="$TAB" read -r name _script description; do
     printf '  %-16s %s\n' "$name" "$description"
   done < "$SUBCOMMANDS"
-  printf '  %-16s %s\n' sdlc "Delegated Agentic SDLC v0.2.x CLI"
+  printf '  %-16s %s\n' sdlc "Delegated Agentic SDLC v0.3.x CLI"
   printf '  %-16s %s\n' help "Show this message"
   echo
   echo "Each subcommand's own --help documents its arguments, e.g. \`agents sdlc plan --help\`."
@@ -60,7 +60,7 @@ case "$command" in
       sdlc_bin=$(command -v agentic-sdlc || true)
     fi
     if [ -z "$sdlc_bin" ]; then
-      echo "agents: Agentic SDLC v0.2.x is required; install it from https://github.com/deagy/agentic-sdlc" >&2
+      echo "agents: Agentic SDLC v0.3.x is required; install it from https://github.com/deagy/agentic-sdlc" >&2
       exit 1
     fi
     exec "$sdlc_bin" \

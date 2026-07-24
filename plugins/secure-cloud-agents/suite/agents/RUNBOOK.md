@@ -69,7 +69,7 @@ Use `workflows/debugging.md` when reproducing defects, analyzing runtime failure
 
 ### Select agents locally
 
-The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. Schema version 2 plans include provider lifecycle applicability in `required_quality_gates` separately from mutation-oriented `human_gates`; gate semantics and state are owned by the standalone Agentic SDLC kernel. The selector creates a dispatch plan but does not retrieve knowledge, invoke agents, approve gates, merge, deploy, or mutate infrastructure. Run it through `bin/agents` (repository root), which resolves a Python 3.10+ interpreter for you across `python3`/`python`/`py -3`; this does not establish an organization-wide Python version. Put it on `PATH` first (see `README.md` "Put `agents` on `PATH`") or invoke it as `../../bin/agents` / `..\bin\agents.ps1` from this directory.
+The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. Schema version 2 plans include provider lifecycle applicability in `required_quality_gates` separately from mutation-oriented `human_gates`; gate semantics and state are owned by the standalone Agentic SDLC kernel. The selector creates a dispatch plan but does not retrieve knowledge, invoke agents, approve gates, merge, deploy, or mutate infrastructure. Run it through `bin/agents` (repository root), which resolves a Python 3.10+ interpreter for you across `python3`/`python`/`py -3`; this does not establish an organization-wide Python version. Lifecycle gate loading still requires `AGENTIC_SDLC_BIN` or `agentic-sdlc` on `PATH`. Put `bin/agents` on `PATH` first (see `README.md` "Put `agents` on `PATH`") or invoke it as `../../bin/agents` / `..\bin\agents.ps1` from this directory.
 
 ```sh
 python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"
@@ -82,7 +82,7 @@ agents select \
 
 Omit `--files` to inspect Git status, including staged, unstaged, and untracked paths. Alternatively, `--base main` classifies committed `main...HEAD` changes and excludes dirty worktree changes. Always review emitted `inputs.changed_files`; Git rename parsing and explicit scope still deserve human confirmation. `--output plan.json` creates missing parent directories and overwrites an existing file, so use it only when run-artifact writes are authorized. The selector emits matched routes and evidence, primary/review/support agents, workflow, provider lifecycle applicability, mutation-oriented human gates, and a planned knowledge-store request per selected agent. If no rule matches, it returns `needs-triage` rather than guessing.
 
-Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the dependency-free Python selector parses its JSON-compatible content with the standard library. A planned knowledge invocation contains a host-neutral Python 3.10+ `launcher` contract and an argv array beginning with the knowledge-store CLI's absolute path (`src/cli.py`), runnable without changing directory — that also means `Path.cwd()` inside `cli.py` reflects wherever the caller actually is, which is what lets its project-local-vs-global config resolution work. `bin/agents knowledge ...` runs the same script; the plan itself embeds the interpreter-agnostic launcher contract for callers that substitute their own probed interpreter path instead. The plan always carries an explicit `--source`, defaulted to the repository's own name when the caller didn't supply one, since the knowledge store falls back to a store shared across every project by default (`knowledge-store/README.md`) and `--source` is what keeps them distinguishable there. Selection rejects `--top` outside 1–20; required knowledge-store configuration must fail closed.
+Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the Python selector parses its JSON-compatible content with the standard library; the standalone Agentic SDLC executable supplies lifecycle gate contracts separately. A planned knowledge invocation contains a host-neutral Python 3.10+ `launcher` contract and an argv array beginning with the knowledge-store CLI's absolute path (`src/cli.py`), runnable without changing directory — that also means `Path.cwd()` inside `cli.py` reflects wherever the caller actually is, which is what lets its project-local-vs-global config resolution work. `bin/agents knowledge ...` runs the same script; the plan itself embeds the interpreter-agnostic launcher contract for callers that substitute their own probed interpreter path instead. The plan always carries an explicit `--source`, defaulted to the repository's own name when the caller didn't supply one, since the knowledge store falls back to a store shared across every project by default (`knowledge-store/README.md`) and `--source` is what keeps them distinguishable there. Selection rejects `--top` outside 1–20; required knowledge-store configuration must fail closed.
 
 ### Dispatch with one prompt
 
@@ -560,7 +560,7 @@ The standalone [`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc)
 distribution separates the reusable lifecycle kernel from target-project state:
 
 ```text
-plugin kernel -> .agentic-sdlc project overlay -> .agentic-sdlc project state
+provider/plugin -> consuming target-project `.agentic-sdlc/` overlay and run record
 ```
 
 Install its marketplace and expose `bin/agentic-sdlc` on `PATH` or through
@@ -571,7 +571,7 @@ launcher:
 agents sdlc init --root /path/to/target
 ```
 
-The initializer detects candidate technologies, commands, and a project profile, defaulting to the low-ceremony `quick` profile and generating subagent wrappers for both runners (`init --runner {codex,claude,both}`). Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking.
+The initializer detects candidate technologies, commands, and a project profile, defaulting to the low-ceremony `quick` profile and generating subagent wrappers for both runners (`init --runner {codex,claude,both}`). It writes state only to the consuming target project. Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking. This provider repository is lifecycle-exempt and must not be initialized.
 
 If the target project uses this repository's cloud stack, use
 `--profile secure-cloud`. The `agents sdlc` launcher explicitly supplies

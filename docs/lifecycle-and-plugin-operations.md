@@ -3,6 +3,8 @@
 This repository supplies the Secure Cloud role suite and provider profile. The
 portable Agentic SDLC kernel, lifecycle schemas, gate transitions, and lifecycle
 skills are maintained at [deagy/agentic-sdlc](https://github.com/deagy/agentic-sdlc).
+This checkout is lifecycle-exempt: it has no `.agentic-sdlc/` overlay or run
+record. All lifecycle state below belongs to the consuming target project.
 
 ## Initialize a target project
 
@@ -11,7 +13,7 @@ Install the reviewed standalone release and make its executable available as
 
 ```sh
 git clone https://github.com/deagy/agentic-sdlc.git
-git -C agentic-sdlc checkout v0.2.0
+git -C agentic-sdlc checkout 4a726668735649400670f1c19e7d280c14d67d2b
 export AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc
 agents sdlc init --root /path/to/target --profile secure-cloud
 ```

@@ -18,7 +18,18 @@ Useful entry points:
 - [Role index](../docs/role-index.md) for human-readable role discovery.
 - [Contributing](../CONTRIBUTING.md) for changes to this GitHub repository.
 
-The dependency-free selector component requires Python 3.10 or newer, without establishing an organization-wide Python version. `bin/agents` (repository root) resolves an interpreter for you — run `agents select --task "..."` from anywhere it's on `PATH`, or `../bin/agents select --task "..."` (`..\bin\agents.ps1` in PowerShell) from this directory. See `RUNBOOK.md` for the wrapper's interpreter-probe details. The schema version 2 selector evaluates task text and Git changes, validates roles against `catalog.yaml`, and emits a reviewable plan with provider lifecycle applicability kept separate from mutation-oriented human gates; it does not execute agents, approve gates, or retrieve knowledge.
+The Python selector component requires Python 3.10 or newer, without
+establishing an organization-wide Python version. It also requires the
+standalone Agentic SDLC executable when it loads lifecycle-gate contracts for
+dispatch plans. `bin/agents` (repository root) resolves an interpreter for you
+and delegates lifecycle calls through `AGENTIC_SDLC_BIN` or `agentic-sdlc` on
+`PATH` — run `agents select --task "..."` from anywhere it's on `PATH`, or
+`../bin/agents select --task "..."` (`..\bin\agents.ps1` in PowerShell) from
+this directory. See `RUNBOOK.md` for the wrapper's interpreter-probe details.
+The schema version 2 selector evaluates task text and Git changes, validates
+roles against `catalog.yaml`, and emits a reviewable plan with provider
+lifecycle applicability kept separate from mutation-oriented human gates; it
+does not execute agents, approve gates, or retrieve knowledge.
 
 ## Operating model
 
@@ -27,7 +38,7 @@ The dependency-free selector component requires Python 3.10 or newer, without es
 3. Retrieve authorized, role-specific knowledge context and record its status and query identifiers.
 4. Give each participating agent its `AGENT.md`, task context, knowledge bundle, and only the access it needs.
 5. Exchange findings using `shared/output-schemas/finding.schema.json` and bind agent handoffs through `orchestration/handoff-contracts.md`.
-6. Ask the standalone Agentic SDLC kernel to validate lifecycle decisions and record gate state in the target project's `.agentic-sdlc/` directory.
+6. In a consuming target project, ask the standalone Agentic SDLC kernel to validate lifecycle decisions and record gate state in that project's `.agentic-sdlc/` directory. This provider repository has no lifecycle overlay or run record of its own.
 7. Require a human decision wherever an agent reaches an escalation condition or human-only gate.
 8. Route runtime nonconformance through observability, support, incident, security, compliance, and debugging roles into traced remediation or backlog work.
 9. Permit authorized retrieval and its operational audit/SQLite writes, but route content and lifecycle mutations through the knowledge-store steward.
@@ -42,13 +53,13 @@ Technology preferences live in `shared/team-profile.yaml`, `shared/technology-st
 
 This repository is the source implementation for the Secure Cloud agent suite. The lifecycle kernel, schemas, command interface, gate transitions, approvals, and lifecycle skills are maintained separately at `github.com/deagy/agentic-sdlc`. This suite contributes its catalog, `secure-cloud` profile, routing, and provider extensions through `plugins/secure-cloud-agents/provider.json`.
 
-Initialize a target project from the repository checkout with:
+Initialize a consuming target project from the repository checkout with:
 
 ```sh
 agents sdlc init --root /path/to/target
 ```
 
-The portable initializer proposes detectable values and leaves consequential unknowns unresolved. Human authority, compliance applicability, environment persistence/production status, risk acceptance, and SQS applicability must be assigned or decided by accountable humans. See `https://github.com/deagy/agentic-sdlc` for installation and upgrades.
+The portable initializer proposes detectable values and leaves consequential unknowns unresolved. Human authority, compliance applicability, environment persistence/production status, risk acceptance, and SQS applicability must be assigned or decided by accountable humans. It writes lifecycle state only in the consuming target project's `.agentic-sdlc/` directory, never in this provider checkout. See `https://github.com/deagy/agentic-sdlc` for installation and upgrades.
 
 For GitHub-backed human gates, set `approval_sources.human_gate_default` to
 `github-review`, bind authorities to their GitHub logins, and use
