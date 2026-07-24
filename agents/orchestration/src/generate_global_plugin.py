@@ -264,10 +264,11 @@ def generate_agent_catalog_export(catalog: dict[str, dict[str, Any]], plugin_roo
         agent_id: {
             "phase": metadata.get("phase", "unknown"),
             "kind": derive_kind(metadata["definition"]),
-            "capabilities": [
-                "reviewer" if derive_kind(metadata["definition"]) == "reviewer" else "author",
-                "dispatch",
-            ] if derive_kind(metadata["definition"]) != "reviewer" else ["reviewer"],
+            "capabilities": (
+                ["reviewer"]
+                if derive_kind(metadata["definition"]) == "reviewer"
+                else ["author", "dispatch"]
+            ),
             "definition": f"suite/agents/{metadata['definition']}",
         }
         for agent_id, metadata in sorted(catalog.items())

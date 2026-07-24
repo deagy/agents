@@ -18,7 +18,18 @@ Useful entry points:
 - [Role index](../docs/role-index.md) for human-readable role discovery.
 - [Contributing](../CONTRIBUTING.md) for changes to this GitHub repository.
 
-The dependency-free selector component requires Python 3.10 or newer, without establishing an organization-wide Python version. `bin/agents` (repository root) resolves an interpreter for you — run `agents select --task "..."` from anywhere it's on `PATH`, or `../bin/agents select --task "..."` (`..\bin\agents.ps1` in PowerShell) from this directory. See `RUNBOOK.md` for the wrapper's interpreter-probe details. The schema version 2 selector evaluates task text and Git changes, validates roles against `catalog.yaml`, and emits a reviewable plan with provider lifecycle applicability kept separate from mutation-oriented human gates; it does not execute agents, approve gates, or retrieve knowledge.
+The Python selector component requires Python 3.10 or newer, without
+establishing an organization-wide Python version. It also requires the
+standalone Agentic SDLC executable when it loads lifecycle-gate contracts for
+dispatch plans. `bin/agents` (repository root) resolves an interpreter for you
+and delegates lifecycle calls through `AGENTIC_SDLC_BIN` or `agentic-sdlc` on
+`PATH` — run `agents select --task "..."` from anywhere it's on `PATH`, or
+`../bin/agents select --task "..."` (`..\bin\agents.ps1` in PowerShell) from
+this directory. See `RUNBOOK.md` for the wrapper's interpreter-probe details.
+The schema version 2 selector evaluates task text and Git changes, validates
+roles against `catalog.yaml`, and emits a reviewable plan with provider
+lifecycle applicability kept separate from mutation-oriented human gates; it
+does not execute agents, approve gates, or retrieve knowledge.
 
 ## Operating model
 
@@ -27,10 +38,7 @@ The dependency-free selector component requires Python 3.10 or newer, without es
 3. Retrieve authorized, role-specific knowledge context and record its status and query identifiers.
 4. Give each participating agent its `AGENT.md`, task context, knowledge bundle, and only the access it needs.
 5. Exchange findings using `shared/output-schemas/finding.schema.json` and bind agent handoffs through `orchestration/handoff-contracts.md`.
-6. In a consuming target project, ask the standalone Agentic SDLC kernel to
-   validate lifecycle decisions and record gate state in that project's
-   `.agentic-sdlc/` directory. This provider repository has no lifecycle
-   overlay or run record of its own.
+6. In a consuming target project, ask the standalone Agentic SDLC kernel to validate lifecycle decisions and record gate state in that project's `.agentic-sdlc/` directory. This provider repository has no lifecycle overlay or run record of its own.
 7. Require a human decision wherever an agent reaches an escalation condition or human-only gate.
 8. Route runtime nonconformance through observability, support, incident, security, compliance, and debugging roles into traced remediation or backlog work.
 9. Permit authorized retrieval and its operational audit/SQLite writes, but route content and lifecycle mutations through the knowledge-store steward.

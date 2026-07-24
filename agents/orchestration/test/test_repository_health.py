@@ -17,6 +17,12 @@ REPOSITORY_ROOT = ROOT.parent
 
 
 class RepositoryHealthTests(unittest.TestCase):
+    @staticmethod
+    def _require_agentic_sdlc() -> None:
+        if os.environ.get("AGENTIC_SDLC_BIN") or shutil.which("agentic-sdlc"):
+            return
+        raise unittest.SkipTest("Agentic SDLC executable is not configured")
+
     def test_provider_repository_has_no_project_lifecycle_overlay(self) -> None:
         overlay = REPOSITORY_ROOT / ".agentic-sdlc"
         self.assertFalse(overlay.exists(), str(overlay))
@@ -343,9 +349,7 @@ class RepositoryHealthTests(unittest.TestCase):
         self.assertTrue(os.access(wrapper, os.X_OK), f"{wrapper} is not executable")
 
     def test_bin_agents_delegates_sdlc_to_standalone_kernel(self) -> None:
-        executable = os.environ.get("AGENTIC_SDLC_BIN")
-        if not executable:
-            self.skipTest("AGENTIC_SDLC_BIN is not configured")
+        self._require_agentic_sdlc()
         result = subprocess.run(
             [str(REPOSITORY_ROOT / "bin" / "agents"), "sdlc", "--version"],
             cwd=REPOSITORY_ROOT,
@@ -359,6 +363,7 @@ class RepositoryHealthTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform != "win32", "bin/agents is a POSIX sh script")
     def test_bin_agents_wrapper_dispatches_select_matching_direct_invocation(self) -> None:
+        self._require_agentic_sdlc()
         wrapper = REPOSITORY_ROOT / "bin" / "agents"
         selector = ROOT / "orchestration" / "src" / "select_agents.py"
         arguments = [
@@ -391,6 +396,7 @@ class RepositoryHealthTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform != "win32", "bin/agents is a POSIX sh script")
     def test_bin_agents_wrapper_resolves_correctly_through_a_symlink(self) -> None:
+        self._require_agentic_sdlc()
         wrapper = REPOSITORY_ROOT / "bin" / "agents"
         with tempfile.TemporaryDirectory() as temporary_directory:
             link = Path(temporary_directory) / "agents"
@@ -420,6 +426,7 @@ class RepositoryHealthTests(unittest.TestCase):
         self.assertIn("unknown subcommand", result.stderr)
 
     def test_secure_cloud_agents_plugin_bin_wrapper_matches_direct_invocation(self) -> None:
+        self._require_agentic_sdlc()
         wrapper = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents" / "bin" / "agents"
         self.assertTrue(wrapper.is_file(), str(wrapper))
         self.assertTrue(os.access(wrapper, os.X_OK), f"{wrapper} is not executable")

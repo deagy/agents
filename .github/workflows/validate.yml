@@ -38,6 +38,14 @@ jobs:
       - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc provider list
       - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc profile list
       - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc extension list
+      - run: |
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract provider.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract profile.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract extension.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract selection.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract agent-catalog.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract artifact.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract dispatch-bindings.schema >/dev/null
 
   secret-scan:
     runs-on: ubuntu-latest

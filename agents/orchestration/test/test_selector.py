@@ -1,8 +1,10 @@
-"""Regression tests for the dependency-free Python selector."""
+"""Regression tests for the Python selector and its lifecycle contract inputs."""
 
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -20,6 +22,7 @@ from select_agents import discover_changed_files, explicit_files  # noqa: E402
 
 CONFIG = load_routing(ROOT / "routing.yaml")
 CATALOG = load_catalog(AGENTS_ROOT / "catalog.yaml")
+AGENTIC_SDLC_AVAILABLE = bool(os.environ.get("AGENTIC_SDLC_BIN") or shutil.which("agentic-sdlc"))
 
 
 def catalog_definitions() -> dict[str, str]:
@@ -44,6 +47,7 @@ def plan(**overrides: object) -> dict[str, object]:
     return build_dispatch_plan(CONFIG, CATALOG, values)
 
 
+@unittest.skipUnless(AGENTIC_SDLC_AVAILABLE, "Agentic SDLC executable is required")
 class SelectorTests(unittest.TestCase):
     @staticmethod
     def quality_gate_ids(result: dict[str, object]) -> list[str]:
