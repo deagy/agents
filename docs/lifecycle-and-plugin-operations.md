@@ -13,7 +13,7 @@ Install the reviewed standalone release and make its executable available as
 
 ```sh
 git clone https://github.com/deagy/agentic-sdlc.git
-git -C agentic-sdlc checkout 4a726668735649400670f1c19e7d280c14d67d2b
+git -C agentic-sdlc checkout v0.3.0
 export AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc
 agents sdlc init --root /path/to/target --profile secure-cloud
 ```

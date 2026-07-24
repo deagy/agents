@@ -92,16 +92,7 @@ for exploration but is not an immutable dependency:
 
 ```sh
 git clone https://github.com/deagy/agentic-sdlc.git
-git -C agentic-sdlc checkout 4a726668735649400670f1c19e7d280c14d67d2b
-codex plugin marketplace add ./agentic-sdlc
-codex plugin add agentic-sdlc@agentic-sdlc
-```
-
-Claude Code:
-
-```text
-/plugin marketplace add ./agentic-sdlc
-/plugin install agentic-sdlc@agentic-sdlc
+git -C agentic-sdlc checkout v0.3.0
 ```
 
 Put `agentic-sdlc/bin/agentic-sdlc` on `PATH`, or set
