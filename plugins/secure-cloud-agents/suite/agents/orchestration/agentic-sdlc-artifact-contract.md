@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Agentic SDLC Artifact and Traceability Contract
 
 This contract applies to intent, requirements, architecture, governance, data,

@@ -1,3 +1,4 @@
+# GENERATED FILE: canonical source is agents/engineering/application-engineer/AGENT.md
 name = "application-engineer"
 description = "Secure cloud agent suite role for the build phase (application-engineer)."
 sandbox_mode = "workspace-write"

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -32,6 +33,26 @@ class RepositoryHealthTests(unittest.TestCase):
         self.assertEqual(set(catalog_agents.values()), agent_files)
         for relative_path in catalog_agents.values():
             self.assertTrue((ROOT / relative_path).is_file(), relative_path)
+
+    def test_catalog_declares_capabilities_and_reviewers_are_read_only(self) -> None:
+        catalog = (ROOT / "catalog.yaml").read_text(encoding="utf-8").splitlines()
+        current_agent: str | None = None
+        metadata: dict[str, dict[str, str]] = {}
+        for line in catalog:
+            if line.startswith("  ") and not line.startswith("    ") and line.rstrip().endswith(":"):
+                current_agent = line.strip()[:-1]
+                metadata[current_agent] = {}
+            elif current_agent and line.strip().startswith(("definition:", "phase:", "capability:")):
+                key, value = line.strip().split(":", 1)
+                metadata[current_agent][key] = value.strip()
+
+        self.assertEqual(34, len(metadata))
+        allowed = {"read_only", "document_author", "code_author", "test_author", "environment_operator"}
+        for agent_id, values in metadata.items():
+            with self.subTest(agent=agent_id):
+                self.assertIn(values.get("capability"), allowed)
+                if values.get("definition", "").startswith("review/") or agent_id == "test-engineer":
+                    self.assertEqual("read_only", values["capability"])
 
     def test_workflow_values_match_schema_and_files(self) -> None:
         schema = json.loads((ROOT / "orchestration" / "selection.schema.json").read_text(encoding="utf-8"))
@@ -130,6 +151,8 @@ class RepositoryHealthTests(unittest.TestCase):
             if normalized.startswith(allowed_prefixes):
                 continue
             path = REPOSITORY_ROOT / normalized
+            if not path.is_file():
+                continue
             try:
                 text = path.read_text(encoding="utf-8")
             except UnicodeDecodeError:
@@ -141,29 +164,52 @@ class RepositoryHealthTests(unittest.TestCase):
 
     def test_secure_cloud_agents_plugin_is_generated_and_in_sync(self) -> None:
         generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_global_plugin.py"
-        result = subprocess.run(
-            ["python3", str(generator)],
-            cwd=REPOSITORY_ROOT,
-            check=False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
+        with tempfile.TemporaryDirectory(prefix="secure-cloud-agents-health-") as temporary_directory:
+            output = Path(temporary_directory) / "plugin"
+            generated = subprocess.run(
+                ["python3", str(generator), "--output", str(output)],
+                cwd=REPOSITORY_ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+            self.assertEqual(0, generated.returncode, generated.stderr)
+            checked = subprocess.run(
+                ["python3", str(generator), "--check", "--output", str(output)],
+                cwd=REPOSITORY_ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+            self.assertEqual(0, checked.returncode, checked.stderr)
+
+    def test_removed_lifecycle_migration_utility_cannot_ship(self) -> None:
+        source_path = ROOT / "orchestration" / "src" / "migrate_execution_summary.py"
+        packaged_path = (
+            REPOSITORY_ROOT
+            / "plugins"
+            / "secure-cloud-agents"
+            / "suite"
+            / "agents"
+            / "orchestration"
+            / "src"
+            / "migrate_execution_summary.py"
         )
-        self.assertEqual(0, result.returncode, result.stderr)
-        diff = subprocess.run(
-            ["git", "diff", "--exit-code", "--stat", "--", "plugins/secure-cloud-agents"],
-            cwd=REPOSITORY_ROOT,
-            check=False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-        )
-        self.assertEqual(
-            0,
-            diff.returncode,
-            "plugins/secure-cloud-agents is stale; run "
-            "agents/orchestration/src/generate_global_plugin.py and commit the result:\n" + diff.stdout,
-        )
+        self.assertFalse(source_path.exists(), str(source_path))
+        self.assertFalse(packaged_path.exists(), str(packaged_path))
+
+    def test_packaged_runtime_has_no_removed_lifecycle_paths(self) -> None:
+        plugin_root = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents"
+        offenders: list[str] = []
+        for path in plugin_root.rglob("*"):
+            if not path.is_file():
+                continue
+            content = path.read_text(encoding="utf-8", errors="ignore")
+            if "plugins/agentic-sdlc" in content or "migrate_execution_summary" in content:
+                offenders.append(str(path.relative_to(plugin_root)))
+        self.assertEqual([], offenders)
 
     def test_secure_cloud_agents_plugin_covers_every_catalog_agent_and_skill(self) -> None:
         catalog_agents: dict[str, str] = {}
@@ -207,6 +253,56 @@ class RepositoryHealthTests(unittest.TestCase):
                 self.assertIn(metadata["kind"], {"author", "reviewer", "curator", "support"})
                 self.assertTrue(metadata["phase"])
                 self.assertTrue((export_path.parent / metadata["definition"]).is_file(), metadata["definition"])
+
+    def test_generated_wrappers_enforce_catalog_capabilities_and_provenance(self) -> None:
+        generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_global_plugin.py"
+        with tempfile.TemporaryDirectory(prefix="secure-cloud-agents-capabilities-") as temporary_directory:
+            plugin_root = Path(temporary_directory) / "plugin"
+            result = subprocess.run(
+                ["python3", str(generator), "--output", str(plugin_root)],
+                cwd=REPOSITORY_ROOT,
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+            self.assertEqual(0, result.returncode)
+            for agent_id in ("code-reviewer", "security-reviewer", "test-engineer"):
+                markdown = (plugin_root / "agents" / f"{agent_id}.md").read_text(encoding="utf-8")
+                toml = (plugin_root / "codex-agents" / f"{agent_id}.toml").read_text(encoding="utf-8")
+                self.assertIn("tools: Read, Grep, Glob", markdown)
+                self.assertNotIn("tools: Read, Grep, Glob, Bash", markdown)
+                self.assertIn('sandbox_mode = "read-only"', toml)
+                self.assertIn("generated: true", markdown)
+                self.assertIn("canonical_source:", markdown)
+                self.assertIn("# GENERATED FILE:", toml)
+            author = (plugin_root / "agents" / "application-engineer.md").read_text(encoding="utf-8")
+            self.assertIn("tools: Read, Grep, Glob, Bash, Edit, Write", author)
+            self.assertIn('sandbox_mode = "workspace-write"', (plugin_root / "codex-agents" / "application-engineer.toml").read_text(encoding="utf-8"))
+
+    def test_generated_package_has_no_source_paths_or_unsafe_relative_documentation_paths(self) -> None:
+        generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_global_plugin.py"
+        with tempfile.TemporaryDirectory(prefix="secure-cloud-agents-packaging-") as temporary_directory:
+            plugin_root = Path(temporary_directory) / "plugin"
+            subprocess.run(
+                ["python3", str(generator), "--output", str(plugin_root)],
+                cwd=REPOSITORY_ROOT,
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+            )
+            for path in plugin_root.rglob("*"):
+                if not path.is_file():
+                    continue
+                content = path.read_text(encoding="utf-8", errors="ignore")
+                self.assertNotIn(str(REPOSITORY_ROOT), content, str(path))
+            for path in (plugin_root / "suite" / "agents").rglob("*.md"):
+                content = path.read_text(encoding="utf-8")
+                for raw_relative in re.findall(r"(?<!https:)(?<!https://)(\.\./[^\s`)'\"]+)", content):
+                    relative = raw_relative.rstrip(".,")
+                    target = (path.parent / relative).resolve()
+                    self.assertTrue(target.is_file() or target.is_dir(), f"{path}: {relative}")
 
     def test_secure_cloud_agents_plugin_is_self_contained(self) -> None:
         plugin_root = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents"

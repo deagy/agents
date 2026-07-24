@@ -2,6 +2,8 @@
 name: frontend-engineer
 description: Secure cloud agent suite role for the build phase (frontend-engineer).
 tools: Read, Grep, Glob, Bash, Edit, Write
+generated: true
+canonical_source: agents/engineering/frontend-engineer/AGENT.md
 ---
 
 # Role: frontend-engineer

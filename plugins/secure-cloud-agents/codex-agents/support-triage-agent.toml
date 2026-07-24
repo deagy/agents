@@ -1,3 +1,4 @@
+# GENERATED FILE: canonical source is agents/support/support-triage-agent/AGENT.md
 name = "support-triage-agent"
 description = "Secure cloud agent suite role for the support phase (support-triage-agent)."
 sandbox_mode = "workspace-write"

@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Debugging Workflow
 
 1. **Dispatcher:** Attach the issue report, failing command, logs, changed paths, environment, and authorized knowledge context. Record unavailable or blocked retrieval.

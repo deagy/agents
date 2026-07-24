@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Rollback Workflow
 
 1. Declare the trigger, incident/change identifier, decision owner, affected environment, and current blast radius.

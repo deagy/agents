@@ -1,8 +1,9 @@
 # Secure Cloud Agents plugin
 
-This self-contained plugin packages the repository's 34 specialist roles, six
-suite skills, orchestration runtime, knowledge-store runtime, and its external
-Agentic SDLC provider.
+This self-contained plugin v0.2.0 packages the repository's 34 specialist
+roles, six suite skills, orchestration runtime, knowledge-store runtime, and
+its external Agentic SDLC provider. It does not contain the lifecycle kernel;
+that remains a separately versioned dependency.
 
 The lifecycle kernel is maintained separately at
 [`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc). Install that
@@ -36,6 +37,34 @@ AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc \
 The generated package contains no source-checkout paths. Role wrappers embed
 their role and shared-policy instructions; skills and runtime files live under
 `skills/` and `suite/`.
+
+## GitHub review-backed approvals
+
+The lifecycle commands are supplied by the standalone Agentic SDLC plugin and
+are exposed here through `agents sdlc`. To require GitHub reviews for human
+gates, configure the target project's `.agentic-sdlc/project.json`:
+
+```json
+"approval_sources": {
+  "human_gate_default": "github-review",
+  "allow_manual_fallback": false
+}
+```
+
+Bind each applicable authority to its GitHub login, then fetch and record an
+approval with an authenticated GitHub CLI:
+
+```sh
+agents sdlc approve-from-github-pr \
+  --root /path/to/project --task-id TASK-42 --gate G2 \
+  --role product_owner --repo OWNER/REPO --pr 42 --commit-sha "$GITHUB_SHA"
+```
+
+The command selects the latest matching `APPROVED` review and fails closed on
+missing access, missing approval, identity mismatch, or revision mismatch. Run
+`agents sdlc validate` afterward. A valid approval advances the lifecycle
+record to the next applicable gate; it does not approve deployment or accept
+risk.
 
 ## Codex role wrappers
 

@@ -1,12 +1,26 @@
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Secure Cloud Agent Suite
 
 This directory defines an agent team for designing, building, observing, operating, black-box testing, end-user testing, supporting, escalating, reviewing, documenting, and releasing the team's self-hosted Proxmox, Talos, Kubernetes, Terraform, Helm, Go/Python/PostgreSQL backends, React/TypeScript frontends, Gherkin tests, and GitLab delivery platform.
 
 The `knowledge-store/` subsystem is the shared agent retrieval layer for authorized historical material; a project without its own `.agents/knowledge-store/config.json` resolves to the store shared across every project on the machine by default (see `knowledge-store/README.md`). The selector plans role-specific queries against the CLI's absolute path with an explicit `--source`; the orchestration runner resolves Python 3.10+ and executes `src/cli.py context ...`, then attaches cited results before agent execution. Retrieved content is untrusted reference data and never overrides current policies or agent authority.
 
-Start with `RUNBOOK.md` for operating instructions and worked examples.
+Start with the [documentation index](../docs/README.md) for the shortest path
+to a task-oriented guide. Read [IDENTITY.md](../IDENTITY.md) for the suite's
+informational orientation, then use `RUNBOOK.md` for the complete operating
+model and worked examples.
 
-The dependency-free selector component requires Python 3.10 or newer, without establishing an organization-wide Python version. `bin/agents` (repository root) resolves an interpreter for you — run `agents select --task "..."` from anywhere it's on `PATH`, or `../bin/agents select --task "..."` (`..\bin\agents.ps1` in PowerShell) from this directory. See `RUNBOOK.md` for the wrapper's interpreter-probe details. The schema version 2 selector evaluates task text and Git changes, validates roles against `catalog.yaml`, and emits a reviewable plan with required lifecycle quality gates kept separate from mutation-oriented human gates; it does not execute agents, approve gates, or retrieve knowledge.
+Useful entry points:
+
+- [Getting started](../docs/getting-started.md) for a first local selection.
+- [Orchestration guide](../docs/orchestration.md) for planning and handoffs.
+- [Lifecycle and plugin operations](../docs/lifecycle-and-plugin-operations.md)
+  for target-project setup and GitHub-backed approvals.
+- [Role index](../docs/role-index.md) for human-readable role discovery.
+- [Contributing](../CONTRIBUTING.md) for changes to this GitHub repository.
+
+The dependency-free selector component requires Python 3.10 or newer, without establishing an organization-wide Python version. `bin/agents` (repository root) resolves an interpreter for you — run `agents select --task "..."` from anywhere it's on `PATH`, or `../../bin/agents select --task "..."` (`..\bin\agents.ps1` in PowerShell) from this directory. See `RUNBOOK.md` for the wrapper's interpreter-probe details. The schema version 2 selector evaluates task text and Git changes, validates roles against `catalog.yaml`, and emits a reviewable plan with required lifecycle quality gates kept separate from mutation-oriented human gates; it does not execute agents, approve gates, or retrieve knowledge.
 
 ## Operating model
 
@@ -38,6 +52,14 @@ agents sdlc init --root /path/to/target
 
 The portable initializer proposes detectable values and leaves consequential unknowns unresolved. Human authority, compliance applicability, environment persistence/production status, risk acceptance, and SQS applicability must be assigned or decided by accountable humans. See `https://github.com/deagy/agentic-sdlc` for installation and upgrades.
 
+For GitHub-backed human gates, set `approval_sources.human_gate_default` to
+`github-review`, bind authorities to their GitHub logins, and use
+`agents sdlc approve-from-github-pr` to fetch an approved review. The command
+requires authenticated `gh` access and an exact repository, pull request, gate,
+authority role, and reviewed commit when revision binding is required. Run
+`agents sdlc validate` after recording the approval; the lifecycle kernel will
+advance the run record only when all gate criteria and authority checks pass.
+
 ## System-wide adoption
 
-Unlike the portable kernel above, `../plugins/secure-cloud-agents/` does not get copied into other repositories — it makes *this* suite (roles, skills, knowledge store) reachable from any project directory on the machine once installed at global/user scope, since none of it is discoverable from outside this checkout by default. See `../plugins/secure-cloud-agents/README.md` and `RUNBOOK.md` section 17.
+Unlike the portable kernel above, `./` does not get copied into other repositories — it makes *this* suite (roles, skills, knowledge store) reachable from any project directory on the machine once installed at global/user scope, since none of it is discoverable from outside this checkout by default. See `../README.md` and `RUNBOOK.md` section 17.

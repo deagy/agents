@@ -2,6 +2,8 @@
 name: technical-writer
 description: Secure cloud agent suite role for the document phase (technical-writer).
 tools: Read, Grep, Glob, Bash, Edit, Write
+generated: true
+canonical_source: agents/documentation/technical-writer/AGENT.md
 ---
 
 # Role: technical-writer

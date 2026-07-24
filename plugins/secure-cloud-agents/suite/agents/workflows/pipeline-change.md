@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Pipeline Change Workflow
 
 1. CI/CD engineer documents the execution graph, trust boundaries, runner types, triggers, permissions, secret exposure, artifact flow, environments, and rollback behavior.

@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Product Intake Workflow
 
 Use this workflow when work has not yet entered architecture or implementation.

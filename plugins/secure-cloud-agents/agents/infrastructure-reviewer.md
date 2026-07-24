@@ -1,7 +1,9 @@
 ---
 name: infrastructure-reviewer
 description: Secure cloud agent suite role for the review phase (infrastructure-reviewer).
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob
+generated: true
+canonical_source: agents/review/infrastructure-reviewer/AGENT.md
 ---
 
 # Role: infrastructure-reviewer

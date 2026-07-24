@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Quality Gates
 
 The lifecycle uses two tiers. Progression gates G1-G10 decide whether work may

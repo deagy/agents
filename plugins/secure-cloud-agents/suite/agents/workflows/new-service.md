@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # New Service Workflow
 
 This workflow covers work that proceeds beyond intake into design and delivery.

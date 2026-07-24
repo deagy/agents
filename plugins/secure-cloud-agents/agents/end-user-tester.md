@@ -2,6 +2,8 @@
 name: end-user-tester
 description: Secure cloud agent suite role for the verify phase (end-user-tester).
 tools: Read, Grep, Glob, Bash, Edit, Write
+generated: true
+canonical_source: agents/testing/end-user-tester/AGENT.md
 ---
 
 # Role: end-user-tester
