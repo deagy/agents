@@ -251,6 +251,20 @@ class PortableCliTests(unittest.TestCase):
         self.assertEqual("DEMO-5", result["task_id"])
         self.assertEqual(10, len(result["gates"]))
 
+    def test_status_advances_to_next_applicable_gate_phase(self):
+        self.init()
+        self.run_cli("plan", "--task-id", "DEMO-5B", "--task", "Fix a failing login test")
+        path = self.root / ".agentic-sdlc" / "runs" / "DEMO-5B" / "run-record.json"
+        record = json.loads(path.read_text(encoding="utf-8"))
+        record["current_lifecycle_phase"] = "requirements"
+        record["lifecycle_gates"][0]["status"] = "approved"
+        record["lifecycle_gates"][1]["status"] = "approved"
+        for index in (2, 3, 4, 6, 7, 8, 9):
+            record["lifecycle_gates"][index]["applicability"] = "not-applicable"
+        path.write_text(json.dumps(record), encoding="utf-8")
+        result = self.run_cli("status", "--task-id", "DEMO-5B")
+        self.assertEqual("verify", result["current_phase"])
+
     def test_validate_rejects_author_reviewer_overlap(self):
         self.init()
         routing_path = self.root / ".agentic-sdlc" / "routing.json"

@@ -68,6 +68,16 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def is_valid_datetime(value: Any) -> bool:
+    if not isinstance(value, str):
+        return False
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return parsed.tzinfo is not None
+
+
 def load_json(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as handle:
         value = json.load(handle)
@@ -490,6 +500,17 @@ def make_gate_record(
     }
 
 
+def derive_current_phase(record: dict[str, Any]) -> str:
+    lifecycle = load_json(CONTRACTS / "lifecycle-gates.json")["gates"]
+    phase_by_gate = {gate["id"]: gate["phase"] for gate in lifecycle}
+    for gate in record.get("lifecycle_gates", []):
+        if gate.get("applicability") == "not-applicable":
+            continue
+        if gate.get("status") != "approved":
+            return phase_by_gate.get(gate.get("gate_id"), record.get("current_lifecycle_phase", "intent"))
+    return "feedback"
+
+
 def plan_task(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     overlay, project, authorities, impact, routing = load_overlay(root)
@@ -763,6 +784,8 @@ def validate_repository(args: argparse.Namespace) -> int:
             for schema_error in validator.iter_errors(record):
                 location = ".".join(str(part) for part in schema_error.absolute_path) or "<root>"
                 errors.append(f"{record_path}: schema {location}: {schema_error.message}")
+        if not is_valid_datetime(record.get("recorded_at")):
+            errors.append(f"{record_path}: schema recorded_at: {record.get('recorded_at')!r} is not a 'date-time'")
         gate_records = record.get("lifecycle_gates", [])
         if [gate.get("gate_id") for gate in gate_records] != GATE_IDS:
             errors.append(f"{record_path}: lifecycle gates must be exactly G1-G10 in order")
@@ -833,6 +856,26 @@ def validate_repository(args: argparse.Namespace) -> int:
                 invalidation_started = True
                 if not gate.get("required_reentry_gate"):
                     errors.append(f"{record_path}: {gate_id} invalidation is missing required re-entry gate")
+            if gate.get("decided_at") is not None and not is_valid_datetime(gate.get("decided_at")):
+                errors.append(f"{record_path}: schema lifecycle_gates.{index}.decided_at: {gate.get('decided_at')!r} is not a 'date-time'")
+            for approval_index, approval in enumerate(gate.get("human_approvals", [])):
+                if approval.get("decided_at") is not None and not is_valid_datetime(approval.get("decided_at")):
+                    errors.append(
+                        f"{record_path}: schema lifecycle_gates.{index}.human_approvals.{approval_index}.decided_at: "
+                        f"{approval.get('decided_at')!r} is not a 'date-time'"
+                    )
+            for invalidation_index, invalidation in enumerate(gate.get("invalidation_history", [])):
+                if not is_valid_datetime(invalidation.get("invalidated_at")):
+                    errors.append(
+                        f"{record_path}: schema lifecycle_gates.{index}.invalidation_history.{invalidation_index}.invalidated_at: "
+                        f"{invalidation.get('invalidated_at')!r} is not a 'date-time'"
+                    )
+            for exception_index, exception in enumerate(gate.get("exceptions", [])):
+                if not is_valid_datetime(exception.get("expires_at")):
+                    errors.append(
+                        f"{record_path}: schema lifecycle_gates.{index}.exceptions.{exception_index}.expires_at: "
+                        f"{exception.get('expires_at')!r} is not a 'date-time'"
+                    )
             if gate.get("status") == "approved":
                 if any(
                     prior.get("status") != "approved"
@@ -924,6 +967,12 @@ def validate_repository(args: argparse.Namespace) -> int:
                         errors.append(f"{record_path}: {gate_id} accepted finding lacks a valid exception")
                 if gate_id in {"G3", "G4", "G5", "G7"} and record.get("impact_profile", {}).get("blocking_unknowns"):
                     errors.append(f"{record_path}: {gate_id} approved while impact applicability is unknown")
+        for invalidation_index, invalidation in enumerate(record.get("re_entry_history", [])):
+            if not is_valid_datetime(invalidation.get("invalidated_at")):
+                errors.append(
+                    f"{record_path}: schema re_entry_history.{invalidation_index}.invalidated_at: "
+                    f"{invalidation.get('invalidated_at')!r} is not a 'date-time'"
+                )
     for task_directory in task_directories:
         dispatch_path = confined_path(root, OVERLAY, "runs", task_directory.name, "dispatch-plan.json")
         record_path = confined_path(root, OVERLAY, "runs", task_directory.name, "run-record.json")
@@ -994,7 +1043,7 @@ def status(args: argparse.Namespace) -> int:
     task_id = safe_task_id(args.task_id)
     record = load_json(confined_path(root, OVERLAY, "runs", task_id, "run-record.json"))
     gates = [{"gate_id": gate["gate_id"], "status": gate["status"], "applicability": gate["applicability"], "required_reentry_gate": gate.get("required_reentry_gate")} for gate in record["lifecycle_gates"]]
-    print(json.dumps({"task_id": task_id, "current_phase": record["current_lifecycle_phase"], "gates": gates, "re_entry_history": record["re_entry_history"]}, indent=2))
+    print(json.dumps({"task_id": task_id, "current_phase": derive_current_phase(record), "gates": gates, "re_entry_history": record["re_entry_history"]}, indent=2))
     return 0
 
 

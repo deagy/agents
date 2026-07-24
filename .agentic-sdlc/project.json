@@ -17,8 +17,8 @@
   "environments": [
     {
       "name": "local",
-      "persistence": "unknown",
-      "production": "unknown"
+      "persistence": "persistent",
+      "production": "non-production"
     }
   ]
 }

@@ -1,0 +1,24 @@
+{
+  "artifact_id": "g2-code-reviewer-attestation",
+  "revision": "1",
+  "kind": "gate-attestation",
+  "authors": [
+    "019f9296-9ae3-74e3-9bce-59760e5fd718"
+  ],
+  "verifiers": [],
+  "upstream_ids": [
+    "requirements-baseline-sdlc-guardrails-20260724-r2"
+  ],
+  "downstream_ids": [
+    "SDLC-GUARDRAILS-20260724-R2:G2"
+  ],
+  "provenance": {
+    "created_at": "2026-07-24T05:28:03Z",
+    "ai_generated": true
+  },
+  "evidence": [
+    {
+      "summary": "Independent code-reviewer reviewed the G2 requirements package and returned ready-for-human-decision with no blocking findings."
+    }
+  ]
+}
