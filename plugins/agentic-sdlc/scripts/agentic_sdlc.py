@@ -62,6 +62,10 @@ ROLE_LABELS = {
 }
 MANAGED_START = "<!-- agentic-sdlc:start -->"
 MANAGED_END = "<!-- agentic-sdlc:end -->"
+GITHUB_REVIEW_URI = re.compile(
+    r"^github-review:(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+):"
+    r"pull/(?P<pull>[0-9]+):review/(?P<review>[0-9]+):reviewer/(?P<login>[A-Za-z0-9-]+)$"
+)
 
 
 def now() -> str:
@@ -76,6 +80,98 @@ def is_valid_datetime(value: Any) -> bool:
     except ValueError:
         return False
     return parsed.tzinfo is not None
+
+
+def approval_source_policy(project: dict[str, Any]) -> dict[str, Any]:
+    policy = project.get("approval_sources", {})
+    if not isinstance(policy, dict):
+        raise ValueError("project approval_sources must be a JSON object")
+    source = policy.get("human_gate_default", "manual")
+    allow_manual_fallback = policy.get("allow_manual_fallback", True)
+    if source not in {"manual", "github-review"}:
+        raise ValueError("project approval_sources.human_gate_default must be 'manual' or 'github-review'")
+    if not isinstance(allow_manual_fallback, bool):
+        raise ValueError("project approval_sources.allow_manual_fallback must be a boolean")
+    return {
+        "human_gate_default": source,
+        "allow_manual_fallback": allow_manual_fallback,
+    }
+
+
+def github_login_from_identity(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    if value.startswith("github.com/"):
+        login = value.removeprefix("github.com/").strip("/")
+        return login or None
+    return None
+
+
+def authority_github_login(authority: dict[str, Any]) -> str | None:
+    explicit = authority.get("github_login")
+    if isinstance(explicit, str) and explicit:
+        return explicit
+    return github_login_from_identity(authority.get("assignee"))
+
+
+def parse_github_review_uri(value: str) -> dict[str, str] | None:
+    match = GITHUB_REVIEW_URI.fullmatch(value)
+    if not match:
+        return None
+    return match.groupdict()
+
+
+def human_requirement_for_gate(gate: dict[str, Any], authority_id: str) -> dict[str, Any] | None:
+    for requirement in gate.get("authority_requirements", []):
+        if requirement.get("authority_type") == "human-approver" and requirement.get("authority_id") == authority_id:
+            return requirement
+    return None
+
+
+def gate_index(gate_id: str) -> int:
+    return GATE_IDS.index(gate_id)
+
+
+def approved_human_approvals(gate: dict[str, Any]) -> list[dict[str, Any]]:
+    return [approval for approval in gate.get("human_approvals", []) if approval.get("status") == "approved"]
+
+
+def has_all_required_human_approvals(gate: dict[str, Any], authorities: dict[str, Any]) -> bool:
+    approvals = approved_human_approvals(gate)
+    for requirement in gate.get("authority_requirements", []):
+        if requirement.get("authority_type") != "human-approver" or requirement.get("applicability") != "applicable":
+            continue
+        authority_id = requirement.get("authority_id")
+        expected_assignee = authorities.get(authority_id, {}).get("assignee")
+        if not expected_assignee:
+            return False
+        if not any(
+            isinstance(approval.get("approver"), dict)
+            and approval["approver"].get("id") == expected_assignee
+            and approval["approver"].get("role") == requirement.get("role")
+            for approval in approvals
+        ):
+            return False
+    return True
+
+
+def can_mark_gate_approved(record: dict[str, Any], gate: dict[str, Any], authorities: dict[str, Any]) -> bool:
+    if gate.get("status") not in {"ready", "approved"}:
+        return False
+    if gate.get("applicability") != "applicable":
+        return False
+    if not gate.get("artifact_bindings") or not gate.get("evidence_refs"):
+        return False
+    verifier = gate.get("independent_verifier")
+    if not isinstance(verifier, dict):
+        return False
+    if not gate.get("independence_declaration", {}).get("verifier_confirmed_not_preparer"):
+        return False
+    gate_position = gate_index(gate["gate_id"])
+    for prior in record.get("lifecycle_gates", [])[:gate_position]:
+        if prior.get("applicability") != "not-applicable" and prior.get("status") != "approved":
+            return False
+    return has_all_required_human_approvals(gate, authorities)
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -362,6 +458,10 @@ def initialize(args: argparse.Namespace) -> int:
         "classification": args.classification,
         "profile": profile_id,
         "extensions": extension_ids,
+        "approval_sources": {
+            "human_gate_default": "manual",
+            "allow_manual_fallback": True,
+        },
         "detected": detected,
         "environments": [{"name": "local", "persistence": "unknown", "production": "unknown"}],
     }
@@ -699,6 +799,11 @@ def validate_repository(args: argparse.Namespace) -> int:
         return 1
     if project.get("profile") not in {path.name for path in PROFILES.iterdir() if path.is_dir()}:
         errors.append("project profile is not installed")
+    try:
+        approval_policy = approval_source_policy(project)
+    except ValueError as error:
+        errors.append(str(error))
+        approval_policy = {"human_gate_default": "manual", "allow_manual_fallback": True}
     for environment in project.get("environments", []):
         environment_name = environment.get("name", "unnamed")
         if environment.get("persistence") == "unknown":
@@ -734,6 +839,14 @@ def validate_repository(args: argparse.Namespace) -> int:
                 errors.append(f"conditional authority {role} not-applicable requires a rationale")
         elif value.get("status") != "assigned" or not value.get("assignee"):
             blockers.append(f"authority {role} is unresolved")
+        if (
+            value.get("status") == "assigned"
+            and value.get("applicability", "applicable") == "applicable"
+            and approval_policy["human_gate_default"] == "github-review"
+            and not authority_github_login(value)
+            and not approval_policy["allow_manual_fallback"]
+        ):
+            blockers.append(f"authority {role} is missing a GitHub login binding required for GitHub review approvals")
     unknown_impact = [item.get("id", "unnamed") for item in impact.get("impact_categories", []) + impact.get("specialized_boms", []) if item.get("applicability") == "unknown"]
     blockers.extend(f"impact applicability is unknown: {item}" for item in unknown_impact)
     blockers.extend(f"impact profile blocker: {item}" for item in impact.get("blocking_unknowns", []))
@@ -941,6 +1054,27 @@ def validate_repository(args: argparse.Namespace) -> int:
                         not approval.get("decided_at") or not approval.get("evidence_refs")
                     ):
                         errors.append(f"{record_path}: {gate_id} approval lacks decision time or approval evidence")
+                    github_review_refs = []
+                    for evidence in approval.get("evidence_refs", []):
+                        uri = evidence.get("uri")
+                        if isinstance(uri, str) and uri.startswith("github-review:"):
+                            parsed_review = parse_github_review_uri(uri)
+                            if parsed_review is None:
+                                errors.append(f"{record_path}: {gate_id} approval has an invalid GitHub review URI")
+                            else:
+                                github_review_refs.append(parsed_review)
+                    if approval.get("status") == "approved":
+                        if (
+                            approval_policy["human_gate_default"] == "github-review"
+                            and not approval_policy["allow_manual_fallback"]
+                            and not github_review_refs
+                        ):
+                            errors.append(f"{record_path}: {gate_id} approval must be backed by a GitHub review")
+                        if github_review_refs and isinstance(approver, dict):
+                            approver_login = github_login_from_identity(approver.get("id"))
+                            for parsed_review in github_review_refs:
+                                if approver_login and approver_login != parsed_review["login"]:
+                                    errors.append(f"{record_path}: {gate_id} GitHub review login does not match approver identity")
                 for requirement in requirements:
                     if requirement.get("authority_type") != "human-approver" or requirement.get("applicability") != "applicable":
                         continue
@@ -954,6 +1088,17 @@ def validate_repository(args: argparse.Namespace) -> int:
                     ]
                     if not expected_assignee or not matching:
                         errors.append(f"{record_path}: {gate_id} approval is not bound to assigned authority {authority_id}")
+                    expected_github_login = authority_github_login(authorities.get(authority_id, {}))
+                    if expected_github_login:
+                        for approval in matching:
+                            github_review_refs = [
+                                parsed_review
+                                for evidence in approval.get("evidence_refs", [])
+                                for parsed_review in [parse_github_review_uri(evidence.get("uri", ""))]
+                                if parsed_review is not None
+                            ]
+                            if github_review_refs and any(parsed_review["login"] != expected_github_login for parsed_review in github_review_refs):
+                                errors.append(f"{record_path}: {gate_id} approval GitHub reviewer does not match assigned authority {authority_id}")
                 if not gate.get("decided_at"):
                     errors.append(f"{record_path}: {gate_id} approved without a gate decision timestamp")
                 if any(not binding.get("digest") for binding in gate.get("artifact_bindings", [])):
@@ -1082,6 +1227,92 @@ def invalidate(args: argparse.Namespace) -> int:
     return 0
 
 
+def approve_from_github(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    task_id = safe_task_id(args.task_id)
+    _, project, authorities, _, _ = load_overlay(root)
+    path = confined_path(root, OVERLAY, "runs", task_id, "run-record.json")
+    record = load_json(path)
+    approval_source_policy(project)
+    gate = next((item for item in record.get("lifecycle_gates", []) if item.get("gate_id") == args.gate), None)
+    if gate is None:
+        raise ValueError(f"unknown gate in run record: {args.gate}")
+    authority = authorities.get(args.role)
+    if not isinstance(authority, dict):
+        raise ValueError(f"unknown authority role: {args.role}")
+    requirement = human_requirement_for_gate(gate, args.role)
+    if requirement is None:
+        raise ValueError(f"{args.gate} does not require authority role {args.role}")
+    if requirement.get("applicability") != "applicable":
+        raise ValueError(f"{args.gate} authority role {args.role} is not applicable")
+    expected_assignee = authority.get("assignee")
+    if authority.get("status") != "assigned" or not expected_assignee:
+        raise ValueError(f"authority {args.role} is not assigned")
+    expected_login = authority_github_login(authority)
+    if expected_login and args.reviewer_login != expected_login:
+        raise ValueError(f"GitHub reviewer {args.reviewer_login} does not match assigned authority login {expected_login}")
+    review_uri = (
+        f"github-review:{args.repo}:pull/{args.pr}:review/{args.review_id}:reviewer/{args.reviewer_login}"
+    )
+    if parse_github_review_uri(review_uri) is None:
+        raise ValueError(f"invalid GitHub review URI components for {review_uri}")
+    decided_at = args.decided_at or now()
+    if not is_valid_datetime(decided_at):
+        raise ValueError("--decided-at must be a valid RFC 3339 date-time")
+    role_label = requirement.get("role")
+    evidence_payload = {
+        "task_id": task_id,
+        "gate_id": args.gate,
+        "authority_id": args.role,
+        "repo": args.repo,
+        "pull": args.pr,
+        "review_id": args.review_id,
+        "reviewer_login": args.reviewer_login,
+        "decided_at": decided_at,
+        "commit_sha": args.commit_sha,
+    }
+    approval = {
+        "status": "approved",
+        "approver": {"id": expected_assignee, "role": role_label, "kind": "human"},
+        "decided_at": decided_at,
+        "evidence_refs": [{
+            "evidence_id": f"{args.gate.lower()}-{args.role}-github-review-{args.review_id}",
+            "uri": review_uri,
+            "hash_algorithm": "sha256",
+            "hash": fingerprint(evidence_payload).removeprefix("sha256:"),
+            "classification": record.get("classification", project.get("classification", "internal")),
+        }],
+    }
+    remaining = [
+        item
+        for item in gate.get("human_approvals", [])
+        if not (
+            item.get("status") == "approved"
+            and isinstance(item.get("approver"), dict)
+            and item["approver"].get("id") == expected_assignee
+            and item["approver"].get("role") == role_label
+        )
+    ]
+    remaining.append(approval)
+    gate["human_approvals"] = remaining
+    if can_mark_gate_approved(record, gate, authorities):
+        gate["status"] = "approved"
+        gate["decided_at"] = max(
+            [approval_item.get("decided_at") for approval_item in approved_human_approvals(gate) if approval_item.get("decided_at")] or [decided_at]
+        )
+        record["current_lifecycle_phase"] = derive_current_phase(record)
+    write_json(path, record)
+    print(json.dumps({
+        "task_id": task_id,
+        "gate_id": args.gate,
+        "authority_id": args.role,
+        "review_uri": review_uri,
+        "gate_status": gate.get("status"),
+        "current_phase": derive_current_phase(record),
+    }, indent=2))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="agentic-sdlc", description=__doc__)
     parser.add_argument("--version", action="version", version=VERSION)
@@ -1110,6 +1341,18 @@ def build_parser() -> argparse.ArgumentParser:
     show.add_argument("--root", default=".")
     show.add_argument("--task-id", required=True)
     show.set_defaults(handler=status)
+    approve = subparsers.add_parser("approve-from-github", help="Record a human gate approval from a GitHub PR review")
+    approve.add_argument("--root", default=".")
+    approve.add_argument("--task-id", required=True)
+    approve.add_argument("--gate", choices=GATE_IDS, required=True)
+    approve.add_argument("--role", choices=sorted(AUTHORITY_ROLES), required=True, help="Authority role recording the approval")
+    approve.add_argument("--repo", required=True, help="GitHub repository in owner/name form")
+    approve.add_argument("--pr", type=int, required=True, help="Pull request number")
+    approve.add_argument("--review-id", type=int, required=True, help="GitHub review identifier")
+    approve.add_argument("--reviewer-login", required=True, help="GitHub login that authored the review")
+    approve.add_argument("--commit-sha", required=True, help="Commit SHA reviewed by the GitHub approval")
+    approve.add_argument("--decided-at", help="Approval time in RFC 3339 format; defaults to now")
+    approve.set_defaults(handler=approve_from_github)
     invalid = subparsers.add_parser("invalidate", help="Invalidate the earliest affected gate and all downstream gates")
     invalid.add_argument("--root", default=".")
     invalid.add_argument("--task-id", required=True)

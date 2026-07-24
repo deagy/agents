@@ -120,6 +120,7 @@ detect      Inspect a repository and report candidate project characteristics.
 plan        Produce a reviewable dispatch plan for a task.
 validate    Validate the overlay and lifecycle records.
 status      Report lifecycle and gate state for a task.
+approve-from-github  Record a human lifecycle approval from a GitHub PR review.
 invalidate  Record a material change and invalidate the earliest affected gate and its dependents.
 ```
 
@@ -140,8 +141,26 @@ agents sdlc init --root /path/to/target --profile auto --classification internal
 agents sdlc plan --root /path/to/target --task-id TEAM-DEMO-001 --task "Define requirements traceability for the order API"
 agents sdlc validate --root /path/to/target
 agents sdlc status --root /path/to/target --task-id TEAM-DEMO-001
+agents sdlc approve-from-github --root /path/to/target --task-id TEAM-DEMO-001 --gate G2 --role product_owner --repo example/service --pr 42 --review-id 314159 --reviewer-login octocat --commit-sha 0123abcd
 agents sdlc invalidate --root /path/to/target --task-id TEAM-DEMO-001 --earliest-gate G2 --reason "Approved intent changed" --actor "product-owner"
 ```
+
+Projects that want GitHub PR reviews to be the authoritative human-approval source can opt in through `.agentic-sdlc/project.json`:
+
+```json
+"approval_sources": {
+  "human_gate_default": "github-review",
+  "allow_manual_fallback": false
+}
+```
+
+When that mode is enabled, approved human gates must carry `github-review:` evidence in the form:
+
+```text
+github-review:<owner>/<repo>:pull/<pr>:review/<review-id>:reviewer/<login>
+```
+
+Assigned human authorities should also include a GitHub identity binding, either through `github_login` or an assignee in `github.com/<login>` form, so validation can confirm the review author matches the assigned approver.
 
 `validate` exits with `0` when valid and ready, `2` when structurally valid but blocked by unresolved decisions, and `1` for errors. Treat both `1` and `2` as non-ready in CI.
 

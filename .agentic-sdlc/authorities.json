@@ -2,6 +2,7 @@
   "product_owner": {
     "status": "assigned",
     "assignee": "github.com/deagy",
+    "github_login": "deagy",
     "applicability": "applicable",
     "rationale": "Assigned on July 24, 2026 for SDLC guardrail intent and requirements approvals.",
     "evidence_reference": "authority-assignment:github.com/deagy:2026-07-24",
@@ -14,6 +15,7 @@
   "engineering_lead": {
     "status": "assigned",
     "assignee": "github.com/deagy",
+    "github_login": "deagy",
     "applicability": "applicable",
     "rationale": "Assigned on July 24, 2026 for SDLC lifecycle approvals.",
     "evidence_reference": "authority-assignment:github.com/deagy:2026-07-24",
@@ -25,6 +27,7 @@
   "system_architect": {
     "status": "assigned",
     "assignee": "github.com/deagy",
+    "github_login": "deagy",
     "applicability": "applicable",
     "rationale": "Assigned on July 24, 2026 for SDLC lifecycle approvals.",
     "evidence_reference": "authority-assignment:github.com/deagy:2026-07-24",
@@ -35,6 +38,7 @@
   "governance_lead": {
     "status": "assigned",
     "assignee": "github.com/deagy",
+    "github_login": "deagy",
     "applicability": "applicable",
     "rationale": "Assigned on July 24, 2026 for SDLC lifecycle approvals.",
     "evidence_reference": "authority-assignment:github.com/deagy:2026-07-24",
@@ -45,6 +49,7 @@
   "security_lead": {
     "status": "assigned",
     "assignee": "github.com/deagy",
+    "github_login": "deagy",
     "applicability": "applicable",
     "rationale": "Assigned on July 24, 2026 for SDLC lifecycle approvals.",
     "evidence_reference": "authority-assignment:github.com/deagy:2026-07-24",
@@ -55,6 +60,7 @@
   "release_owner": {
     "status": "assigned",
     "assignee": "github.com/deagy",
+    "github_login": "deagy",
     "applicability": "applicable",
     "rationale": "Assigned on July 24, 2026 for SDLC lifecycle approvals.",
     "evidence_reference": "authority-assignment:github.com/deagy:2026-07-24",
@@ -66,6 +72,7 @@
   "release_authority": {
     "status": "assigned",
     "assignee": "github.com/deagy",
+    "github_login": "deagy",
     "applicability": "applicable",
     "rationale": "Assigned on July 24, 2026 for SDLC lifecycle approvals.",
     "evidence_reference": "authority-assignment:github.com/deagy:2026-07-24",
@@ -76,6 +83,7 @@
   "service_owner": {
     "status": "assigned",
     "assignee": "github.com/deagy",
+    "github_login": "deagy",
     "applicability": "applicable",
     "rationale": "Assigned on July 24, 2026 for SDLC lifecycle approvals.",
     "evidence_reference": "authority-assignment:github.com/deagy:2026-07-24",
@@ -86,6 +94,7 @@
   "data_control_owner": {
     "status": "assigned",
     "assignee": "github.com/deagy",
+    "github_login": "deagy",
     "applicability": "not-applicable",
     "rationale": "This repository-level SDLC guardrail setup does not define a separate data/control ownership gate for the current local workflow state.",
     "evidence_reference": "authority-assignment:github.com/deagy:2026-07-24",
@@ -96,6 +105,7 @@
   "human_key_owner": {
     "status": "assigned",
     "assignee": "github.com/deagy",
+    "github_login": "deagy",
     "applicability": "not-applicable",
     "rationale": "This repository-level SDLC guardrail setup does not operate live key-management decisions or human key custody in the current local workflow state.",
     "evidence_reference": "authority-assignment:github.com/deagy:2026-07-24",
@@ -106,6 +116,7 @@
   "uat_product_owner": {
     "status": "assigned",
     "assignee": "github.com/deagy",
+    "github_login": "deagy",
     "applicability": "not-applicable",
     "rationale": "Formal UAT authority is not in scope for the current repository-level guardrail and local workflow setup.",
     "evidence_reference": "authority-assignment:github.com/deagy:2026-07-24",
@@ -116,6 +127,7 @@
   "implicated_security_lead": {
     "status": "assigned",
     "assignee": "github.com/deagy",
+    "github_login": "deagy",
     "applicability": "not-applicable",
     "rationale": "Runtime-conformance security implication routing is not applicable because this repository is not being assessed as a deployed service in the current local workflow state.",
     "evidence_reference": "authority-assignment:github.com/deagy:2026-07-24",
@@ -126,6 +138,7 @@
   "implicated_governance_lead": {
     "status": "assigned",
     "assignee": "github.com/deagy",
+    "github_login": "deagy",
     "applicability": "not-applicable",
     "rationale": "Runtime-conformance governance implication routing is not applicable because this repository is not being assessed as a deployed service in the current local workflow state.",
     "evidence_reference": "authority-assignment:github.com/deagy:2026-07-24",

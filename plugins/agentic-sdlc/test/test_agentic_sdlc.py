@@ -381,6 +381,139 @@ class PortableCliTests(unittest.TestCase):
         self.assertTrue(any("approval lacks decision time or approval evidence" in error for error in result["errors"]))
         self.assertTrue(any("approved without a gate decision timestamp" in error for error in result["errors"]))
 
+    def test_approve_from_github_records_evidence_and_advances_ready_gate(self):
+        self.init()
+        authority_path = self.root / ".agentic-sdlc" / "authorities.json"
+        authorities = json.loads(authority_path.read_text(encoding="utf-8"))
+        authorities["product_owner"].update({
+            "status": "assigned",
+            "assignee": "github.com/octocat",
+            "github_login": "octocat",
+        })
+        authority_path.write_text(json.dumps(authorities), encoding="utf-8")
+        project_path = self.root / ".agentic-sdlc" / "project.json"
+        project = json.loads(project_path.read_text(encoding="utf-8"))
+        project["approval_sources"] = {"human_gate_default": "github-review", "allow_manual_fallback": False}
+        project_path.write_text(json.dumps(project), encoding="utf-8")
+        self.run_cli("plan", "--task-id", "GH-APPROVE", "--task", "Capture product intent")
+        path = self.root / ".agentic-sdlc" / "runs" / "GH-APPROVE" / "run-record.json"
+        record = json.loads(path.read_text(encoding="utf-8"))
+        gate = record["lifecycle_gates"][0]
+        gate.update({
+            "status": "ready",
+            "artifact_bindings": [{"artifact_id": "A-1", "revision": "abc123", "digest": "sha256:1", "environment": None}],
+            "preparers": [{"id": "intent-author", "role": "product-intent-agent", "kind": "agent"}],
+            "independent_verifier": {"id": "reviewer", "role": "code-reviewer", "kind": "agent"},
+            "independence_declaration": {"verifier_confirmed_not_preparer": True, "verifier_made_material_correction": False},
+            "evidence_refs": [{"evidence_id": "E-1", "uri": "repo:evidence", "hash_algorithm": "sha256", "hash": "1", "classification": "internal"}],
+        })
+        path.write_text(json.dumps(record), encoding="utf-8")
+        result = self.run_cli(
+            "approve-from-github",
+            "--task-id",
+            "GH-APPROVE",
+            "--gate",
+            "G1",
+            "--role",
+            "product_owner",
+            "--repo",
+            "example/repo",
+            "--pr",
+            "12",
+            "--review-id",
+            "34",
+            "--reviewer-login",
+            "octocat",
+            "--commit-sha",
+            "deadbeef",
+            "--decided-at",
+            "2030-01-01T00:00:00Z",
+        )
+        self.assertEqual("approved", result["gate_status"])
+        self.assertEqual("requirements", result["current_phase"])
+        updated = json.loads(path.read_text(encoding="utf-8"))
+        approval = updated["lifecycle_gates"][0]["human_approvals"][0]
+        self.assertEqual("github-review:example/repo:pull/12:review/34:reviewer/octocat", approval["evidence_refs"][0]["uri"])
+        self.assertEqual("github.com/octocat", approval["approver"]["id"])
+
+    def test_validate_rejects_non_github_approval_when_project_requires_github_reviews(self):
+        self.init()
+        authority_path = self.root / ".agentic-sdlc" / "authorities.json"
+        authorities = json.loads(authority_path.read_text(encoding="utf-8"))
+        authorities["product_owner"].update({
+            "status": "assigned",
+            "assignee": "github.com/octocat",
+            "github_login": "octocat",
+        })
+        authority_path.write_text(json.dumps(authorities), encoding="utf-8")
+        project_path = self.root / ".agentic-sdlc" / "project.json"
+        project = json.loads(project_path.read_text(encoding="utf-8"))
+        project["approval_sources"] = {"human_gate_default": "github-review", "allow_manual_fallback": False}
+        project_path.write_text(json.dumps(project), encoding="utf-8")
+        self.run_cli("plan", "--task-id", "GH-STRICT", "--task", "Capture product intent")
+        path = self.root / ".agentic-sdlc" / "runs" / "GH-STRICT" / "run-record.json"
+        record = json.loads(path.read_text(encoding="utf-8"))
+        evidence = {"evidence_id": "E-1", "uri": "repo:evidence", "hash_algorithm": "sha256", "hash": "1", "classification": "internal"}
+        gate = record["lifecycle_gates"][0]
+        gate.update({
+            "status": "approved",
+            "artifact_bindings": [{"artifact_id": "A-1", "revision": "1", "digest": "sha256:1", "environment": None}],
+            "preparers": [{"id": "intent-author", "role": "product-intent-agent", "kind": "agent"}],
+            "independent_verifier": {"id": "reviewer", "role": "code-reviewer", "kind": "agent"},
+            "independence_declaration": {"verifier_confirmed_not_preparer": True, "verifier_made_material_correction": False},
+            "evidence_refs": [evidence],
+            "decided_at": "2030-01-01T00:00:00Z",
+            "human_approvals": [{
+                "status": "approved",
+                "approver": {"id": "github.com/octocat", "role": "Product Owner", "kind": "human"},
+                "decided_at": "2030-01-01T00:00:00Z",
+                "evidence_refs": [evidence],
+            }],
+        })
+        path.write_text(json.dumps(record), encoding="utf-8")
+        result = self.run_cli("validate", expected=1)
+        self.assertTrue(any("approval must be backed by a GitHub review" in error for error in result["errors"]))
+
+    def test_validate_rejects_github_review_login_mismatch(self):
+        self.init()
+        authority_path = self.root / ".agentic-sdlc" / "authorities.json"
+        authorities = json.loads(authority_path.read_text(encoding="utf-8"))
+        authorities["product_owner"].update({
+            "status": "assigned",
+            "assignee": "github.com/octocat",
+            "github_login": "octocat",
+        })
+        authority_path.write_text(json.dumps(authorities), encoding="utf-8")
+        self.run_cli("plan", "--task-id", "GH-MISMATCH", "--task", "Capture product intent")
+        path = self.root / ".agentic-sdlc" / "runs" / "GH-MISMATCH" / "run-record.json"
+        record = json.loads(path.read_text(encoding="utf-8"))
+        gate = record["lifecycle_gates"][0]
+        gate.update({
+            "status": "approved",
+            "artifact_bindings": [{"artifact_id": "A-1", "revision": "1", "digest": "sha256:1", "environment": None}],
+            "preparers": [{"id": "intent-author", "role": "product-intent-agent", "kind": "agent"}],
+            "independent_verifier": {"id": "reviewer", "role": "code-reviewer", "kind": "agent"},
+            "independence_declaration": {"verifier_confirmed_not_preparer": True, "verifier_made_material_correction": False},
+            "evidence_refs": [{"evidence_id": "E-1", "uri": "repo:evidence", "hash_algorithm": "sha256", "hash": "1", "classification": "internal"}],
+            "decided_at": "2030-01-01T00:00:00Z",
+            "human_approvals": [{
+                "status": "approved",
+                "approver": {"id": "github.com/octocat", "role": "Product Owner", "kind": "human"},
+                "decided_at": "2030-01-01T00:00:00Z",
+                "evidence_refs": [{
+                    "evidence_id": "AE-1",
+                    "uri": "github-review:example/repo:pull/12:review/34:reviewer/not-octocat",
+                    "hash_algorithm": "sha256",
+                    "hash": "2",
+                    "classification": "internal",
+                }],
+            }],
+        })
+        path.write_text(json.dumps(record), encoding="utf-8")
+        result = self.run_cli("validate", expected=1)
+        self.assertTrue(any("GitHub review login does not match approver identity" in error for error in result["errors"]))
+        self.assertTrue(any("approval GitHub reviewer does not match assigned authority product_owner" in error for error in result["errors"]))
+
     @unittest.skipUnless(JSONSCHEMA_AVAILABLE, "full validation dependency is unavailable")
     def test_validate_rejects_truncated_dispatch(self):
         self.init()
