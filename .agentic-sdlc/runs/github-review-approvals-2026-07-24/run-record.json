@@ -4,12 +4,12 @@
   "recorded_at": "2026-07-24T06:00:21.772625Z",
   "classification": "internal",
   "mode": "planning-review-only",
-  "baseline_revision": "unresolved",
+  "baseline_revision": "5de2fb68f97758580a68a56927fede99af86c501",
   "scope": "Implement GitHub review backed human approvals for Agentic SDLC gates",
   "dispatch_fingerprint": "sha256:29468608b8f151a669fe0580edbc1b526b02aeda894cfa952af2d77ed075487c",
   "disposition": "pending",
-  "intent_record_id": null,
-  "requirements_baseline_id": null,
+  "intent_record_id": "intent-record-github-review-approvals-2026-07-24",
+  "requirements_baseline_id": "requirements-baseline-github-review-approvals-2026-07-24",
   "current_lifecycle_phase": "intent",
   "knowledge_retrieval": {
     "status": "unavailable",
@@ -33,8 +33,21 @@
       "status": "pending",
       "applicability": "applicable",
       "applicability_rationale": "Lifecycle gate applies by default",
-      "artifact_bindings": [],
-      "preparers": [],
+      "artifact_bindings": [
+        {
+          "artifact_id": "intent-record-github-review-approvals-2026-07-24",
+          "revision": "1",
+          "digest": "sha256:1a7734edfd7445968676f98c45ec870796ee451fd25b42d2daa15fe85a2d487c",
+          "environment": null
+        }
+      ],
+      "preparers": [
+        {
+          "id": "product-intent-agent",
+          "role": "product-intent-agent",
+          "kind": "agent"
+        }
+      ],
       "independent_verifier": null,
       "independence_declaration": {
         "verifier_confirmed_not_preparer": false,
@@ -72,8 +85,21 @@
       "status": "pending",
       "applicability": "applicable",
       "applicability_rationale": "Lifecycle gate applies by default",
-      "artifact_bindings": [],
-      "preparers": [],
+      "artifact_bindings": [
+        {
+          "artifact_id": "requirements-baseline-github-review-approvals-2026-07-24",
+          "revision": "1",
+          "digest": "sha256:092d49679c60203073f96271ad68afc79167ecc0f2b95ba6ad7e6bd9e2fc2a91",
+          "environment": null
+        }
+      ],
+      "preparers": [
+        {
+          "id": "requirements-agent",
+          "role": "requirements-agent",
+          "kind": "agent"
+        }
+      ],
       "independent_verifier": null,
       "independence_declaration": {
         "verifier_confirmed_not_preparer": false,
@@ -463,19 +489,23 @@
   "re_entry_history": [],
   "execution_summary": {
     "gates": {
-      "G1": {
-        "configured": true,
-        "ignored": false,
-        "ignore_reason": null,
-        "required_agents": [
-          "product-intent-agent",
-          "code-reviewer"
-        ],
-        "dispatched_agents": [],
-        "required_tasks": [
-          "capture-intent"
-        ],
-        "completed_tasks": [],
+        "G1": {
+          "configured": true,
+          "ignored": false,
+          "ignore_reason": null,
+          "required_agents": [
+            "product-intent-agent",
+            "code-reviewer"
+          ],
+          "dispatched_agents": [
+            "product-intent-agent"
+          ],
+          "required_tasks": [
+            "capture-intent"
+          ],
+          "completed_tasks": [
+            "capture-intent"
+          ],
         "required_agent_artifacts": [
           {
             "agent_id": "product-intent-agent",
@@ -486,21 +516,32 @@
             "artifact_id": "g1-code-reviewer-attestation"
           }
         ],
-        "produced_agent_artifacts": []
-      },
-      "G2": {
-        "configured": true,
-        "ignored": false,
-        "ignore_reason": null,
-        "required_agents": [
-          "requirements-agent",
-          "code-reviewer"
-        ],
-        "dispatched_agents": [],
-        "required_tasks": [
-          "baseline-requirements"
-        ],
-        "completed_tasks": [],
+          "produced_agent_artifacts": [
+            {
+              "agent_id": "product-intent-agent",
+              "artifact_id": "g1-product-intent-agent-attestation",
+              "revision": "1",
+              "digest": "sha256:28394b6201e62f7e2ecb0bdf08b318e7bfb63bf67ee5ee257e3119658ff07ae5"
+            }
+          ]
+        },
+        "G2": {
+          "configured": true,
+          "ignored": false,
+          "ignore_reason": null,
+          "required_agents": [
+            "requirements-agent",
+            "code-reviewer"
+          ],
+          "dispatched_agents": [
+            "requirements-agent"
+          ],
+          "required_tasks": [
+            "baseline-requirements"
+          ],
+          "completed_tasks": [
+            "baseline-requirements"
+          ],
         "required_agent_artifacts": [
           {
             "agent_id": "requirements-agent",
@@ -511,8 +552,15 @@
             "artifact_id": "g2-code-reviewer-attestation"
           }
         ],
-        "produced_agent_artifacts": []
-      },
+          "produced_agent_artifacts": [
+            {
+              "agent_id": "requirements-agent",
+              "artifact_id": "g2-requirements-agent-attestation",
+              "revision": "1",
+              "digest": "sha256:eb6e9fcca614796d754d89a4a48cacc71927c01da3849f9fa741b40a685af2ff"
+            }
+          ]
+        },
       "G3": {
         "configured": false,
         "ignored": false,

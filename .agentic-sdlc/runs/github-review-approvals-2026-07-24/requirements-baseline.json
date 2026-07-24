@@ -1,0 +1,199 @@
+{
+  "artifact_id": "requirements-baseline-github-review-approvals-2026-07-24",
+  "revision": "1",
+  "kind": "requirements-baseline",
+  "authors": [
+    "requirements-agent"
+  ],
+  "verifiers": [],
+  "upstream_ids": [
+    "intent-record-github-review-approvals-2026-07-24"
+  ],
+  "downstream_ids": [
+    "github-review-approvals-2026-07-24:G2"
+  ],
+  "provenance": {
+    "created_at": "2026-07-24T06:16:00Z",
+    "ai_generated": true
+  },
+  "evidence": [
+    {
+      "evidence_id": "g2-source-intent",
+      "type": "intent-reference",
+      "artifact_id": "intent-record-github-review-approvals-2026-07-24",
+      "revision": "1",
+      "digest": "sha256:1a7734edfd7445968676f98c45ec870796ee451fd25b42d2daa15fe85a2d487c",
+      "classification": "internal"
+    },
+    {
+      "evidence_id": "g2-baseline-summary",
+      "type": "requirements-summary",
+      "task_id": "github-review-approvals-2026-07-24",
+      "owner": "github.com/deagy",
+      "classification": "internal",
+      "assumptions": [
+        "The first increment remains offline-portable and does not query GitHub remotely.",
+        "Existing run records using chat-based approval evidence must continue to validate in this repository during the transition."
+      ],
+      "downstream_gate_applicability": {
+        "G3": {
+          "applicability": "not-applicable",
+          "rationale": "The feature is a repository-internal guardrail change and does not require a separate architecture decision record."
+        },
+        "G4": {
+          "applicability": "not-applicable",
+          "rationale": "The change introduces no new governance or data-handling obligations beyond existing repository policy."
+        },
+        "G5": {
+          "applicability": "not-applicable",
+          "rationale": "The feature changes approval evidence flow but does not introduce a new security or cryptographic design requiring a separate gate package."
+        },
+        "G6": {
+          "applicability": "applicable",
+          "rationale": "Implementation verification and regression evidence are required for the CLI, validator, and repository overlay updates."
+        },
+        "G7": {
+          "applicability": "not-applicable",
+          "rationale": "No release evidence package beyond repository-local validation and pull request review is required for this task."
+        },
+        "G8": {
+          "applicability": "not-applicable",
+          "rationale": "Formal release readiness is outside the scope of this repository-internal feature branch change."
+        },
+        "G9": {
+          "applicability": "not-applicable",
+          "rationale": "No deployment authorization is required because no deployment action is in scope."
+        },
+        "G10": {
+          "applicability": "not-applicable",
+          "rationale": "Runtime conformance does not apply because the task does not assess a deployed service."
+        }
+      }
+    },
+    {
+      "evidence_id": "g2-requirements",
+      "type": "requirements-list",
+      "requirements": [
+        {
+          "requirement_id": "REQ-GHR-001",
+          "category": "functional",
+          "statement": "The portable Agentic SDLC CLI shall record a human lifecycle approval from supplied GitHub pull-request review metadata for an applicable gate and authority role.",
+          "acceptance_criteria": [
+            "A command records approved human_approvals evidence for an applicable gate using repository, PR, review ID, reviewer login, commit SHA, and decision timestamp inputs.",
+            "When the approved human approval satisfies the remaining gate authority requirements for a ready gate, the gate state is updated to approved and phase reporting advances to the next applicable gate."
+          ],
+          "dependencies": [
+            "intent-record-github-review-approvals-2026-07-24"
+          ],
+          "owner": "github.com/deagy",
+          "test_obligations": [
+            "Add regression coverage for successful GitHub review approval recording and resulting gate advancement.",
+            "Verify recorded evidence binds to the exact task ID and reviewed commit SHA."
+          ],
+          "evidence_obligations": [
+            "CLI output showing recorded GitHub review approval metadata.",
+            "Run-record evidence demonstrating gate-state advancement."
+          ],
+          "traceability": {
+            "derives_from": [
+              "intent-record-github-review-approvals-2026-07-24:intent-success-criteria"
+            ],
+            "implemented_by": [],
+            "verified_by": [
+              "G6"
+            ]
+          }
+        },
+        {
+          "requirement_id": "REQ-GHR-002",
+          "category": "control",
+          "statement": "The validator shall enforce configured approval-source policy and reject strict GitHub-review approval requirements when approval evidence is missing, malformed, or identity-mismatched.",
+          "acceptance_criteria": [
+            "Projects configured with human_gate_default=github-review and allow_manual_fallback=false fail validation when approved human gate evidence lacks a valid github-review URI.",
+            "Validation fails when a recorded GitHub reviewer login does not match either the approver identity or the assigned authority GitHub login."
+          ],
+          "dependencies": [
+            "REQ-GHR-001"
+          ],
+          "owner": "github.com/deagy",
+          "test_obligations": [
+            "Add negative tests for strict-policy rejection and reviewer mismatch.",
+            "Preserve existing validation behavior for manual approval fallback when enabled."
+          ],
+          "evidence_obligations": [
+            "Automated test results for strict-policy and mismatch scenarios.",
+            "Repository validation output after overlay changes."
+          ],
+          "traceability": {
+            "derives_from": [
+              "intent-record-github-review-approvals-2026-07-24:intent-record-body"
+            ],
+            "implemented_by": [],
+            "verified_by": [
+              "G6"
+            ]
+          }
+        },
+        {
+          "requirement_id": "REQ-GHR-003",
+          "category": "functional",
+          "statement": "Project overlays shall be able to declare a default human approval source and optional manual fallback without breaking existing validated historical runs.",
+          "acceptance_criteria": [
+            "Initialization writes approval_sources defaults for new overlays.",
+            "This repository's overlay prefers GitHub review approvals while keeping manual fallback enabled so preexisting July 24, 2026 run records remain valid."
+          ],
+          "dependencies": [
+            "REQ-GHR-002"
+          ],
+          "owner": "github.com/deagy",
+          "test_obligations": [
+            "Validate the repository root after updating the overlay defaults and authority GitHub bindings."
+          ],
+          "evidence_obligations": [
+            "Current .agentic-sdlc/project.json and authorities.json state.",
+            "Successful portable SDLC validation output for the repository root."
+          ],
+          "traceability": {
+            "derives_from": [
+              "intent-record-github-review-approvals-2026-07-24:intent-open-decisions"
+            ],
+            "implemented_by": [],
+            "verified_by": [
+              "G6"
+            ]
+          }
+        },
+        {
+          "requirement_id": "REQ-GHR-004",
+          "category": "documentation",
+          "statement": "The plugin documentation shall describe the GitHub-review approval command, evidence URI format, and authority GitHub identity binding expectations.",
+          "acceptance_criteria": [
+            "The README documents approve-from-github usage and the github-review URI format.",
+            "The README explains how github_login or github.com/<login> assignee values are used for validation."
+          ],
+          "dependencies": [
+            "REQ-GHR-001",
+            "REQ-GHR-002"
+          ],
+          "owner": "github.com/deagy",
+          "test_obligations": [
+            "Review README content for consistency with implemented CLI arguments and validator behavior."
+          ],
+          "evidence_obligations": [
+            "README diff on branch feature/github-review-backed-approvals."
+          ],
+          "traceability": {
+            "derives_from": [
+              "intent-record-github-review-approvals-2026-07-24:intent-record-body"
+            ],
+            "implemented_by": [],
+            "verified_by": [
+              "G2",
+              "G6"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
