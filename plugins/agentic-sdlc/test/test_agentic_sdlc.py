@@ -10,6 +10,8 @@ from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 CLI = PLUGIN_ROOT / "scripts" / "agentic_sdlc.py"
+sys.path.insert(0, str(PLUGIN_ROOT / "scripts"))
+import agentic_sdlc  # type: ignore
 try:
     import jsonschema  # type: ignore
 except ImportError:
@@ -513,6 +515,105 @@ class PortableCliTests(unittest.TestCase):
         result = self.run_cli("validate", expected=1)
         self.assertTrue(any("GitHub review login does not match approver identity" in error for error in result["errors"]))
         self.assertTrue(any("approval GitHub reviewer does not match assigned authority product_owner" in error for error in result["errors"]))
+
+    def test_select_github_review_prefers_latest_matching_approval(self):
+        reviews = [
+            {
+                "id": 10,
+                "state": "APPROVED",
+                "submitted_at": "2030-01-01T00:00:00Z",
+                "commit_id": "aaa111",
+                "user": {"login": "octocat"},
+            },
+            {
+                "id": 11,
+                "state": "COMMENTED",
+                "submitted_at": "2030-01-02T00:00:00Z",
+                "commit_id": "bbb222",
+                "user": {"login": "octocat"},
+            },
+            {
+                "id": 12,
+                "state": "APPROVED",
+                "submitted_at": "2030-01-03T00:00:00Z",
+                "commit_id": "ccc333",
+                "user": {"login": "octocat"},
+            },
+        ]
+        selected = agentic_sdlc.select_github_review(reviews, "octocat")
+        self.assertEqual(12, selected["id"])
+        selected_at_commit = agentic_sdlc.select_github_review(reviews, "octocat", "aaa111")
+        self.assertEqual(10, selected_at_commit["id"])
+
+    def test_approve_from_github_pr_fetches_matching_review(self):
+        self.init()
+        authority_path = self.root / ".agentic-sdlc" / "authorities.json"
+        authorities = json.loads(authority_path.read_text(encoding="utf-8"))
+        authorities["product_owner"].update({
+            "status": "assigned",
+            "assignee": "github.com/octocat",
+            "github_login": "octocat",
+        })
+        authority_path.write_text(json.dumps(authorities), encoding="utf-8")
+        project_path = self.root / ".agentic-sdlc" / "project.json"
+        project = json.loads(project_path.read_text(encoding="utf-8"))
+        project["approval_sources"] = {"human_gate_default": "github-review", "allow_manual_fallback": False}
+        project_path.write_text(json.dumps(project), encoding="utf-8")
+        self.run_cli("plan", "--task-id", "GH-AUTO", "--task", "Capture product intent")
+        path = self.root / ".agentic-sdlc" / "runs" / "GH-AUTO" / "run-record.json"
+        record = json.loads(path.read_text(encoding="utf-8"))
+        gate = record["lifecycle_gates"][0]
+        gate.update({
+            "status": "ready",
+            "artifact_bindings": [{"artifact_id": "A-1", "revision": "abc123", "digest": "sha256:1", "environment": None}],
+            "preparers": [{"id": "intent-author", "role": "product-intent-agent", "kind": "agent"}],
+            "independent_verifier": {"id": "reviewer", "role": "code-reviewer", "kind": "agent"},
+            "independence_declaration": {"verifier_confirmed_not_preparer": True, "verifier_made_material_correction": False},
+            "evidence_refs": [{"evidence_id": "E-1", "uri": "repo:evidence", "hash_algorithm": "sha256", "hash": "1", "classification": "internal"}],
+        })
+        path.write_text(json.dumps(record), encoding="utf-8")
+        reviews_path = self.root / "reviews.json"
+        reviews_path.write_text(json.dumps([
+            {
+                "id": 22,
+                "state": "APPROVED",
+                "submitted_at": "2030-01-02T00:00:00Z",
+                "commit_id": "deadbeef",
+                "user": {"login": "octocat"},
+            }
+        ]), encoding="utf-8")
+        env = dict(os.environ)
+        env["AGENTIC_SDLC_TEST_GITHUB_REVIEWS_FILE"] = str(reviews_path)
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(CLI),
+                "approve-from-github-pr",
+                "--task-id",
+                "GH-AUTO",
+                "--gate",
+                "G1",
+                "--role",
+                "product_owner",
+                "--repo",
+                "example/repo",
+                "--pr",
+                "12",
+                "--root",
+                str(self.root),
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+            env=env,
+        )
+        self.assertEqual(0, result.returncode, result.stderr or result.stdout)
+        payload = json.loads(result.stdout)
+        self.assertEqual("approved", payload["gate_status"])
+        self.assertEqual(22, payload["selected_review_id"])
+        updated = json.loads(path.read_text(encoding="utf-8"))
+        approval = updated["lifecycle_gates"][0]["human_approvals"][0]
+        self.assertEqual("github-review:example/repo:pull/12:review/22:reviewer/octocat", approval["evidence_refs"][0]["uri"])
 
     @unittest.skipUnless(JSONSCHEMA_AVAILABLE, "full validation dependency is unavailable")
     def test_validate_rejects_truncated_dispatch(self):

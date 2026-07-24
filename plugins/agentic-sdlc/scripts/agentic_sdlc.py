@@ -7,7 +7,9 @@ import argparse
 import fnmatch
 import hashlib
 import json
+import os
 import re
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -121,6 +123,64 @@ def parse_github_review_uri(value: str) -> dict[str, str] | None:
     return match.groupdict()
 
 
+def normalize_commit_sha(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    cleaned = value.strip().lower()
+    return cleaned or None
+
+
+def fetch_github_pr_reviews(repo: str, pr: int) -> list[dict[str, Any]]:
+    mock_path = os.environ.get("AGENTIC_SDLC_TEST_GITHUB_REVIEWS_FILE")
+    if mock_path:
+        payload = json.loads(Path(mock_path).read_text(encoding="utf-8"))
+    else:
+        result = subprocess.run(
+            ["gh", "api", f"repos/{repo}/pulls/{pr}/reviews"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            detail = result.stderr.strip() or result.stdout.strip() or "unknown gh api failure"
+            raise ValueError(f"unable to fetch GitHub reviews for {repo} PR {pr}: {detail}")
+        payload = json.loads(result.stdout)
+    if not isinstance(payload, list):
+        raise ValueError("GitHub reviews response must be a JSON array")
+    reviews = [item for item in payload if isinstance(item, dict)]
+    if len(reviews) != len(payload):
+        raise ValueError("GitHub reviews response contains non-object entries")
+    return reviews
+
+
+def select_github_review(
+    reviews: list[dict[str, Any]], reviewer_login: str, commit_sha: str | None = None
+) -> dict[str, Any]:
+    normalized_login = reviewer_login.lower()
+    normalized_commit = normalize_commit_sha(commit_sha)
+    approved: list[dict[str, Any]] = []
+    for review in reviews:
+        user = review.get("user")
+        login = user.get("login") if isinstance(user, dict) else None
+        state = review.get("state")
+        submitted_at = review.get("submitted_at")
+        review_commit = normalize_commit_sha(review.get("commit_id"))
+        if not isinstance(login, str) or login.lower() != normalized_login:
+            continue
+        if state != "APPROVED":
+            continue
+        if not is_valid_datetime(submitted_at):
+            continue
+        if normalized_commit and review_commit != normalized_commit:
+            continue
+        approved.append(review)
+    if not approved:
+        commit_text = f" at commit {commit_sha}" if commit_sha else ""
+        raise ValueError(f"no approved GitHub review found for reviewer {reviewer_login}{commit_text}")
+    approved.sort(key=lambda review: str(review.get("submitted_at")))
+    return approved[-1]
+
+
 def human_requirement_for_gate(gate: dict[str, Any], authority_id: str) -> dict[str, Any] | None:
     for requirement in gate.get("authority_requirements", []):
         if requirement.get("authority_type") == "human-approver" and requirement.get("authority_id") == authority_id:
@@ -172,6 +232,98 @@ def can_mark_gate_approved(record: dict[str, Any], gate: dict[str, Any], authori
         if prior.get("applicability") != "not-applicable" and prior.get("status") != "approved":
             return False
     return has_all_required_human_approvals(gate, authorities)
+
+
+def record_github_approval(
+    root: Path,
+    task_id: str,
+    gate_id: str,
+    authority_role: str,
+    repo: str,
+    pr: int,
+    review_id: int,
+    reviewer_login: str,
+    commit_sha: str,
+    decided_at: str | None,
+) -> dict[str, Any]:
+    _, project, authorities, _, _ = load_overlay(root)
+    path = confined_path(root, OVERLAY, "runs", task_id, "run-record.json")
+    record = load_json(path)
+    approval_source_policy(project)
+    gate = next((item for item in record.get("lifecycle_gates", []) if item.get("gate_id") == gate_id), None)
+    if gate is None:
+        raise ValueError(f"unknown gate in run record: {gate_id}")
+    authority = authorities.get(authority_role)
+    if not isinstance(authority, dict):
+        raise ValueError(f"unknown authority role: {authority_role}")
+    requirement = human_requirement_for_gate(gate, authority_role)
+    if requirement is None:
+        raise ValueError(f"{gate_id} does not require authority role {authority_role}")
+    if requirement.get("applicability") != "applicable":
+        raise ValueError(f"{gate_id} authority role {authority_role} is not applicable")
+    expected_assignee = authority.get("assignee")
+    if authority.get("status") != "assigned" or not expected_assignee:
+        raise ValueError(f"authority {authority_role} is not assigned")
+    expected_login = authority_github_login(authority)
+    if expected_login and reviewer_login != expected_login:
+        raise ValueError(f"GitHub reviewer {reviewer_login} does not match assigned authority login {expected_login}")
+    review_uri = f"github-review:{repo}:pull/{pr}:review/{review_id}:reviewer/{reviewer_login}"
+    if parse_github_review_uri(review_uri) is None:
+        raise ValueError(f"invalid GitHub review URI components for {review_uri}")
+    chosen_time = decided_at or now()
+    if not is_valid_datetime(chosen_time):
+        raise ValueError("--decided-at must be a valid RFC 3339 date-time")
+    role_label = requirement.get("role")
+    evidence_payload = {
+        "task_id": task_id,
+        "gate_id": gate_id,
+        "authority_id": authority_role,
+        "repo": repo,
+        "pull": pr,
+        "review_id": review_id,
+        "reviewer_login": reviewer_login,
+        "decided_at": chosen_time,
+        "commit_sha": commit_sha,
+    }
+    approval = {
+        "status": "approved",
+        "approver": {"id": expected_assignee, "role": role_label, "kind": "human"},
+        "decided_at": chosen_time,
+        "evidence_refs": [{
+            "evidence_id": f"{gate_id.lower()}-{authority_role}-github-review-{review_id}",
+            "uri": review_uri,
+            "hash_algorithm": "sha256",
+            "hash": fingerprint(evidence_payload).removeprefix("sha256:"),
+            "classification": record.get("classification", project.get("classification", "internal")),
+        }],
+    }
+    remaining = [
+        item
+        for item in gate.get("human_approvals", [])
+        if not (
+            item.get("status") == "approved"
+            and isinstance(item.get("approver"), dict)
+            and item["approver"].get("id") == expected_assignee
+            and item["approver"].get("role") == role_label
+        )
+    ]
+    remaining.append(approval)
+    gate["human_approvals"] = remaining
+    if can_mark_gate_approved(record, gate, authorities):
+        gate["status"] = "approved"
+        gate["decided_at"] = max(
+            [approval_item.get("decided_at") for approval_item in approved_human_approvals(gate) if approval_item.get("decided_at")] or [chosen_time]
+        )
+        record["current_lifecycle_phase"] = derive_current_phase(record)
+    write_json(path, record)
+    return {
+        "task_id": task_id,
+        "gate_id": gate_id,
+        "authority_id": authority_role,
+        "review_uri": review_uri,
+        "gate_status": gate.get("status"),
+        "current_phase": derive_current_phase(record),
+    }
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -1230,86 +1382,58 @@ def invalidate(args: argparse.Namespace) -> int:
 def approve_from_github(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     task_id = safe_task_id(args.task_id)
-    _, project, authorities, _, _ = load_overlay(root)
-    path = confined_path(root, OVERLAY, "runs", task_id, "run-record.json")
-    record = load_json(path)
-    approval_source_policy(project)
-    gate = next((item for item in record.get("lifecycle_gates", []) if item.get("gate_id") == args.gate), None)
-    if gate is None:
-        raise ValueError(f"unknown gate in run record: {args.gate}")
+    result = record_github_approval(
+        root,
+        task_id,
+        args.gate,
+        args.role,
+        args.repo,
+        args.pr,
+        args.review_id,
+        args.reviewer_login,
+        args.commit_sha,
+        args.decided_at,
+    )
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+def approve_from_github_pr(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    task_id = safe_task_id(args.task_id)
+    _, _, authorities, _, _ = load_overlay(root)
     authority = authorities.get(args.role)
     if not isinstance(authority, dict):
         raise ValueError(f"unknown authority role: {args.role}")
-    requirement = human_requirement_for_gate(gate, args.role)
-    if requirement is None:
-        raise ValueError(f"{args.gate} does not require authority role {args.role}")
-    if requirement.get("applicability") != "applicable":
-        raise ValueError(f"{args.gate} authority role {args.role} is not applicable")
-    expected_assignee = authority.get("assignee")
-    if authority.get("status") != "assigned" or not expected_assignee:
-        raise ValueError(f"authority {args.role} is not assigned")
-    expected_login = authority_github_login(authority)
-    if expected_login and args.reviewer_login != expected_login:
-        raise ValueError(f"GitHub reviewer {args.reviewer_login} does not match assigned authority login {expected_login}")
-    review_uri = (
-        f"github-review:{args.repo}:pull/{args.pr}:review/{args.review_id}:reviewer/{args.reviewer_login}"
+    reviewer_login = args.reviewer_login or authority_github_login(authority)
+    if not reviewer_login:
+        raise ValueError(f"authority {args.role} has no GitHub login binding and --reviewer-login was not supplied")
+    reviews = fetch_github_pr_reviews(args.repo, args.pr)
+    review = select_github_review(reviews, reviewer_login, args.commit_sha)
+    review_id = review.get("id")
+    submitted_at = review.get("submitted_at")
+    commit_sha = review.get("commit_id")
+    if not isinstance(review_id, int):
+        raise ValueError("selected GitHub review is missing a numeric id")
+    if not is_valid_datetime(submitted_at):
+        raise ValueError("selected GitHub review is missing a valid submitted_at timestamp")
+    if not isinstance(commit_sha, str) or not commit_sha:
+        raise ValueError("selected GitHub review is missing a commit_id")
+    result = record_github_approval(
+        root,
+        task_id,
+        args.gate,
+        args.role,
+        args.repo,
+        args.pr,
+        review_id,
+        reviewer_login,
+        commit_sha,
+        submitted_at,
     )
-    if parse_github_review_uri(review_uri) is None:
-        raise ValueError(f"invalid GitHub review URI components for {review_uri}")
-    decided_at = args.decided_at or now()
-    if not is_valid_datetime(decided_at):
-        raise ValueError("--decided-at must be a valid RFC 3339 date-time")
-    role_label = requirement.get("role")
-    evidence_payload = {
-        "task_id": task_id,
-        "gate_id": args.gate,
-        "authority_id": args.role,
-        "repo": args.repo,
-        "pull": args.pr,
-        "review_id": args.review_id,
-        "reviewer_login": args.reviewer_login,
-        "decided_at": decided_at,
-        "commit_sha": args.commit_sha,
-    }
-    approval = {
-        "status": "approved",
-        "approver": {"id": expected_assignee, "role": role_label, "kind": "human"},
-        "decided_at": decided_at,
-        "evidence_refs": [{
-            "evidence_id": f"{args.gate.lower()}-{args.role}-github-review-{args.review_id}",
-            "uri": review_uri,
-            "hash_algorithm": "sha256",
-            "hash": fingerprint(evidence_payload).removeprefix("sha256:"),
-            "classification": record.get("classification", project.get("classification", "internal")),
-        }],
-    }
-    remaining = [
-        item
-        for item in gate.get("human_approvals", [])
-        if not (
-            item.get("status") == "approved"
-            and isinstance(item.get("approver"), dict)
-            and item["approver"].get("id") == expected_assignee
-            and item["approver"].get("role") == role_label
-        )
-    ]
-    remaining.append(approval)
-    gate["human_approvals"] = remaining
-    if can_mark_gate_approved(record, gate, authorities):
-        gate["status"] = "approved"
-        gate["decided_at"] = max(
-            [approval_item.get("decided_at") for approval_item in approved_human_approvals(gate) if approval_item.get("decided_at")] or [decided_at]
-        )
-        record["current_lifecycle_phase"] = derive_current_phase(record)
-    write_json(path, record)
-    print(json.dumps({
-        "task_id": task_id,
-        "gate_id": args.gate,
-        "authority_id": args.role,
-        "review_uri": review_uri,
-        "gate_status": gate.get("status"),
-        "current_phase": derive_current_phase(record),
-    }, indent=2))
+    result["selected_review_id"] = review_id
+    result["selected_commit_sha"] = commit_sha
+    print(json.dumps(result, indent=2))
     return 0
 
 
@@ -1353,6 +1477,16 @@ def build_parser() -> argparse.ArgumentParser:
     approve.add_argument("--commit-sha", required=True, help="Commit SHA reviewed by the GitHub approval")
     approve.add_argument("--decided-at", help="Approval time in RFC 3339 format; defaults to now")
     approve.set_defaults(handler=approve_from_github)
+    approve_auto = subparsers.add_parser("approve-from-github-pr", help="Fetch an approved GitHub PR review and record it as human gate approval evidence")
+    approve_auto.add_argument("--root", default=".")
+    approve_auto.add_argument("--task-id", required=True)
+    approve_auto.add_argument("--gate", choices=GATE_IDS, required=True)
+    approve_auto.add_argument("--role", choices=sorted(AUTHORITY_ROLES), required=True, help="Authority role recording the approval")
+    approve_auto.add_argument("--repo", required=True, help="GitHub repository in owner/name form")
+    approve_auto.add_argument("--pr", type=int, required=True, help="Pull request number")
+    approve_auto.add_argument("--reviewer-login", help="GitHub login to match; defaults to the authority GitHub binding")
+    approve_auto.add_argument("--commit-sha", help="Optional commit SHA to require when selecting an approved review")
+    approve_auto.set_defaults(handler=approve_from_github_pr)
     invalid = subparsers.add_parser("invalidate", help="Invalidate the earliest affected gate and all downstream gates")
     invalid.add_argument("--root", default=".")
     invalid.add_argument("--task-id", required=True)

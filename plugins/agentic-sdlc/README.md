@@ -121,6 +121,7 @@ plan        Produce a reviewable dispatch plan for a task.
 validate    Validate the overlay and lifecycle records.
 status      Report lifecycle and gate state for a task.
 approve-from-github  Record a human lifecycle approval from a GitHub PR review.
+approve-from-github-pr  Fetch an approved GitHub PR review and record it as lifecycle approval evidence.
 invalidate  Record a material change and invalidate the earliest affected gate and its dependents.
 ```
 
@@ -142,6 +143,7 @@ agents sdlc plan --root /path/to/target --task-id TEAM-DEMO-001 --task "Define r
 agents sdlc validate --root /path/to/target
 agents sdlc status --root /path/to/target --task-id TEAM-DEMO-001
 agents sdlc approve-from-github --root /path/to/target --task-id TEAM-DEMO-001 --gate G2 --role product_owner --repo example/service --pr 42 --review-id 314159 --reviewer-login octocat --commit-sha 0123abcd
+agents sdlc approve-from-github-pr --root /path/to/target --task-id TEAM-DEMO-001 --gate G2 --role product_owner --repo example/service --pr 42 --commit-sha 0123abcd
 agents sdlc invalidate --root /path/to/target --task-id TEAM-DEMO-001 --earliest-gate G2 --reason "Approved intent changed" --actor "product-owner"
 ```
 
@@ -161,6 +163,8 @@ github-review:<owner>/<repo>:pull/<pr>:review/<review-id>:reviewer/<login>
 ```
 
 Assigned human authorities should also include a GitHub identity binding, either through `github_login` or an assignee in `github.com/<login>` form, so validation can confirm the review author matches the assigned approver.
+
+`approve-from-github-pr` uses the GitHub CLI (`gh api repos/<owner>/<repo>/pulls/<pr>/reviews`) to fetch reviews, select the latest matching `APPROVED` review for the authority login, and record it through the same run-record approval path. Supply `--commit-sha` when you need the review tied to an exact reviewed revision; otherwise the command picks the latest approved review for the matching login. It fails closed if `gh` cannot reach GitHub or if no matching approved review exists.
 
 `validate` exits with `0` when valid and ready, `2` when structurally valid but blocked by unresolved decisions, and `1` for errors. Treat both `1` and `2` as non-ready in CI.
 
