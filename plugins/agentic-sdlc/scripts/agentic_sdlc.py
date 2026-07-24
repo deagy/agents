@@ -1256,7 +1256,10 @@ def validate_repository(args: argparse.Namespace) -> int:
                                 for parsed_review in [parse_github_review_uri(evidence.get("uri", ""))]
                                 if parsed_review is not None
                             ]
-                            if github_review_refs and any(parsed_review["login"] != expected_github_login for parsed_review in github_review_refs):
+                            if github_review_refs and any(
+                                str(parsed_review["login"]).lower() != str(expected_github_login).lower()
+                                for parsed_review in github_review_refs
+                            ):
                                 errors.append(f"{record_path}: {gate_id} approval GitHub reviewer does not match assigned authority {authority_id}")
                 if not gate.get("decided_at"):
                     errors.append(f"{record_path}: {gate_id} approved without a gate decision timestamp")
