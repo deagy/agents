@@ -12,6 +12,8 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
+MAX_RESPONSE_BYTES = 4 * 1024 * 1024
+
 
 class _RejectRedirects(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, request: Any, file_pointer: Any, code: int, message: str, headers: Any, new_url: str) -> None:
@@ -79,7 +81,15 @@ def _remote_embeddings(texts: list[str], config: dict[str, Any]) -> list[list[fl
         with _open_request(request, timeout=float(config.get("timeout_seconds", 30))) as response:
             if response.status < 200 or response.status >= 300:
                 raise RuntimeError(f"Embedding endpoint returned HTTP {response.status}")
-            payload = json.loads(response.read().decode("utf-8"))
+            try:
+                body = response.read(MAX_RESPONSE_BYTES + 1)
+            except TypeError:
+                # Minimal test doubles and some compatible response objects do not
+                # accept a size argument; retain the post-read hard limit there.
+                body = response.read()
+            if len(body) > MAX_RESPONSE_BYTES:
+                raise RuntimeError("Embedding endpoint response exceeded the size limit")
+            payload = json.loads(body.decode("utf-8"))
     except urllib.error.HTTPError as error:
         raise RuntimeError(f"Embedding endpoint returned HTTP {error.code}") from error
     except urllib.error.URLError as error:

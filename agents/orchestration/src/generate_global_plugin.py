@@ -51,6 +51,7 @@ directly if bin/agents isn't set up yet).
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -159,12 +160,26 @@ def reset_generated_content(plugin_root: Path) -> None:
 
 def generate_skill_copies(plugin_root: Path) -> list[Path]:
     written = []
+    tracked = {
+        relative
+        for relative in subprocess.run(
+            ["git", "ls-files", ".agents/skills"], cwd=REPOSITORY_ROOT,
+            check=True, capture_output=True, text=True, encoding="utf-8",
+        ).stdout.splitlines()
+        if (REPOSITORY_ROOT / relative).is_file()
+    }
     for skill_dir in sorted(p for p in SKILLS_ROOT.iterdir() if p.is_dir()):
         skill_file = skill_dir / "SKILL.md"
         if not skill_file.is_file():
             continue
         target_dir = plugin_root / "skills" / skill_dir.name
-        shutil.copytree(skill_dir, target_dir)
+        for relative_text in sorted(path for path in tracked if path.startswith(f".agents/skills/{skill_dir.name}/")):
+            source = REPOSITORY_ROOT / relative_text
+            if source.is_symlink():
+                raise ValueError(f"Symlinks are not allowed in packaged skills: {relative_text}")
+            target = target_dir / Path(relative_text).relative_to(skill_dir.relative_to(REPOSITORY_ROOT))
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
         target = target_dir / "SKILL.md"
         content = target.read_text(encoding="utf-8")
         frontmatter_end = content.find("---", 3) + 3
@@ -237,9 +252,9 @@ def derive_kind(definition: str) -> str:
     if definition.startswith("review/") or definition == "engineering/test-engineer/AGENT.md":
         return "reviewer"
     if definition.startswith("support/"):
-        return "support"
+        return "specialist"
     if definition in {"documentation/evidence-curator/AGENT.md", "knowledge-store/AGENT.md"}:
-        return "curator"
+        return "specialist"
     return "author"
 
 
@@ -249,13 +264,16 @@ def generate_agent_catalog_export(catalog: dict[str, dict[str, Any]], plugin_roo
         agent_id: {
             "phase": metadata.get("phase", "unknown"),
             "kind": derive_kind(metadata["definition"]),
-            "capability": metadata["capability"],
+            "capabilities": [
+                "reviewer" if derive_kind(metadata["definition"]) == "reviewer" else "author",
+                "dispatch",
+            ] if derive_kind(metadata["definition"]) != "reviewer" else ["reviewer"],
             "definition": f"suite/agents/{metadata['definition']}",
         }
         for agent_id, metadata in sorted(catalog.items())
     }
     target = plugin_root / "agent-catalog.json"
-    write(target, json.dumps({"generated": True, "canonical_source": "agents/catalog.yaml", "agents": agents}, indent=2) + "\n")
+    write(target, json.dumps({"schema_version": 1, "agents": agents}, indent=2) + "\n")
     return target
 
 
@@ -273,7 +291,7 @@ def generate_bin_wrapper(plugin_root: Path) -> Path:
             'if [ "$command_name" = "sdlc" ]; then',
             '  sdlc_bin="${AGENTIC_SDLC_BIN:-}"',
             '  if [ -z "$sdlc_bin" ]; then sdlc_bin=$(command -v agentic-sdlc || true); fi',
-            '  [ -n "$sdlc_bin" ] || { echo "agents: install Agentic SDLC v0.2.x from https://github.com/deagy/agentic-sdlc" >&2; exit 1; }',
+            '  [ -n "$sdlc_bin" ] || { echo "agents: install Agentic SDLC v0.3.x from https://github.com/deagy/agentic-sdlc" >&2; exit 1; }',
             '  exec "$sdlc_bin" --provider "$PLUGIN_ROOT/provider.json" "$@"',
             "fi",
             "AGENT_PYTHON=",
@@ -409,12 +427,25 @@ def main() -> int:
             output_root = Path(arguments[output_index + 1]).resolve()
         except IndexError as error:
             raise SystemExit("--output requires a directory") from error
+    if "--check" not in arguments and output_root.exists() and output_root != PLUGIN_ROOT:
+        marker = output_root / ".codex-plugin" / "plugin.json"
+        if any(output_root.iterdir()) and not marker.is_file():
+            raise SystemExit("--output must be a new directory or an existing generated plugin")
     if "--check" in arguments:
         with tempfile.TemporaryDirectory(prefix="secure-cloud-agents-plugin-") as temporary_directory:
             candidate = Path(temporary_directory) / "secure-cloud-agents"
             generate_package(catalog, candidate)
             if not output_root.exists() or not files_equal(candidate, output_root):
                 print("Generated plugin is stale or non-deterministic; run agents generate-plugin", file=sys.stderr)
+                return 1
+        kernel = os.environ.get("AGENTIC_SDLC_BIN") or shutil.which("agentic-sdlc")
+        if kernel:
+            checked = subprocess.run(
+                [kernel, "--provider", str(PLUGIN_ROOT / "provider.json"), "provider", "list"],
+                cwd=REPOSITORY_ROOT, check=False, capture_output=True, text=True, encoding="utf-8",
+            )
+            if checked.returncode != 0:
+                print(f"Provider validation failed: {checked.stderr.strip() or checked.stdout.strip()}", file=sys.stderr)
                 return 1
         print(f"Generated plugin is current under {output_root}")
         return 0

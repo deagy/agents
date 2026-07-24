@@ -15,7 +15,7 @@ def lifecycle_contract() -> dict[str, Any]:
     executable = os.environ.get("AGENTIC_SDLC_BIN") or shutil.which("agentic-sdlc")
     if not executable:
         raise RuntimeError(
-            "Agentic SDLC v0.2.x is required; set AGENTIC_SDLC_BIN or install "
+            "Agentic SDLC v0.3.x is required; set AGENTIC_SDLC_BIN or install "
             "https://github.com/deagy/agentic-sdlc"
         )
     result = subprocess.run(

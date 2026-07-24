@@ -30,7 +30,7 @@ function Show-Usage {
   foreach ($Sub in $Subcommands) {
     Write-Output ("  {0,-16} {1}" -f $Sub.Name, $Sub.Description)
   }
-  Write-Output ("  {0,-16} {1}" -f "sdlc", "Delegated Agentic SDLC v0.2.x CLI")
+  Write-Output ("  {0,-16} {1}" -f "sdlc", "Delegated Agentic SDLC v0.3.x CLI")
   Write-Output ("  {0,-16} {1}" -f "help", "Show this message")
   Write-Output ""
   Write-Output "Each subcommand's own --help documents its arguments, e.g. ``agents sdlc plan --help``."
@@ -48,7 +48,7 @@ if ($Command -in @("help", "-h", "--help")) {
     if ($SdlcCommand) { $SdlcPath = $SdlcCommand.Source }
   }
   if (-not $SdlcPath) {
-    throw "agents: Agentic SDLC v0.2.x is required; install it from https://github.com/deagy/agentic-sdlc"
+    throw "agents: Agentic SDLC v0.3.x is required; install it from https://github.com/deagy/agentic-sdlc"
   }
   $Provider = Join-Path $RepoRoot "plugins/secure-cloud-agents/provider.json"
   & $SdlcPath "--provider" $Provider @Rest

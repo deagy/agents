@@ -6,6 +6,7 @@ import hashlib
 import json
 import sqlite3
 import uuid
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -84,7 +85,7 @@ def fail_run(db: sqlite3.Connection, run_id: str, error: Exception) -> None:
 
 def save_message(db: sqlite3.Connection, message: dict[str, Any], protected: dict[str, Any], chunks: list[str], vectors: list[list[float]], embedding: dict[str, Any]) -> None:
     message_id = _hash(f"{message['source']}|{message['conversation_id']}|{message['message_id']}")
-    with db:
+    with (nullcontext() if db.in_transaction else db):
         db.execute("""
           INSERT INTO messages (id, source, source_uri, conversation_id, conversation_title,
             source_message_id, role, content, content_hash, created_at, classification,

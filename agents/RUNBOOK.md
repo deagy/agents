@@ -558,7 +558,7 @@ The standalone [`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc)
 distribution separates the reusable lifecycle kernel from target-project state:
 
 ```text
-plugin kernel -> .agentic-sdlc project overlay -> .agentic-sdlc project state
+provider/plugin -> consuming target-project `.agentic-sdlc/` overlay and run record
 ```
 
 Install its marketplace and expose `bin/agentic-sdlc` on `PATH` or through
@@ -569,7 +569,7 @@ launcher:
 agents sdlc init --root /path/to/target
 ```
 
-The initializer detects candidate technologies, commands, and a project profile, defaulting to the low-ceremony `quick` profile and generating subagent wrappers for both runners (`init --runner {codex,claude,both}`). Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking.
+The initializer detects candidate technologies, commands, and a project profile, defaulting to the low-ceremony `quick` profile and generating subagent wrappers for both runners (`init --runner {codex,claude,both}`). It writes state only to the consuming target project. Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking. This provider repository is lifecycle-exempt and must not be initialized.
 
 If the target project uses this repository's cloud stack, use
 `--profile secure-cloud`. The `agents sdlc` launcher explicitly supplies
