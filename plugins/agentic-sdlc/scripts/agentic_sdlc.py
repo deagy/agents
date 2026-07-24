@@ -367,7 +367,12 @@ def initialize(args: argparse.Namespace) -> int:
         for role, gates in AUTHORITY_ROLES.items()
     }
     impact_profile = {"profile_id": f"{project['project_id']}-impact", "status": "blocked", "impact_categories": impact, "specialized_boms": specialized_boms, "blocking_unknowns": [item["id"] for item in impact + specialized_boms]}
-    routing = {"version": 1, "profile": profile_id, "routes": profile.get("routing", [])}
+    routing = {
+        "version": 1,
+        "profile": profile_id,
+        "routes": profile.get("routing", []),
+        "change_intake": profile.get("change_intake", {}),
+    }
     commands = {"version": 1, "commands": detected["command_candidates"], "confirmed": False}
     created = []
     for name, value in [("project.json", project), ("authorities.json", authorities), ("impact-profile.json", impact_profile), ("routing.json", routing), ("commands.json", commands)]:
@@ -475,7 +480,17 @@ def plan_task(args: argparse.Namespace) -> int:
         reviewers.extend(route.get("reviewers", []))
         support.extend(route.get("support", []))
         gates.extend(route.get("gates", []))
+    change_intake = routing.get("change_intake", {})
+    normalized_task = args.task.lower()
+    change_work = any(
+        re.search(rf"(^|[^a-z0-9]){re.escape(keyword.lower())}([^a-z0-9]|$)", normalized_task)
+        for keyword in change_intake.get("keywords", [])
+    )
+    if change_work:
+        support.extend(change_intake.get("agents", []))
+        gates.extend(change_intake.get("quality_gates", []))
     primary, reviewers, support, gates = map(unique, [primary, reviewers, support, gates])
+    gates.sort(key=lambda gate_id: int(gate_id.removeprefix("G")))
     reviewers = [agent for agent in reviewers if agent not in primary]
     if workflow == "needs-triage":
         support = unique(support + ["requirements-agent"])

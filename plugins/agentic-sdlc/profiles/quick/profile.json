@@ -1,7 +1,12 @@
 {
   "id": "quick",
-  "description": "Low-ceremony default: select and dispatch specialists for an ordinary task with no required lifecycle gate. Mutation gates (production, destructive, persistent migration, privileged identity, risk acceptance) always still apply regardless of profile.",
-  "agents": ["application-engineer", "frontend-engineer", "backend-engineer", "test-engineer", "code-reviewer", "debugging-engineer", "security-reviewer", "release-engineer"],
+  "description": "Low-ceremony default for informational work; implementation and change work first requires product intent and requirements (G1/G2). Mutation gates (production, destructive, persistent migration, privileged identity, risk acceptance) always still apply regardless of profile.",
+  "agents": ["application-engineer", "frontend-engineer", "backend-engineer", "test-engineer", "code-reviewer", "debugging-engineer", "security-reviewer", "release-engineer", "product-intent-agent", "requirements-agent"],
+  "change_intake": {
+    "keywords": ["implement", "create", "new feature", "new service", "add feature", "build", "change", "update", "modify", "refactor", "fix", "repair", "remove", "delete", "migrate", "introduce", "enhance", "extend", "replace", "upgrade", "rework"],
+    "agents": ["product-intent-agent", "requirements-agent"],
+    "quality_gates": ["G1", "G2"]
+  },
   "routing": [
     {"id": "build", "phrases": ["implement", "add feature", "build", "change behavior", "update code"], "agents": ["application-engineer"], "reviewers": ["code-reviewer", "test-engineer"]},
     {"id": "frontend", "phrases": ["frontend component", "user interface", "react", "browser behavior"], "agents": ["frontend-engineer"], "reviewers": ["code-reviewer", "test-engineer"]},

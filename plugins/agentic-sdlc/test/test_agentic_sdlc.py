@@ -63,11 +63,18 @@ class PortableCliTests(unittest.TestCase):
         project = self.load(".agentic-sdlc/project.json")
         self.assertEqual("quick", project["profile"])
 
-    def test_quick_profile_plan_has_no_required_quality_gates_for_ordinary_work(self):
+    def test_quick_profile_change_work_requires_intent_and_requirements(self):
         self.run_cli("init", "--profile", "quick")
         plan = self.run_cli("plan", "--task-id", "QUICK-1", "--task", "Fix a failing login test")
-        self.assertEqual([], plan["required_quality_gates"])
+        self.assertEqual(["G1", "G2"], [gate["id"] for gate in plan["required_quality_gates"]])
+        self.assertIn("product-intent-agent", plan["agents"]["support"])
+        self.assertIn("requirements-agent", plan["agents"]["support"])
         self.assertEqual([], plan["human_gates"])
+
+    def test_quick_profile_non_change_question_has_no_quality_gates(self):
+        self.run_cli("init", "--profile", "quick")
+        plan = self.run_cli("plan", "--task-id", "QUICK-1B", "--task", "Explain the local validation command")
+        self.assertEqual([], plan["required_quality_gates"])
 
     def test_quick_profile_still_enforces_mutation_gates(self):
         self.run_cli("init", "--profile", "quick")

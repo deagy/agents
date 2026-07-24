@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -188,6 +189,15 @@ def _build_knowledge_context(
     }
 
 
+def _matches_change_intake(config: dict[str, Any], task: str) -> bool:
+    """Identify implementation/change work that must start with intent and requirements."""
+    normalized = task.lower()
+    return any(
+        re.search(rf"(^|[^a-z0-9]){re.escape(keyword.lower())}([^a-z0-9]|$)", normalized)
+        for keyword in config.get("change_intake", {}).get("keywords", [])
+    )
+
+
 def _validate_agents(groups: dict[str, list[str]], catalog: list[str]) -> None:
     known = set(catalog)
     for agent in [*groups["primary"], *groups["reviewers"], *groups["support"]]:
@@ -208,6 +218,10 @@ def build_dispatch_plan(
         reviewers.extend(risk["rule"].get("reviewers", []))
         support.extend(risk["rule"].get("support", []))
     support.extend(apply_cross_stack(config, matched_routes))
+
+    change_intake = config.get("change_intake", {})
+    if _matches_change_intake(config, input_data["task"]):
+        support.extend(change_intake.get("agents", []))
 
     groups = {
         "primary": _ordered(primary, catalog),
@@ -234,6 +248,28 @@ def build_dispatch_plan(
         task_id = f"local-{hashlib.sha256(fingerprint.encode('utf-8')).hexdigest()[:12]}"
     normalized_input = {**input_data, "task_id": task_id}
     generated_at = datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+    required_quality_gates = _build_quality_gates(config, matched_routes, matched_risks)
+    existing_gate_ids = {gate["id"] for gate in required_quality_gates}
+    if _matches_change_intake(config, input_data["task"]):
+        definitions = config.get("quality_gates", {})
+        unknown = [
+            gate_id
+            for gate_id in config.get("change_intake", {}).get("quality_gates", [])
+            if gate_id not in definitions
+        ]
+        if unknown:
+            raise ValueError(f"Change intake references unknown quality gates: {unknown}")
+        required_quality_gates.extend(
+            {
+                "id": gate_id,
+                "required": True,
+                "reason": "Implementation and change work requires approved intent and requirements before specialist delivery.",
+                "contributing_routes": ["change-intake"],
+            }
+            for gate_id in config.get("change_intake", {}).get("quality_gates", [])
+            if gate_id not in existing_gate_ids
+        )
+    required_quality_gates.sort(key=lambda gate: int(gate["id"][1:]))
 
     return {
         "schema_version": 2,
@@ -252,7 +288,7 @@ def build_dispatch_plan(
         "matched_routes": [{"id": match["id"], "reasons": _reasons(match)} for match in matched_routes],
         "matched_risks": [{"id": match["id"], "reasons": _reasons(match)} for match in matched_risks],
         "agents": groups,
-        "required_quality_gates": _build_quality_gates(config, matched_routes, matched_risks),
+        "required_quality_gates": required_quality_gates,
         "human_gates": _build_human_gates(matched_risks),
         "knowledge_context": _build_knowledge_context(config, selected_agents, normalized_input),
     }

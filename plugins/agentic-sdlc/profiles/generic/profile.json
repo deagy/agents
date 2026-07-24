@@ -2,6 +2,11 @@
   "id": "generic",
   "description": "Conservative profile for an unclassified software repository.",
   "agents": ["product-intent-agent", "requirements-agent", "governance-planner", "data-governance-engineer", "cryptographic-assurance-engineer", "cloud-architect", "threat-modeler", "application-engineer", "test-engineer", "code-reviewer", "security-reviewer", "compliance-reviewer", "evidence-curator", "release-engineer", "observability-sre", "support-triage-agent", "debugging-engineer", "incident-commander"],
+  "change_intake": {
+    "keywords": ["implement", "create", "new feature", "new service", "add feature", "build", "change", "update", "modify", "refactor", "fix", "repair", "remove", "delete", "migrate", "introduce", "enhance", "extend", "replace", "upgrade", "rework"],
+    "agents": ["product-intent-agent", "requirements-agent"],
+    "quality_gates": ["G1", "G2"]
+  },
   "routing": [
     {"id": "product-intake", "phrases": ["product intent", "mission objective", "requirements decomposition", "requirements traceability"], "agents": ["product-intent-agent", "requirements-agent"], "gates": ["G1", "G2"]},
     {"id": "architecture", "phrases": ["service architecture", "system architecture", "trust boundary", "data flow"], "agents": ["cloud-architect"], "gates": ["G3"]},

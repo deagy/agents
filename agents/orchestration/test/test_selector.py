@@ -145,6 +145,12 @@ class SelectorTests(unittest.TestCase):
         self.assertIn("requirements-agent", result["agents"]["primary"])
         self.assertEqual(self.quality_gate_ids(result), ["G1", "G2"])
 
+    def test_change_work_always_adds_intent_and_requirements_gates(self) -> None:
+        result = plan(task="Implement a GitHub approval integration", changed_files=[])
+        self.assertEqual(self.quality_gate_ids(result), ["G1", "G2"])
+        self.assertIn("product-intent-agent", result["agents"]["support"])
+        self.assertIn("requirements-agent", result["agents"]["support"])
+
     def test_combined_product_intent_and_architecture_uses_new_service(self) -> None:
         result = plan(task="Capture product intent and define the service architecture", changed_files=[])
         self.assertEqual(result["workflow"], "new-service")
@@ -200,8 +206,6 @@ class SelectorTests(unittest.TestCase):
             ("Fix ordinary runtime behavior", ["services/api/main.go"]),
         ]
         specialist_agents = {
-            "product-intent-agent",
-            "requirements-agent",
             "governance-planner",
             "data-governance-engineer",
             "cryptographic-assurance-engineer",
