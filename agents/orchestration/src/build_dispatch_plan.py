@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,10 +16,51 @@ CLASSIFICATIONS = {"public", "internal", "confidential", "restricted"}
 MAXIMUM_KNOWLEDGE_TOP = 20
 KNOWLEDGE_STORE_ROOT = Path(__file__).resolve().parents[2] / "knowledge-store"
 DEFAULT_KNOWLEDGE_SOURCE = Path(__file__).resolve().parents[3].name
+LIFECYCLE_CONTRACT = Path(__file__).resolve().parents[3] / "plugins" / "agentic-sdlc" / "contracts" / "lifecycle-gates.json"
+GATE_IDS = [f"G{index}" for index in range(1, 11)]
 
 
 def _unique(values: Iterable[str]) -> list[str]:
     return list(dict.fromkeys(values))
+
+
+def _gate_dispatch(configured: list[str], ignored: list[str]) -> tuple[list[str], list[dict[str, Any]], list[str]]:
+    unknown = set(ignored) - set(GATE_IDS)
+    if unknown:
+        raise ValueError(f"ignored_gates contains unknown lifecycle gates: {sorted(unknown)}")
+    if not configured:
+        return [], [], []
+    sequence = GATE_IDS[: max(GATE_IDS.index(gate_id) for gate_id in configured) + 1]
+    ignored_set = set(ignored).intersection(sequence)
+    contracts = {gate["id"]: gate for gate in json.loads(LIFECYCLE_CONTRACT.read_text(encoding="utf-8"))["gates"]}
+    dispatch = []
+    for gate_id in sequence:
+        contract = contracts[gate_id]
+        dispatch.append({
+            "gate_id": gate_id,
+            "status": "ignored" if gate_id in ignored_set else "required",
+            "agents": _unique([*contract.get("author_agents", []), *contract.get("review_agents", ["code-reviewer"])]),
+            "tasks": contract.get("tasks", []),
+            "artifacts": contract.get("artifacts", []),
+        })
+    return [gate_id for gate_id in sequence if gate_id not in ignored_set], dispatch, sorted(ignored_set, key=GATE_IDS.index)
+
+
+def _gate_agents(configured: list[str], ignored: list[str]) -> list[str]:
+    unknown = set(ignored) - set(GATE_IDS)
+    if unknown:
+        raise ValueError(f"ignored_gates contains unknown lifecycle gates: {sorted(unknown)}")
+    if not configured:
+        return []
+    sequence = GATE_IDS[: max(GATE_IDS.index(gate_id) for gate_id in configured) + 1]
+    ignored_set = set(ignored).intersection(sequence)
+    contracts = {gate["id"]: gate for gate in json.loads(LIFECYCLE_CONTRACT.read_text(encoding="utf-8"))["gates"]}
+    return _unique(
+        agent
+        for gate_id in sequence
+        if gate_id not in ignored_set
+        for agent in [*contracts[gate_id].get("author_agents", []), *contracts[gate_id].get("review_agents", ["code-reviewer"])]
+    )
 
 
 def _ordered(values: Iterable[str], catalog: list[str]) -> list[str]:
@@ -223,6 +265,15 @@ def build_dispatch_plan(
     if _matches_change_intake(config, input_data["task"]):
         support.extend(change_intake.get("agents", []))
 
+    configured_gate_ids = [
+        gate_id
+        for match in [*matched_routes, *matched_risks]
+        for gate_id in match["rule"].get("quality_gates", [])
+    ]
+    if _matches_change_intake(config, input_data["task"]):
+        configured_gate_ids.extend(change_intake.get("quality_gates", []))
+    support.extend(_gate_agents(configured_gate_ids, config.get("ignored_gates", [])))
+
     groups = {
         "primary": _ordered(primary, catalog),
         "reviewers": _ordered(reviewers, catalog),
@@ -270,6 +321,22 @@ def build_dispatch_plan(
             if gate_id not in existing_gate_ids
         )
     required_quality_gates.sort(key=lambda gate: int(gate["id"][1:]))
+    effective_gate_ids, gate_dispatch, ignored_quality_gates = _gate_dispatch(
+        [gate["id"] for gate in required_quality_gates], config.get("ignored_gates", [])
+    )
+    existing = {gate["id"]: gate for gate in required_quality_gates}
+    required_quality_gates = [
+        existing.get(
+            gate_id,
+            {
+                "id": gate_id,
+                "required": True,
+                "reason": "Required by lexical lifecycle gate sequence",
+                "contributing_routes": ["lifecycle-sequence"],
+            },
+        )
+        for gate_id in effective_gate_ids
+    ]
 
     return {
         "schema_version": 2,
@@ -289,6 +356,8 @@ def build_dispatch_plan(
         "matched_risks": [{"id": match["id"], "reasons": _reasons(match)} for match in matched_risks],
         "agents": groups,
         "required_quality_gates": required_quality_gates,
+        "ignored_quality_gates": ignored_quality_gates,
+        "gate_dispatch": gate_dispatch,
         "human_gates": _build_human_gates(matched_risks),
         "knowledge_context": _build_knowledge_context(config, selected_agents, normalized_input),
     }

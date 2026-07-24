@@ -1,0 +1,35 @@
+{
+  "schema_version": 2,
+  "task_id": "github-gate-approval-integration-2026-07-23",
+  "generated_at": "2026-07-24T00:35:32.834072Z",
+  "status": "ready",
+  "workflow": "new-service",
+  "inputs": {
+    "task": "Design and implement a GitHub integration for Agentic SDLC gate approvals. The integration must preserve human-only approval authority, independent review, immutable evidence references, fail-closed behavior, and separation between lifecycle quality gates and mutation-oriented human gates. Define the GitHub API or Actions boundary, authentication, webhook/event handling, approval-to-run-record mapping, replay/idempotency protection, and tests. Do not approve gates, merge, deploy, or change persistent environments.",
+    "classification": "internal"
+  },
+  "matched_routes": [
+    "build"
+  ],
+  "matched_risks": [],
+  "agents": {
+    "primary": [
+      "application-engineer"
+    ],
+    "reviewers": [
+      "code-reviewer",
+      "test-engineer"
+    ],
+    "support": []
+  },
+  "required_quality_gates": [],
+  "human_gates": [],
+  "knowledge_context": {
+    "status": "unavailable",
+    "reason": "No portable knowledge source configured",
+    "requests": []
+  },
+  "dispatch_fingerprint": "sha256:a76a80756d28db39dd22737553168dd3874c2144383b5f9a08eedac67f4972d4",
+  "ignored_quality_gates": [],
+  "gate_dispatch": []
+}

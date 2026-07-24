@@ -131,7 +131,7 @@ class SelectorTests(unittest.TestCase):
         )
         self.assertEqual(result["schema_version"], 2)
         self.assertEqual(result["workflow"], "production-release")
-        self.assertEqual(self.quality_gate_ids(result), ["G3", "G4", "G5", "G6", "G7", "G8", "G9"])
+        self.assertEqual(self.quality_gate_ids(result), ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9"])
         production_gate = next(
             gate for gate in result["required_quality_gates"] if gate["id"] == "G9"
         )
@@ -156,7 +156,7 @@ class SelectorTests(unittest.TestCase):
         self.assertEqual(result["workflow"], "new-service")
         self.assertIn("product-intent-agent", result["agents"]["primary"])
         self.assertIn("cloud-architect", result["agents"]["support"])
-        self.assertEqual(self.quality_gate_ids(result), ["G1", "G3"])
+        self.assertEqual(self.quality_gate_ids(result), ["G1", "G2", "G3"])
 
     def test_selects_governance_data_and_crypto_specialists_narrowly(self) -> None:
         governance = plan(task="Assess governance impact and prepare an accreditation plan", changed_files=[])
@@ -182,7 +182,7 @@ class SelectorTests(unittest.TestCase):
         self.assertIn("security-reviewer", result["agents"]["reviewers"])
         self.assertIn("compliance-reviewer", result["agents"]["reviewers"])
         self.assertIn("support-triage-agent", result["agents"]["support"])
-        self.assertEqual(self.quality_gate_ids(result), ["G10"])
+        self.assertEqual(self.quality_gate_ids(result), ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10"])
         self.assertNotIn("production-change", [gate["id"] for gate in result["human_gates"]])
 
     def test_workflow_precedence_keeps_support_ahead_of_runtime_assurance(self) -> None:
@@ -218,7 +218,13 @@ class SelectorTests(unittest.TestCase):
                     *result["agents"]["reviewers"],
                     *result["agents"]["support"],
                 }
-                self.assertTrue(specialist_agents.isdisjoint(selected))
+                gate_agents = {
+                    agent
+                    for gate in result["gate_dispatch"]
+                    if gate["status"] == "required"
+                    for agent in gate["agents"]
+                }
+                self.assertTrue(gate_agents.issubset(selected))
                 self.assertNotEqual(result["workflow"], "runtime-assurance")
 
     def test_knowledge_invocation_preserves_argv_and_output_contract(self) -> None:

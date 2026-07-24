@@ -4,7 +4,7 @@
   "title": "Local Agent Selection Plan",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "task_id", "generated_at", "status", "workflow", "inputs", "matched_routes", "matched_risks", "agents", "required_quality_gates", "human_gates", "knowledge_context"],
+  "required": ["schema_version", "task_id", "generated_at", "status", "workflow", "inputs", "matched_routes", "matched_risks", "agents", "required_quality_gates", "ignored_quality_gates", "gate_dispatch", "human_gates", "knowledge_context"],
   "properties": {
     "schema_version": { "const": 2 },
     "task_id": { "type": "string", "minLength": 1 },
@@ -42,6 +42,8 @@
         }
       }
     },
+    "ignored_quality_gates": { "type": "array", "uniqueItems": true, "items": { "enum": ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10"] } },
+    "gate_dispatch": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["gate_id", "status", "agents", "tasks", "artifacts"], "properties": { "gate_id": { "enum": ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10"] }, "status": { "enum": ["required", "ignored"] }, "agents": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }, "tasks": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }, "artifacts": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } } } } },
     "human_gates": {
       "type": "array",
       "items": {

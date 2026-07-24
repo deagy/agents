@@ -372,6 +372,7 @@ def initialize(args: argparse.Namespace) -> int:
         "profile": profile_id,
         "routes": profile.get("routing", []),
         "change_intake": profile.get("change_intake", {}),
+        "ignored_gates": profile.get("ignored_gates", []),
     }
     commands = {"version": 1, "commands": detected["command_candidates"], "confirmed": False}
     created = []
@@ -420,7 +421,29 @@ def choose_workflow(text: str, routes: list[dict[str, Any]]) -> tuple[str, list[
     return "needs-triage", matched
 
 
-def make_gate_record(gate: dict[str, Any], impact: dict[str, Any], authorities: dict[str, Any]) -> dict[str, Any]:
+def lifecycle_sequence(gate_ids: list[str], ignored_gates: list[str]) -> tuple[list[str], set[str]]:
+    unknown = set(ignored_gates) - set(GATE_IDS)
+    if unknown:
+        raise ValueError(f"ignored_gates contains unknown lifecycle gates: {sorted(unknown)}")
+    if not gate_ids:
+        return [], set()
+    highest = max(GATE_IDS.index(gate_id) for gate_id in gate_ids)
+    sequence = GATE_IDS[: highest + 1]
+    ignored = set(ignored_gates).intersection(sequence)
+    return sequence, ignored
+
+
+def gate_agent_artifacts(gate: dict[str, Any]) -> list[dict[str, str]]:
+    agents = [*gate.get("author_agents", []), *gate.get("review_agents", ["code-reviewer"])]
+    return [
+        {"agent_id": agent, "artifact_id": f"{gate['id'].lower()}-{agent}-attestation"}
+        for agent in unique(agents)
+    ]
+
+
+def make_gate_record(
+    gate: dict[str, Any], impact: dict[str, Any], authorities: dict[str, Any], ignored: bool = False
+) -> dict[str, Any]:
     affected_unknown = bool(impact.get("blocking_unknowns")) and gate["id"] in {"G3", "G4", "G5", "G7"}
     authority_requirements = []
     for reviewer in gate.get("review_agents", ["code-reviewer"]):
@@ -449,8 +472,8 @@ def make_gate_record(gate: dict[str, Any], impact: dict[str, Any], authorities: 
         "gate_id": gate["id"],
         "name": gate["name"],
         "status": "blocked" if affected_unknown else "pending",
-        "applicability": "unknown" if affected_unknown else "applicable",
-        "applicability_rationale": "Impact applicability is unresolved" if affected_unknown else "Lifecycle gate applies by default",
+        "applicability": "not-applicable" if ignored else ("unknown" if affected_unknown else "applicable"),
+        "applicability_rationale": "Explicitly configured lifecycle gate ignore" if ignored else ("Impact applicability is unresolved" if affected_unknown else "Lifecycle gate applies by default"),
         "artifact_bindings": [],
         "preparers": [],
         "independent_verifier": None,
@@ -491,6 +514,10 @@ def plan_task(args: argparse.Namespace) -> int:
         gates.extend(change_intake.get("quality_gates", []))
     primary, reviewers, support, gates = map(unique, [primary, reviewers, support, gates])
     gates.sort(key=lambda gate_id: int(gate_id.removeprefix("G")))
+    lifecycle = load_json(CONTRACTS / "lifecycle-gates.json")["gates"]
+    configured_ignored = routing.get("ignored_gates", [])
+    sequence, ignored_gates = lifecycle_sequence(gates, configured_ignored)
+    gates = [gate_id for gate_id in sequence if gate_id not in ignored_gates]
     reviewers = [agent for agent in reviewers if agent not in primary]
     if workflow == "needs-triage":
         support = unique(support + ["requirements-agent"])
@@ -519,6 +546,25 @@ def plan_task(args: argparse.Namespace) -> int:
             "reason": "Required by matched project route or workflow",
             "contributing_routes": contributing_routes,
         })
+    gate_contracts = {gate["id"]: gate for gate in lifecycle}
+    gate_agents = [
+        agent
+        for gate_id in sequence
+        if gate_id not in ignored_gates
+        for agent in [*gate_contracts[gate_id].get("author_agents", []), *gate_contracts[gate_id].get("review_agents", ["code-reviewer"])]
+    ]
+    support = unique(support + gate_agents)
+    support = [agent for agent in support if agent not in primary and agent not in reviewers]
+    gate_dispatch = [
+        {
+            "gate_id": gate_id,
+            "status": "ignored" if gate_id in ignored_gates else "required",
+            "agents": unique([*gate_contracts[gate_id].get("author_agents", []), *gate_contracts[gate_id].get("review_agents", ["code-reviewer"])]),
+            "tasks": gate_contracts[gate_id].get("tasks", []),
+            "artifacts": gate_contracts[gate_id].get("artifacts", []),
+        }
+        for gate_id in sequence
+    ]
     task_id = safe_task_id(args.task_id)
     task_dir = confined_path(root, OVERLAY, "runs", task_id)
     dispatch = {
@@ -532,12 +578,13 @@ def plan_task(args: argparse.Namespace) -> int:
         "matched_risks": [],
         "agents": {"primary": primary, "reviewers": reviewers, "support": support},
         "required_quality_gates": required,
+        "ignored_quality_gates": sorted(ignored_gates, key=GATE_IDS.index),
+        "gate_dispatch": gate_dispatch,
         "human_gates": human_gates,
         "knowledge_context": {"status": "unavailable", "reason": "No portable knowledge source configured", "requests": []},
     }
     dispatch_hash = dispatch_fingerprint(dispatch)
     dispatch["dispatch_fingerprint"] = dispatch_hash
-    lifecycle = load_json(CONTRACTS / "lifecycle-gates.json")["gates"]
     record = {
         "version": 2,
         "task_id": task_id,
@@ -553,9 +600,25 @@ def plan_task(args: argparse.Namespace) -> int:
         "current_lifecycle_phase": "intent",
         "knowledge_retrieval": {"status": "unavailable", "reason": "No portable knowledge source configured", "query_ids": [], "evidence_refs": [], "influence": "none"},
         "impact_profile": impact,
-        "lifecycle_gates": [make_gate_record(gate, impact, authorities) for gate in lifecycle],
+        "lifecycle_gates": [make_gate_record(gate, impact, authorities, gate["id"] in ignored_gates) for gate in lifecycle],
         "specialist_attestations": [],
         "re_entry_history": [],
+        "execution_summary": {
+            "gates": {
+                gate_id: {
+                    "configured": gate_id in sequence,
+                    "ignored": gate_id in ignored_gates,
+                    "ignore_reason": "Configured in project routing" if gate_id in ignored_gates else None,
+                    "required_agents": gate_contracts[gate_id].get("author_agents", []) + gate_contracts[gate_id].get("review_agents", ["code-reviewer"]),
+                    "dispatched_agents": [],
+                    "required_tasks": gate_contracts[gate_id].get("tasks", []),
+                    "completed_tasks": [],
+                    "required_agent_artifacts": gate_agent_artifacts(gate_contracts[gate_id]),
+                    "produced_agent_artifacts": [],
+                }
+                for gate_id in GATE_IDS
+            }
+        },
     }
     dispatch_path = task_dir / "dispatch-plan.json"
     record_path = task_dir / "run-record.json"
@@ -654,6 +717,9 @@ def validate_repository(args: argparse.Namespace) -> int:
     blockers.extend(f"impact applicability is unknown: {item}" for item in unknown_impact)
     blockers.extend(f"impact profile blocker: {item}" for item in impact.get("blocking_unknowns", []))
     route_ids: set[str] = set()
+    unknown_ignored = set(routing.get("ignored_gates", [])) - set(GATE_IDS)
+    if unknown_ignored:
+        errors.append(f"routing ignored_gates contains unknown lifecycle gates: {sorted(unknown_ignored)}")
     agent_catalog = load_json(CONTRACTS / "agent-catalog.json")["agents"]
     known_agents = set(agent_catalog)
     for route in routing.get("routes", []):
@@ -701,9 +767,60 @@ def validate_repository(args: argparse.Namespace) -> int:
         if [gate.get("gate_id") for gate in gate_records] != GATE_IDS:
             errors.append(f"{record_path}: lifecycle gates must be exactly G1-G10 in order")
         gate_contracts = {gate["id"]: gate for gate in load_json(CONTRACTS / "lifecycle-gates.json")["gates"]}
+        execution_gates = record.get("execution_summary", {}).get("gates", {})
+        configured_gate_ids = {
+            item.get("gate_id")
+            for item in load_json(confined_path(root, OVERLAY, "runs", task_directory.name, "dispatch-plan.json")).get("gate_dispatch", [])
+            if item.get("status") == "required"
+        }
+        ignored_gate_ids = {
+            item.get("gate_id")
+            for item in load_json(confined_path(root, OVERLAY, "runs", task_directory.name, "dispatch-plan.json")).get("gate_dispatch", [])
+            if item.get("status") == "ignored"
+        }
         invalidation_started = False
         for index, gate in enumerate(gate_records):
             gate_id = gate.get("gate_id")
+            contract = gate_contracts.get(gate_id, {})
+            execution = execution_gates.get(gate_id)
+            if execution is None:
+                errors.append(f"{record_path}: {gate_id} is missing its required execution record")
+                execution = {}
+            if execution is not None:
+                if execution.get("configured") != (gate_id in configured_gate_ids or gate_id in ignored_gate_ids):
+                    errors.append(f"{record_path}: {gate_id} execution configuration does not match dispatch plan")
+                if execution.get("ignored") != (gate_id in ignored_gate_ids):
+                    errors.append(f"{record_path}: {gate_id} ignore state does not match dispatch plan")
+                expected_agents = unique(contract.get("author_agents", []) + contract.get("review_agents", ["code-reviewer"]))
+                expected_artifacts = gate_agent_artifacts(contract)
+                if execution.get("required_agents") != expected_agents:
+                    errors.append(f"{record_path}: {gate_id} required agent set does not match lifecycle contract")
+                if execution.get("required_tasks") != contract.get("tasks", []):
+                    errors.append(f"{record_path}: {gate_id} required task set does not match lifecycle contract")
+                if execution.get("required_agent_artifacts") != expected_artifacts:
+                    errors.append(f"{record_path}: {gate_id} required agent artifacts do not match lifecycle contract")
+                if execution.get("ignored") and not execution.get("ignore_reason"):
+                    errors.append(f"{record_path}: {gate_id} ignored gate requires an explicit reason")
+                if gate.get("status") in {"ready", "approved"} and execution.get("configured") and not execution.get("ignored"):
+                    if set(execution.get("dispatched_agents", [])) != set(expected_agents):
+                        errors.append(f"{record_path}: {gate_id} advanced without dispatching every configured agent")
+                    if set(execution.get("completed_tasks", [])) != set(contract.get("tasks", [])):
+                        errors.append(f"{record_path}: {gate_id} advanced without completing every configured task")
+                    produced = {
+                        (item.get("agent_id"), item.get("artifact_id"))
+                        for item in execution.get("produced_agent_artifacts", [])
+                        if item.get("revision") and item.get("digest")
+                    }
+                    required = {(item["agent_id"], item["artifact_id"]) for item in expected_artifacts}
+                    if not required.issubset(produced):
+                        errors.append(f"{record_path}: {gate_id} advanced without immutable artifacts from every configured agent")
+            if gate.get("status") in {"ready", "approved"} and execution.get("configured") and any(
+                prior.get("status") not in {"approved", "invalidated"}
+                and execution_gates.get(prior.get("gate_id"), {}).get("configured")
+                and not execution_gates.get(prior.get("gate_id"), {}).get("ignored")
+                for prior in gate_records[:index]
+            ):
+                errors.append(f"{record_path}: {gate_id} violates lexical gate order")
             preparers = {identity.get("id") for identity in gate.get("preparers", []) if isinstance(identity, dict)}
             verifier = gate.get("independent_verifier")
             if isinstance(verifier, dict) and verifier.get("id") in preparers:
@@ -836,6 +953,35 @@ def validate_repository(args: argparse.Namespace) -> int:
         overlap = set(dispatch.get("agents", {}).get("primary", [])).intersection(dispatch.get("agents", {}).get("reviewers", []))
         if overlap:
             errors.append(f"{dispatch_path}: dispatch author/reviewer overlap: {sorted(overlap)}")
+        expected_sequence = dispatch.get("gate_dispatch", [])
+        required_ids = [gate.get("id") for gate in dispatch.get("required_quality_gates", [])]
+        dispatched_required_ids = [item.get("gate_id") for item in expected_sequence if item.get("status") == "required"]
+        dispatched_ignored_ids = [item.get("gate_id") for item in expected_sequence if item.get("status") == "ignored"]
+        if required_ids != dispatched_required_ids:
+            errors.append(f"{dispatch_path}: required quality gates do not match gate dispatch")
+        if dispatch.get("ignored_quality_gates", []) != dispatched_ignored_ids:
+            errors.append(f"{dispatch_path}: configured ignored gates do not match gate dispatch")
+        if [item.get("gate_id") for item in expected_sequence] != [
+            item.get("gate_id") for item in sorted(expected_sequence, key=lambda item: GATE_IDS.index(item.get("gate_id")))
+        ]:
+            errors.append(f"{dispatch_path}: gate dispatch must be in lexical order")
+        execution_gates = record.get("execution_summary", {}).get("gates", {})
+        for item in expected_sequence:
+            gate_id = item.get("gate_id")
+            execution = execution_gates.get(gate_id)
+            if item.get("status") == "ignored":
+                if not execution or not execution.get("ignored") or not execution.get("ignore_reason"):
+                    errors.append(f"{dispatch_path}: ignored {gate_id} lacks explicit execution waiver")
+                continue
+            if execution and execution.get("ignored"):
+                errors.append(f"{dispatch_path}: required {gate_id} is marked ignored in the run record")
+            if execution:
+                if execution.get("required_tasks") != item.get("tasks"):
+                    errors.append(f"{dispatch_path}: {gate_id} task dispatch does not match the lifecycle contract")
+                if {artifact["artifact_id"] for artifact in execution.get("required_agent_artifacts", [])} != {
+                    f"{gate_id.lower()}-{agent}-attestation" for agent in item.get("agents", [])
+                }:
+                    errors.append(f"{dispatch_path}: {gate_id} artifact dispatch does not match configured agents")
     result = {"valid": not errors, "ready": not errors and not blockers, "errors": errors, "blockers": blockers}
     print(json.dumps(result, indent=2))
     if errors:

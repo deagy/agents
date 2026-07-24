@@ -9,7 +9,7 @@
     "baseline_revision", "scope", "disposition", "intent_record_id",
     "requirements_baseline_id", "current_lifecycle_phase",
     "knowledge_retrieval", "sqs_impact_profile", "lifecycle_gates",
-    "specialist_attestations", "re_entry_history"
+    "specialist_attestations", "re_entry_history", "execution_summary"
   ],
   "properties": {
     "version": { "const": 2 },
@@ -45,7 +45,7 @@
     },
     "specialist_attestations": { "type": "array", "items": { "$ref": "#/$defs/specialistGate" } },
     "re_entry_history": { "type": "array", "items": { "$ref": "#/$defs/invalidation" } },
-    "execution_summary": { "type": "object" }
+    "execution_summary": { "type": "object", "additionalProperties": false, "required": ["gates"], "properties": { "gates": { "type": "object", "minProperties": 10, "maxProperties": 10, "additionalProperties": false, "patternProperties": { "^G(?:[1-9]|10)$": { "type": "object", "additionalProperties": false, "required": ["configured", "ignored", "ignore_reason", "required_agents", "dispatched_agents", "required_tasks", "completed_tasks", "required_agent_artifacts", "produced_agent_artifacts"], "properties": { "configured": { "type": "boolean" }, "ignored": { "type": "boolean" }, "ignore_reason": { "type": ["string", "null"] }, "required_agents": { "type": "array", "items": { "$ref": "#/$defs/nonEmpty" } }, "dispatched_agents": { "type": "array", "items": { "$ref": "#/$defs/nonEmpty" } }, "required_tasks": { "type": "array", "items": { "$ref": "#/$defs/nonEmpty" } }, "completed_tasks": { "type": "array", "items": { "$ref": "#/$defs/nonEmpty" } }, "required_agent_artifacts": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["agent_id", "artifact_id"], "properties": { "agent_id": { "$ref": "#/$defs/nonEmpty" }, "artifact_id": { "$ref": "#/$defs/nonEmpty" } } } }, "produced_agent_artifacts": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["agent_id", "artifact_id", "revision", "digest"], "properties": { "agent_id": { "$ref": "#/$defs/nonEmpty" }, "artifact_id": { "$ref": "#/$defs/nonEmpty" }, "revision": { "$ref": "#/$defs/nonEmpty" }, "digest": { "$ref": "#/$defs/nonEmpty" } } } } } } } } } }
   },
   "$defs": {
     "nonEmpty": { "type": "string", "minLength": 1 },

@@ -1,0 +1,30 @@
+{
+  "schema_version": 2,
+  "task_id": "phase1-tooling-diagnostics-2026-07-23",
+  "generated_at": "2026-07-24T00:18:13.418511Z",
+  "status": "needs-triage",
+  "workflow": "needs-triage",
+  "inputs": {
+    "task": "Phase 1 diagnosis of platform-specific tooling failures: compare pwsh -NoProfile, direct Python, and repository bin/agents wrappers; identify whether the timeout is caused by the shell host, interpreter resolution, subprocess behavior, or repository tooling. Planning-review-only; do not package, release, deploy, or modify persistent environments.",
+    "classification": "internal"
+  },
+  "matched_routes": [],
+  "matched_risks": [],
+  "agents": {
+    "primary": [],
+    "reviewers": [],
+    "support": [
+      "requirements-agent"
+    ]
+  },
+  "required_quality_gates": [],
+  "human_gates": [],
+  "knowledge_context": {
+    "status": "unavailable",
+    "reason": "No portable knowledge source configured",
+    "requests": []
+  },
+  "dispatch_fingerprint": "sha256:f68927fc0aba6c182c80ba9dba64d19c1da9ec290ff1137ddbb6fbd324bcb124",
+  "ignored_quality_gates": [],
+  "gate_dispatch": []
+}

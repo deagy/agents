@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "ignored_gates": [],
   "change_intake": {
     "keywords": ["implement", "create", "new feature", "new service", "add feature", "build", "change", "update", "modify", "refactor", "fix", "repair", "remove", "delete", "migrate", "introduce", "enhance", "extend", "replace", "upgrade", "rework"],
     "agents": ["product-intent-agent", "requirements-agent"],

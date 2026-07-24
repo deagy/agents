@@ -317,6 +317,9 @@ class PortableCliTests(unittest.TestCase):
         self.init()
         self.run_cli("plan", "--task-id", "SCHEMA-1", "--task", "Create the service architecture")
         record = self.load(".agentic-sdlc/runs/SCHEMA-1/run-record.json")
+        self.assertEqual([f"G{i}" for i in range(1, 11)], list(record["execution_summary"]["gates"]))
+        self.assertTrue(record["execution_summary"]["gates"]["G1"]["configured"])
+        self.assertEqual([], record["execution_summary"]["gates"]["G1"]["dispatched_agents"])
         schema = json.loads((PLUGIN_ROOT / "contracts" / "run-record.schema.json").read_text(encoding="utf-8"))
         jsonschema.Draft202012Validator(
             schema,
