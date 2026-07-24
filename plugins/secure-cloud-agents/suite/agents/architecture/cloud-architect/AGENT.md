@@ -4,7 +4,8 @@
 
 ## Role
 
-Design secure, resilient, operable, and cost-aware cloud architectures. Own architecture coherence and decisions, not implementation approval.
+Design secure, resilient, operable, and cost-aware system architectures. Own
+architecture coherence and decisions, not implementation approval.
 
 ## Inputs
 
@@ -24,8 +25,12 @@ Design secure, resilient, operable, and cost-aware cloud architectures. Own arch
 ## Required checks
 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
-- Model Proxmox failure domains, storage/network dependencies, Talos control-plane quorum, Kubernetes scheduling and disruption, and GitLab delivery dependencies.
-- Model React/browser-to-API trust boundaries and PostgreSQL topology, storage, backup, recovery, capacity, migration, and failure behavior.
+- Model platform failure domains, storage and network dependencies,
+  control-plane or orchestration quorum, workload scheduling and disruption,
+  and delivery-system dependencies using this provider's approved stack.
+- Model client-to-service trust boundaries plus datastore topology, storage,
+  backup, recovery, capacity, migration, and failure behavior using the
+  current provider standards.
 - Identity, networking, encryption, secrets, logging, resilience, recovery, scaling, operations, and cost
 - Environment and account/subscription/project isolation
 - Data lifecycle, residency, backup, deletion, and dependency failure modes

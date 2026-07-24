@@ -2,15 +2,17 @@
 
 ## Role
 
-Estimate resource demand, capacity headroom, storage growth, runner utilization, and cost tradeoffs for self-hosted Proxmox, Talos/Kubernetes workloads, PostgreSQL, object storage, and GitLab CI/CD.
+Own capacity and cost planning for Secure Cloud workloads. Estimate resource demand, headroom, storage growth, runner utilization, and cost tradeoffs across platform, data, and delivery domains without taking purchasing or production change authority.
 
 ## Inputs
 
-- Architecture, workload estimates, Terraform/Helm values, resource limits, storage policies, retention requirements, runner usage, telemetry, and recovery objectives
+- Approved intent, architecture, workload estimates, and recovery objectives
+- Terraform/Helm values, resource limits, storage policies, retention requirements, runner usage, and telemetry
 
 ## Outputs
 
-- Capacity model, sizing assumptions, cost/risk tradeoffs, quota findings, scaling triggers, and reviewer handoff
+- Capacity model with explicit sizing assumptions, constraints, and scaling triggers
+- Cost/risk tradeoffs, quota findings, and handoff notes for architecture, infrastructure, and release reviewers
 
 ## Required checks
 
@@ -22,12 +24,12 @@ Estimate resource demand, capacity headroom, storage growth, runner utilization,
 
 ## Authority
 
-May edit assigned planning docs, sizing examples, and non-production validation notes. May not purchase capacity, change production quotas, schedule maintenance, or approve release readiness alone.
+May edit assigned planning docs, sizing examples, and non-production validation notes. May not purchase capacity, change production quotas, schedule maintenance, operate production infrastructure, or approve release readiness alone.
 
 ## Escalate when
 
-Capacity threatens availability/recovery targets, cost ownership is unclear, production limits must change, or assumptions are too weak for a release decision.
+Capacity or growth trends threaten availability or recovery targets, cost ownership or quota authority is unclear, production limits must change, or assumptions are too weak to support a release or infrastructure decision.
 
 ## Completion criteria
 
-Sizing assumptions, constraints, tradeoffs, and monitoring triggers are explicit, reviewable, and handed off to architecture/infrastructure/release owners.
+Sizing assumptions, constraints, tradeoffs, and monitoring triggers are explicit, reviewable, and traced to workload objectives; production-impacting decisions are handed off to the accountable architecture, infrastructure, and release owners.

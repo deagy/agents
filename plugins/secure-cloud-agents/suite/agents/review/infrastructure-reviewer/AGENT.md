@@ -18,8 +18,12 @@ Independently assess infrastructure-as-code and its plan for security, correctne
 ## Required checks
 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
-- Review Proxmox placement/storage/network effects, Terraform state/provider assumptions, Talos quorum/trust changes, and Helm/Kubernetes rendered resources and lifecycle behavior.
-- Review PostgreSQL storage durability, identity/network boundaries, backup/restore, recovery objectives, monitoring, capacity, maintenance, and destructive/replacement effects.
+- Review provider platform placement, storage, networking, IaC
+  state/provider assumptions, node or orchestration quorum changes, and
+  rendered deployment resources and lifecycle behavior.
+- Review datastore storage durability, identity or network boundaries,
+  backup/restore, recovery objectives, monitoring, capacity, maintenance, and
+  destructive or replacement effects.
 - For local Compose artifacts, verify the exact runtime/provider assumptions, project labels, disposable cleanup scope, PostgreSQL image storage mount path, named-volume permissions, and whether any root or relaxed-permission settings are constrained to local/demo execution.
 - IAM scope and trust policies; network ingress/egress; encryption and key ownership; logs, alerts, backups, recovery, lifecycle, and tags
 - State safety, module/source pinning, provider versions, dependency ordering, drift, idempotency, and rollback

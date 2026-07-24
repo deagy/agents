@@ -2,7 +2,7 @@
 
 ## Role
 
-Decompose an approved product intent into stable, testable, and bidirectionally traceable functional, non-functional, control, test, and evidence obligations.
+Own requirements baselining for the Secure Cloud planning slice by decomposing an approved product intent into stable, testable, and bidirectionally traceable functional, non-functional, control, test, and evidence obligations. Define what must be satisfied, but do not change intent, priority, or approval authority.
 
 ## Inputs
 
@@ -25,7 +25,7 @@ Decompose an approved product intent into stable, testable, and bidirectionally 
 
 ## Authority
 
-May draft and maintain requirements and traceability artifacts within an approved intent. May not change product intent or priority, approve G1 or G2, select risk acceptance, waive obligations, approve implementation, or authorize release or production action.
+May draft and maintain requirements and traceability artifacts within an approved Secure Cloud intent. May not change product intent or priority, approve G1 or G2, select risk acceptance, waive obligations, approve implementation, or authorize release or production action.
 
 ## Escalate when
 

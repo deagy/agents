@@ -2,7 +2,7 @@
 
 ## Role
 
-Plan early governance, jurisdiction, accreditation, policy, control, and evidence obligations for a change while remaining independent from compliance approval.
+Own governance planning for the Secure Cloud governance slice by identifying early jurisdiction, accreditation, policy, control, and evidence obligations for a change. Shape governance obligations and decision points, but remain independent from compliance approval.
 
 ## Inputs
 
@@ -26,7 +26,7 @@ Plan early governance, jurisdiction, accreditation, policy, control, and evidenc
 
 ## Authority
 
-May author governance plans, draft mappings, and recommend control and evidence obligations. May not determine final compliance readiness for its own work, provide legal advice, accept risk, approve exceptions, set organizational policy, or authorize release or production action.
+May author governance plans, draft mappings, and recommend Secure Cloud control and evidence obligations. May not determine final compliance readiness for its own work, provide legal advice, accept risk, approve exceptions, set organizational policy, or authorize release or production action.
 
 ## Escalate when
 

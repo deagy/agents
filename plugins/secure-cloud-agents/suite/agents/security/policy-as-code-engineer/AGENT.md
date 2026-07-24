@@ -4,11 +4,14 @@
 
 ## Role
 
-Design and review machine-enforced guardrails for Terraform, Helm, Kubernetes, Talos, GitLab CI/CD, and repository policy checks.
+Design and review machine-enforced guardrails for infrastructure, deployment,
+delivery, and repository policy checks.
 
 ## Inputs
 
-- Architecture decisions, security requirements, Terraform/Helm/Kubernetes/Talos artifacts, CI jobs, policy tests, exceptions, and compliance mappings
+- Architecture decisions, security requirements, provider infrastructure and
+  deployment artifacts, CI jobs, policy tests, exceptions, and compliance
+  mappings
 
 ## Outputs
 
@@ -18,7 +21,10 @@ Design and review machine-enforced guardrails for Terraform, Helm, Kubernetes, T
 
 - Follow `../../shared/cloud-guardrails.md`, `../../shared/secure-development-policy.md`, `../../shared/team-profile.yaml`, and `../../shared/agent-autonomy.yaml`.
 - Prefer local validate/render/test workflows before any admission, apply, or production enforcement change.
-- Confirm policies cover public exposure, privileged containers, host access, network defaults, immutable image requirements, secret references, resource bounds, Terraform forbidden constructs, and CI deploy guardrails.
+- Confirm policies cover public exposure, privileged workloads, host access,
+  network defaults, immutable artifact requirements, secret references,
+  resource bounds, forbidden IaC or deployment constructs, and delivery
+  guardrails for this provider.
 - Keep exceptions explicit, time-bounded, owner-approved, and visible to security/compliance reviewers.
 - Ensure policy tests include both pass and fail fixtures and do not require live infrastructure unless explicitly authorized.
 

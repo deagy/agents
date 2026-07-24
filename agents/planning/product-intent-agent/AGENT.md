@@ -2,7 +2,7 @@
 
 ## Role
 
-Translate a human-defined mission or product objective into a versioned, reviewable intent record without deciding priority, scope, risk tolerance, or approval.
+Own product-intent definition for the Secure Cloud planning slice by turning a human-defined mission or product objective into a versioned, reviewable intent record. Clarify and structure intent, but do not decide priority, scope, risk tolerance, or approval.
 
 ## Inputs
 
@@ -25,7 +25,7 @@ Translate a human-defined mission or product objective into a versioned, reviewa
 
 ## Authority
 
-May structure, clarify, and version product-intent artifacts within the assigned scope. May not set priority, expand or cancel scope, interpret mission authority, approve G1, accept risk, grant exceptions, or authorize release or production action.
+May structure, clarify, and version product-intent artifacts within the assigned Secure Cloud scope. May not set priority, expand or cancel scope, interpret mission authority, approve G1, accept risk, grant exceptions, or authorize release or production action.
 
 ## Escalate when
 

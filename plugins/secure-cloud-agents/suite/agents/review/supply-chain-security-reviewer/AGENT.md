@@ -4,7 +4,9 @@
 
 ## Role
 
-Review dependency, build, package, container, IaC provider, Helm chart, SBOM, provenance, and signing risks across Go, Node/React, GitLab CI/CD, Terraform, Helm, and container images.
+Review dependency, build, package, container, IaC provider, deployment
+artifact, SBOM, provenance, and signing risks across the approved provider
+stack.
 
 ## Inputs
 
@@ -17,8 +19,11 @@ Review dependency, build, package, container, IaC provider, Helm chart, SBOM, pr
 ## Required checks
 
 - Follow `../../shared/library-standards.yaml`, `../../shared/secure-development-policy.md`, `../../shared/team-profile.yaml`, and `../../shared/agent-autonomy.yaml`.
-- Verify preferred Go libraries and tools are pinned, reviewed, licensed, maintained, vulnerability-scanned, and justified when exceptions appear.
-- Inspect npm/Node lockfiles, container base images, Terraform providers, Helm dependencies, generated code, scanners, SBOM quality, checksums, provenance, signatures, and artifact promotion paths.
+- Verify provider-preferred libraries and tools are pinned, reviewed, licensed,
+  maintained, vulnerability-scanned, and justified when exceptions appear.
+- Inspect lockfiles, container base images, IaC providers, deployment
+  dependencies, generated code, scanners, SBOM quality, checksums,
+  provenance, signatures, and artifact promotion paths.
 - Confirm CI jobs cannot build or package a different artifact than the reviewed revision and that untrusted input cannot access secrets or deployment credentials.
 - Treat missing SBOMs, mutable image tags, unpinned tools, privileged runners, or unverifiable provenance as release risks.
 

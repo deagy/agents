@@ -27,6 +27,8 @@ remains in each `AGENT.md`, shared policies, routing, and lifecycle contracts.
 
 ## 2. Select the agent
 
+Choose agents by the capability the task needs. The examples in this runbook stay grounded in this provider's current secure-cloud stack, but the role boundaries are about responsibilities first and stack-specific implementations second.
+
 | Need | Primary agent | Typical next agent |
 |---|---|---|
 | Structure a mission or product objective | Product intent agent | Human Product Owner, then requirements agent |
@@ -36,8 +38,8 @@ remains in each `AGENT.md`, shared policies, routing, and lifecycle contracts.
 | Define cryptographic posture, agility, key lifecycle, and downgrade requirements | Cryptographic assurance engineer | Security reviewer and human Security Lead |
 | Design a platform or workload system | Cloud architect | Threat modeler |
 | Analyze threats | Threat modeler | Application or infrastructure engineer |
-| Build a React browser application | Frontend engineer | Test engineer, then code reviewer |
-| Build a Go/PostgreSQL service | Backend engineer | Test engineer, then code reviewer |
+| Build a browser application in the current stack | Frontend engineer | Test engineer, then code reviewer |
+| Build a service or data-access component in the current stack | Backend engineer | Test engineer, then code reviewer |
 | Build application code | Application engineer | Test engineer, then code reviewer |
 | Debug code, tests, runtime behavior, or agent routing | Debugging engineer | Test engineer, then code reviewer |
 | Create or change IaC | Infrastructure provisioner | Infrastructure reviewer |
@@ -52,7 +54,7 @@ remains in each `AGENT.md`, shared policies, routing, and lifecycle contracts.
 | Plan capacity, quotas, or cost tradeoffs | Cost & capacity planner | Infrastructure reviewer |
 | Design secrets, identity, or RBAC | Secrets & identity engineer | Security/compliance reviewer |
 | Write or review policy-as-code guardrails | Policy-as-code engineer | Infrastructure/security reviewer |
-| Review PostgreSQL reliability and recovery | Database reliability engineer | Backend or infrastructure reviewer |
+| Review datastore reliability and recovery in the current stack | Database reliability engineer | Backend or infrastructure reviewer |
 | Review source code | Code reviewer | Security reviewer when risk warrants |
 | Review IaC and plans | Infrastructure reviewer | Security/compliance reviewer |
 | Review CI/CD trust | Pipeline security reviewer | Security reviewer |
@@ -230,8 +232,8 @@ Implementation roles may work concurrently after architecture and threat require
 ### Frontend engineer brief
 
 ```text
-Objective: Build the React document-ingestion experience.
-Language: TypeScript; use JavaScript only with documented justification.
+Objective: Build the browser-based document-ingestion experience for the current stack.
+Language: TypeScript for the current React baseline; use JavaScript only with documented justification.
 Scope: upload, progress, success, empty, validation, authorization, and error states.
 Constraints: The team has not selected a React framework, package manager,
 build tool, styling system, component library, or frontend test stack. Use
@@ -243,8 +245,8 @@ typed API boundaries, dependency risk, and Gherkin regression behavior.
 ### Backend engineer brief
 
 ```text
-Objective: Build the Go API and PostgreSQL persistence for document ingestion.
-Use: Go, pgx v5, parameterized SQL, bounded connection pools, context
+Objective: Build the service API and relational persistence for document ingestion.
+Use: In the current stack, Go with pgx v5, parameterized SQL, bounded connection pools, context
 deadlines, explicit transactions, scoped database roles, and safe retries.
 Scope: API contract, schema, migration, indexes, authorization, telemetry,
 integration tests, and Gherkin regression behavior.
@@ -259,7 +261,7 @@ Follow `workflows/infrastructure-change.md`.
 ### Infrastructure provisioner brief
 
 ```text
-Objective: Provision worker capacity and private storage connectivity.
+Objective: Provision worker capacity and private storage connectivity for the current platform profile.
 Scope: Terraform Proxmox modules, Talos configuration, Kubernetes resources,
 and Helm values in a disposable test environment first.
 Target: Proxmox cluster <ID>, Talos/Kubernetes cluster <ID>, namespace <NAME>.
@@ -294,12 +296,12 @@ Follow `workflows/pipeline-change.md`.
 ```text
 Objective: Build and deploy a containerized service through staging and production.
 Requirements:
-- GitLab merge-request pipelines and protected default branch/environment.
+- Protected code-review and CI environment boundaries; in the current stack this is GitLab merge-request pipelines plus protected default branch/environment.
 - Ephemeral isolated runners.
 - Untrusted merge-request or fork pipelines receive no secrets or deployment permissions.
 - Short-lived workload identities with separate build and deploy roles.
 - Pinned third-party actions and build images.
-- Go/Python checks, Gherkin integration/regression tests, Terraform validation
+- The current stack examples include Go/Python checks, Gherkin integration/regression tests, Terraform validation
   and plans, Helm render/validation, Talos/Kubernetes validation, secret scan,
   SAST, dependency scan, container scan, SBOM,
   signed provenance, immutable artifact promotion, and rollback.
@@ -538,7 +540,7 @@ Use `workflows/production-release.md`. Invoke `workflows/rollback.md` or inciden
 
 ## 15. Current team profile and remaining decisions
 
-The active profile uses self-hosted Proxmox, Terraform, Talos, Kubernetes, Helm, Go/Python/PostgreSQL backends, React/TypeScript frontends, Gherkin integration/regression behavior, and GitLab for VCS and CI/CD. Preferred Go dependencies are Gorilla Mux, Viper, pgx, cenkalti/backoff, Godog, Mockery with Testify mocks, and Testify `require`/`assert`; the exact paths and constraints are in `shared/library-standards.yaml`. The default autonomy policy permits scoped repository edits and local validation, but requires explicit authorization for shared-system reads and human approval for persistent environment mutations.
+The active provider profile currently centers on self-hosted Proxmox, Terraform, Talos, Kubernetes, Helm, Go/Python/PostgreSQL backends, React/TypeScript frontends, Gherkin integration/regression behavior, and GitLab for VCS and CI/CD. Those stack choices specialize this Secure Cloud provider; they do not change that agent selection and review boundaries stay capability-first. Preferred Go dependencies are Gorilla Mux, Viper, pgx, cenkalti/backoff, Godog, Mockery with Testify mocks, and Testify `require`/`assert`; the exact paths and constraints are in `shared/library-standards.yaml`. The default autonomy policy permits scoped repository edits and local validation, but requires explicit authorization for shared-system reads and human approval for persistent environment mutations.
 
 Before operational use, decide and record:
 

@@ -4,6 +4,8 @@
 
 Design a secure React/TypeScript document-upload UI backed by a Go/PostgreSQL API with OIDC authentication, deployed to Kubernetes using Helm.
 
+This dry run keeps the task phrased in the current provider stack; the selected roles still reflect capabilities first, not a requirement that the suite only operate on those exact tools.
+
 This was a planning-only dry run. No application files, credentials, infrastructure state, database schemas, or environments were changed.
 
 ## Automatic selection
@@ -33,7 +35,7 @@ The only materially reusable passage required immutable artifacts, independent r
 
 ## Implementation-planning wave
 
-The frontend, backend, and infrastructure roles proposed:
+The frontend, backend, and infrastructure roles proposed, within that stack-specific example:
 
 - Explicit accessible upload states with TypeScript and typed API boundaries.
 - OIDC Authorization Code with PKCE, with BFF-cookie versus in-memory-token architecture unresolved.

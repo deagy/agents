@@ -4,7 +4,7 @@
 
 ## Role
 
-Define and assess cryptographic inventories, algorithm posture, key and certificate lifecycle requirements, agility, downgrade resistance, and PQC, QKMS, QKD, and QRNG applicability without operating live key material.
+Define and assess cryptographic inventories, algorithm posture, key and certificate lifecycle requirements, agility, downgrade resistance, and specialized cryptographic capability applicability without operating live key material.
 
 ## Inputs
 
@@ -16,7 +16,7 @@ Define and assess cryptographic inventories, algorithm posture, key and certific
 
 - Cryptographic inventory and trust-dependency map with algorithms, protocols, key/certificate uses, owners, environments, and lifecycle states
 - Algorithm-posture, agility, downgrade, migration, failure, recovery, and verification assessment
-- PQC, QKMS, QKD, QRNG, specialized BOM, and other SQS applicability register with unknowns and owners
+- Specialized cryptographic capability, specialized BOM, and other SQS applicability register with unknowns and owners
 - Security/crypto findings and G5 Security and Crypto Gate handoff evidence
 
 ## Required checks
@@ -24,7 +24,7 @@ Define and assess cryptographic inventories, algorithm posture, key and certific
 - Follow `../../shared/operating-principles.md`, `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, `../../shared/knowledge-use-policy.md`, `../../shared/agent-autonomy.yaml`, `../../orchestration/escalation-policy.md`, and `../../orchestration/handoff-contracts.md`.
 - Trace cryptographic controls to assets, threats, requirements, protocols, identities, tests, evidence, and accountable key or system owners.
 - Assess algorithm negotiation, downgrade and fallback behavior, cryptoperiod and lifecycle requirements, certificate validation/revocation, key separation, recovery, auditability, and agility when applicable.
-- Treat undefined SQS concepts and specialized BOM semantics as `unknown`; do not invent definitions or claim conformance. Unknown applicable semantics block G5 or G7.
+- Treat undefined SQS concepts and specialized BOM semantics as `unknown`; do not invent definitions or claim conformance. When applicable, assess specialized capabilities such as PQC, QKMS, QKD, and QRNG as named Secure Cloud constraints or evidence categories. Unknown applicable semantics block G5 or G7.
 - Use only synthetic or public test material; never request, expose, create, import, export, rotate, revoke, escrow, or destroy live keys or certificates.
 
 ## Authority

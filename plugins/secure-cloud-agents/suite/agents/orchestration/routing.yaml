@@ -76,7 +76,7 @@
     {
       "id": "frontend",
       "paths": ["frontend/**", "web/**", "ui/**", "**/*.tsx", "**/*.jsx", "**/*.ts", "**/*.css", "**/*.scss"],
-      "keywords": ["react", "typescript", "javascript", "frontend", "browser", "accessibility", "user interface"],
+      "keywords": ["frontend", "browser", "accessibility", "user interface", "client application", "react", "typescript", "javascript"],
       "primary": ["frontend-engineer"],
       "reviewers": ["test-engineer", "code-reviewer"],
       "quality_gates": ["G3", "G5", "G6", "G7"]
@@ -84,7 +84,7 @@
     {
       "id": "backend",
       "paths": ["backend/**", "services/**", "api/**", "**/*.go", "**/*.sql", "**/migrations/**"],
-      "keywords": ["backend", "api", "golang", "postgres", "postgresql", "pgx", "database", "migration"],
+      "keywords": ["backend", "api", "service implementation", "datastore", "schema", "migration", "golang", "postgres", "postgresql", "pgx", "database"],
       "primary": ["backend-engineer"],
       "reviewers": ["test-engineer", "code-reviewer"],
       "quality_gates": ["G3", "G4", "G5", "G6", "G7"]
@@ -92,7 +92,7 @@
     {
       "id": "infrastructure",
       "paths": ["terraform/**", "infrastructure/**", "infra/**", "talos/**", "kubernetes/**", "k8s/**", "helm/**", "charts/**", "deploy/compose/**", "**/compose.yaml", "**/compose.yml", "**/docker-compose.yaml", "**/docker-compose.yml", "**/*.tf", "**/*.tfvars"],
-      "keywords": ["proxmox", "terraform", "talos", "kubernetes", "k8s", "helm", "infrastructure", "docker compose", "podman compose", "compose.yaml", "named volume", "container storage"],
+      "keywords": ["infrastructure", "declarative infrastructure", "cluster configuration", "package deployment", "node operating system", "container orchestration", "docker compose", "podman compose", "compose.yaml", "named volume", "container storage", "proxmox", "terraform", "talos", "kubernetes", "k8s", "helm"],
       "primary": ["infrastructure-provisioner"],
       "reviewers": ["infrastructure-reviewer"],
       "quality_gates": ["G3", "G4", "G5", "G6", "G7", "G8"]
@@ -100,7 +100,7 @@
     {
       "id": "pipeline",
       "paths": [".gitlab-ci.yml", ".gitlab/**", "**/.gitlab-ci.yml", "ci/**", "pipelines/**"],
-      "keywords": ["gitlab ci", "pipeline", "runner", "build job", "deployment job"],
+      "keywords": ["pipeline", "ci", "cd", "runner", "build job", "deployment job", "gitlab ci"],
       "primary": ["cicd-engineer"],
       "reviewers": ["pipeline-security-reviewer"],
       "quality_gates": ["G5", "G6", "G7", "G8"]
@@ -303,10 +303,10 @@
     "cloud-architect": "prior architecture decisions, constraints, alternatives, failure domains, and recovery objectives",
     "threat-modeler": "prior threats, incidents, mitigations, trust boundaries, and residual risks",
     "application-engineer": "cross-stack contracts, integration decisions, shared behavior, and implementation patterns",
-    "frontend-engineer": "React patterns, UX decisions, accessibility, API contracts, and browser security",
-    "backend-engineer": "Go patterns, PostgreSQL decisions, schemas, migrations, APIs, and operational lessons",
-    "infrastructure-provisioner": "Proxmox, Terraform, Talos, Kubernetes, Helm, storage, and networking patterns",
-    "cicd-engineer": "GitLab pipelines, runners, artifacts, signing, deployments, and rollback",
+    "frontend-engineer": "frontend implementation patterns, UX decisions, accessibility behavior, API contracts, browser security, and approved React or TypeScript conventions",
+    "backend-engineer": "backend service patterns, datastore decisions, schemas, migrations, APIs, operational lessons, and approved Go or PostgreSQL conventions",
+    "infrastructure-provisioner": "platform infrastructure, cluster lifecycle, package deployment, storage, networking, and approved stack-specific infrastructure patterns",
+    "cicd-engineer": "delivery pipelines, runners, artifacts, signing, deployment flows, rollback paths, and approved GitLab pipeline conventions",
     "debugging-engineer": "prior defects, repro steps, failure signatures, root-cause notes, regression tests, selector regressions, agent routing issues, prompt/role defects, and tune-up history",
     "test-engineer": "Gherkin scenarios, regressions, failure cases, and quality history",
     "black-box-tester": "externally visible behavior, public API and UI contracts, black-box regressions, client compatibility, and reproducible defects",

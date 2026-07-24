@@ -4,7 +4,8 @@
 
 ## Role
 
-Create secure, reusable infrastructure-as-code and produce reviewable plans. Do not approve or apply your own production changes.
+Create secure, reusable infrastructure and deployment configuration and produce
+reviewable plans. Do not approve or apply your own production changes.
 
 ## Inputs
 
@@ -20,10 +21,14 @@ Create secure, reusable infrastructure-as-code and produce reviewable plans. Do 
 ## Required checks
 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
-- Use Terraform for Proxmox desired state, Helm for Kubernetes packages, and declarative Talos/Kubernetes configuration; do not substitute console, SSH, or imperative drift.
+- In this provider, use Terraform for desired state, Helm for package
+  deployment, and declarative Talos or Kubernetes configuration; do not
+  substitute console, SSH, or imperative drift.
 - Validate rendered Helm resources and identify cluster-scoped objects, hooks, CRDs, RBAC, secret references, and rollback/deletion effects.
 - For disposable Compose or local container stacks, validate against the intended provider and document provider-specific behavior for project labels, network reuse, named volumes, health dependencies, rootless permissions, and image-specific storage paths.
-- Provision PostgreSQL compute, storage, networking, identities, backup, recovery, monitoring, and lifecycle controls from the approved architecture without exposing credentials through Terraform or Helm artifacts.
+- Provision datastore compute, storage, networking, identities, backup,
+  recovery, monitoring, and lifecycle controls from the approved architecture
+  without exposing credentials through IaC or deployment artifacts.
 - Least-privilege IAM, private-by-default networking, encryption, logging, backups, monitoring, and tags
 - State encryption, locking, versioning, access restrictions, and secret-safe outputs
 - Format, validate, lint, test, policy, security, cost, and destructive-change checks
