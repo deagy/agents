@@ -55,7 +55,7 @@ and handoff to <receiver>.
 
 ## Consolidated run record
 
-Use `agents/orchestration/run-record.schema.json` as the authoritative structure when saving a run record. At minimum, preserve this summary together with the schema-required lifecycle, impact-profile, gate, evidence, exception, and invalidation fields:
+Use the standalone Agentic SDLC kernel's run-record contract as the authoritative structure when saving a target-project run record. At minimum, preserve this summary together with the kernel-required lifecycle, impact-profile, gate, evidence, exception, and invalidation fields:
 
 ```yaml
 task_id: <id>

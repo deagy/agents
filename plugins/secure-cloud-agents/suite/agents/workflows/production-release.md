@@ -4,7 +4,7 @@
 
 ## Preconditions (G8 Release Readiness)
 
-- G1-G7 and all applicable specialist attestations in `../orchestration/quality-gates.md` are approved for the exact release inputs.
+- The standalone Agentic SDLC lifecycle record shows G1-G7 and all applicable specialist attestations approved for the exact release inputs.
 - Artifact digests, source revision, provenance, SBOM, plans, approvals, change window, owners, verification thresholds, and rollback are recorded.
 - Critical/high findings are resolved or covered by authorized, time-bound exceptions.
 

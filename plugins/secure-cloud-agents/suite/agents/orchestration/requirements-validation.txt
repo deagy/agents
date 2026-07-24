@@ -1,3 +1,0 @@
-# YAML parsing and Draft 2020-12 run-record validation; isolated from the dependency-free selector.
-PyYAML==6.0.3
-jsonschema==4.26.0

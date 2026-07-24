@@ -18,7 +18,7 @@ Useful entry points:
 - [Role index](../docs/role-index.md) for human-readable role discovery.
 - [Contributing](../CONTRIBUTING.md) for changes to this GitHub repository.
 
-The dependency-free selector component requires Python 3.10 or newer, without establishing an organization-wide Python version. `bin/agents` (repository root) resolves an interpreter for you — run `agents select --task "..."` from anywhere it's on `PATH`, or `../bin/agents select --task "..."` (`..\bin\agents.ps1` in PowerShell) from this directory. See `RUNBOOK.md` for the wrapper's interpreter-probe details. The schema version 2 selector evaluates task text and Git changes, validates roles against `catalog.yaml`, and emits a reviewable plan with required lifecycle quality gates kept separate from mutation-oriented human gates; it does not execute agents, approve gates, or retrieve knowledge.
+The dependency-free selector component requires Python 3.10 or newer, without establishing an organization-wide Python version. `bin/agents` (repository root) resolves an interpreter for you — run `agents select --task "..."` from anywhere it's on `PATH`, or `../bin/agents select --task "..."` (`..\bin\agents.ps1` in PowerShell) from this directory. See `RUNBOOK.md` for the wrapper's interpreter-probe details. The schema version 2 selector evaluates task text and Git changes, validates roles against `catalog.yaml`, and emits a reviewable plan with provider lifecycle applicability kept separate from mutation-oriented human gates; it does not execute agents, approve gates, or retrieve knowledge.
 
 ## Operating model
 
@@ -26,8 +26,8 @@ The dependency-free selector component requires Python 3.10 or newer, without es
 2. Select the workflow in `workflows/` that matches the lifecycle phase or change.
 3. Retrieve authorized, role-specific knowledge context and record its status and query identifiers.
 4. Give each participating agent its `AGENT.md`, task context, knowledge bundle, and only the access it needs.
-5. Exchange findings using `shared/output-schemas/finding.schema.json` and bind artifacts through `orchestration/agentic-sdlc-artifact-contract.md`.
-6. Enforce the lifecycle decisions and specialist attestations in `orchestration/quality-gates.md`; record gate state in a schema-valid repository run record.
+5. Exchange findings using `shared/output-schemas/finding.schema.json` and bind agent handoffs through `orchestration/handoff-contracts.md`.
+6. Ask the standalone Agentic SDLC kernel to validate lifecycle decisions and record gate state in the target project's `.agentic-sdlc/` directory.
 7. Require a human decision wherever an agent reaches an escalation condition or human-only gate.
 8. Route runtime nonconformance through observability, support, incident, security, compliance, and debugging roles into traced remediation or backlog work.
 9. Permit authorized retrieval and its operational audit/SQLite writes, but route content and lifecycle mutations through the knowledge-store steward.
@@ -40,7 +40,7 @@ Technology preferences live in `shared/team-profile.yaml`, `shared/technology-st
 
 ## Portable adoption
 
-The repository-local suite remains the source implementation for this project. The lifecycle kernel, schemas, command interface, and lifecycle skills are maintained separately at `github.com/deagy/agentic-sdlc`. This suite contributes its catalog, `secure-cloud` profile, and extensions through `plugins/secure-cloud-agents/provider.json`.
+This repository is the source implementation for the Secure Cloud agent suite. The lifecycle kernel, schemas, command interface, gate transitions, approvals, and lifecycle skills are maintained separately at `github.com/deagy/agentic-sdlc`. This suite contributes its catalog, `secure-cloud` profile, routing, and provider extensions through `plugins/secure-cloud-agents/provider.json`.
 
 Initialize a target project from the repository checkout with:
 

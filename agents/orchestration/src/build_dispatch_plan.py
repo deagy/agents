@@ -17,7 +17,17 @@ CLASSIFICATIONS = {"public", "internal", "confidential", "restricted"}
 MAXIMUM_KNOWLEDGE_TOP = 20
 KNOWLEDGE_STORE_ROOT = Path(__file__).resolve().parents[2] / "knowledge-store"
 DEFAULT_KNOWLEDGE_SOURCE = "agents"
-GATE_IDS = [f"G{index}" for index in range(1, 11)]
+
+
+def _lifecycle_gates() -> list[dict[str, Any]]:
+    gates = lifecycle_contract().get("gates", [])
+    if not gates or any(not isinstance(gate, dict) or not gate.get("id") for gate in gates):
+        raise ValueError("Agentic SDLC lifecycle contract must contain identified gates")
+    return gates
+
+
+def _gate_order() -> list[str]:
+    return [gate["id"] for gate in _lifecycle_gates()]
 
 
 def _unique(values: Iterable[str]) -> list[str]:
@@ -25,14 +35,18 @@ def _unique(values: Iterable[str]) -> list[str]:
 
 
 def _gate_dispatch(configured: list[str], ignored: list[str]) -> tuple[list[str], list[dict[str, Any]], list[str]]:
-    unknown = set(ignored) - set(GATE_IDS)
+    gate_ids = _gate_order()
+    unknown = set(ignored) - set(gate_ids)
     if unknown:
         raise ValueError(f"ignored_gates contains unknown lifecycle gates: {sorted(unknown)}")
     if not configured:
         return [], [], []
-    sequence = GATE_IDS[: max(GATE_IDS.index(gate_id) for gate_id in configured) + 1]
+    unknown = set(configured) - set(gate_ids)
+    if unknown:
+        raise ValueError(f"routing references unknown lifecycle gates: {sorted(unknown)}")
+    sequence = gate_ids[: max(gate_ids.index(gate_id) for gate_id in configured) + 1]
     ignored_set = set(ignored).intersection(sequence)
-    contracts = {gate["id"]: gate for gate in lifecycle_contract()["gates"]}
+    contracts = {gate["id"]: gate for gate in _lifecycle_gates()}
     dispatch = []
     for gate_id in sequence:
         contract = contracts[gate_id]
@@ -43,18 +57,22 @@ def _gate_dispatch(configured: list[str], ignored: list[str]) -> tuple[list[str]
             "tasks": contract.get("tasks", []),
             "artifacts": contract.get("artifacts", []),
         })
-    return [gate_id for gate_id in sequence if gate_id not in ignored_set], dispatch, sorted(ignored_set, key=GATE_IDS.index)
+    return [gate_id for gate_id in sequence if gate_id not in ignored_set], dispatch, sorted(ignored_set, key=gate_ids.index)
 
 
 def _gate_agents(configured: list[str], ignored: list[str]) -> list[str]:
-    unknown = set(ignored) - set(GATE_IDS)
+    gate_ids = _gate_order()
+    unknown = set(ignored) - set(gate_ids)
     if unknown:
         raise ValueError(f"ignored_gates contains unknown lifecycle gates: {sorted(unknown)}")
     if not configured:
         return []
-    sequence = GATE_IDS[: max(GATE_IDS.index(gate_id) for gate_id in configured) + 1]
+    unknown = set(configured) - set(gate_ids)
+    if unknown:
+        raise ValueError(f"routing references unknown lifecycle gates: {sorted(unknown)}")
+    sequence = gate_ids[: max(gate_ids.index(gate_id) for gate_id in configured) + 1]
     ignored_set = set(ignored).intersection(sequence)
-    contracts = {gate["id"]: gate for gate in lifecycle_contract()["gates"]}
+    contracts = {gate["id"]: gate for gate in _lifecycle_gates()}
     return _unique(
         agent
         for gate_id in sequence
@@ -141,27 +159,24 @@ def _build_human_gates(risks: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _build_quality_gates(
     config: dict[str, Any], routes: list[dict[str, Any]], risks: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
-    """Aggregate lifecycle gates without conflating them with human mutation gates."""
-    definitions = config.get("quality_gates", {})
+    """Aggregate provider applicability without defining lifecycle semantics."""
+    contracts = {gate["id"]: gate for gate in _lifecycle_gates()}
     contributors: dict[str, list[str]] = {}
     for match in [*routes, *risks]:
         for gate_id in match["rule"].get("quality_gates", []):
-            if gate_id not in definitions:
-                raise ValueError(f"Routing references an unknown quality gate: {gate_id}")
+            if gate_id not in contracts:
+                raise ValueError(f"Routing references an unknown lifecycle gate: {gate_id}")
             contributors.setdefault(gate_id, []).append(match["id"])
-
-    def gate_order(gate_id: str) -> tuple[int, str]:
-        suffix = gate_id.removeprefix("G")
-        return (int(suffix), gate_id) if suffix.isdigit() else (999, gate_id)
 
     return [
         {
             "id": gate_id,
             "required": True,
-            "reason": definitions[gate_id],
+            "reason": f"{contracts[gate_id].get('name', gate_id)} lifecycle gate ({contracts[gate_id].get('phase', 'unspecified')} phase).",
             "contributing_routes": _unique(contributors[gate_id]),
         }
-        for gate_id in sorted(contributors, key=gate_order)
+        for gate_id in _gate_order()
+        if gate_id in contributors
     ]
 
 
@@ -302,25 +317,23 @@ def build_dispatch_plan(
     required_quality_gates = _build_quality_gates(config, matched_routes, matched_risks)
     existing_gate_ids = {gate["id"] for gate in required_quality_gates}
     if _matches_change_intake(config, input_data["task"]):
-        definitions = config.get("quality_gates", {})
-        unknown = [
-            gate_id
-            for gate_id in config.get("change_intake", {}).get("quality_gates", [])
-            if gate_id not in definitions
-        ]
+        contract_ids = set(_gate_order())
+        unknown = [gate_id for gate_id in config.get("change_intake", {}).get("quality_gates", []) if gate_id not in contract_ids]
         if unknown:
-            raise ValueError(f"Change intake references unknown quality gates: {unknown}")
+            raise ValueError(f"Change intake references unknown lifecycle gates: {unknown}")
+        contracts = {gate["id"]: gate for gate in _lifecycle_gates()}
         required_quality_gates.extend(
             {
                 "id": gate_id,
                 "required": True,
-                "reason": "Implementation and change work requires approved intent and requirements before specialist delivery.",
+                "reason": f"{contracts[gate_id].get('name', gate_id)} lifecycle gate ({contracts[gate_id].get('phase', 'unspecified')} phase).",
                 "contributing_routes": ["change-intake"],
             }
             for gate_id in config.get("change_intake", {}).get("quality_gates", [])
             if gate_id not in existing_gate_ids
         )
-    required_quality_gates.sort(key=lambda gate: int(gate["id"][1:]))
+    gate_order = _gate_order()
+    required_quality_gates.sort(key=lambda gate: gate_order.index(gate["id"]))
     effective_gate_ids, gate_dispatch, ignored_quality_gates = _gate_dispatch(
         [gate["id"] for gate in required_quality_gates], config.get("ignored_gates", [])
     )
@@ -331,7 +344,7 @@ def build_dispatch_plan(
             {
                 "id": gate_id,
                 "required": True,
-                "reason": "Required by lexical lifecycle gate sequence",
+                "reason": "Required by the standalone lifecycle gate sequence.",
                 "contributing_routes": ["lifecycle-sequence"],
             },
         )
