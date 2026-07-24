@@ -2,7 +2,7 @@
 
 # Secure Cloud Agents plugin
 
-This self-contained plugin v0.2.0 packages the repository's 34 specialist
+This self-contained plugin v0.3.0 packages the repository's 34 specialist
 roles, six suite skills, orchestration runtime, knowledge-store runtime, and
 its external Agentic SDLC provider. It does not contain the lifecycle kernel;
 that remains a separately versioned dependency.
@@ -28,7 +28,7 @@ For Claude Code:
 ```
 
 `provider.json` contributes the `secure-cloud` profile, package-relative role
-catalog, and optional impact extensions to Agentic SDLC v0.2.x. The repository
+catalog, and optional impact extensions to Agentic SDLC v0.3.x. The repository
 launcher injects it automatically:
 
 ```sh

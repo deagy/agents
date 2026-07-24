@@ -34,7 +34,20 @@ def _unique(values: Iterable[str]) -> list[str]:
     return list(dict.fromkeys(values))
 
 
-def _gate_dispatch(configured: list[str], ignored: list[str]) -> tuple[list[str], list[dict[str, Any]], list[str]]:
+def _binding_for_gate(config: dict[str, Any], contract: dict[str, Any]) -> dict[str, list[str]]:
+    result = {"agents": [], "tasks": [], "artifacts": []}
+    gate_binding = config.get("gate_bindings", {}).get(contract["id"], {})
+    contributions = gate_binding.get("contributions", {}) if isinstance(gate_binding, dict) else {}
+    for slot in contract.get("required_contributions", []):
+        contribution = contributions.get(slot, {})
+        if not isinstance(contribution, dict):
+            continue
+        for field in result:
+            result[field].extend(contribution.get(field, []))
+    return {field: _unique(values) for field, values in result.items()}
+
+
+def _gate_dispatch(config: dict[str, Any], configured: list[str], ignored: list[str]) -> tuple[list[str], list[dict[str, Any]], list[str]]:
     gate_ids = _gate_order()
     unknown = set(ignored) - set(gate_ids)
     if unknown:
@@ -50,17 +63,18 @@ def _gate_dispatch(configured: list[str], ignored: list[str]) -> tuple[list[str]
     dispatch = []
     for gate_id in sequence:
         contract = contracts[gate_id]
+        binding = _binding_for_gate(config, contract)
         dispatch.append({
             "gate_id": gate_id,
             "status": "ignored" if gate_id in ignored_set else "required",
-            "agents": _unique([*contract.get("author_agents", []), *contract.get("review_agents", ["code-reviewer"])]),
-            "tasks": contract.get("tasks", []),
-            "artifacts": contract.get("artifacts", []),
+            "agents": binding["agents"],
+            "tasks": binding["tasks"],
+            "artifacts": binding["artifacts"],
         })
     return [gate_id for gate_id in sequence if gate_id not in ignored_set], dispatch, sorted(ignored_set, key=gate_ids.index)
 
 
-def _gate_agents(configured: list[str], ignored: list[str]) -> list[str]:
+def _gate_agents(config: dict[str, Any], configured: list[str], ignored: list[str]) -> list[str]:
     gate_ids = _gate_order()
     unknown = set(ignored) - set(gate_ids)
     if unknown:
@@ -77,7 +91,7 @@ def _gate_agents(configured: list[str], ignored: list[str]) -> list[str]:
         agent
         for gate_id in sequence
         if gate_id not in ignored_set
-        for agent in [*contracts[gate_id].get("author_agents", []), *contracts[gate_id].get("review_agents", ["code-reviewer"])]
+        for agent in _binding_for_gate(config, contracts[gate_id])["agents"]
     )
 
 
@@ -287,7 +301,7 @@ def build_dispatch_plan(
     ]
     if _matches_change_intake(config, input_data["task"]):
         configured_gate_ids.extend(change_intake.get("quality_gates", []))
-    support.extend(_gate_agents(configured_gate_ids, config.get("ignored_gates", [])))
+    support.extend(_gate_agents(config, configured_gate_ids, config.get("ignored_gates", [])))
 
     groups = {
         "primary": _ordered(primary, catalog),
@@ -335,7 +349,7 @@ def build_dispatch_plan(
     gate_order = _gate_order()
     required_quality_gates.sort(key=lambda gate: gate_order.index(gate["id"]))
     effective_gate_ids, gate_dispatch, ignored_quality_gates = _gate_dispatch(
-        [gate["id"] for gate in required_quality_gates], config.get("ignored_gates", [])
+        config, [gate["id"] for gate in required_quality_gates], config.get("ignored_gates", [])
     )
     existing = {gate["id"]: gate for gate in required_quality_gates}
     required_quality_gates = [

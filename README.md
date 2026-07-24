@@ -91,7 +91,7 @@ for exploration but is not an immutable dependency:
 
 ```sh
 git clone https://github.com/deagy/agentic-sdlc.git
-git -C agentic-sdlc checkout v0.2.0
+git -C agentic-sdlc checkout v0.3.0
 codex plugin marketplace add ./agentic-sdlc
 codex plugin add agentic-sdlc@agentic-sdlc
 ```

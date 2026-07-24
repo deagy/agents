@@ -1,9 +1,21 @@
 {
   "id": "secure-cloud",
-  "extends": "generic",
+  "version": "0.3.0",
   "description": "External Agentic SDLC provider profile for this suite's cloud-platform roles (Proxmox, Talos, Kubernetes, Helm, Terraform, GitLab CI, PostgreSQL).",
   "rich_content_source": "secure-cloud-agents",
   "agents": ["frontend-engineer", "backend-engineer", "infrastructure-provisioner", "cicd-engineer", "black-box-tester", "end-user-tester", "escalation-manager", "cost-capacity-planner", "secrets-identity-engineer", "policy-as-code-engineer", "database-reliability-engineer", "infrastructure-reviewer", "pipeline-security-reviewer", "supply-chain-security-reviewer", "technical-writer", "knowledge-store-steward"],
+  "gate_bindings": {
+    "G1": {"contributions": {"intent": {"agents": ["product-intent-agent"], "tasks": ["capture-intent"], "artifacts": ["intent-record"]}}},
+    "G2": {"contributions": {"requirements": {"agents": ["requirements-agent"], "tasks": ["baseline-requirements"], "artifacts": ["requirements-baseline"]}}},
+    "G3": {"contributions": {"architecture-design": {"agents": ["cloud-architect"], "tasks": ["define-architecture"], "artifacts": ["architecture-record"]}}},
+    "G4": {"contributions": {"governance-data": {"agents": ["governance-planner", "data-governance-engineer", "compliance-reviewer"], "tasks": ["assess-governance-and-data"], "artifacts": ["governance-data-record"]}}},
+    "G5": {"contributions": {"security-crypto": {"agents": ["threat-modeler", "cryptographic-assurance-engineer", "security-reviewer"], "tasks": ["perform-security-and-crypto-review"], "artifacts": ["security-crypto-record"]}}},
+    "G6": {"contributions": {"verification": {"agents": ["application-engineer", "test-engineer"], "tasks": ["implement-and-verify"], "artifacts": ["verification-record"]}}},
+    "G7": {"contributions": {"evidence": {"agents": ["evidence-curator", "compliance-reviewer"], "tasks": ["curate-evidence"], "artifacts": ["evidence-index"]}}},
+    "G8": {"contributions": {"release-readiness": {"agents": ["release-engineer"], "tasks": ["assess-release-readiness"], "artifacts": ["release-readiness-record"]}}},
+    "G9": {"contributions": {"deployment-authorization": {"agents": [], "tasks": ["authorize-deployment"], "artifacts": ["deployment-authorization-record"]}}},
+    "G10": {"contributions": {"runtime-conformance": {"agents": ["observability-sre"], "tasks": ["observe-runtime-conformance"], "artifacts": ["runtime-conformance-record"]}}}
+  },
   "routing": [
     {"id": "frontend", "phrases": ["react", "typescript", "javascript", "frontend", "browser", "accessibility", "user interface"], "agents": ["frontend-engineer"], "reviewers": ["test-engineer", "code-reviewer"], "gates": ["G3", "G5", "G6", "G7"]},
     {"id": "backend", "phrases": ["backend", "api", "golang", "postgres", "postgresql", "pgx", "database", "migration"], "agents": ["backend-engineer"], "reviewers": ["test-engineer", "code-reviewer"], "gates": ["G3", "G4", "G5", "G6", "G7"]},

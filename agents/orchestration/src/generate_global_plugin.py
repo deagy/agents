@@ -237,9 +237,9 @@ def derive_kind(definition: str) -> str:
     if definition.startswith("review/") or definition == "engineering/test-engineer/AGENT.md":
         return "reviewer"
     if definition.startswith("support/"):
-        return "support"
+        return "specialist"
     if definition in {"documentation/evidence-curator/AGENT.md", "knowledge-store/AGENT.md"}:
-        return "curator"
+        return "specialist"
     return "author"
 
 
@@ -249,13 +249,13 @@ def generate_agent_catalog_export(catalog: dict[str, dict[str, Any]], plugin_roo
         agent_id: {
             "phase": metadata.get("phase", "unknown"),
             "kind": derive_kind(metadata["definition"]),
-            "capability": metadata["capability"],
+            "capabilities": ["reviewer"] if derive_kind(metadata["definition"]) == "reviewer" else ["author"],
             "definition": f"suite/agents/{metadata['definition']}",
         }
         for agent_id, metadata in sorted(catalog.items())
     }
     target = plugin_root / "agent-catalog.json"
-    write(target, json.dumps({"generated": True, "canonical_source": "agents/catalog.yaml", "agents": agents}, indent=2) + "\n")
+    write(target, json.dumps({"schema_version": 1, "generated": True, "canonical_source": "agents/catalog.yaml", "agents": agents}, indent=2) + "\n")
     return target
 
 
@@ -273,7 +273,7 @@ def generate_bin_wrapper(plugin_root: Path) -> Path:
             'if [ "$command_name" = "sdlc" ]; then',
             '  sdlc_bin="${AGENTIC_SDLC_BIN:-}"',
             '  if [ -z "$sdlc_bin" ]; then sdlc_bin=$(command -v agentic-sdlc || true); fi',
-            '  [ -n "$sdlc_bin" ] || { echo "agents: install Agentic SDLC v0.2.x from https://github.com/deagy/agentic-sdlc" >&2; exit 1; }',
+            '  [ -n "$sdlc_bin" ] || { echo "agents: install Agentic SDLC v0.3.x from https://github.com/deagy/agentic-sdlc" >&2; exit 1; }',
             '  exec "$sdlc_bin" --provider "$PLUGIN_ROOT/provider.json" "$@"',
             "fi",
             "AGENT_PYTHON=",

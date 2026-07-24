@@ -334,5 +334,17 @@
     "governance-planner": "governance impacts, jurisdictions, accreditation plans, control interpretations, evidence obligations, and accountable owner decisions",
     "data-governance-engineer": "data classifications, inventories, lineage, residency, non-egress, retention and deletion, derived outputs, and enforcement decisions",
     "cryptographic-assurance-engineer": "cryptographic inventories, algorithms, key lifecycles, certificates, crypto agility, downgrade risks, PQC, QKMS, QKD, and QRNG applicability"
+  },
+  "gate_bindings": {
+    "G1": {"contributions": {"intent": {"agents": ["product-intent-agent"], "tasks": ["capture-intent"], "artifacts": ["intent-record"]}}},
+    "G2": {"contributions": {"requirements": {"agents": ["requirements-agent"], "tasks": ["baseline-requirements"], "artifacts": ["requirements-baseline"]}}},
+    "G3": {"contributions": {"architecture-design": {"agents": ["cloud-architect"], "tasks": ["define-architecture"], "artifacts": ["architecture-record"]}}},
+    "G4": {"contributions": {"governance-data": {"agents": ["governance-planner", "data-governance-engineer", "compliance-reviewer"], "tasks": ["assess-governance-and-data"], "artifacts": ["governance-data-record"]}}},
+    "G5": {"contributions": {"security-crypto": {"agents": ["threat-modeler", "cryptographic-assurance-engineer", "security-reviewer"], "tasks": ["perform-security-and-crypto-review"], "artifacts": ["security-crypto-record"]}}},
+    "G6": {"contributions": {"verification": {"agents": ["application-engineer", "test-engineer"], "tasks": ["implement-and-verify"], "artifacts": ["verification-record"]}}},
+    "G7": {"contributions": {"evidence": {"agents": ["evidence-curator", "compliance-reviewer"], "tasks": ["curate-evidence"], "artifacts": ["evidence-index"]}}},
+    "G8": {"contributions": {"release-readiness": {"agents": ["release-engineer"], "tasks": ["assess-release-readiness"], "artifacts": ["release-readiness-record"]}}},
+    "G9": {"contributions": {"deployment-authorization": {"agents": [], "tasks": ["authorize-deployment"], "artifacts": ["deployment-authorization-record"]}}},
+    "G10": {"contributions": {"runtime-conformance": {"agents": ["observability-sre"], "tasks": ["observe-runtime-conformance"], "artifacts": ["runtime-conformance-record"]}}}
   }
 }
