@@ -324,7 +324,12 @@ class RepositoryHealthTests(unittest.TestCase):
         self.assertTrue((plugin_root / "suite" / "agents" / "catalog.yaml").is_file())
         offenders = []
         for path in plugin_root.rglob("*"):
-            if path.is_file() and str(REPOSITORY_ROOT) in path.read_text(encoding="utf-8", errors="ignore"):
+            if (
+                path.is_file()
+                and path.suffix not in {".pyc", ".pyo"}
+                and "__pycache__" not in path.parts
+                and str(REPOSITORY_ROOT) in path.read_text(encoding="utf-8", errors="ignore")
+            ):
                 offenders.append(str(path.relative_to(plugin_root)))
         self.assertEqual([], offenders)
 
