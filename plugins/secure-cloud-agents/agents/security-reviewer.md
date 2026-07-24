@@ -1,7 +1,9 @@
 ---
 name: security-reviewer
 description: Secure cloud agent suite role for the review phase (security-reviewer).
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob
+generated: true
+canonical_source: agents/review/security-reviewer/AGENT.md
 ---
 
 # Role: security-reviewer

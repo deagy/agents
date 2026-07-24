@@ -1,6 +1,18 @@
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Secure Cloud Agent Runbook
 
 This runbook explains how to operate the agent suite. The definitions are runner-agnostic: use them with an agent platform, separate model sessions, or structured human-assisted reviews.
+
+Use the [documentation index](../docs/README.md) to choose a focused guide:
+[getting started](../docs/getting-started.md),
+[orchestration](../docs/orchestration.md),
+[lifecycle and plugin operations](../docs/lifecycle-and-plugin-operations.md),
+or the [role index](../docs/role-index.md). This runbook is the complete
+operating reference and intentionally retains the detailed worked examples.
+
+The suite's [IDENTITY.md](../IDENTITY.md) is informational only. Role authority
+remains in each `AGENT.md`, shared policies, routing, and lifecycle contracts.
 
 ## 1. Non-negotiable rules
 
@@ -57,7 +69,7 @@ Use `workflows/debugging.md` when reproducing defects, analyzing runtime failure
 
 ### Select agents locally
 
-The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. Schema version 2 plans include lifecycle `required_quality_gates` separately from mutation-oriented `human_gates`. The selector creates a dispatch plan but does not retrieve knowledge, invoke agents, approve gates, merge, deploy, or mutate infrastructure. Run it through `bin/agents` (repository root), which resolves a Python 3.10+ interpreter for you across `python3`/`python`/`py -3`; this does not establish an organization-wide Python version. Put it on `PATH` first (see `../README.md` "System-wide install") or invoke it as `../bin/agents` / `..\bin\agents.ps1` from this directory.
+The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. Schema version 2 plans include lifecycle `required_quality_gates` separately from mutation-oriented `human_gates`. The selector creates a dispatch plan but does not retrieve knowledge, invoke agents, approve gates, merge, deploy, or mutate infrastructure. Run it through `bin/agents` (repository root), which resolves a Python 3.10+ interpreter for you across `python3`/`python`/`py -3`; this does not establish an organization-wide Python version. Put it on `PATH` first (see `README.md` "Put `agents` on `PATH`") or invoke it as `../../bin/agents` / `..\bin\agents.ps1` from this directory.
 
 ```sh
 python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"
@@ -464,7 +476,7 @@ Follow `workflows/knowledge-ingestion.md` and read `knowledge-store/SECURITY.md`
 
 ### Prepare and test
 
-`bin/agents` resolves the Python 3.10+ interpreter for you. One-time global setup, from anywhere `agents` is on `PATH` (see "System-wide install" in `../README.md`):
+`bin/agents` resolves the Python 3.10+ interpreter for you. One-time global setup, from anywhere `agents` is on `PATH` (see "System-wide install" in `README.md`):
 
 ```sh
 mkdir -p ~/.agents/knowledge-store
@@ -603,9 +615,51 @@ codex plugin add secure-cloud-agents@agents-team
 /plugin install secure-cloud-agents@agents-team
 ```
 
-Codex has no plugin-bundled-subagent mechanism, so its 34 `.toml` role wrappers are staged under `plugins/secure-cloud-agents/codex-agents/` rather than loaded from the plugin directly; `run-agent-orchestration`'s bootstrap step syncs whatever is missing into `~/.codex/agents/` on first dispatch each session, so this is normally zero-touch (see `../plugins/secure-cloud-agents/README.md` to do it yourself instead of waiting for that). Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
+Codex has no plugin-bundled-subagent mechanism, so its 34 `.toml` role wrappers are staged under `plugins/secure-cloud-agents/codex-agents/` rather than loaded from the plugin directly; `run-agent-orchestration`'s bootstrap step syncs whatever is missing into `~/.codex/agents/` on first dispatch each session, so this is normally zero-touch (see `../README.md` to do it yourself instead of waiting for that). Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
 
 The plugin is self-contained: generated wrappers embed role and shared-policy
 instructions, while skills and runtime files are packaged under `skills/` and
 `suite/`. Regenerate with `agents generate-plugin` after role, policy,
 workflow, runtime, or skill changes. Repository health tests fail on drift.
+
+## 18. Record a GitHub-backed human gate approval
+
+The portable lifecycle kernel supports two GitHub review paths. Use the
+metadata command when a trusted integration has already supplied the review
+details; use the fetch command when the operator should retrieve the review
+through the authenticated GitHub CLI:
+
+```sh
+# Record supplied immutable review metadata.
+agents sdlc approve-from-github \
+  --root /path/to/target --task-id TASK-42 --gate G2 \
+  --role product_owner --repo OWNER/REPO --pr 42 \
+  --review-id 314159 --reviewer-login approver --commit-sha "$GITHUB_SHA"
+
+# Fetch the latest matching APPROVED review from GitHub.
+agents sdlc approve-from-github-pr \
+  --root /path/to/target --task-id TASK-42 --gate G2 \
+  --role product_owner --repo OWNER/REPO --pr 42 \
+  --commit-sha "$GITHUB_SHA"
+
+agents sdlc validate --root /path/to/target
+agents sdlc status --root /path/to/target --task-id TASK-42
+```
+
+Before using either command, configure the project with
+`human_gate_default: "github-review"` and decide whether
+`allow_manual_fallback` is permitted. Each applicable authority must include a
+matching `github_login` (or `github.com/<login>` assignee). The evidence URI is
+recorded as:
+
+```text
+github-review:OWNER/REPO:pull/42:review/314159:reviewer/approver
+```
+
+The fetch path requires `gh` authentication and fails closed if GitHub cannot
+be reached, no matching `APPROVED` review exists, the reviewer is not the
+assigned authority, or the review does not match the required commit. When the
+approval completes a ready gate, the lifecycle record advances to the next
+applicable gate; it does not authorize deployment or bypass an unresolved
+finding. Review the resulting record and preserve the command output as
+evidence according to the target project's retention policy.

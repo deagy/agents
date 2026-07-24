@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Runtime Assurance Workflow
 
 This workflow uses existing operational and review roles; it does not create a

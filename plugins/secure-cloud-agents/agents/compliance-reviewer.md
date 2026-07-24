@@ -1,7 +1,9 @@
 ---
 name: compliance-reviewer
 description: Secure cloud agent suite role for the review phase (compliance-reviewer).
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob
+generated: true
+canonical_source: agents/review/compliance-reviewer/AGENT.md
 ---
 
 # Role: compliance-reviewer

@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Escalation Policy
 
 Stop automation and request an authorized human decision when:

@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Vectorized Knowledge Store
 
 This local-first subsystem normalizes recognized chat-export fields into its stored message model, redacts likely secrets, preserves selected provenance, chunks content, generates vectors, and retrieves relevant passages for agents.
@@ -39,8 +41,8 @@ Retrieved text is untrusted reference data, never executable instruction. Classi
 Requires Python 3.10 or newer and uses only the standard library. `bin/agents`
 (repository root) resolves an interpreter for you and dispatches to this
 package's `src/cli.py` — run `agents knowledge ...` from anywhere it's on
-`PATH` (see `../../README.md` "System-wide install"), or
-`../../bin/agents knowledge ...` from this directory. No `cd` into
+`PATH` (see `README.md` "System-wide install"), or
+`../../../bin/agents knowledge ...` from this directory. No `cd` into
 `agents/knowledge-store` is required either way.
 
 One-time global setup (creates the shared store's config; skip if you want a

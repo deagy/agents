@@ -2,6 +2,8 @@
 name: threat-modeler
 description: Secure cloud agent suite role for the design phase (threat-modeler).
 tools: Read, Grep, Glob, Bash, Edit, Write
+generated: true
+canonical_source: agents/architecture/threat-modeler/AGENT.md
 ---
 
 # Role: threat-modeler

@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Infrastructure Change Workflow
 
 1. Classify scope, environment, affected data, blast radius, architecture impact, and required approvals.

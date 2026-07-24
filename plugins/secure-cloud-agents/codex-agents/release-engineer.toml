@@ -1,3 +1,4 @@
+# GENERATED FILE: canonical source is agents/engineering/release-engineer/AGENT.md
 name = "release-engineer"
 description = "Secure cloud agent suite role for the release phase (release-engineer)."
 sandbox_mode = "workspace-write"

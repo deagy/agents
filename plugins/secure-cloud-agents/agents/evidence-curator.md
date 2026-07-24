@@ -2,6 +2,8 @@
 name: evidence-curator
 description: Secure cloud agent suite role for the evidence phase (evidence-curator).
 tools: Read, Grep, Glob, Bash, Edit, Write
+generated: true
+canonical_source: agents/documentation/evidence-curator/AGENT.md
 ---
 
 # Role: evidence-curator

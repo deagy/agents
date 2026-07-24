@@ -1,7 +1,9 @@
 ---
 name: test-engineer
 description: Secure cloud agent suite role for the verify phase (test-engineer).
-tools: Read, Grep, Glob, Bash, Edit, Write
+tools: Read, Grep, Glob
+generated: true
+canonical_source: agents/engineering/test-engineer/AGENT.md
 ---
 
 # Role: test-engineer

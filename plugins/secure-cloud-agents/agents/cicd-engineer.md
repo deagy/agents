@@ -2,6 +2,8 @@
 name: cicd-engineer
 description: Secure cloud agent suite role for the build phase (cicd-engineer).
 tools: Read, Grep, Glob, Bash, Edit, Write
+generated: true
+canonical_source: agents/engineering/cicd-engineer/AGENT.md
 ---
 
 # Role: cicd-engineer

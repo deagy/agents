@@ -1,3 +1,4 @@
+# GENERATED FILE: canonical source is agents/data/database-reliability-engineer/AGENT.md
 name = "database-reliability-engineer"
 description = "Secure cloud agent suite role for the operations phase (database-reliability-engineer)."
 sandbox_mode = "workspace-write"

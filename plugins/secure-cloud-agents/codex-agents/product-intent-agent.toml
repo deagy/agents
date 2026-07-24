@@ -1,3 +1,4 @@
+# GENERATED FILE: canonical source is agents/planning/product-intent-agent/AGENT.md
 name = "product-intent-agent"
 description = "Secure cloud agent suite role for the planning phase (product-intent-agent)."
 sandbox_mode = "workspace-write"

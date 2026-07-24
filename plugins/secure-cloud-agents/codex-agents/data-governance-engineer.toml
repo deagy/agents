@@ -1,3 +1,4 @@
+# GENERATED FILE: canonical source is agents/data/data-governance-engineer/AGENT.md
 name = "data-governance-engineer"
 description = "Secure cloud agent suite role for the design phase (data-governance-engineer)."
 sandbox_mode = "workspace-write"

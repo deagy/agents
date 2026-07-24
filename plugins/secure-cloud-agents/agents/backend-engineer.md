@@ -2,6 +2,8 @@
 name: backend-engineer
 description: Secure cloud agent suite role for the build phase (backend-engineer).
 tools: Read, Grep, Glob, Bash, Edit, Write
+generated: true
+canonical_source: agents/engineering/backend-engineer/AGENT.md
 ---
 
 # Role: backend-engineer

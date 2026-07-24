@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Support Escalation Workflow
 
 1. **Dispatcher:** Retrieve authorized support, incident, and role-specific context. Record unavailable, empty, unauthorized, or conflicting knowledge.

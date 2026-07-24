@@ -2,6 +2,8 @@
 name: observability-sre
 description: Secure cloud agent suite role for the operations phase (observability-sre).
 tools: Read, Grep, Glob, Bash, Edit, Write
+generated: true
+canonical_source: agents/operations/observability-sre/AGENT.md
 ---
 
 # Role: observability-sre

@@ -1,3 +1,5 @@
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Platform Guardrails
 
 - Separate production and non-production through appropriate Proxmox resource pools, networks, Talos/Kubernetes clusters, namespaces, identities, state, runners, secrets, and deployment environments.

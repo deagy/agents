@@ -1,173 +1,209 @@
 {
+  "generated": true,
+  "canonical_source": "agents/catalog.yaml",
   "agents": {
     "application-engineer": {
       "phase": "build",
       "kind": "author",
+      "capability": "code_author",
       "definition": "suite/agents/engineering/application-engineer/AGENT.md"
     },
     "backend-engineer": {
       "phase": "build",
       "kind": "author",
+      "capability": "code_author",
       "definition": "suite/agents/engineering/backend-engineer/AGENT.md"
     },
     "black-box-tester": {
       "phase": "verify",
       "kind": "author",
+      "capability": "test_author",
       "definition": "suite/agents/testing/black-box-tester/AGENT.md"
     },
     "cicd-engineer": {
       "phase": "build",
       "kind": "author",
+      "capability": "code_author",
       "definition": "suite/agents/engineering/cicd-engineer/AGENT.md"
     },
     "cloud-architect": {
       "phase": "design",
       "kind": "author",
+      "capability": "document_author",
       "definition": "suite/agents/architecture/cloud-architect/AGENT.md"
     },
     "code-reviewer": {
       "phase": "review",
       "kind": "reviewer",
+      "capability": "read_only",
       "definition": "suite/agents/review/code-reviewer/AGENT.md"
     },
     "compliance-reviewer": {
       "phase": "review",
       "kind": "reviewer",
+      "capability": "read_only",
       "definition": "suite/agents/review/compliance-reviewer/AGENT.md"
     },
     "cost-capacity-planner": {
       "phase": "planning",
       "kind": "author",
+      "capability": "document_author",
       "definition": "suite/agents/operations/cost-capacity-planner/AGENT.md"
     },
     "cryptographic-assurance-engineer": {
       "phase": "security",
       "kind": "author",
+      "capability": "document_author",
       "definition": "suite/agents/security/cryptographic-assurance-engineer/AGENT.md"
     },
     "data-governance-engineer": {
       "phase": "design",
       "kind": "author",
+      "capability": "document_author",
       "definition": "suite/agents/data/data-governance-engineer/AGENT.md"
     },
     "database-reliability-engineer": {
       "phase": "operations",
       "kind": "author",
+      "capability": "code_author",
       "definition": "suite/agents/data/database-reliability-engineer/AGENT.md"
     },
     "debugging-engineer": {
       "phase": "build",
       "kind": "author",
+      "capability": "code_author",
       "definition": "suite/agents/engineering/debugging-engineer/AGENT.md"
     },
     "end-user-tester": {
       "phase": "verify",
       "kind": "author",
+      "capability": "test_author",
       "definition": "suite/agents/testing/end-user-tester/AGENT.md"
     },
     "escalation-manager": {
       "phase": "support",
       "kind": "support",
+      "capability": "document_author",
       "definition": "suite/agents/support/escalation-manager/AGENT.md"
     },
     "evidence-curator": {
       "phase": "evidence",
       "kind": "curator",
+      "capability": "document_author",
       "definition": "suite/agents/documentation/evidence-curator/AGENT.md"
     },
     "frontend-engineer": {
       "phase": "build",
       "kind": "author",
+      "capability": "code_author",
       "definition": "suite/agents/engineering/frontend-engineer/AGENT.md"
     },
     "governance-planner": {
       "phase": "design",
       "kind": "author",
+      "capability": "document_author",
       "definition": "suite/agents/governance/governance-planner/AGENT.md"
     },
     "incident-commander": {
       "phase": "support",
       "kind": "support",
+      "capability": "environment_operator",
       "definition": "suite/agents/support/incident-commander/AGENT.md"
     },
     "infrastructure-provisioner": {
       "phase": "build",
       "kind": "author",
+      "capability": "code_author",
       "definition": "suite/agents/engineering/infrastructure-provisioner/AGENT.md"
     },
     "infrastructure-reviewer": {
       "phase": "review",
       "kind": "reviewer",
+      "capability": "read_only",
       "definition": "suite/agents/review/infrastructure-reviewer/AGENT.md"
     },
     "knowledge-store-steward": {
       "phase": "knowledge",
       "kind": "curator",
+      "capability": "environment_operator",
       "definition": "suite/agents/knowledge-store/AGENT.md"
     },
     "observability-sre": {
       "phase": "operations",
       "kind": "author",
+      "capability": "environment_operator",
       "definition": "suite/agents/operations/observability-sre/AGENT.md"
     },
     "pipeline-security-reviewer": {
       "phase": "review",
       "kind": "reviewer",
+      "capability": "read_only",
       "definition": "suite/agents/review/pipeline-security-reviewer/AGENT.md"
     },
     "policy-as-code-engineer": {
       "phase": "security",
       "kind": "author",
+      "capability": "code_author",
       "definition": "suite/agents/security/policy-as-code-engineer/AGENT.md"
     },
     "product-intent-agent": {
       "phase": "planning",
       "kind": "author",
+      "capability": "document_author",
       "definition": "suite/agents/planning/product-intent-agent/AGENT.md"
     },
     "release-engineer": {
       "phase": "release",
       "kind": "author",
+      "capability": "environment_operator",
       "definition": "suite/agents/engineering/release-engineer/AGENT.md"
     },
     "requirements-agent": {
       "phase": "planning",
       "kind": "author",
+      "capability": "document_author",
       "definition": "suite/agents/planning/requirements-agent/AGENT.md"
     },
     "secrets-identity-engineer": {
       "phase": "security",
       "kind": "author",
+      "capability": "code_author",
       "definition": "suite/agents/security/secrets-identity-engineer/AGENT.md"
     },
     "security-reviewer": {
       "phase": "review",
       "kind": "reviewer",
+      "capability": "read_only",
       "definition": "suite/agents/review/security-reviewer/AGENT.md"
     },
     "supply-chain-security-reviewer": {
       "phase": "review",
       "kind": "reviewer",
+      "capability": "read_only",
       "definition": "suite/agents/review/supply-chain-security-reviewer/AGENT.md"
     },
     "support-triage-agent": {
       "phase": "support",
       "kind": "support",
+      "capability": "document_author",
       "definition": "suite/agents/support/support-triage-agent/AGENT.md"
     },
     "technical-writer": {
       "phase": "document",
       "kind": "author",
+      "capability": "document_author",
       "definition": "suite/agents/documentation/technical-writer/AGENT.md"
     },
     "test-engineer": {
       "phase": "verify",
       "kind": "reviewer",
+      "capability": "read_only",
       "definition": "suite/agents/engineering/test-engineer/AGENT.md"
     },
     "threat-modeler": {
       "phase": "design",
       "kind": "author",
+      "capability": "document_author",
       "definition": "suite/agents/architecture/threat-modeler/AGENT.md"
     }
   }

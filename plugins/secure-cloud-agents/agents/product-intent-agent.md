@@ -2,6 +2,8 @@
 name: product-intent-agent
 description: Secure cloud agent suite role for the planning phase (product-intent-agent).
 tools: Read, Grep, Glob, Bash, Edit, Write
+generated: true
+canonical_source: agents/planning/product-intent-agent/AGENT.md
 ---
 
 # Role: product-intent-agent

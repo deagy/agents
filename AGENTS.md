@@ -28,7 +28,12 @@ Use `unittest` for internal Python tools, Go `testing` plus Testify for services
 
 ## Commit & Merge Request Guidelines
 
-Use short imperative commit subjects and focused changes. GitLab merge requests must describe scope, security implications, validation, affected decisions, and linked issues. Include CLI or UI evidence when behavior changes.
+Use short imperative commit subjects and focused changes. This GitHub-hosted
+repository uses GitHub pull requests and GitHub Actions; each pull request must
+describe scope, security implications, validation, affected decisions, and
+linked issues. The Secure Cloud target profile may use GitLab merge requests
+for downstream projects, but that is not this repository's contribution
+workflow. Include CLI or UI evidence when behavior changes.
 
 Never commit secrets, raw chat exports, real documents, local environment files, databases, object data, generated credentials, Terraform state, or rendered secrets. Preserve independent review and human gates for persistent mutations, production, risk acceptance, and release.
 

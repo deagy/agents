@@ -2,6 +2,8 @@
 name: support-triage-agent
 description: Secure cloud agent suite role for the support phase (support-triage-agent).
 tools: Read, Grep, Glob, Bash, Edit, Write
+generated: true
+canonical_source: agents/support/support-triage-agent/AGENT.md
 ---
 
 # Role: support-triage-agent
