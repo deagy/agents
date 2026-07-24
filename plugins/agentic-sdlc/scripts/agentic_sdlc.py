@@ -1208,6 +1208,9 @@ def validate_repository(args: argparse.Namespace) -> int:
                         errors.append(f"{record_path}: {gate_id} approval lacks decision time or approval evidence")
                     github_review_refs = []
                     for evidence in approval.get("evidence_refs", []):
+                        if not isinstance(evidence, dict):
+                            errors.append(f"{record_path}: {gate_id} approval evidence_refs contains a non-object entry")
+                            continue
                         uri = evidence.get("uri")
                         if isinstance(uri, str) and uri.startswith("github-review:"):
                             parsed_review = parse_github_review_uri(uri)
