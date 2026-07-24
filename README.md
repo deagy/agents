@@ -15,8 +15,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 ├── .agents/plugins/          # Codex CLI repository/team marketplace metadata
 ├── .claude/skills/           # Thin pointers to .agents/skills/* for Claude Code discovery
 ├── .claude-plugin/           # Claude Code repository/team marketplace metadata
-├── plugins/agentic-sdlc/     # Portable Agentic SDLC plugin (Codex CLI and Claude Code)
-├── plugins/secure-cloud-agents/ # This repo's own suite, packaged for system-wide install
+├── plugins/secure-cloud-agents/ # Self-contained suite and Agentic SDLC provider
 ├── .github/workflows/        # Validate-only GitHub Actions pipeline (tests, bin/agents smoke test, secret scan)
 └── README.md                 # This overview
 ```
@@ -32,12 +31,12 @@ Key areas:
 - [agents/knowledge-store/](agents/knowledge-store/) contains the retrieval layer for approved historical context.
 - [agents/testing/](agents/testing/) and [agents/support/](agents/support/) define black-box testing, end-user testing, support triage, and escalation roles.
 - [.agents/skills/](.agents/skills/) contains this repository's skills, packaged for Codex CLI directly and pointed to from `.claude/skills/` for Claude Code.
-- [plugins/agentic-sdlc/](plugins/agentic-sdlc/) packages the portable lifecycle kernel, initializer, validator, and skills (Codex CLI and Claude Code) for use in other repositories — including, via `--profile secure-cloud`, a project-scoped way to get this repository's own 34 roles without a global install.
-- [plugins/secure-cloud-agents/](plugins/secure-cloud-agents/) packages *this* repository's own suite for system-wide use — install it once and its skills, roles, and the knowledge store become reachable from any project directory, not just this checkout.
+- [deagy/agentic-sdlc](https://github.com/deagy/agentic-sdlc) owns the portable lifecycle kernel, initializer, validator, and lifecycle skills.
+- [plugins/secure-cloud-agents/](plugins/secure-cloud-agents/) packages this suite, its 34 roles, and the external `secure-cloud` provider profile.
 
 ## Supported runners
 
-Every role definition, routing rule, quality gate, and orchestration tool in this repository is plain text and data with no model or runner dependency. Two runners are packaged out of the box — Codex CLI and Claude Code — sharing the same skill and role content through per-runner plugin manifests. See [plugins/agentic-sdlc/contracts/runner-adapters.md](plugins/agentic-sdlc/contracts/runner-adapters.md) for the exact mapping (skill invocation, asking the human, subagent dispatch, plugin installation) and for how to use the suite manually from any other runner.
+Every role definition and orchestration tool is runner-neutral text and data. Codex CLI and Claude Code wrappers are generated into the self-contained Secure Cloud plugin. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc).
 
 ## Quick start
 
@@ -60,27 +59,27 @@ agents select \
 
 The selector emits a plan only. It does not run agents, retrieve knowledge, deploy, mutate infrastructure, merge, push, or approve anything.
 
-## Portable plugin quick start
+## Agentic SDLC quick start
 
-The `agentic-sdlc` plugin packages the reusable G1–G10 lifecycle separately from this repository's cloud-specific configuration. Install it from the repository marketplace, initialize it in a target Git repository, then review the generated overlay before orchestration. Codex CLI:
+Install the reusable G1-G10 lifecycle from its standalone repository, then use
+this suite's compatibility command to inject the Secure Cloud provider:
 
 ```sh
-codex plugin marketplace add .
-codex plugin add agentic-sdlc@agents-team
+git clone https://github.com/deagy/agentic-sdlc.git
+codex plugin marketplace add ./agentic-sdlc
+codex plugin add agentic-sdlc@agentic-sdlc
 ```
 
 Claude Code:
 
 ```text
-/plugin marketplace add .
-/plugin install agentic-sdlc@agents-team
+/plugin marketplace add ./agentic-sdlc
+/plugin install agentic-sdlc@agentic-sdlc
 ```
 
-Either way, initialize the target repository from this repository's checkout:
-
-```sh
-agents sdlc init --root /path/to/target
-```
+Put `agentic-sdlc/bin/agentic-sdlc` on `PATH`, or set
+`AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc`, then run
+`agents sdlc init --root /path/to/target`.
 
 This defaults to the low-ceremony `quick` profile and generates subagent wrappers for both runners (`init --runner {codex,claude,both}`).
 
@@ -94,7 +93,7 @@ A project with a different stack should stay on `quick`/`generic`/`web-service` 
 
 Initialization detects candidate technologies and validation commands, but deliberately leaves human authorities, compliance applicability, persistent/production environment classification, and other consequential decisions unresolved. The target project owns those decisions and its lifecycle records under `.agentic-sdlc/`.
 
-See [the portable plugin guide](plugins/agentic-sdlc/README.md) for installation, commands, team demonstration steps, upgrades, and current limitations.
+See the [standalone lifecycle guide](https://github.com/deagy/agentic-sdlc/tree/main/plugins/agentic-sdlc) for commands and upgrades.
 
 ## Advanced: install every role globally
 

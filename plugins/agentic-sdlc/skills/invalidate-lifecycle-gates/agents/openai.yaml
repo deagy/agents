@@ -1,4 +1,0 @@
-interface:
-  display_name: "Invalidate Lifecycle Gates"
-  short_description: "Record material-change gate invalidation"
-  default_prompt: "Use $invalidate-lifecycle-gates to record a material change and invalidate the affected lifecycle gates."

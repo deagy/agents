@@ -1,0 +1,78 @@
+policy_version: 1
+enabled: true
+mode: required_when_authorized_store_is_available
+command:
+  cwd: agents/knowledge-store
+  launcher:
+    runtime: python
+    minimum_version: "3.10"
+    resolution: runner-probed
+  args_prefix:
+    - src/cli.py
+    - context
+
+pre_dispatch:
+  derive_queries_from:
+    - task_objective
+    - acceptance_criteria
+    - selected_agent_role
+    - changed_paths
+    - architecture_and_control_references
+  default_top_k: 5
+  maximum_top_k: 20
+  enforcement: selector_and_python_cli_reject_values_outside_1_to_20
+  require_agent_identifier: true
+  require_task_identifier: true
+  require_classification_filter: true
+  require_explicit_config: true
+  require_authorized_scope_filter_before_ranking: true
+
+during_execution:
+  follow_up_queries: allowed
+  maximum_queries_per_agent: project_defined
+
+trust:
+  retrieved_content: untrusted_reference
+  instruction_execution: prohibited
+  policy_precedence:
+    - system_and_developer_instructions
+    - agent_authority_and_current_repository_policy
+    - approved_current_architecture_and_controls
+    - cited_knowledge_store_context
+
+citations:
+  required: true
+  fields:
+    - source
+    - conversation_id
+    - message_id
+    - chunk_id
+    - content_hash
+    - created_at
+    - classification
+
+writes:
+  ordinary_agent_content_and_lifecycle_mutation: prohibited
+  retrieval_audit_metadata: allowed_when_retrieval_is_authorized
+  sqlite_initialization_side_effect: database_schema_and_wal_may_be_created
+  proposals: allowed
+  approval_role: knowledge-store-steward
+
+role_query_focus:
+  cloud-architect: architecture decisions, constraints, failure domains, recovery, and prior alternatives
+  threat-modeler: prior threats, incidents, mitigations, trust boundaries, and residual risks
+  frontend-engineer: React patterns, UX decisions, accessibility, API contracts, and browser security
+  backend-engineer: Go patterns, PostgreSQL decisions, schemas, migrations, APIs, and operational lessons
+  application-engineer: cross-stack contracts, integration decisions, shared behavior, and prior implementation patterns
+  infrastructure-provisioner: Proxmox, Terraform, Talos, Kubernetes, Helm, storage, and networking patterns
+  cicd-engineer: GitLab pipelines, runners, artifacts, signing, deployments, and rollback
+  test-engineer: Gherkin scenarios, regressions, failure cases, and quality history
+  code-reviewer: prior defects, conventions, exceptions, and relevant findings
+  infrastructure-reviewer: prior infrastructure findings, drift, incidents, and approved guardrails
+  pipeline-security-reviewer: runner, token, dependency, artifact, and pipeline findings
+  security-reviewer: threats, findings, exceptions, incidents, and compensating controls
+  compliance-reviewer: control interpretations, mappings, evidence, exceptions, and retention
+  release-engineer: release history, rollback, incidents, dependencies, and verification thresholds
+  technical-writer: approved decisions, current operations, terminology, and audience conventions
+  evidence-curator: evidence locations, retention, integrity, ownership, and prior gaps
+  knowledge-store-steward: source ownership, parser behavior, classification, retention, retrieval quality, and lifecycle decisions

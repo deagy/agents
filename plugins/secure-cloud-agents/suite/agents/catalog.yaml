@@ -1,0 +1,104 @@
+version: 1
+agents:
+  product-intent-agent:
+    definition: planning/product-intent-agent/AGENT.md
+    phase: planning
+  requirements-agent:
+    definition: planning/requirements-agent/AGENT.md
+    phase: planning
+  governance-planner:
+    definition: governance/governance-planner/AGENT.md
+    phase: design
+  data-governance-engineer:
+    definition: data/data-governance-engineer/AGENT.md
+    phase: design
+  cryptographic-assurance-engineer:
+    definition: security/cryptographic-assurance-engineer/AGENT.md
+    phase: security
+  cloud-architect:
+    definition: architecture/cloud-architect/AGENT.md
+    phase: design
+  threat-modeler:
+    definition: architecture/threat-modeler/AGENT.md
+    phase: design
+  application-engineer:
+    definition: engineering/application-engineer/AGENT.md
+    phase: build
+  frontend-engineer:
+    definition: engineering/frontend-engineer/AGENT.md
+    phase: build
+  backend-engineer:
+    definition: engineering/backend-engineer/AGENT.md
+    phase: build
+  infrastructure-provisioner:
+    definition: engineering/infrastructure-provisioner/AGENT.md
+    phase: build
+  cicd-engineer:
+    definition: engineering/cicd-engineer/AGENT.md
+    phase: build
+  debugging-engineer:
+    definition: engineering/debugging-engineer/AGENT.md
+    phase: build
+  test-engineer:
+    definition: engineering/test-engineer/AGENT.md
+    phase: verify
+  black-box-tester:
+    definition: testing/black-box-tester/AGENT.md
+    phase: verify
+  end-user-tester:
+    definition: testing/end-user-tester/AGENT.md
+    phase: verify
+  support-triage-agent:
+    definition: support/support-triage-agent/AGENT.md
+    phase: support
+  escalation-manager:
+    definition: support/escalation-manager/AGENT.md
+    phase: support
+  incident-commander:
+    definition: support/incident-commander/AGENT.md
+    phase: support
+  observability-sre:
+    definition: operations/observability-sre/AGENT.md
+    phase: operations
+  cost-capacity-planner:
+    definition: operations/cost-capacity-planner/AGENT.md
+    phase: planning
+  secrets-identity-engineer:
+    definition: security/secrets-identity-engineer/AGENT.md
+    phase: security
+  policy-as-code-engineer:
+    definition: security/policy-as-code-engineer/AGENT.md
+    phase: security
+  database-reliability-engineer:
+    definition: data/database-reliability-engineer/AGENT.md
+    phase: operations
+  release-engineer:
+    definition: engineering/release-engineer/AGENT.md
+    phase: release
+  code-reviewer:
+    definition: review/code-reviewer/AGENT.md
+    phase: review
+  infrastructure-reviewer:
+    definition: review/infrastructure-reviewer/AGENT.md
+    phase: review
+  pipeline-security-reviewer:
+    definition: review/pipeline-security-reviewer/AGENT.md
+    phase: review
+  supply-chain-security-reviewer:
+    definition: review/supply-chain-security-reviewer/AGENT.md
+    phase: review
+  security-reviewer:
+    definition: review/security-reviewer/AGENT.md
+    phase: review
+  compliance-reviewer:
+    definition: review/compliance-reviewer/AGENT.md
+    phase: review
+  technical-writer:
+    definition: documentation/technical-writer/AGENT.md
+    phase: document
+  evidence-curator:
+    definition: documentation/evidence-curator/AGENT.md
+    phase: evidence
+  knowledge-store-steward:
+    definition: knowledge-store/AGENT.md
+    phase: knowledge

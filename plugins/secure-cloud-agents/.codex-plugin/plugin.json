@@ -1,6 +1,6 @@
 {
   "name": "secure-cloud-agents",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "System-wide access to this repository's secure cloud agent suite: 34 specialist roles, orchestration skills, and the shared knowledge store, reachable from any project once installed at global scope.",
   "author": {
     "name": "Agents maintainers",
@@ -13,7 +13,7 @@
   "interface": {
     "displayName": "Secure Cloud Agents",
     "shortDescription": "System-wide secure cloud agent suite and orchestration.",
-    "longDescription": "Makes this repository's 34 specialist roles, orchestration skills, and knowledge-store retrieval available in every project, not just this checkout. Every bundled skill and role wrapper is a thin pointer to this checkout's canonical files; regenerate with agents/orchestration/src/generate_global_plugin.py after adding a role or moving the checkout.",
+    "longDescription": "Makes 34 specialist roles, orchestration skills, knowledge-store retrieval, and the secure-cloud Agentic SDLC provider available as a self-contained package.",
     "developerName": "Agents maintainers",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],

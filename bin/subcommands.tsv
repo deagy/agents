@@ -1,5 +1,4 @@
 select	agents/orchestration/src/select_agents.py	Deterministic agent/gate selection (select_agents.py)
 knowledge	agents/knowledge-store/src/cli.py	Vectorized knowledge store CLI (knowledge-store/src/cli.py)
-sdlc	plugins/agentic-sdlc/scripts/agentic_sdlc.py	Portable Agentic SDLC CLI (agentic_sdlc.py)
 validate-run	agents/orchestration/src/validate_run_record.py	Validate a repository-suite run record (validate_run_record.py)
 generate-plugin	agents/orchestration/src/generate_global_plugin.py	Regenerate plugins/secure-cloud-agents/ (generate_global_plugin.py)

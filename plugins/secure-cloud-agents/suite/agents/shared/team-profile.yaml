@@ -1,0 +1,88 @@
+profile_version: 1
+status: active
+
+platform:
+  hosting_model: self-hosted
+  virtualization: proxmox
+  node_operating_system: talos
+  orchestration: kubernetes
+  package_deployment: helm
+
+infrastructure:
+  infrastructure_as_code: terraform
+  desired_state_required: true
+  manual_configuration: exception_only
+  terraform_provider: not_yet_selected
+  state_backend: not_yet_selected
+  policy_as_code: not_yet_selected
+
+engineering:
+  primary_language: golang
+  secondary_languages:
+    - python
+  python_usage: when_necessary
+  dependency_versions: project_defined_and_pinned
+  library_policy: library-standards.yaml
+
+frontend:
+  ui_library: react
+  primary_language: typescript
+  secondary_language: javascript
+  javascript_usage: when_typescript_is_impractical
+  build_runtime: nodejs
+  react_framework: not_yet_selected
+  package_manager: not_yet_selected
+  build_tool: not_yet_selected
+  styling_and_component_system: not_yet_selected
+  unit_component_test_stack: not_yet_selected
+  browser_end_to_end_test_stack: not_yet_selected
+
+backend:
+  primary_language: golang
+  secondary_language: python
+  database: postgresql
+  golang_database_driver: github.com/jackc/pgx/v5
+  migration_tool: not_yet_selected
+  api_protocols: project_defined
+
+knowledge_store:
+  purpose: agent_retrieval_and_reference
+  ordinary_agent_access: read_only
+  pre_dispatch_retrieval: required_when_authorized_store_is_available
+  follow_up_retrieval: allowed
+  write_approval_role: knowledge-store-steward
+  citations_required: true
+  retrieved_content_trust: untrusted_reference
+
+testing:
+  integration_specification: gherkin
+  regression_specification: gherkin
+  gherkin_step_implementation: project_defined
+
+source_control:
+  platform: gitlab
+  change_model: merge_request
+  protected_default_branch: required
+
+cicd:
+  platform: gitlab_ci
+  runner_hosting: not_yet_selected
+  runner_trust_model: not_yet_selected
+  protected_production_environment: required
+
+unresolved_standards:
+  - supported tool and language versions
+  - Proxmox Terraform provider and version policy
+  - Terraform state backend and recovery process
+  - Kubernetes policy-as-code engine
+  - GitLab runner placement, isolation, and trust tiers
+  - container registry and artifact-signing implementation
+  - observability platform
+  - secrets-management platform
+  - compliance frameworks and evidence retention
+  - React framework or application architecture
+  - Node.js version, package manager, and frontend build tool
+  - frontend styling, component, unit, and browser test stacks
+  - supported browsers and accessibility conformance target
+  - PostgreSQL version, topology, high availability, backup, and recovery design
+  - database migration tool and schema change policy

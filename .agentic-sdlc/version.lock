@@ -1,5 +1,12 @@
 {
-  "plugin_version": "0.1.0",
-  "kernel_version": "0.1.0",
-  "contracts": 1
+  "plugin_version": "0.2.0",
+  "kernel_version": "0.2.0",
+  "contracts": 1,
+  "providers": [
+    {
+      "id": "secure-cloud-agents",
+      "version": "0.2.0",
+      "manifest_sha256": "sha256:ca4e7b700f320f71f9c4fdc44e42dd303ef7b8ec4899ea7acc481586649dacee"
+    }
+  ]
 }

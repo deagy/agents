@@ -1,126 +1,62 @@
 # Secure Cloud Agents plugin
 
-Most projects that want this repository's roles should use
-`agents sdlc init --root <target> --profile secure-cloud` instead of this
-plugin — see [`../agentic-sdlc/README.md`](../agentic-sdlc/README.md#profiles-and-extensions).
-That path is scoped to one project and generates static, project-owned role
-wrappers rather than a live link back to this checkout. This plugin remains
-the right choice for the narrower case of wanting all 34 roles reachable from
-*every* project on the machine unconditionally.
+This self-contained plugin packages the repository's 34 specialist roles, six
+suite skills, orchestration runtime, knowledge-store runtime, and its external
+Agentic SDLC provider.
 
-This plugin makes this repository's own agent suite — 34 specialist roles
-(`agents/catalog.yaml`), 6 orchestration/authoring/knowledge skills
-(`.agents/skills/`), and the shared knowledge store — reachable from any
-project directory, not just this checkout, once installed at global/user
-scope. See [`../agentic-sdlc/contracts/runner-adapters.md`](../agentic-sdlc/contracts/runner-adapters.md#system-wide-install)
-for the general system-wide-install mechanism this relies on.
-
-Unlike `plugins/agentic-sdlc/` — the portable lifecycle kernel meant to be
-copied into other repositories — this suite is a single fixed instance that
-belongs to this one checkout. Every file under `skills/`, `agents/`, and
-`codex-agents/` here is a **generated, thin pointer**: it carries no
-substantive content of its own, only this checkout's absolute path plus an
-instruction to go read the real file there. That's a deliberate, necessary
-tradeoff, not an oversight — see the module docstring in
-[`../../agents/orchestration/src/generate_global_plugin.py`](../../agents/orchestration/src/generate_global_plugin.py)
-for why (short version: installed plugins are cached by the runner, and a
-relative path reaching outside the plugin's own directory stops resolving once
-that happens).
-
-## Install
-
-Codex CLI (user-scoped by default):
+The lifecycle kernel is maintained separately at
+[`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc). Install that
+plugin first, then install this repository's marketplace:
 
 ```sh
-codex plugin marketplace add .
+codex plugin marketplace add /path/to/agentic-sdlc
+codex plugin add agentic-sdlc@agentic-sdlc
+codex plugin marketplace add /path/to/agents
 codex plugin add secure-cloud-agents@agents-team
 ```
 
-Claude Code (pass `--scope user` explicitly, or choose "user" when prompted):
+For Claude Code:
 
 ```text
-/plugin marketplace add .
+/plugin marketplace add /path/to/agentic-sdlc
+/plugin install agentic-sdlc@agentic-sdlc
+/plugin marketplace add /path/to/agents
 /plugin install secure-cloud-agents@agents-team
 ```
 
-This makes the 6 skills — and, in Claude Code, the 34 role subagents under
-`agents/*.md` — available in every project you open afterward. Claude Code
-also auto-discovers this plugin's `bin/agents` onto the Bash tool's PATH for
-the session (convention-based, no manifest field needed), so an orchestrating
-Claude Code agent gets `agents <subcommand>` without the "System-wide install"
-`PATH` setup below — that setup is still needed for a human typing `agents` in
-their own terminal, since no plugin can modify a user's shell profile.
+`provider.json` contributes the `secure-cloud` profile, package-relative role
+catalog, and optional impact extensions to Agentic SDLC v0.2.x. The repository
+launcher injects it automatically:
 
-### Codex CLI: subagent wrappers sync automatically on first dispatch
+```sh
+AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc \
+  agents sdlc init --root /path/to/project --profile secure-cloud
+```
 
-Codex has no plugin-bundled-subagent mechanism; custom agents are only
-discovered from `.codex/agents/` (project-scoped) or `~/.codex/agents/`
-(global). The 34 `.toml` wrappers under `codex-agents/` in this plugin are a
-repo-tracked staging copy — Codex does not load them from here directly.
-`run-agent-orchestration`'s "Bootstrap Local Setup" step copies whatever is
-missing or stale into `~/.codex/agents/` the first time it runs each session,
-so this is normally zero-touch. To do it yourself instead (or ahead of time):
+The generated package contains no source-checkout paths. Role wrappers embed
+their role and shared-policy instructions; skills and runtime files live under
+`skills/` and `suite/`.
+
+## Codex role wrappers
+
+Codex discovers custom agents only under project `.codex/agents/` or global
+`~/.codex/agents/`. Copy the staged wrappers after installation:
 
 ```sh
 mkdir -p ~/.codex/agents
 cp plugins/secure-cloud-agents/codex-agents/*.toml ~/.codex/agents/
 ```
 
-Re-run this copy step after regenerating (below) if you've added, removed, or
-changed a role, if you'd rather not wait for the next orchestration dispatch
-to pick it up.
+Claude Code discovers `agents/*.md` directly from the plugin.
 
-## Regenerating
+## Regeneration
 
-Every file here is derived from `agents/catalog.yaml` and `.agents/skills/*/SKILL.md`.
-Regenerate after adding/removing a role or skill, or if this checkout is ever
-moved or renamed (the absolute paths baked into every pointer would otherwise
-go stale):
+Everything under `skills/`, `agents/`, `codex-agents/`, `suite/`,
+`agent-catalog.json`, and `bin/agents` is generated from tracked source:
 
 ```sh
 agents generate-plugin
 ```
 
-`agents/orchestration/test/test_repository_health.py::test_secure_cloud_agents_plugin_is_generated_and_in_sync`
-runs this and fails if the committed output doesn't match, so drift is caught
-in CI rather than discovered later. Commit the regenerated files (and re-run
-the Codex copy step above) as part of the same change that touched the role or
-skill.
-
-## Extensions
-
-`extensions/` here is hand-maintained, not generated. It holds this
-repository's optional `agentic-sdlc` impact-profile extensions (currently
-`sqs-platform`) — kept here rather than in the portable
-`plugins/agentic-sdlc/` kernel so that plugin can stay generic. See
-[`../agentic-sdlc/README.md`](../agentic-sdlc/README.md#profiles-and-extensions)
-for how `--extension <id>` resolves against a sibling plugin's `extensions/`
-directory.
-
-## Using it
-
-Once installed, invoke `run-agent-orchestration` (or any of the other five
-skills) from any project the same way you would from inside this checkout —
-see `agents/RUNBOOK.md` in the source repository for worked examples. The
-generated role subagents/wrappers already carry the ask-the-human rule from
-`runner-adapters.md`: they will return a labeled blocking question rather than
-attempt to prompt a human directly.
-
-### Project-local overrides
-
-Global-by-default doesn't mean every project has to use the global role or
-knowledge store. See
-[`../agentic-sdlc/contracts/runner-adapters.md`](../agentic-sdlc/contracts/runner-adapters.md#project-local-overrides)
-for the full explanation; in short:
-
-- **Roles**: give a project its own `.claude/agents/<role-id>.md` or
-  `.codex/agents/<role-id>.toml` and `run-agent-orchestration` will dispatch
-  that instead of the global `secure-cloud-agents:<role-id>` (Claude Code) or
-  `~/.codex/agents/<role-id>.toml` copy (Codex) when working in that project.
-- **Knowledge store**: give a project its own `.agents/knowledge-store/config.json`
-  at its repository root and every command run from inside that project
-  resolves to it automatically instead of the shared global store — see
-  `agents/knowledge-store/README.md` for the full three-tier resolution
-  (explicit `--config` > project-local > global) and the `--source` convention
-  that keeps different projects' content distinguishable when they *do* use
-  the shared store.
+`provider.json`, `profiles/`, and `extensions/` are maintained as provider
+contracts. Repository health tests fail when generated content drifts.

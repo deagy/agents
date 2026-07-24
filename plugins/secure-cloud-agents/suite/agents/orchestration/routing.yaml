@@ -1,0 +1,350 @@
+{
+  "version": 1,
+  "ignored_gates": [],
+  "change_intake": {
+    "keywords": ["implement", "create", "new feature", "new service", "add feature", "build", "change", "update", "modify", "refactor", "fix", "repair", "remove", "delete", "migrate", "introduce", "enhance", "extend", "replace", "upgrade", "rework"],
+    "agents": ["product-intent-agent", "requirements-agent"],
+    "quality_gates": ["G1", "G2"]
+  },
+  "routes": [
+    {
+      "id": "product-intent",
+      "paths": ["product/intent/**", "docs/product-intent/**"],
+      "keywords": ["product intent", "mission objective", "intent capture"],
+      "primary": ["product-intent-agent"],
+      "support": ["requirements-agent"],
+      "quality_gates": ["G1"]
+    },
+    {
+      "id": "requirements-baseline",
+      "paths": ["product/requirements/**", "docs/requirements-baseline/**"],
+      "keywords": ["requirements decomposition", "requirements traceability", "test obligations"],
+      "primary": ["requirements-agent"],
+      "reviewers": ["test-engineer"],
+      "quality_gates": ["G1", "G2"]
+    },
+    {
+      "id": "governance-planning",
+      "paths": ["governance/impact/**", "governance/accreditation/**"],
+      "keywords": ["governance impact", "data jurisdiction", "accreditation plan"],
+      "primary": ["governance-planner"],
+      "reviewers": ["compliance-reviewer"],
+      "support": ["evidence-curator"],
+      "quality_gates": ["G4", "G7"]
+    },
+    {
+      "id": "data-governance",
+      "paths": ["governance/data/**", "data-governance/**", "sqs/data/**"],
+      "keywords": ["non-egress", "derived output", "data residency", "data lineage requirements"],
+      "primary": ["data-governance-engineer"],
+      "reviewers": ["security-reviewer", "compliance-reviewer"],
+      "quality_gates": ["G4", "G5", "G7"]
+    },
+    {
+      "id": "cryptographic-assurance",
+      "paths": ["security/crypto-assurance/**", "crypto-assurance/**", "sqs/crypto/**"],
+      "keywords": ["crypto agility", "algorithm posture", "pqc", "qkms", "qkd", "qrng", "downgrade risk"],
+      "primary": ["cryptographic-assurance-engineer"],
+      "reviewers": ["security-reviewer"],
+      "support": ["secrets-identity-engineer", "threat-modeler"],
+      "quality_gates": ["G5", "G7"]
+    },
+    {
+      "id": "runtime-assurance",
+      "paths": ["runtime-assurance/**", "assurance/runtime/**"],
+      "keywords": ["runtime conformance", "runtime assurance", "deployed behavior conformance", "production runtime observation", "observe production runtime"],
+      "primary": ["observability-sre"],
+      "reviewers": ["security-reviewer", "compliance-reviewer"],
+      "support": ["support-triage-agent"],
+      "quality_gates": ["G10"]
+    },
+    {
+      "id": "agent-suite-governance",
+      "paths": ["agents/catalog.yaml", "agents/**/AGENT.md", "agents/workflows/**", "agents/shared/**", "agents/orchestration/routing.yaml", "agents/orchestration/selection.schema.json", "agents/orchestration/run-record.schema.json", "agents/orchestration/quality-gates.md", "agents/orchestration/handoff-contracts.md", "agents/orchestration/task-brief-template.md", "agents/orchestration/agentic-sdlc-artifact-contract.md", "agents/orchestration/src/**", "agents/orchestration/test/**", ".agents/skills/**", ".agents/plugins/**", "plugins/**", "README.md", "AGENTS.md"],
+      "keywords": ["review project", "review repository", "repo structure", "repository structure", "project structure", "agent suite", "agents skills structure", "agents, skills, structure", "review agents", "audit agents", "audit publishable skills", "publishable skills", "skill packaging", "workflow mapping", "orchestration quality", "catalog integrity", "routing coverage", "governance review"],
+      "primary": ["application-engineer", "debugging-engineer"],
+      "reviewers": ["test-engineer", "code-reviewer"],
+      "support": ["technical-writer"]
+    },
+    {
+      "id": "orchestration",
+      "paths": ["agents/orchestration/routing.yaml", "agents/orchestration/selection.schema.json", "agents/orchestration/src/**", "agents/orchestration/test/**", ".agents/skills/run-agent-orchestration/**"],
+      "keywords": ["agent orchestration", "agent selector", "agent routing", "dispatch plan"],
+      "primary": ["application-engineer"],
+      "reviewers": ["test-engineer", "code-reviewer"]
+    },
+    {
+      "id": "frontend",
+      "paths": ["frontend/**", "web/**", "ui/**", "**/*.tsx", "**/*.jsx", "**/*.ts", "**/*.css", "**/*.scss"],
+      "keywords": ["react", "typescript", "javascript", "frontend", "browser", "accessibility", "user interface"],
+      "primary": ["frontend-engineer"],
+      "reviewers": ["test-engineer", "code-reviewer"],
+      "quality_gates": ["G3", "G5", "G6", "G7"]
+    },
+    {
+      "id": "backend",
+      "paths": ["backend/**", "services/**", "api/**", "**/*.go", "**/*.sql", "**/migrations/**"],
+      "keywords": ["backend", "api", "golang", "postgres", "postgresql", "pgx", "database", "migration"],
+      "primary": ["backend-engineer"],
+      "reviewers": ["test-engineer", "code-reviewer"],
+      "quality_gates": ["G3", "G4", "G5", "G6", "G7"]
+    },
+    {
+      "id": "infrastructure",
+      "paths": ["terraform/**", "infrastructure/**", "infra/**", "talos/**", "kubernetes/**", "k8s/**", "helm/**", "charts/**", "deploy/compose/**", "**/compose.yaml", "**/compose.yml", "**/docker-compose.yaml", "**/docker-compose.yml", "**/*.tf", "**/*.tfvars"],
+      "keywords": ["proxmox", "terraform", "talos", "kubernetes", "k8s", "helm", "infrastructure", "docker compose", "podman compose", "compose.yaml", "named volume", "container storage"],
+      "primary": ["infrastructure-provisioner"],
+      "reviewers": ["infrastructure-reviewer"],
+      "quality_gates": ["G3", "G4", "G5", "G6", "G7", "G8"]
+    },
+    {
+      "id": "pipeline",
+      "paths": [".gitlab-ci.yml", ".gitlab/**", "**/.gitlab-ci.yml", "ci/**", "pipelines/**"],
+      "keywords": ["gitlab ci", "pipeline", "runner", "build job", "deployment job"],
+      "primary": ["cicd-engineer"],
+      "reviewers": ["pipeline-security-reviewer"],
+      "quality_gates": ["G5", "G6", "G7", "G8"]
+    },
+    {
+      "id": "testing",
+      "paths": ["features/**", "**/*.feature", "**/*_test.go", "**/*.test.mjs", "**/*.test.ts", "**/*.spec.ts", "test/**", "tests/**"],
+      "keywords": ["gherkin", "godog", "integration test", "regression test", "test coverage"],
+      "primary": ["test-engineer"],
+      "reviewers": ["code-reviewer"],
+      "quality_gates": ["G6"]
+    },
+    {
+      "id": "debugging",
+      "paths": ["debug/**", "diagnostics/**", "repro/**", "agents/catalog.yaml", "agents/**/AGENT.md", ".agents/skills/agent-authoring/**", "**/fixtures/bugs/**", "**/regression/**"],
+      "keywords": ["debug", "debugging", "bug", "root cause", "reproduce", "reproduction", "failing test", "failing command", "stack trace", "crash", "panic", "race condition", "flaky test", "test failure", "runtime failure", "tooling failure", "tune agent", "agent tune-up", "inspect agents", "agent issue", "agent definition", "agent prompt", "role defect", "routing issue", "selector regression", "misroute", "dispatch bug"],
+      "primary": ["debugging-engineer"],
+      "reviewers": ["test-engineer", "code-reviewer"]
+    },
+    {
+      "id": "black-box-testing",
+      "paths": ["**/black-box/**", "**/blackbox/**", "**/e2e/**", "**/playwright/**", "**/postman/**", "**/*.feature"],
+      "keywords": ["black-box", "black box", "external behavior", "public api test", "opaque system", "end-to-end test", "e2e"],
+      "primary": ["black-box-tester"],
+      "reviewers": ["test-engineer", "code-reviewer"]
+    },
+    {
+      "id": "end-user-testing",
+      "paths": ["**/uat/**", "**/user-acceptance/**", "**/personas/**", "**/journeys/**", "**/usability/**"],
+      "keywords": ["uat", "user acceptance", "end-user", "end user", "persona", "user journey", "usability", "user readiness"],
+      "primary": ["end-user-tester"],
+      "reviewers": ["technical-writer"],
+      "support": ["support-triage-agent"],
+      "quality_gates": ["G6"]
+    },
+    {
+      "id": "support",
+      "paths": ["support/**", "docs/support/**", "**/runbooks/support/**", "**/incidents/**", "**/tickets/**"],
+      "keywords": ["support", "triage", "user report", "customer report", "incident ticket", "reproduction steps", "workaround"],
+      "primary": ["support-triage-agent"],
+      "reviewers": ["technical-writer"],
+      "support": ["escalation-manager"]
+    },
+    {
+      "id": "incident-response",
+      "paths": ["incidents/**", "postmortems/**", "**/runbooks/incident/**", "**/incident-response/**"],
+      "keywords": ["incident", "outage", "sev1", "sev2", "major incident", "postmortem", "rollback coordination", "war room"],
+      "primary": ["incident-commander"],
+      "reviewers": ["technical-writer"],
+      "support": ["support-triage-agent", "escalation-manager", "observability-sre"]
+    },
+    {
+      "id": "observability",
+      "paths": ["observability/**", "monitoring/**", "dashboards/**", "alerts/**", "prometheus/**", "grafana/**", "telemetry/**", "**/runbooks/operations/**"],
+      "keywords": ["observability", "slo", "sli", "error budget", "alert", "dashboard", "metrics", "traces", "logs", "monitoring"],
+      "primary": ["observability-sre"],
+      "reviewers": ["technical-writer"],
+      "support": ["support-triage-agent"],
+      "quality_gates": ["G10"]
+    },
+    {
+      "id": "secrets-identity",
+      "paths": ["secrets/**", "identity/**", "rbac/**", "iam/**", "oidc/**", "workload-identity/**", "**/serviceaccount*.yaml", "**/rolebinding*.yaml"],
+      "keywords": ["secret", "credential", "key rotation", "workload identity", "rbac", "oidc", "service account", "access review", "gitlab variable"],
+      "primary": ["secrets-identity-engineer"],
+      "reviewers": ["security-reviewer", "compliance-reviewer"]
+    },
+    {
+      "id": "database-reliability",
+      "paths": ["db/**", "database/**", "postgres/**", "**/migrations/**", "**/*.sql", "backup/**", "restore/**"],
+      "keywords": ["postgresql ha", "pitr", "backup", "restore", "migration safety", "schema change", "data retention", "vacuum", "index", "lock"],
+      "primary": ["database-reliability-engineer"],
+      "reviewers": ["backend-engineer", "infrastructure-reviewer"]
+    },
+    {
+      "id": "policy-as-code",
+      "paths": ["policy/**", "policies/**", "opa/**", "kyverno/**", "gatekeeper/**", "conftest/**", "admission/**"],
+      "keywords": ["policy as code", "admission", "opa", "kyverno", "gatekeeper", "conftest", "network policy", "restricted security context"],
+      "primary": ["policy-as-code-engineer"],
+      "reviewers": ["security-reviewer", "infrastructure-reviewer"]
+    },
+    {
+      "id": "supply-chain",
+      "paths": ["go.mod", "go.sum", "**/go.mod", "**/go.sum", "package.json", "package-lock.json", "**/package.json", "**/package-lock.json", "**/Dockerfile", "**/Containerfile", "**/sbom/**", "**/*.lock", "**/charts/Chart.yaml"],
+      "keywords": ["dependency", "sbom", "sboms", "provenance", "signing", "cosign", "slsa", "container image", "terraform provider", "helm dependency", "license"],
+      "primary": ["supply-chain-security-reviewer"],
+      "reviewers": ["security-reviewer"],
+      "support": ["release-engineer"]
+    },
+    {
+      "id": "cost-capacity",
+      "paths": ["capacity/**", "cost/**", "finops/**", "sizing/**", "**/values*.yaml"],
+      "keywords": ["capacity", "sizing", "cost", "finops", "quota", "resource limits", "storage growth", "runner utilization", "headroom"],
+      "primary": ["cost-capacity-planner"],
+      "reviewers": ["infrastructure-reviewer"],
+      "support": ["observability-sre"]
+    },
+    {
+      "id": "documentation",
+      "paths": ["docs/**", "**/*.md", "**/adr/**"],
+      "keywords": ["documentation", "runbook", "adr", "architecture decision", "operator guide"],
+      "primary": ["technical-writer"],
+      "reviewers": []
+    },
+    {
+      "id": "knowledge-store",
+      "paths": ["agents/knowledge-store/**", "agents/shared/knowledge-use-policy.md", "agents/orchestration/knowledge-retrieval-policy.yaml"],
+      "keywords": ["knowledge store", "chat history", "embedding", "vector search", "retrieval", "rag"],
+      "primary": ["knowledge-store-steward"],
+      "reviewers": ["security-reviewer", "compliance-reviewer"]
+    }
+  ],
+  "risk_rules": [
+    {
+      "id": "authentication-authorization",
+      "keywords": ["authentication", "authorization", "oauth", "oidc", "token", "session", "rbac", "permission"],
+      "paths": ["**/auth/**", "**/identity/**", "**/rbac/**"],
+      "support": ["threat-modeler"],
+      "reviewers": ["security-reviewer"],
+      "quality_gates": ["G5"]
+    },
+    {
+      "id": "sensitive-data",
+      "keywords": ["pii", "personal data", "confidential", "restricted data", "secret", "credential", "private key"],
+      "paths": ["**/secrets/**"],
+      "reviewers": ["security-reviewer", "compliance-reviewer"],
+      "quality_gates": ["G4", "G5"]
+    },
+    {
+      "id": "database-migration",
+      "keywords": ["database migration", "schema migration", "alter table", "drop table"],
+      "paths": ["**/migrations/**", "**/*.sql"],
+      "primary": ["backend-engineer"],
+      "reviewers": ["test-engineer", "code-reviewer"],
+      "support": ["release-engineer"],
+      "human_gate": "persistent-database-migration",
+      "quality_gates": ["G4", "G6", "G8"]
+    },
+    {
+      "id": "public-exposure",
+      "keywords": ["internet-facing", "public endpoint", "public exposure", "ingress", "load balancer"],
+      "paths": ["**/ingress/**"],
+      "support": ["cloud-architect", "threat-modeler"],
+      "reviewers": ["security-reviewer"],
+      "quality_gates": ["G3", "G5"]
+    },
+    {
+      "id": "architecture-change",
+      "keywords": ["architecture", "trust boundary", "new service", "new component", "platform topology"],
+      "paths": ["**/architecture/**", "**/adr/**"],
+      "support": ["cloud-architect", "threat-modeler"],
+      "quality_gates": ["G3"]
+    },
+    {
+      "id": "compliance",
+      "keywords": ["compliance", "control mapping", "audit evidence", "soc 2", "iso 27001"],
+      "paths": ["**/compliance/**", "**/controls/**"],
+      "reviewers": ["compliance-reviewer"],
+      "support": ["evidence-curator"],
+      "quality_gates": ["G4", "G7"]
+    },
+    {
+      "id": "production",
+      "keywords": ["deploy to production", "production deployment", "production deploy", "prod deploy", "release to production", "release to prod", "production database migration"],
+      "paths": [],
+      "support": ["release-engineer"],
+      "human_gate": "production-change",
+      "quality_gates": ["G8", "G9"]
+    },
+    {
+      "id": "destructive",
+      "keywords": ["destroy", "delete resource", "drop table", "terraform state", "force replace", "wipe"],
+      "paths": [],
+      "reviewers": ["security-reviewer"],
+      "human_gate": "destructive-action"
+    },
+    {
+      "id": "human-escalation",
+      "keywords": ["escalate to human", "human escalation", "human support", "accountable human", "human approval", "human owner"],
+      "paths": [],
+      "support": ["escalation-manager"],
+      "human_gate": "accountable-human-escalation"
+    },
+    {
+      "id": "identity-privilege",
+      "keywords": ["privileged identity", "service account", "key rotation", "production secret", "break-glass", "root credential"],
+      "paths": ["**/secrets/**", "**/identity/**", "**/rbac/**"],
+      "support": ["secrets-identity-engineer"],
+      "reviewers": ["security-reviewer"],
+      "human_gate": "privileged-identity-change",
+      "quality_gates": ["G5"]
+    }
+  ],
+  "cross_stack": {
+    "route_ids": ["frontend", "backend", "infrastructure", "pipeline"],
+    "minimum_matches": 2,
+    "support": ["application-engineer"]
+  },
+  "knowledge_focus": {
+    "cloud-architect": "prior architecture decisions, constraints, alternatives, failure domains, and recovery objectives",
+    "threat-modeler": "prior threats, incidents, mitigations, trust boundaries, and residual risks",
+    "application-engineer": "cross-stack contracts, integration decisions, shared behavior, and implementation patterns",
+    "frontend-engineer": "React patterns, UX decisions, accessibility, API contracts, and browser security",
+    "backend-engineer": "Go patterns, PostgreSQL decisions, schemas, migrations, APIs, and operational lessons",
+    "infrastructure-provisioner": "Proxmox, Terraform, Talos, Kubernetes, Helm, storage, and networking patterns",
+    "cicd-engineer": "GitLab pipelines, runners, artifacts, signing, deployments, and rollback",
+    "debugging-engineer": "prior defects, repro steps, failure signatures, root-cause notes, regression tests, selector regressions, agent routing issues, prompt/role defects, and tune-up history",
+    "test-engineer": "Gherkin scenarios, regressions, failure cases, and quality history",
+    "black-box-tester": "externally visible behavior, public API and UI contracts, black-box regressions, client compatibility, and reproducible defects",
+    "end-user-tester": "personas, user journeys, UAT decisions, accessibility observations, user-readiness risks, and supportability gaps",
+    "support-triage-agent": "prior incidents, user reports, reproduction notes, support runbooks, known workarounds, severity patterns, and ownership history",
+    "escalation-manager": "escalation history, approval chains, human owner decisions, unresolved blockers, incident communications, and risk acceptance boundaries",
+    "incident-commander": "incident timelines, severity decisions, mitigation history, communication cadence, owner chains, postmortems, and unresolved blockers",
+    "observability-sre": "SLOs, alerts, dashboards, telemetry decisions, incident signals, operational runbooks, capacity signals, and reliability gaps",
+    "cost-capacity-planner": "capacity models, resource limits, storage growth, runner utilization, cost tradeoffs, quotas, and sizing assumptions",
+    "secrets-identity-engineer": "identity flows, workload identity decisions, RBAC, secret rotation, credential exposure, access reviews, and break-glass ownership",
+    "policy-as-code-engineer": "policy rules, enforcement decisions, exception history, guardrail tests, admission controls, and compliance mappings",
+    "database-reliability-engineer": "PostgreSQL reliability decisions, migration history, backup and restore evidence, PITR, indexes, locks, schema lifecycle, and data retention",
+    "release-engineer": "release history, rollback, incidents, dependencies, and verification thresholds",
+    "code-reviewer": "prior defects, coding conventions, exceptions, and relevant findings",
+    "infrastructure-reviewer": "prior infrastructure findings, drift, incidents, and approved guardrails",
+    "pipeline-security-reviewer": "runner, token, dependency, artifact, and pipeline findings",
+    "supply-chain-security-reviewer": "dependency approvals, SBOMs, provenance, signing, vulnerabilities, licenses, base images, Terraform providers, Helm dependencies, and artifact integrity",
+    "security-reviewer": "threats, findings, exceptions, incidents, and compensating controls",
+    "compliance-reviewer": "control interpretations, mappings, evidence, exceptions, and retention",
+    "technical-writer": "approved decisions, current operations, terminology, and audience conventions",
+    "evidence-curator": "evidence locations, retention, integrity, ownership, and prior gaps",
+    "knowledge-store-steward": "source ownership, parser behavior, classification, retention, retrieval quality, and lifecycle decisions",
+    "product-intent-agent": "approved product objectives, mission outcomes, scope decisions, constraints, classifications, environments, and success measures",
+    "requirements-agent": "approved intent baselines, requirement decompositions, acceptance criteria, dependencies, control mappings, test obligations, and traceability decisions",
+    "governance-planner": "governance impacts, jurisdictions, accreditation plans, control interpretations, evidence obligations, and accountable owner decisions",
+    "data-governance-engineer": "data classifications, inventories, lineage, residency, non-egress, retention and deletion, derived outputs, and enforcement decisions",
+    "cryptographic-assurance-engineer": "cryptographic inventories, algorithms, key lifecycles, certificates, crypto agility, downgrade risks, PQC, QKMS, QKD, and QRNG applicability"
+  },
+  "quality_gates": {
+    "G1": "Intent is versioned, owned, prioritized, scoped, classified, constrained, environment-specific, and measurable.",
+    "G2": "Requirements have stable identifiers, acceptance criteria, dependencies, non-functional requirements, obligations, applicability, and bidirectional traceability.",
+    "G3": "Architecture is requirements-linked and defines boundaries, interfaces, flows, decisions, failure recovery, technology choices, and validation obligations.",
+    "G4": "Governance and data evidence defines controls, jurisdictions, accreditation, lineage, residency, non-egress, retention, derived outputs, enforcement, and applicability.",
+    "G5": "Security and cryptographic evidence covers threats, identities, dependencies, algorithms, keys, certificates, agility, downgrade analysis, mitigations, tests, and residual risk.",
+    "G6": "Independent verification binds requirement-linked tests, scans, defect dispositions, and acceptance evidence to the exact revision.",
+    "G7": "The immutable evidence index binds provenance, reviews, tests, decisions, exceptions, documentation, retention, classification, and defined BOMs.",
+    "G8": "Release readiness binds prior approvals, an immutable artifact, target compatibility, deployment and rollback plans, telemetry, capacity, support, thresholds, and window.",
+    "G9": "An authorized human approves the exact artifact, environment, identity, plan, window, blast radius, rollback, and verification thresholds.",
+    "G10": "Runtime conformance binds deployed identity, observation window, service and assurance signals, drift, incidents, findings, owners, and traced backlog updates."
+  }
+}

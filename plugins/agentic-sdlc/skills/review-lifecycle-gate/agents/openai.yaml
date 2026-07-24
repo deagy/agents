@@ -1,4 +1,0 @@
-interface:
-  display_name: "Review Lifecycle Gate"
-  short_description: "Prepare an independent gate assessment"
-  default_prompt: "Use $review-lifecycle-gate to independently assess the requested lifecycle gate and report its decision package."

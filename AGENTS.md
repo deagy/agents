@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-Agent roles, policies, workflows, orchestration, testing, support/escalation, and the knowledge store live under `agents/`; publishable repository skills live under `.agents/skills/` (Codex CLI), with thin pointer files under `.claude/skills/` for Claude Code. Plugins for both runners live under `plugins/`: `plugins/agentic-sdlc/` is portable (copied into other repositories), `plugins/secure-cloud-agents/` makes this repository's own suite system-wide (installed at global/user scope, generated from `agents/catalog.yaml` and `.agents/skills/`, never hand-edited). Marketplace metadata lives under `.agents/plugins/` (Codex CLI) and `.claude-plugin/` (Claude Code). Keep product/application code, tests, migrations, deployment contracts, and infrastructure contracts in clearly scoped project directories.
+Agent roles, policies, workflows, orchestration, testing, support/escalation, and the knowledge store live under `agents/`; publishable repository skills live under `.agents/skills/`, with thin pointer files under `.claude/skills/`. `plugins/secure-cloud-agents/` packages this suite and its Agentic SDLC provider as a self-contained distribution generated from `agents/catalog.yaml`, `agents/`, and `.agents/skills/`. The portable lifecycle kernel is maintained separately at `github.com/deagy/agentic-sdlc`.
 
 Read `agents/RUNBOOK.md` for orchestration and any project-local `AGENTS.md` before product changes. Keep role definitions and `agents/catalog.yaml` synchronized.
 
@@ -14,7 +14,7 @@ Resolve Python 3.10+ as documented in the runbook. From each internal-tool compo
 <python> -B -m unittest discover -s test -p "test_*.py"
 ```
 
-For the portable Agentic SDLC plugin, run its tests under `plugins/agentic-sdlc/test`, validate every bundled skill, and validate the plugin manifest before handoff. After changing `agents/catalog.yaml` or `.agents/skills/`, regenerate `plugins/secure-cloud-agents/` with `agents generate-plugin` (`agents/orchestration/src/generate_global_plugin.py`) and re-run `agents/orchestration/test/test_repository_health.py`, which fails on drift.
+After changing `agents/catalog.yaml`, `agents/`, or `.agents/skills/`, regenerate `plugins/secure-cloud-agents/` with `agents generate-plugin` and re-run `agents/orchestration/test/test_repository_health.py`, which fails on drift. Run lifecycle integration tests against the pinned standalone Agentic SDLC executable.
 
 For Go services, use `gofmt`, `go tool goimports`, `go vet ./...`, `go test ./...`, `go test -race ./...`, and `go tool golangci-lint run ./...`. For React frontends, use the project-pinned package manager for install, test, typecheck, and build commands. Podman, PostgreSQL migrations, Helm, and Terraform remain disposable or validation-only unless a project has explicit production approval; follow the component README and never target a persistent environment without approval.
 

@@ -65,9 +65,9 @@ class SelectorTests(unittest.TestCase):
 
     def test_plugin_packaging_routes_to_agent_suite_governance(self) -> None:
         result = plan(
-            task="Package the portable Agentic SDLC plugin",
+            task="Package the Secure Cloud Agentic SDLC provider",
             changed_files=[
-                "plugins/agentic-sdlc/.codex-plugin/plugin.json",
+                "plugins/secure-cloud-agents/provider.json",
                 ".agents/plugins/marketplace.json",
             ],
             classification="internal",
