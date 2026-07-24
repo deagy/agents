@@ -50,7 +50,7 @@ and version-lock guidance.
 ## Choosing the next guide
 
 - Need roles for a task? Read [Orchestration](orchestration.md).
-- Need a project overlay or gate record? Read [Lifecycle and plugin operations](lifecycle-and-plugin-operations.md).
+- Need a target-project overlay or gate record? Read [Lifecycle and plugin operations](lifecycle-and-plugin-operations.md).
 - Need a role's purpose and handoff? Read the [role index](role-index.md).
 - Need a complete worked example? Read the [runbook](../agents/RUNBOOK.md),
   starting with its section index.

@@ -33,3 +33,7 @@ sample-001/services/dependencies.json
 sample-001/deploy/helm-rendered.yaml
 sample-001/evidence/
 evidence/
+
+# Local knowledge-store configuration and data are operator-controlled.
+.agents/knowledge-store/config.json
+.agents/knowledge-store/data/

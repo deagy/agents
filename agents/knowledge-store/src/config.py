@@ -87,12 +87,14 @@ def default_config_path() -> Path:
 
 def load_config(config_path: str | None = None) -> dict[str, Any]:
     """Load config, failing closed when an explicit path does not exist."""
+    implicit_project_config = False
     if config_path:
         selected = Path(config_path).resolve()
         if not selected.is_file():
             raise FileNotFoundError(f"Explicit config file does not exist: {selected}")
     else:
         selected = default_config_path()
+        implicit_project_config = find_project_local_config(Path.cwd()) == selected
 
     supplied: dict[str, Any] = {}
     if selected.is_file():
@@ -110,11 +112,16 @@ def load_config(config_path: str | None = None) -> dict[str, Any]:
         raise ValueError("database must be a non-empty string")
     base_directory = selected.parent
     database = Path(config["database"])
-    config["database"] = str((base_directory / database).resolve() if not database.is_absolute() else database.resolve())
+    resolved_database = (base_directory / database).resolve() if not database.is_absolute() else database.resolve()
+    if implicit_project_config and (resolved_database != base_directory and base_directory not in resolved_database.parents):
+        raise ValueError("project-local knowledge-store database must remain under its config directory")
+    config["database"] = str(resolved_database)
 
     embedding = config["embedding"]
     if embedding["provider"] not in {"hashing", "openai-compatible"}:
         raise ValueError(f"Unsupported embedding provider: {embedding['provider']}")
+    if implicit_project_config and embedding["provider"] != "hashing":
+        raise ValueError("project-local configuration cannot enable remote embeddings")
     _positive_integer(embedding["dimensions"], "embedding.dimensions", 32)
     _positive_integer(embedding["batch_size"], "embedding.batch_size")
     timeout = embedding.get("timeout_seconds", 30)

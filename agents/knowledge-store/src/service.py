@@ -44,6 +44,7 @@ def ingest_file(db: Any, config: dict[str, Any], options: dict[str, Any]) -> dic
     run_id = begin_run(db, options["source"], messages[0].get("source_uri") if messages else None)
     chunk_count = 0
     try:
+        db.execute("BEGIN")
         for message in messages:
             protected = protect_content(message["content"], config["ingestion"]["redact_secrets"])
             chunks = chunk_text(protected["content"], config["chunking"])
@@ -53,6 +54,7 @@ def ingest_file(db: Any, config: dict[str, Any], options: dict[str, Any]) -> dic
         complete_run(db, run_id, len(messages), chunk_count)
         return {"run_id": run_id, "messages": len(messages), "chunks": chunk_count}
     except Exception as error:
+        db.rollback()
         fail_run(db, run_id, error)
         raise
 

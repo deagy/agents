@@ -16,7 +16,11 @@ from agentic_sdlc_contracts import lifecycle_contract
 CLASSIFICATIONS = {"public", "internal", "confidential", "restricted"}
 MAXIMUM_KNOWLEDGE_TOP = 20
 KNOWLEDGE_STORE_ROOT = Path(__file__).resolve().parents[2] / "knowledge-store"
-DEFAULT_KNOWLEDGE_SOURCE = "agents"
+DEFAULT_KNOWLEDGE_SOURCE = "secure-cloud-agents"
+
+
+def _default_knowledge_source() -> str:
+    return DEFAULT_KNOWLEDGE_SOURCE
 
 
 def _lifecycle_gates() -> list[dict[str, Any]]:
@@ -87,7 +91,7 @@ def _ordered(values: Iterable[str], catalog: list[str]) -> list[str]:
 
 
 def _reasons(match: dict[str, Any]) -> dict[str, Any]:
-    return {
+    dispatch = {
         "keywords": match["reasons"]["keywords"],
         "paths": match["reasons"]["paths"],
     }
@@ -222,7 +226,7 @@ def _build_knowledge_context(
             "--top",
             str(top),
             "--source",
-            input_data.get("source") or DEFAULT_KNOWLEDGE_SOURCE,
+            input_data.get("source") or _default_knowledge_source(),
         ]
         requests.append(
             {
@@ -241,7 +245,7 @@ def _build_knowledge_context(
     return {
         "status": "planned",
         "classification": classification,
-        "source_filter": input_data.get("source"),
+        "source_filter": input_data.get("source") or _default_knowledge_source(),
         "requests": requests,
     }
 
@@ -351,7 +355,7 @@ def build_dispatch_plan(
         for gate_id in effective_gate_ids
     ]
 
-    return {
+    dispatch = {
         "schema_version": 2,
         "task_id": task_id,
         "generated_at": generated_at,
@@ -365,7 +369,7 @@ def build_dispatch_plan(
             "classification": input_data.get("classification"),
             "source_filter": input_data.get("source"),
         },
-        "matched_routes": [{"id": match["id"], "reasons": _reasons(match)} for match in matched_routes],
+        "matched_routes": [match["id"] for match in matched_routes],
         "matched_risks": [{"id": match["id"], "reasons": _reasons(match)} for match in matched_risks],
         "agents": groups,
         "required_quality_gates": required_quality_gates,
@@ -374,3 +378,10 @@ def build_dispatch_plan(
         "human_gates": _build_human_gates(matched_risks),
         "knowledge_context": _build_knowledge_context(config, selected_agents, normalized_input),
     }
+    canonical = json.dumps(
+        {key: value for key, value in dispatch.items() if key not in {"generated_at", "dispatch_fingerprint"}},
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    dispatch["dispatch_fingerprint"] = "sha256:" + hashlib.sha256(canonical).hexdigest()
+    return dispatch

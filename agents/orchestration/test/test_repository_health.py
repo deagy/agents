@@ -17,6 +17,10 @@ REPOSITORY_ROOT = ROOT.parent
 
 
 class RepositoryHealthTests(unittest.TestCase):
+    def test_provider_repository_has_no_project_lifecycle_overlay(self) -> None:
+        overlay = REPOSITORY_ROOT / ".agentic-sdlc"
+        self.assertFalse(overlay.exists(), str(overlay))
+
     def test_catalog_definitions_and_agent_files_stay_in_sync(self) -> None:
         catalog_agents: dict[str, str] = {}
         current_agent: str | None = None
@@ -262,7 +266,7 @@ class RepositoryHealthTests(unittest.TestCase):
         self.assertEqual(set(catalog_agents), set(export))
         for agent_id, metadata in export.items():
             with self.subTest(agent=agent_id):
-                self.assertIn(metadata["kind"], {"author", "reviewer", "curator", "support"})
+                self.assertIn(metadata["kind"], {"author", "reviewer", "specialist"})
                 self.assertTrue(metadata["phase"])
                 self.assertTrue((export_path.parent / metadata["definition"]).is_file(), metadata["definition"])
 
@@ -320,7 +324,7 @@ class RepositoryHealthTests(unittest.TestCase):
         plugin_root = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents"
         provider = json.loads((plugin_root / "provider.json").read_text(encoding="utf-8"))
         self.assertEqual("secure-cloud-agents", provider["id"])
-        self.assertEqual("0.2.0", provider["version"])
+        self.assertEqual("0.3.0", provider["version"])
         self.assertTrue((plugin_root / "suite" / "agents" / "catalog.yaml").is_file())
         offenders = []
         for path in plugin_root.rglob("*"):
@@ -351,7 +355,7 @@ class RepositoryHealthTests(unittest.TestCase):
             encoding="utf-8",
             env=os.environ.copy(),
         )
-        self.assertEqual("0.2.0", result.stdout.strip())
+        self.assertEqual("0.3.0", result.stdout.strip())
 
     @unittest.skipUnless(sys.platform != "win32", "bin/agents is a POSIX sh script")
     def test_bin_agents_wrapper_dispatches_select_matching_direct_invocation(self) -> None:
@@ -448,6 +452,7 @@ class RepositoryHealthTests(unittest.TestCase):
         direct_payload.pop("generated_at", None)
         wrapper_payload.pop("generated_at", None)
         for payload in (direct_payload, wrapper_payload):
+            payload.pop("dispatch_fingerprint", None)
             for request in payload.get("knowledge_context", {}).get("requests", []):
                 request["invocation"]["args"][0] = "<packaged-knowledge-cli>"
         self.assertEqual(direct_payload, wrapper_payload)

@@ -30,7 +30,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 | Understand the suite | [IDENTITY.md](IDENTITY.md), then [documentation index](docs/README.md) |
 | Use the suite from a checkout | [Getting started](docs/getting-started.md) |
 | Select and coordinate agents | [Orchestration guide](docs/orchestration.md) |
-| Initialize lifecycle gates in another project | [Lifecycle and plugin operations](docs/lifecycle-and-plugin-operations.md) |
+| Set up lifecycle gates in a target project | [Lifecycle and plugin operations](docs/lifecycle-and-plugin-operations.md) |
 | Find the right specialist | [Role index](docs/role-index.md) |
 | Contribute here | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Operate the full system | [agents/RUNBOOK.md](agents/RUNBOOK.md) |
@@ -52,9 +52,10 @@ Key areas:
 The boundary is intentional: Agentic SDLC owns lifecycle state, schemas, gate
 transitions, approval-source policy, and portable commands. This repository
 owns the Secure Cloud role catalog, role policies, workflows, knowledge store,
-and the `secure-cloud` provider. A target project records its own decisions
-and run state under `.agentic-sdlc/`; installing or upgrading a plugin does not
-grant approval or rewrite those records.
+and the `secure-cloud` provider. This repository is lifecycle-exempt and has no
+project-owned overlay or run record. A consuming target project records its own
+decisions and run state under `.agentic-sdlc/`; installing or upgrading a
+plugin does not grant approval or rewrite those records.
 
 ## Supported runners
 
@@ -91,7 +92,7 @@ for exploration but is not an immutable dependency:
 
 ```sh
 git clone https://github.com/deagy/agentic-sdlc.git
-git -C agentic-sdlc checkout v0.2.0
+git -C agentic-sdlc checkout 4a726668735649400670f1c19e7d280c14d67d2b
 codex plugin marketplace add ./agentic-sdlc
 codex plugin add agentic-sdlc@agentic-sdlc
 ```

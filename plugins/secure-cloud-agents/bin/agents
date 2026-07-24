@@ -8,7 +8,7 @@ command_name="${1:-help}"
 if [ "$command_name" = "sdlc" ]; then
   sdlc_bin="${AGENTIC_SDLC_BIN:-}"
   if [ -z "$sdlc_bin" ]; then sdlc_bin=$(command -v agentic-sdlc || true); fi
-  [ -n "$sdlc_bin" ] || { echo "agents: install Agentic SDLC v0.2.x from https://github.com/deagy/agentic-sdlc" >&2; exit 1; }
+  [ -n "$sdlc_bin" ] || { echo "agents: install Agentic SDLC v0.3.x from https://github.com/deagy/agentic-sdlc" >&2; exit 1; }
   exec "$sdlc_bin" --provider "$PLUGIN_ROOT/provider.json" "$@"
 fi
 AGENT_PYTHON=
