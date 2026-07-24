@@ -1,0 +1,105 @@
+{
+  "artifact_id": "intent-record-github-review-approvals-2026-07-24",
+  "revision": "1",
+  "kind": "intent-record",
+  "authors": [
+    "product-intent-agent"
+  ],
+  "verifiers": [],
+  "upstream_ids": [],
+  "downstream_ids": [
+    "requirements-baseline-github-review-approvals-2026-07-24"
+  ],
+  "provenance": {
+    "created_at": "2026-07-24T06:12:00Z",
+    "ai_generated": true
+  },
+  "evidence": [
+    {
+      "evidence_id": "intent-source-objective",
+      "type": "source-prompt",
+      "source": "user prompt",
+      "captured_at": "2026-07-24T05:56:00Z",
+      "text": "I would like to tie human approvals to a github review",
+      "classification": "internal"
+    },
+    {
+      "evidence_id": "intent-source-implementation",
+      "type": "source-prompt",
+      "source": "user prompt",
+      "captured_at": "2026-07-24T05:57:00Z",
+      "text": "Implement on a new feature branch",
+      "classification": "internal"
+    },
+    {
+      "evidence_id": "intent-record-body",
+      "type": "intent-details",
+      "title": "Implement GitHub review backed human approvals for Agentic SDLC gates",
+      "task_id": "github-review-approvals-2026-07-24",
+      "owner": "github.com/deagy",
+      "priority": "high",
+      "classification": "internal",
+      "users": [
+        "repository maintainers administering Agentic SDLC lifecycle gates",
+        "human approvers whose decisions must bind to durable GitHub review evidence",
+        "independent reviewers validating authority separation and gate readiness"
+      ],
+      "desired_outcomes": [
+        "Human lifecycle approvals can be recorded from GitHub PR review evidence.",
+        "Projects can require GitHub-review-backed approvals while optionally preserving manual fallback for historical runs.",
+        "Gate progression remains traceable and automatically advances when approvals complete a ready gate."
+      ],
+      "in_scope": [
+        "Portable Agentic SDLC CLI support for recording approvals from GitHub review metadata.",
+        "Validation rules for approval-source policy, GitHub reviewer identity matching, and evidence URI structure.",
+        "Repository overlay defaults and authority bindings needed to adopt GitHub review approvals.",
+        "Regression tests and documentation for the new approval flow."
+      ],
+      "out_of_scope": [
+        "Live GitHub API retrieval or enforcement of remote PR state beyond provided review metadata.",
+        "Rewriting historical approval evidence for prior July 24, 2026 runs.",
+        "Production deployment, persistent environment mutation, or release authorization changes."
+      ],
+      "constraints": [
+        "Maintain separation of duties between artifact preparers, independent reviewers, and human approvers.",
+        "Preserve repository validity for existing historical run records while moving the default approval path toward GitHub review evidence.",
+        "Keep the implementation portable and standard-library based within the plugin CLI.",
+        "Bind decisions to exact source revision 5de2fb68f97758580a68a56927fede99af86c501 and PR #7."
+      ],
+      "environments": [
+        {
+          "name": "local",
+          "persistence": "persistent",
+          "production": "non-production"
+        }
+      ]
+    },
+    {
+      "evidence_id": "intent-open-decisions",
+      "type": "assumptions-and-conflicts",
+      "assumptions": [
+        "A portable first increment can rely on explicit GitHub review metadata supplied to the CLI without adding a network dependency.",
+        "This repository should prefer GitHub-review-backed approvals going forward but keep manual fallback enabled until historical records are migrated or superseded."
+      ],
+      "conflicts_or_open_decisions": [
+        "Whether future iterations should fetch and verify GitHub review state directly through the GitHub API or gh CLI remains a later design decision."
+      ]
+    },
+    {
+      "evidence_id": "intent-success-criteria",
+      "type": "measurable-success",
+      "measurable_success_criteria": [
+        "The plugin exposes a command that records GitHub review metadata as human approval evidence for a lifecycle gate.",
+        "Validation rejects strict GitHub-review approval policies when approval evidence is missing or reviewer identity does not match the assigned authority.",
+        "The repository validates successfully on Friday, July 24, 2026 after adopting GitHub-review defaults with backward-compatible fallback.",
+        "Automated tests cover approval recording, strict-policy rejection, and reviewer-identity mismatch cases."
+      ],
+      "human_decisions": {
+        "product_owner": "github.com/deagy",
+        "priority": "high",
+        "scope_mode": "approval flow and validation",
+        "success_mode": "tests + validation + PR"
+      }
+    }
+  ]
+}

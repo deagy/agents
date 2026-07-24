@@ -1,0 +1,28 @@
+{
+  "artifact_id": "g1-product-intent-agent-attestation",
+  "revision": "1",
+  "kind": "agent-attestation",
+  "authors": [
+    "product-intent-agent"
+  ],
+  "verifiers": [],
+  "upstream_ids": [
+    "intent-record-github-review-approvals-2026-07-24"
+  ],
+  "downstream_ids": [
+    "github-review-approvals-2026-07-24:G1"
+  ],
+  "provenance": {
+    "created_at": "2026-07-24T06:18:00Z",
+    "ai_generated": true
+  },
+  "evidence": [
+    {
+      "evidence_id": "g1-attestation-summary",
+      "type": "agent-summary",
+      "task_id": "github-review-approvals-2026-07-24",
+      "agent_id": "product-intent-agent",
+      "summary": "Prepared the G1 intent package for GitHub-review-backed human approvals, including scope, constraints, success criteria, and transition assumptions for repository-level adoption."
+    }
+  ]
+}

@@ -1,0 +1,771 @@
+{
+  "version": 2,
+  "task_id": "github-review-approvals-2026-07-24",
+  "recorded_at": "2026-07-24T06:00:21.772625Z",
+  "classification": "internal",
+  "mode": "planning-review-only",
+  "baseline_revision": "5de2fb68f97758580a68a56927fede99af86c501",
+  "scope": "Implement GitHub review backed human approvals for Agentic SDLC gates",
+  "dispatch_fingerprint": "sha256:29468608b8f151a669fe0580edbc1b526b02aeda894cfa952af2d77ed075487c",
+  "disposition": "pending",
+  "intent_record_id": "intent-record-github-review-approvals-2026-07-24",
+  "requirements_baseline_id": "requirements-baseline-github-review-approvals-2026-07-24",
+  "current_lifecycle_phase": "intent",
+  "knowledge_retrieval": {
+    "status": "unavailable",
+    "reason": "No portable knowledge source configured",
+    "query_ids": [],
+    "evidence_refs": [],
+    "influence": "none"
+  },
+  "impact_profile": {
+    "profile_id": "agents-impact",
+    "status": "blocked",
+    "impact_categories": [],
+    "specialized_boms": [],
+    "blocking_unknowns": []
+  },
+  "lifecycle_gates": [
+    {
+      "tier": "lifecycle",
+      "gate_id": "G1",
+      "name": "Intent",
+      "status": "pending",
+      "applicability": "applicable",
+      "applicability_rationale": "Lifecycle gate applies by default",
+      "artifact_bindings": [
+        {
+          "artifact_id": "intent-record-github-review-approvals-2026-07-24",
+          "revision": "1",
+          "digest": "sha256:1a7734edfd7445968676f98c45ec870796ee451fd25b42d2daa15fe85a2d487c",
+          "environment": null
+        }
+      ],
+      "preparers": [
+        {
+          "id": "product-intent-agent",
+          "role": "product-intent-agent",
+          "kind": "agent"
+        }
+      ],
+      "independent_verifier": null,
+      "independence_declaration": {
+        "verifier_confirmed_not_preparer": false,
+        "verifier_made_material_correction": false
+      },
+      "authority_requirements": [
+        {
+          "authority_id": "code-reviewer",
+          "authority_type": "independent-verifier",
+          "role": "code-reviewer",
+          "applicability": "applicable",
+          "rationale": "Required by lifecycle gate contract"
+        },
+        {
+          "authority_id": "product_owner",
+          "authority_type": "human-approver",
+          "role": "Product Owner",
+          "applicability": "applicable",
+          "rationale": "Assigned in project authority map"
+        }
+      ],
+      "human_approvals": [],
+      "decided_at": null,
+      "evidence_refs": [],
+      "knowledge_status": "unavailable",
+      "findings": [],
+      "exceptions": [],
+      "invalidation_history": [],
+      "required_reentry_gate": null
+    },
+    {
+      "tier": "lifecycle",
+      "gate_id": "G2",
+      "name": "Requirements Baseline",
+      "status": "pending",
+      "applicability": "applicable",
+      "applicability_rationale": "Lifecycle gate applies by default",
+      "artifact_bindings": [
+        {
+          "artifact_id": "requirements-baseline-github-review-approvals-2026-07-24",
+          "revision": "1",
+          "digest": "sha256:092d49679c60203073f96271ad68afc79167ecc0f2b95ba6ad7e6bd9e2fc2a91",
+          "environment": null
+        }
+      ],
+      "preparers": [
+        {
+          "id": "requirements-agent",
+          "role": "requirements-agent",
+          "kind": "agent"
+        }
+      ],
+      "independent_verifier": null,
+      "independence_declaration": {
+        "verifier_confirmed_not_preparer": false,
+        "verifier_made_material_correction": false
+      },
+      "authority_requirements": [
+        {
+          "authority_id": "code-reviewer",
+          "authority_type": "independent-verifier",
+          "role": "code-reviewer",
+          "applicability": "applicable",
+          "rationale": "Required by lifecycle gate contract"
+        },
+        {
+          "authority_id": "product_owner",
+          "authority_type": "human-approver",
+          "role": "Product Owner",
+          "applicability": "applicable",
+          "rationale": "Assigned in project authority map"
+        },
+        {
+          "authority_id": "engineering_lead",
+          "authority_type": "human-approver",
+          "role": "Engineering Lead",
+          "applicability": "applicable",
+          "rationale": "Assigned in project authority map"
+        }
+      ],
+      "human_approvals": [],
+      "decided_at": null,
+      "evidence_refs": [],
+      "knowledge_status": "unavailable",
+      "findings": [],
+      "exceptions": [],
+      "invalidation_history": [],
+      "required_reentry_gate": null
+    },
+    {
+      "tier": "lifecycle",
+      "gate_id": "G3",
+      "name": "Architecture",
+      "status": "pending",
+      "applicability": "applicable",
+      "applicability_rationale": "Lifecycle gate applies by default",
+      "artifact_bindings": [],
+      "preparers": [],
+      "independent_verifier": null,
+      "independence_declaration": {
+        "verifier_confirmed_not_preparer": false,
+        "verifier_made_material_correction": false
+      },
+      "authority_requirements": [
+        {
+          "authority_id": "code-reviewer",
+          "authority_type": "independent-verifier",
+          "role": "code-reviewer",
+          "applicability": "applicable",
+          "rationale": "Required by lifecycle gate contract"
+        },
+        {
+          "authority_id": "system_architect",
+          "authority_type": "human-approver",
+          "role": "System Architect",
+          "applicability": "applicable",
+          "rationale": "Assigned in project authority map"
+        }
+      ],
+      "human_approvals": [],
+      "decided_at": null,
+      "evidence_refs": [],
+      "knowledge_status": "unavailable",
+      "findings": [],
+      "exceptions": [],
+      "invalidation_history": [],
+      "required_reentry_gate": null
+    },
+    {
+      "tier": "lifecycle",
+      "gate_id": "G4",
+      "name": "Governance and Data",
+      "status": "pending",
+      "applicability": "applicable",
+      "applicability_rationale": "Lifecycle gate applies by default",
+      "artifact_bindings": [],
+      "preparers": [],
+      "independent_verifier": null,
+      "independence_declaration": {
+        "verifier_confirmed_not_preparer": false,
+        "verifier_made_material_correction": false
+      },
+      "authority_requirements": [
+        {
+          "authority_id": "compliance-reviewer",
+          "authority_type": "independent-verifier",
+          "role": "compliance-reviewer",
+          "applicability": "applicable",
+          "rationale": "Required by lifecycle gate contract"
+        },
+        {
+          "authority_id": "governance_lead",
+          "authority_type": "human-approver",
+          "role": "Governance Lead",
+          "applicability": "applicable",
+          "rationale": "Assigned in project authority map"
+        },
+        {
+          "authority_id": "data_control_owner",
+          "authority_type": "human-approver",
+          "role": "Data/Control Owner",
+          "applicability": "not-applicable",
+          "rationale": "This repository-level SDLC guardrail setup does not define a separate data/control ownership gate for the current local workflow state."
+        }
+      ],
+      "human_approvals": [],
+      "decided_at": null,
+      "evidence_refs": [],
+      "knowledge_status": "unavailable",
+      "findings": [],
+      "exceptions": [],
+      "invalidation_history": [],
+      "required_reentry_gate": null
+    },
+    {
+      "tier": "lifecycle",
+      "gate_id": "G5",
+      "name": "Security and Crypto",
+      "status": "pending",
+      "applicability": "applicable",
+      "applicability_rationale": "Lifecycle gate applies by default",
+      "artifact_bindings": [],
+      "preparers": [],
+      "independent_verifier": null,
+      "independence_declaration": {
+        "verifier_confirmed_not_preparer": false,
+        "verifier_made_material_correction": false
+      },
+      "authority_requirements": [
+        {
+          "authority_id": "security-reviewer",
+          "authority_type": "independent-verifier",
+          "role": "security-reviewer",
+          "applicability": "applicable",
+          "rationale": "Required by lifecycle gate contract"
+        },
+        {
+          "authority_id": "security_lead",
+          "authority_type": "human-approver",
+          "role": "Security Lead",
+          "applicability": "applicable",
+          "rationale": "Assigned in project authority map"
+        },
+        {
+          "authority_id": "human_key_owner",
+          "authority_type": "human-approver",
+          "role": "Human Key Owner",
+          "applicability": "not-applicable",
+          "rationale": "This repository-level SDLC guardrail setup does not operate live key-management decisions or human key custody in the current local workflow state."
+        }
+      ],
+      "human_approvals": [],
+      "decided_at": null,
+      "evidence_refs": [],
+      "knowledge_status": "unavailable",
+      "findings": [],
+      "exceptions": [],
+      "invalidation_history": [],
+      "required_reentry_gate": null
+    },
+    {
+      "tier": "lifecycle",
+      "gate_id": "G6",
+      "name": "Verification and Test",
+      "status": "pending",
+      "applicability": "applicable",
+      "applicability_rationale": "Lifecycle gate applies by default",
+      "artifact_bindings": [],
+      "preparers": [],
+      "independent_verifier": null,
+      "independence_declaration": {
+        "verifier_confirmed_not_preparer": false,
+        "verifier_made_material_correction": false
+      },
+      "authority_requirements": [
+        {
+          "authority_id": "test-engineer",
+          "authority_type": "independent-verifier",
+          "role": "test-engineer",
+          "applicability": "applicable",
+          "rationale": "Required by lifecycle gate contract"
+        },
+        {
+          "authority_id": "engineering_lead",
+          "authority_type": "human-approver",
+          "role": "Engineering Lead",
+          "applicability": "applicable",
+          "rationale": "Assigned in project authority map"
+        },
+        {
+          "authority_id": "uat_product_owner",
+          "authority_type": "human-approver",
+          "role": "Product Owner",
+          "applicability": "not-applicable",
+          "rationale": "Formal UAT authority is not in scope for the current repository-level guardrail and local workflow setup."
+        }
+      ],
+      "human_approvals": [],
+      "decided_at": null,
+      "evidence_refs": [],
+      "knowledge_status": "unavailable",
+      "findings": [],
+      "exceptions": [],
+      "invalidation_history": [],
+      "required_reentry_gate": null
+    },
+    {
+      "tier": "lifecycle",
+      "gate_id": "G7",
+      "name": "Evidence",
+      "status": "pending",
+      "applicability": "applicable",
+      "applicability_rationale": "Lifecycle gate applies by default",
+      "artifact_bindings": [],
+      "preparers": [],
+      "independent_verifier": null,
+      "independence_declaration": {
+        "verifier_confirmed_not_preparer": false,
+        "verifier_made_material_correction": false
+      },
+      "authority_requirements": [
+        {
+          "authority_id": "compliance-reviewer",
+          "authority_type": "independent-verifier",
+          "role": "compliance-reviewer",
+          "applicability": "applicable",
+          "rationale": "Required by lifecycle gate contract"
+        },
+        {
+          "authority_id": "release_owner",
+          "authority_type": "human-approver",
+          "role": "Release Owner",
+          "applicability": "applicable",
+          "rationale": "Assigned in project authority map"
+        }
+      ],
+      "human_approvals": [],
+      "decided_at": null,
+      "evidence_refs": [],
+      "knowledge_status": "unavailable",
+      "findings": [],
+      "exceptions": [],
+      "invalidation_history": [],
+      "required_reentry_gate": null
+    },
+    {
+      "tier": "lifecycle",
+      "gate_id": "G8",
+      "name": "Release Readiness",
+      "status": "pending",
+      "applicability": "applicable",
+      "applicability_rationale": "Lifecycle gate applies by default",
+      "artifact_bindings": [],
+      "preparers": [],
+      "independent_verifier": null,
+      "independence_declaration": {
+        "verifier_confirmed_not_preparer": false,
+        "verifier_made_material_correction": false
+      },
+      "authority_requirements": [
+        {
+          "authority_id": "code-reviewer",
+          "authority_type": "independent-verifier",
+          "role": "code-reviewer",
+          "applicability": "applicable",
+          "rationale": "Required by lifecycle gate contract"
+        },
+        {
+          "authority_id": "release_owner",
+          "authority_type": "human-approver",
+          "role": "Release Owner",
+          "applicability": "applicable",
+          "rationale": "Assigned in project authority map"
+        }
+      ],
+      "human_approvals": [],
+      "decided_at": null,
+      "evidence_refs": [],
+      "knowledge_status": "unavailable",
+      "findings": [],
+      "exceptions": [],
+      "invalidation_history": [],
+      "required_reentry_gate": null
+    },
+    {
+      "tier": "lifecycle",
+      "gate_id": "G9",
+      "name": "Deployment Authorization",
+      "status": "pending",
+      "applicability": "applicable",
+      "applicability_rationale": "Lifecycle gate applies by default",
+      "artifact_bindings": [],
+      "preparers": [],
+      "independent_verifier": null,
+      "independence_declaration": {
+        "verifier_confirmed_not_preparer": false,
+        "verifier_made_material_correction": false
+      },
+      "authority_requirements": [
+        {
+          "authority_id": "code-reviewer",
+          "authority_type": "independent-verifier",
+          "role": "code-reviewer",
+          "applicability": "applicable",
+          "rationale": "Required by lifecycle gate contract"
+        },
+        {
+          "authority_id": "release_authority",
+          "authority_type": "human-approver",
+          "role": "Release Authority",
+          "applicability": "applicable",
+          "rationale": "Assigned in project authority map"
+        }
+      ],
+      "human_approvals": [],
+      "decided_at": null,
+      "evidence_refs": [],
+      "knowledge_status": "unavailable",
+      "findings": [],
+      "exceptions": [],
+      "invalidation_history": [],
+      "required_reentry_gate": null
+    },
+    {
+      "tier": "lifecycle",
+      "gate_id": "G10",
+      "name": "Runtime Conformance",
+      "status": "pending",
+      "applicability": "applicable",
+      "applicability_rationale": "Lifecycle gate applies by default",
+      "artifact_bindings": [],
+      "preparers": [],
+      "independent_verifier": null,
+      "independence_declaration": {
+        "verifier_confirmed_not_preparer": false,
+        "verifier_made_material_correction": false
+      },
+      "authority_requirements": [
+        {
+          "authority_id": "code-reviewer",
+          "authority_type": "independent-verifier",
+          "role": "code-reviewer",
+          "applicability": "applicable",
+          "rationale": "Required by lifecycle gate contract"
+        },
+        {
+          "authority_id": "service_owner",
+          "authority_type": "human-approver",
+          "role": "Service Owner",
+          "applicability": "applicable",
+          "rationale": "Assigned in project authority map"
+        },
+        {
+          "authority_id": "implicated_security_lead",
+          "authority_type": "human-approver",
+          "role": "Security Lead",
+          "applicability": "not-applicable",
+          "rationale": "Runtime-conformance security implication routing is not applicable because this repository is not being assessed as a deployed service in the current local workflow state."
+        },
+        {
+          "authority_id": "implicated_governance_lead",
+          "authority_type": "human-approver",
+          "role": "Governance Lead",
+          "applicability": "not-applicable",
+          "rationale": "Runtime-conformance governance implication routing is not applicable because this repository is not being assessed as a deployed service in the current local workflow state."
+        }
+      ],
+      "human_approvals": [],
+      "decided_at": null,
+      "evidence_refs": [],
+      "knowledge_status": "unavailable",
+      "findings": [],
+      "exceptions": [],
+      "invalidation_history": [],
+      "required_reentry_gate": null
+    }
+  ],
+  "specialist_attestations": [],
+  "re_entry_history": [],
+  "execution_summary": {
+    "gates": {
+        "G1": {
+          "configured": true,
+          "ignored": false,
+          "ignore_reason": null,
+          "required_agents": [
+            "product-intent-agent",
+            "code-reviewer"
+          ],
+          "dispatched_agents": [
+            "product-intent-agent"
+          ],
+          "required_tasks": [
+            "capture-intent"
+          ],
+          "completed_tasks": [
+            "capture-intent"
+          ],
+        "required_agent_artifacts": [
+          {
+            "agent_id": "product-intent-agent",
+            "artifact_id": "g1-product-intent-agent-attestation"
+          },
+          {
+            "agent_id": "code-reviewer",
+            "artifact_id": "g1-code-reviewer-attestation"
+          }
+        ],
+          "produced_agent_artifacts": [
+            {
+              "agent_id": "product-intent-agent",
+              "artifact_id": "g1-product-intent-agent-attestation",
+              "revision": "1",
+              "digest": "sha256:28394b6201e62f7e2ecb0bdf08b318e7bfb63bf67ee5ee257e3119658ff07ae5"
+            }
+          ]
+        },
+        "G2": {
+          "configured": true,
+          "ignored": false,
+          "ignore_reason": null,
+          "required_agents": [
+            "requirements-agent",
+            "code-reviewer"
+          ],
+          "dispatched_agents": [
+            "requirements-agent"
+          ],
+          "required_tasks": [
+            "baseline-requirements"
+          ],
+          "completed_tasks": [
+            "baseline-requirements"
+          ],
+        "required_agent_artifacts": [
+          {
+            "agent_id": "requirements-agent",
+            "artifact_id": "g2-requirements-agent-attestation"
+          },
+          {
+            "agent_id": "code-reviewer",
+            "artifact_id": "g2-code-reviewer-attestation"
+          }
+        ],
+          "produced_agent_artifacts": [
+            {
+              "agent_id": "requirements-agent",
+              "artifact_id": "g2-requirements-agent-attestation",
+              "revision": "1",
+              "digest": "sha256:eb6e9fcca614796d754d89a4a48cacc71927c01da3849f9fa741b40a685af2ff"
+            }
+          ]
+        },
+      "G3": {
+        "configured": false,
+        "ignored": false,
+        "ignore_reason": null,
+        "required_agents": [
+          "cloud-architect",
+          "code-reviewer"
+        ],
+        "dispatched_agents": [],
+        "required_tasks": [
+          "define-architecture"
+        ],
+        "completed_tasks": [],
+        "required_agent_artifacts": [
+          {
+            "agent_id": "cloud-architect",
+            "artifact_id": "g3-cloud-architect-attestation"
+          },
+          {
+            "agent_id": "code-reviewer",
+            "artifact_id": "g3-code-reviewer-attestation"
+          }
+        ],
+        "produced_agent_artifacts": []
+      },
+      "G4": {
+        "configured": false,
+        "ignored": false,
+        "ignore_reason": null,
+        "required_agents": [
+          "governance-planner",
+          "data-governance-engineer",
+          "compliance-reviewer"
+        ],
+        "dispatched_agents": [],
+        "required_tasks": [
+          "assess-governance-and-data"
+        ],
+        "completed_tasks": [],
+        "required_agent_artifacts": [
+          {
+            "agent_id": "governance-planner",
+            "artifact_id": "g4-governance-planner-attestation"
+          },
+          {
+            "agent_id": "data-governance-engineer",
+            "artifact_id": "g4-data-governance-engineer-attestation"
+          },
+          {
+            "agent_id": "compliance-reviewer",
+            "artifact_id": "g4-compliance-reviewer-attestation"
+          }
+        ],
+        "produced_agent_artifacts": []
+      },
+      "G5": {
+        "configured": false,
+        "ignored": false,
+        "ignore_reason": null,
+        "required_agents": [
+          "threat-modeler",
+          "cryptographic-assurance-engineer",
+          "security-reviewer"
+        ],
+        "dispatched_agents": [],
+        "required_tasks": [
+          "perform-security-and-crypto-review"
+        ],
+        "completed_tasks": [],
+        "required_agent_artifacts": [
+          {
+            "agent_id": "threat-modeler",
+            "artifact_id": "g5-threat-modeler-attestation"
+          },
+          {
+            "agent_id": "cryptographic-assurance-engineer",
+            "artifact_id": "g5-cryptographic-assurance-engineer-attestation"
+          },
+          {
+            "agent_id": "security-reviewer",
+            "artifact_id": "g5-security-reviewer-attestation"
+          }
+        ],
+        "produced_agent_artifacts": []
+      },
+      "G6": {
+        "configured": false,
+        "ignored": false,
+        "ignore_reason": null,
+        "required_agents": [
+          "application-engineer",
+          "test-engineer"
+        ],
+        "dispatched_agents": [],
+        "required_tasks": [
+          "implement-and-verify"
+        ],
+        "completed_tasks": [],
+        "required_agent_artifacts": [
+          {
+            "agent_id": "application-engineer",
+            "artifact_id": "g6-application-engineer-attestation"
+          },
+          {
+            "agent_id": "test-engineer",
+            "artifact_id": "g6-test-engineer-attestation"
+          }
+        ],
+        "produced_agent_artifacts": []
+      },
+      "G7": {
+        "configured": false,
+        "ignored": false,
+        "ignore_reason": null,
+        "required_agents": [
+          "evidence-curator",
+          "compliance-reviewer"
+        ],
+        "dispatched_agents": [],
+        "required_tasks": [
+          "curate-evidence"
+        ],
+        "completed_tasks": [],
+        "required_agent_artifacts": [
+          {
+            "agent_id": "evidence-curator",
+            "artifact_id": "g7-evidence-curator-attestation"
+          },
+          {
+            "agent_id": "compliance-reviewer",
+            "artifact_id": "g7-compliance-reviewer-attestation"
+          }
+        ],
+        "produced_agent_artifacts": []
+      },
+      "G8": {
+        "configured": false,
+        "ignored": false,
+        "ignore_reason": null,
+        "required_agents": [
+          "release-engineer",
+          "code-reviewer"
+        ],
+        "dispatched_agents": [],
+        "required_tasks": [
+          "assess-release-readiness"
+        ],
+        "completed_tasks": [],
+        "required_agent_artifacts": [
+          {
+            "agent_id": "release-engineer",
+            "artifact_id": "g8-release-engineer-attestation"
+          },
+          {
+            "agent_id": "code-reviewer",
+            "artifact_id": "g8-code-reviewer-attestation"
+          }
+        ],
+        "produced_agent_artifacts": []
+      },
+      "G9": {
+        "configured": false,
+        "ignored": false,
+        "ignore_reason": null,
+        "required_agents": [
+          "code-reviewer"
+        ],
+        "dispatched_agents": [],
+        "required_tasks": [
+          "authorize-deployment"
+        ],
+        "completed_tasks": [],
+        "required_agent_artifacts": [
+          {
+            "agent_id": "code-reviewer",
+            "artifact_id": "g9-code-reviewer-attestation"
+          }
+        ],
+        "produced_agent_artifacts": []
+      },
+      "G10": {
+        "configured": false,
+        "ignored": false,
+        "ignore_reason": null,
+        "required_agents": [
+          "observability-sre",
+          "code-reviewer"
+        ],
+        "dispatched_agents": [],
+        "required_tasks": [
+          "observe-runtime-conformance"
+        ],
+        "completed_tasks": [],
+        "required_agent_artifacts": [
+          {
+            "agent_id": "observability-sre",
+            "artifact_id": "g10-observability-sre-attestation"
+          },
+          {
+            "agent_id": "code-reviewer",
+            "artifact_id": "g10-code-reviewer-attestation"
+          }
+        ],
+        "produced_agent_artifacts": []
+      }
+    }
+  }
+}

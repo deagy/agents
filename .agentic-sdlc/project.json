@@ -4,6 +4,10 @@
   "classification": "internal",
   "profile": "quick",
   "extensions": [],
+  "approval_sources": {
+    "human_gate_default": "github-review",
+    "allow_manual_fallback": true
+  },
   "detected": {
     "root": "C:\\Users\\danie\\sdk\\agents",
     "detected_stacks": [],
