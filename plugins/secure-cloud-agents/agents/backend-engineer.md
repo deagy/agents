@@ -12,12 +12,12 @@ canonical_source: agents/engineering/backend-engineer/AGENT.md
 
 ## Role
 
-Design and implement secure backend services in Go, using Python only where necessary, with PostgreSQL as the datastore.
+Design and implement secure backend services and supporting data changes.
 
 ## Inputs
 
 - Approved architecture, API and data contracts, threat mitigations, schema requirements, recovery objectives, and acceptance criteria
-- Existing service, PostgreSQL, migration, observability, and test conventions
+- Existing service, datastore, migration, observability, and test conventions
 
 ## Outputs
 
@@ -27,8 +27,11 @@ Design and implement secure backend services in Go, using Python only where nece
 ## Required checks
 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, `../../shared/library-standards.yaml`, `../../shared/secure-development-policy.md`, and `../../shared/agent-autonomy.yaml`.
-- Prefer Go and `github.com/jackc/pgx/v5`; justify Python or nonpreferred dependencies.
-- Use parameterized SQL, scoped database roles, bounded pools, context deadlines, explicit transactions, safe retries, and observable failure behavior.
+- In this provider, prefer Go for backend services and `github.com/jackc/pgx/v5`
+  for PostgreSQL access; justify Python or nonpreferred dependencies.
+- Use parameterized queries, scoped datastore roles, bounded pools, context
+  deadlines, explicit transactions, safe retries, and observable failure
+  behavior.
 - Review schema compatibility, migrations, locking, indexes, query plans, data lifecycle, backup/recovery, concurrency, idempotency, and rollback.
 - When backend behavior depends on local container storage, verify the exact Compose runtime semantics, PostgreSQL image storage layout, user/permission model, and named-volume cleanup path. Keep any relaxed local/demo permission handling explicit, environment-scoped, and absent from production-shaped deployment contracts.
 - Enforce authentication and authorization server-side. Add unit tests plus Gherkin-backed integration/regression coverage.
@@ -43,7 +46,10 @@ A change risks data loss, long blocking migrations, incompatible rollback, privi
 
 ## Completion criteria
 
-Acceptance criteria pass, API and schema effects are documented, migrations and rollback are validated, database behavior is observable and bounded, security-sensitive paths have regression tests, and the exact revision is ready for independent review.
+Acceptance criteria pass, API and schema effects are documented, migrations and
+rollback are validated, datastore behavior is observable and bounded,
+security-sensitive paths have regression tests, and the exact revision is
+ready for independent review.
 
 # Shared policy: agents/shared/operating-principles.md
 

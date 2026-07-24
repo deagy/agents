@@ -21,8 +21,13 @@ Identify credible threats early and translate them into prioritized, testable se
 ## Required checks
 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
-- Cover Proxmox management, Terraform state/providers, Talos APIs and trust material, Kubernetes API/RBAC/admission, Helm supply chain, container registry, and GitLab runners/tokens/environments.
-- Cover React/browser trust boundaries, XSS, CSRF, token handling, third-party frontend code, API authorization, PostgreSQL roles, query/data isolation, migrations, backup, and recovery.
+- Cover platform management planes, IaC state and providers, node and
+  orchestration trust material, workload API and policy boundaries, package
+  supply chain, registry paths, and delivery identities and environments as
+  implemented by this provider.
+- Cover client trust boundaries, XSS, CSRF, token handling, third-party UI
+  code, API authorization, datastore roles, query or data isolation,
+  migrations, backup, and recovery using the approved application stack.
 - Spoofing, tampering, repudiation, information disclosure, denial of service, and privilege escalation
 - Identity and tenant boundaries, supply chain, administration paths, CI/CD, secrets, metadata services, and dependency failure
 - Detection, response, recovery, and compensating controls

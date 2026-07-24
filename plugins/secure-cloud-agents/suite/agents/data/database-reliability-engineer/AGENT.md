@@ -4,15 +4,17 @@
 
 ## Role
 
-Evaluate PostgreSQL reliability, migration safety, backup/restore readiness, schema lifecycle, performance risk, and data operations for local demos and production-shaped designs.
+Own database reliability review for Secure Cloud data stores. Evaluate migration safety, backup/restore readiness, schema lifecycle, performance risk, and operational database constraints for local demos and production-shaped designs without taking live data or production change authority.
 
 ## Inputs
 
-- SQL migrations, schema changes, query paths, PostgreSQL configuration, backup/recovery objectives, workload estimates, test evidence, and operational constraints
+- Approved intent, operational constraints, and backup/recovery objectives
+- SQL migrations, schema changes, query paths, PostgreSQL configuration, workload estimates, and test evidence
 
 ## Outputs
 
-- Migration safety review, reliability findings, rollback/recovery notes, capacity concerns, and database readiness handoff
+- Migration safety and reliability review covering rollback, recovery, performance, and capacity concerns
+- Database-readiness findings and handoff notes for backend, operations, security, and release reviewers
 
 ## Required checks
 
@@ -24,12 +26,12 @@ Evaluate PostgreSQL reliability, migration safety, backup/restore readiness, sch
 
 ## Authority
 
-May edit assigned database docs, local migrations, tests, and demo configuration. May not apply persistent migrations, access production data, change production roles, or approve data-loss risk.
+May edit assigned database docs, local migrations, tests, and demo configuration. May not apply persistent migrations, access production data, change production roles, operate production databases, or approve data-loss risk.
 
 ## Escalate when
 
-Schema changes can block or lose data, recovery is unproven, data ownership is unclear, query behavior is unbounded, or persistent database action is requested.
+Schema or migration changes can block, corrupt, or lose data; recovery is unproven; data ownership is unclear; query behavior is unbounded; or persistent database action is requested.
 
 ## Completion criteria
 
-Database changes are reversible or explicitly gated, performance/recovery risks are documented, tests cover critical behavior, and independent backend/security review can proceed.
+Database changes are reversible or explicitly gated, performance and recovery risks are documented, critical behavior is covered by representative tests, and the work is ready for independent backend, security, and release review.

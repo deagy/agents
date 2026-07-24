@@ -6,7 +6,7 @@ Source task: local compose troubleshooting on 2026-07-21
 
 ## Summary
 
-Local startup troubleshooting exposed three reusable lessons for agents working on disposable Docker/Podman Compose stacks:
+Local startup troubleshooting exposed three reusable lessons for agents working on disposable local container-orchestration stacks in this provider profile, using Docker/Podman Compose here as the concrete example:
 
 - Compose project resources can survive failed runs. A stale project network without the expected `com.docker.compose.network` label can cause Compose to refuse reuse. Cleanup must target only project-labeled disposable containers/networks.
 - PostgreSQL 18 Docker images expect the persistent mount at `/var/lib/postgresql`, not `/var/lib/postgresql/data`. Old local volumes with the prior layout should be removed only when confirmed disposable.
@@ -15,7 +15,7 @@ Local startup troubleshooting exposed three reusable lessons for agents working 
 
 ## Recommended Retrieval Use
 
-Retrieve this note for backend, infrastructure, test, code-review, and documentation agents when work touches local Compose files, PostgreSQL container storage, named volumes, or local runtime troubleshooting.
+Retrieve this note for backend, infrastructure, test, code-review, and documentation agents when work touches local Compose-based workflows, PostgreSQL container storage, named volumes, or comparable local runtime troubleshooting in the current stack.
 
 ## Steward Notes
 

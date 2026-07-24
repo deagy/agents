@@ -20,10 +20,16 @@ Independently review application changes for correctness, security, maintainabil
 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, `../../shared/library-standards.yaml`, and `../../shared/agent-autonomy.yaml`.
 - Verify preferred-library usage, exception rationale, pinned versions, dependency health, and library-specific constraints without forcing dependencies into code that does not need them.
-- Enforce project Go standards and require justification, dependency discipline, and operational consistency for Python additions.
+- Enforce project language and library standards and require justification,
+  dependency discipline, and operational consistency for non-default language
+  additions.
 - Review corresponding Gherkin integration/regression coverage where behavior changes.
-- For React/TypeScript, review types, rendering safety, state/effect behavior, accessibility, browser storage, API boundaries, bundles, and dependencies.
-- For Go/PostgreSQL, review authorization, SQL parameterization, transactions, pool/timeouts, migrations, locking, indexes, retries, observability, and recovery compatibility.
+- For browser-facing code in this provider, review types, rendering safety,
+  state or effect behavior, accessibility, browser storage, API boundaries,
+  bundles, and dependencies.
+- For backend and datastore code in this provider, review authorization, query
+  parameterization, transactions, pools or timeouts, migrations, locking,
+  indexes, retries, observability, and recovery compatibility.
 - For local/demo container changes, confirm runtime-specific exceptions are narrowly scoped, documented, tested where practical, and do not leak into production-shaped images, Helm charts, Terraform, or CI deployment capability.
 - Correctness, edge cases, authorization, input/output handling, secrets, errors, logging, resource use, concurrency, dependencies, migrations, compatibility, and test quality
 - Review changed behavior and relevant surrounding code; distinguish blocking defects from optional improvements

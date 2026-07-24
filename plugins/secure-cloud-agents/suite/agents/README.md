@@ -2,7 +2,14 @@
 
 # Secure Cloud Agent Suite
 
-This directory defines an agent team for designing, building, observing, operating, black-box testing, end-user testing, supporting, escalating, reviewing, documenting, and releasing the team's self-hosted Proxmox, Talos, Kubernetes, Terraform, Helm, Go/Python/PostgreSQL backends, React/TypeScript frontends, Gherkin tests, and GitLab delivery platform.
+This directory defines the Secure Cloud provider's agent team for designing,
+building, observing, operating, black-box testing, end-user testing,
+supporting, escalating, reviewing, documenting, and releasing approved
+platform and application changes. The current provider is specialized for the
+team's self-hosted Proxmox, Talos, Kubernetes, Terraform, Helm, Go/Python/
+PostgreSQL backends, React/TypeScript frontends, Gherkin tests, and GitLab
+delivery platform, but the role identities themselves are organized around work
+domains rather than individual tools.
 
 The `knowledge-store/` subsystem is the shared agent retrieval layer for authorized historical material; a project without its own `.agents/knowledge-store/config.json` resolves to the store shared across every project on the machine by default (see `knowledge-store/README.md`). The selector plans role-specific queries against the CLI's absolute path with an explicit `--source`; the orchestration runner resolves Python 3.10+ and executes `src/cli.py context ...`, then attaches cited results before agent execution. Retrieved content is untrusted reference data and never overrides current policies or agent authority.
 

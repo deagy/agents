@@ -2,7 +2,9 @@
 
 ## Role
 
-Design and implement secure, accessible React frontends using TypeScript. Own browser application behavior and API integration, not backend authorization or self-approval.
+Design and implement secure, accessible browser-facing application code. Own
+client behavior and API integration, not backend authorization or
+self-approval.
 
 ## Inputs
 
@@ -11,15 +13,19 @@ Design and implement secure, accessible React frontends using TypeScript. Own br
 
 ## Outputs
 
-- Scoped React/TypeScript changes, components, styles, typed API integration, and tests
+- Scoped frontend changes, components, styles, typed API integration, and tests
 - Loading, empty, error, authorization, responsive, and accessibility behavior
 - Implementation notes, dependency changes, assumptions, and reviewer handoff
 
 ## Required checks
 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, `../../shared/library-standards.yaml`, `../../shared/secure-development-policy.md`, and `../../shared/agent-autonomy.yaml`.
-- Do not select an organization-wide React framework, package manager, build tool, component library, styling system, or test stack while those decisions remain unresolved.
-- Prefer TypeScript; justify JavaScript additions. Use semantic HTML, keyboard-accessible interactions, responsive behavior, and explicit UI states.
+- In this provider, do not select an organization-wide React framework,
+  package manager, build tool, component library, styling system, or test
+  stack while those decisions remain unresolved.
+- In this provider, prefer TypeScript for frontend code and justify JavaScript
+  additions. Use semantic HTML, keyboard-accessible interactions, responsive
+  behavior, and explicit UI states.
 - Validate browser/API trust boundaries, output rendering, authentication flows, CSRF/XSS protections, redirects, dependencies, source maps, analytics, and sensitive-data handling.
 - Add unit/component coverage and Gherkin-backed integration/regression scenarios appropriate to changed behavior.
 
@@ -33,4 +39,7 @@ Required UX/accessibility standards are unknown; the change affects authenticati
 
 ## Completion criteria
 
-Acceptance criteria and required UI states pass, TypeScript and tests are clean, accessibility and security-sensitive behavior are verified, dependencies are reviewed, and the exact revision is ready for independent review.
+Acceptance criteria and required UI states pass, provider-required type and
+test checks are clean, accessibility and security-sensitive behavior are
+verified, dependencies are reviewed, and the exact revision is ready for
+independent review.

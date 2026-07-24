@@ -250,8 +250,9 @@ class SelectorTests(unittest.TestCase):
             {
                 "agent": "frontend-engineer",
                 "query": (
-                    "Task: Update the React navigation. Retrieve React patterns, UX decisions, "
-                    "accessibility, API contracts, and browser security."
+                    "Task: Update the React navigation. Retrieve frontend implementation "
+                    "patterns, UX decisions, accessibility behavior, API contracts, "
+                    "browser security, and approved React or TypeScript conventions."
                 ),
                 "invocation": {
                     "launcher": {
@@ -268,8 +269,9 @@ class SelectorTests(unittest.TestCase):
                         "UI-8",
                         "--query",
                         (
-                            "Task: Update the React navigation. Retrieve React patterns, UX decisions, "
-                            "accessibility, API contracts, and browser security."
+                            "Task: Update the React navigation. Retrieve frontend implementation "
+                            "patterns, UX decisions, accessibility behavior, API contracts, "
+                            "browser security, and approved React or TypeScript conventions."
                         ),
                         "--classification",
                         "confidential",

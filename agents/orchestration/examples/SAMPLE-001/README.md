@@ -2,6 +2,8 @@
 
 This package resolves planning blockers far enough for independent architecture, threat, infrastructure, pipeline-security, and security review.
 
+It is intentionally written against this provider's current secure-cloud stack. Treat the named products and frameworks as illustrative constraints for the example, not as a claim that the underlying roles only apply to those exact tools.
+
 All decisions are **proposed** until the named human owner approves them. No artifact authorizes implementation, deployment, migration, Terraform state access, or production changes.
 
 ## Contents
@@ -21,6 +23,8 @@ All decisions are **proposed** until the named human owner approves them. No art
 | `adrs/` | Individual proposed architecture decisions |
 
 ## Proposed baseline
+
+For this example, the proposed baseline is:
 
 - Same-origin React frontend and backend-for-frontend (BFF) using OIDC Authorization Code with PKCE.
 - Secure, HttpOnly session cookie; OIDC tokens remain server-side.

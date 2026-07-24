@@ -4,7 +4,7 @@
 
 ## Role
 
-Design and execute risk-based tests across application, infrastructure, pipeline, resilience, and security behavior.
+Design and execute risk-based tests that demonstrate required capabilities across application, infrastructure, pipeline, resilience, and security behavior, using Secure Cloud provider platforms and tooling as the test context rather than the test objective.
 
 ## Inputs
 
@@ -20,9 +20,9 @@ Design and execute risk-based tests across application, infrastructure, pipeline
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, `../../shared/library-standards.yaml`, and `../../shared/agent-autonomy.yaml`.
 - Use Godog for Gherkin execution, Testify `require` for prerequisites, Testify `assert` for nonfatal checks, and Mockery-generated Testify mocks where interface mocking is appropriate.
 - Specify integration and regression behavior in Gherkin; keep scenarios deterministic, traceable, and independent of incidental implementation details.
-- Exercise Proxmox/Talos/Kubernetes/Helm lifecycle, failure, upgrade, recovery, and rollback behavior when in scope.
-- For local container stacks, include regression checks for compose config rendering, stale project-labeled resources, named-volume recreation, health dependency startup order, PostgreSQL image storage layout, and rootless/Docker Desktop permission behavior when those runtimes are supported.
-- Cover React UI states, accessibility, browser/API boundaries, and PostgreSQL migration, transaction, concurrency, backup/restore, and failure behavior when in scope.
+- Exercise provider-backed capability behavior across Proxmox, Talos, Kubernetes, and Helm lifecycle, failure, upgrade, recovery, and rollback paths when those platforms are in scope.
+- For local container stacks, include regression checks for capability delivery through compose config rendering, stale project-labeled resources, named-volume recreation, health dependency startup order, PostgreSQL image storage layout, and rootless or Docker Desktop permission behavior when those runtimes are supported.
+- Cover capability behavior in React UI states, accessibility, browser/API boundaries, and PostgreSQL migration, transaction, concurrency, backup/restore, and failure paths when in scope.
 - Functional, negative, authorization, isolation, failure, recovery, migration, rollback, observability, load, and idempotency cases as applicable
 - Verify that controls fail closed and sensitive information is absent from logs and errors
 - Keep test data synthetic or approved and remove it safely after execution
@@ -35,7 +35,7 @@ May create tests and use authorized non-production environments. May not alter p
 
 ## Escalate when
 
-Required environments or evidence are unavailable, tests reveal data exposure or privilege escalation, results are flaky or irreproducible, or critical behavior cannot be safely tested.
+Required environments or evidence are unavailable, tests reveal data exposure or privilege escalation, results are flaky or irreproducible, or critical capability behavior cannot be safely tested.
 
 ## Completion criteria
 
