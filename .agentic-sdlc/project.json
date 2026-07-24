@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "project_id": "agents",
+  "classification": "internal",
+  "profile": "quick",
+  "extensions": [],
+  "detected": {
+    "root": "C:\\Users\\danie\\sdk\\agents",
+    "detected_stacks": [],
+    "directories": [],
+    "proposed_profile": "quick",
+    "command_candidates": {},
+    "warnings": [
+      "Detection never assigns human authority or compliance applicability."
+    ]
+  },
+  "environments": [
+    {
+      "name": "local",
+      "persistence": "persistent",
+      "production": "non-production"
+    }
+  ]
+}

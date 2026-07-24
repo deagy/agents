@@ -114,6 +114,31 @@ def _record() -> dict:
         }
         for bom_type in sorted(BOM_TYPES)
     ]
+    execution_gates = {}
+    lifecycle_contract = json.loads(
+        (ROOT.parent.parent / "plugins" / "agentic-sdlc" / "contracts" / "lifecycle-gates.json").read_text(
+            encoding="utf-8"
+        )
+    )["gates"]
+    for contract in lifecycle_contract:
+        gate_id = contract["id"]
+        agents = list(dict.fromkeys(
+            contract.get("author_agents", []) + contract.get("review_agents", ["code-reviewer"])
+        ))
+        execution_gates[gate_id] = {
+            "configured": False,
+            "ignored": False,
+            "ignore_reason": None,
+            "required_agents": agents,
+            "dispatched_agents": [],
+            "required_tasks": contract["tasks"],
+            "completed_tasks": [],
+            "required_agent_artifacts": [
+                {"agent_id": agent, "artifact_id": f"{gate_id.lower()}-{agent}-attestation"}
+                for agent in agents
+            ],
+            "produced_agent_artifacts": [],
+        }
     return {
         "version": 2,
         "task_id": "TEST-1",
@@ -143,6 +168,7 @@ def _record() -> dict:
         },
         "specialist_attestations": [],
         "re_entry_history": [],
+        "execution_summary": {"gates": execution_gates},
     }
 
 

@@ -53,6 +53,7 @@ SQS_CATEGORY_IDS = {
 }
 BOM_TYPES = {"SBOM", "CBOM", "QBOM", "AI-BOM", "Trust-BOM", "Time-BOM"}
 DEFAULT_SCHEMA = Path(__file__).resolve().parents[1] / "run-record.schema.json"
+LIFECYCLE_CONTRACT = Path(__file__).resolve().parents[3] / "plugins" / "agentic-sdlc" / "contracts" / "lifecycle-gates.json"
 
 
 def _parse_datetime(value: str) -> datetime:
@@ -77,7 +78,8 @@ def _schema_errors(record: dict[str, Any], schema: dict[str, Any]) -> list[str]:
 
 
 def validation_errors(
-    record: dict[str, Any], now: datetime | None = None, schema: dict[str, Any] | None = None
+    record: dict[str, Any], now: datetime | None = None, schema: dict[str, Any] | None = None,
+    dispatch: dict[str, Any] | None = None,
 ) -> list[str]:
     """Return structural and cross-field lifecycle violations."""
     contract = schema or json.loads(DEFAULT_SCHEMA.read_text(encoding="utf-8"))
@@ -85,8 +87,76 @@ def validation_errors(
     observed_at = now or datetime.now(timezone.utc)
     gates = record.get("lifecycle_gates", [])
     gate_ids = [gate.get("gate_id") for gate in gates]
-    if len(gates) != 10 or set(gate_ids) != set(GATE_IDS) or len(set(gate_ids)) != 10:
+    if gate_ids != list(GATE_IDS):
         errors.append("lifecycle_gates must contain each of G1 through G10 exactly once")
+    contracts = {
+        gate["id"]: gate
+        for gate in json.loads(LIFECYCLE_CONTRACT.read_text(encoding="utf-8"))["gates"]
+    }
+    execution_gates = record.get("execution_summary", {}).get("gates", {})
+    dispatch_required = {
+        item.get("id") if isinstance(item, dict) else item
+        for item in (dispatch or {}).get("required_quality_gates", [])
+    }
+    dispatch_required.update(
+        item.get("gate_id")
+        for item in (dispatch or {}).get("gate_dispatch", [])
+        if item.get("status") == "required"
+    )
+    dispatch_ignored = set((dispatch or {}).get("ignored_quality_gates", []))
+    dispatch_ignored.update(
+        item.get("gate_id")
+        for item in (dispatch or {}).get("gate_dispatch", [])
+        if item.get("status") == "ignored"
+    )
+    for index, gate in enumerate(gates):
+        gate_id = gate.get("gate_id")
+        contract = contracts.get(gate_id, {})
+        execution = execution_gates.get(gate_id)
+        if execution is None:
+            errors.append(f"{gate_id}: missing required execution record")
+            continue
+        expected_agents = list(dict.fromkeys(contract.get("author_agents", []) + contract.get("review_agents", ["code-reviewer"])))
+        expected_artifacts = [
+            {"agent_id": agent, "artifact_id": f"{gate_id.lower()}-{agent}-attestation"}
+            for agent in expected_agents
+        ]
+        if execution.get("required_agents") != expected_agents:
+            errors.append(f"{gate_id}: required agent set does not match lifecycle contract")
+        if execution.get("required_tasks") != contract.get("tasks", []):
+            errors.append(f"{gate_id}: required task set does not match lifecycle contract")
+        if execution.get("required_agent_artifacts") != expected_artifacts:
+            errors.append(f"{gate_id}: required agent artifacts do not match lifecycle contract")
+        if execution.get("ignored") and not execution.get("ignore_reason"):
+            errors.append(f"{gate_id}: ignored gate requires an explicit reason")
+        if execution.get("ignored") and gate_id not in dispatch_ignored:
+            errors.append(f"{gate_id}: ignore is not authorized by the project dispatch plan")
+        if execution.get("configured") and dispatch is None:
+            errors.append(f"{gate_id}: configured execution requires the project dispatch plan")
+        if dispatch is not None and execution.get("configured") != (gate_id in dispatch_required or gate_id in dispatch_ignored):
+            errors.append(f"{gate_id}: configured state does not match the project dispatch plan")
+        if dispatch is not None and execution.get("ignored") != (gate_id in dispatch_ignored):
+            errors.append(f"{gate_id}: ignore state does not match the project dispatch plan")
+        if gate.get("status") in {"ready", "approved"} and execution.get("configured") and not execution.get("ignored"):
+            if set(execution.get("dispatched_agents", [])) != set(expected_agents):
+                errors.append(f"{gate_id}: advanced without dispatching every configured agent")
+            if set(execution.get("completed_tasks", [])) != set(contract.get("tasks", [])):
+                errors.append(f"{gate_id}: advanced without completing every configured task")
+            produced = {
+                (item.get("agent_id"), item.get("artifact_id"))
+                for item in execution.get("produced_agent_artifacts", [])
+                if item.get("revision") and item.get("digest")
+            }
+            required = {(item["agent_id"], item["artifact_id"]) for item in expected_artifacts}
+            if not required.issubset(produced):
+                errors.append(f"{gate_id}: advanced without immutable artifacts from every configured agent")
+        if gate.get("status") in {"ready", "approved"} and execution.get("configured") and any(
+            prior.get("status") not in {"approved", "invalidated"}
+            and execution_gates.get(prior.get("gate_id"), {}).get("configured")
+            and not execution_gates.get(prior.get("gate_id"), {}).get("ignored")
+            for prior in gates[:index]
+        ):
+            errors.append(f"{gate_id}: violates lexical gate order")
 
     profile = record.get("sqs_impact_profile", {})
     category_ids = [item.get("id") for item in profile.get("impact_categories", [])]
@@ -269,10 +339,11 @@ def validation_errors(
 
 
 def validate_run_record(
-    record: dict[str, Any], now: datetime | None = None, schema: dict[str, Any] | None = None
+    record: dict[str, Any], now: datetime | None = None, schema: dict[str, Any] | None = None,
+    dispatch: dict[str, Any] | None = None,
 ) -> None:
     """Raise ValueError when a run record violates the lifecycle contract."""
-    errors = validation_errors(record, now, schema)
+    errors = validation_errors(record, now, schema, dispatch)
     if errors:
         raise ValueError("Invalid lifecycle run record: " + "; ".join(errors))
 
@@ -291,10 +362,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Validate an authoritative lifecycle run record")
     parser.add_argument("record", type=Path)
     parser.add_argument("--schema", type=Path, default=DEFAULT_SCHEMA)
+    parser.add_argument("--dispatch-plan", type=Path)
     arguments = parser.parse_args()
     record = _load_record(arguments.record)
     schema = json.loads(arguments.schema.read_text(encoding="utf-8"))
-    validate_run_record(record, schema=schema)
+    dispatch = (
+        json.loads(arguments.dispatch_plan.read_text(encoding="utf-8"))
+        if arguments.dispatch_plan
+        else None
+    )
+    validate_run_record(record, schema=schema, dispatch=dispatch)
     print(f"valid: {arguments.record}")
     return 0
 

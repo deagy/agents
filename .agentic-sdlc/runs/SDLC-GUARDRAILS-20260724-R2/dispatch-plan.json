@@ -1,0 +1,84 @@
+{
+  "schema_version": 2,
+  "task_id": "SDLC-GUARDRAILS-20260724-R2",
+  "generated_at": "2026-07-24T02:42:21.423315Z",
+  "status": "ready",
+  "workflow": "new-service",
+  "inputs": {
+    "task": "Implement and validate lifecycle guardrails for Agentic SDLC gate dispatch",
+    "classification": "internal"
+  },
+  "matched_routes": [
+    "build"
+  ],
+  "matched_risks": [],
+  "agents": {
+    "primary": [
+      "application-engineer"
+    ],
+    "reviewers": [
+      "code-reviewer",
+      "test-engineer"
+    ],
+    "support": [
+      "product-intent-agent",
+      "requirements-agent"
+    ]
+  },
+  "required_quality_gates": [
+    {
+      "id": "G1",
+      "required": true,
+      "reason": "Required by matched project route or workflow",
+      "contributing_routes": [
+        "workflow:new-service"
+      ]
+    },
+    {
+      "id": "G2",
+      "required": true,
+      "reason": "Required by matched project route or workflow",
+      "contributing_routes": [
+        "workflow:new-service"
+      ]
+    }
+  ],
+  "ignored_quality_gates": [],
+  "gate_dispatch": [
+    {
+      "gate_id": "G1",
+      "status": "required",
+      "agents": [
+        "product-intent-agent",
+        "code-reviewer"
+      ],
+      "tasks": [
+        "capture-intent"
+      ],
+      "artifacts": [
+        "intent-record"
+      ]
+    },
+    {
+      "gate_id": "G2",
+      "status": "required",
+      "agents": [
+        "requirements-agent",
+        "code-reviewer"
+      ],
+      "tasks": [
+        "baseline-requirements"
+      ],
+      "artifacts": [
+        "requirements-baseline"
+      ]
+    }
+  ],
+  "human_gates": [],
+  "knowledge_context": {
+    "status": "unavailable",
+    "reason": "No portable knowledge source configured",
+    "requests": []
+  },
+  "dispatch_fingerprint": "sha256:3b7f7c82e15255d3ab631ed53a073df5d9fd931b166e526a6a02dd07e3e87d2d"
+}

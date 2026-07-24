@@ -1,0 +1,135 @@
+{
+  "version": 1,
+  "profile": "quick",
+  "routes": [
+    {
+      "id": "build",
+      "phrases": [
+        "implement",
+        "add feature",
+        "build",
+        "change behavior",
+        "update code"
+      ],
+      "agents": [
+        "application-engineer"
+      ],
+      "reviewers": [
+        "code-reviewer",
+        "test-engineer"
+      ]
+    },
+    {
+      "id": "frontend",
+      "phrases": [
+        "frontend component",
+        "user interface",
+        "react",
+        "browser behavior"
+      ],
+      "agents": [
+        "frontend-engineer"
+      ],
+      "reviewers": [
+        "code-reviewer",
+        "test-engineer"
+      ]
+    },
+    {
+      "id": "backend",
+      "phrases": [
+        "backend api",
+        "http api",
+        "server behavior",
+        "database query"
+      ],
+      "agents": [
+        "backend-engineer"
+      ],
+      "reviewers": [
+        "code-reviewer",
+        "test-engineer"
+      ]
+    },
+    {
+      "id": "debugging",
+      "phrases": [
+        "bug",
+        "error",
+        "crash",
+        "failing test",
+        "stack trace",
+        "reproduce"
+      ],
+      "agents": [
+        "debugging-engineer"
+      ],
+      "reviewers": [
+        "test-engineer"
+      ]
+    },
+    {
+      "id": "review",
+      "phrases": [
+        "review this",
+        "code review",
+        "review the change"
+      ],
+      "agents": [
+        "code-reviewer"
+      ],
+      "reviewers": [
+        "test-engineer"
+      ]
+    },
+    {
+      "id": "release",
+      "phrases": [
+        "prepare release",
+        "cut a release",
+        "ship this"
+      ],
+      "agents": [
+        "release-engineer"
+      ],
+      "reviewers": [
+        "security-reviewer",
+        "code-reviewer"
+      ]
+    }
+  ],
+  "change_intake": {
+    "keywords": [
+      "implement",
+      "create",
+      "new feature",
+      "new service",
+      "add feature",
+      "build",
+      "change",
+      "update",
+      "modify",
+      "refactor",
+      "fix",
+      "repair",
+      "remove",
+      "delete",
+      "migrate",
+      "introduce",
+      "enhance",
+      "extend",
+      "replace",
+      "upgrade",
+      "rework"
+    ],
+    "agents": [
+      "product-intent-agent",
+      "requirements-agent"
+    ],
+    "quality_gates": [
+      "G1",
+      "G2"
+    ]
+  },
+  "ignored_gates": []
+}

@@ -1,0 +1,242 @@
+{
+  "artifact_id": "requirements-baseline-sdlc-guardrails-20260724-r2",
+  "revision": "2",
+  "kind": "requirements-baseline",
+  "authors": [
+    "requirements-agent"
+  ],
+  "verifiers": [],
+  "upstream_ids": [
+    "intent-record-sdlc-guardrails-20260724-r2"
+  ],
+  "downstream_ids": [
+    "SDLC-GUARDRAILS-20260724-R2:G2"
+  ],
+  "provenance": {
+    "created_at": "2026-07-24T05:18:28Z",
+    "ai_generated": true
+  },
+  "evidence": [
+    {
+      "evidence_id": "g2-source-intent",
+      "type": "approved-intent-reference",
+      "artifact_id": "intent-record-sdlc-guardrails-20260724-r2",
+      "revision": "2",
+      "digest": "sha256:38dbdc147a31f666c4b2d84caf4290751e12fdfe3d421d8856afe983b855dc26",
+      "g1_decided_at": "2026-07-24T05:15:24Z",
+      "classification": "internal"
+    },
+    {
+      "evidence_id": "g2-baseline-summary",
+      "type": "requirements-summary",
+      "task_id": "SDLC-GUARDRAILS-20260724-R2",
+      "owner": "github.com/deagy",
+      "classification": "internal",
+      "assumptions": [
+        "The active work remains limited to repository-internal lifecycle guardrail changes.",
+        "Success is demonstrated through deterministic planning, run-record integrity, and automated validation evidence rather than deployment behavior."
+      ],
+      "downstream_gate_applicability": {
+        "G3": {
+          "applicability": "not-applicable",
+          "rationale": "No separate architecture proposal is required for this repository-internal guardrail change."
+        },
+        "G4": {
+          "applicability": "not-applicable",
+          "rationale": "The approved change does not introduce new governance or data-handling obligations beyond existing repository policy."
+        },
+        "G5": {
+          "applicability": "not-applicable",
+          "rationale": "The approved change does not introduce new security or cryptographic design decisions."
+        },
+        "G6": {
+          "applicability": "applicable",
+          "rationale": "Implementation verification is required for guardrail behavior, regression coverage, and run-record integrity."
+        },
+        "G7": {
+          "applicability": "not-applicable",
+          "rationale": "No release evidence package is required while work remains in repository-local requirements and implementation scope."
+        },
+        "G8": {
+          "applicability": "not-applicable",
+          "rationale": "Release-readiness is outside the approved scope of this repository-internal guardrail task."
+        },
+        "G9": {
+          "applicability": "not-applicable",
+          "rationale": "No deployment authorization is required because no deployment action is in scope."
+        },
+        "G10": {
+          "applicability": "not-applicable",
+          "rationale": "Runtime-conformance does not apply because the task does not assess a deployed service."
+        }
+      }
+    },
+    {
+      "evidence_id": "g2-requirements",
+      "type": "requirements-list",
+      "requirements": [
+        {
+          "requirement_id": "REQ-GR-001",
+          "category": "functional",
+          "statement": "The selection and lifecycle workflow shall require G1 and G2 for this task class and preserve the existing quick-profile change-intake behavior for repository-internal guardrail changes.",
+          "acceptance_criteria": [
+            "Planning for SDLC-GUARDRAILS-20260724-R2 continues to identify G1 and G2 as required quality gates.",
+            "No change regresses route selection for repository-internal change work that currently enters the quick-profile change-intake path."
+          ],
+          "dependencies": [
+            "intent-record-sdlc-guardrails-20260724-r2"
+          ],
+          "owner": "github.com/deagy",
+          "test_obligations": [
+            "Validate dispatch-plan output for representative guardrail-change tasks.",
+            "Add or update automated tests that fail if G1/G2 dispatch requirements regress."
+          ],
+          "evidence_obligations": [
+            "Dispatch-plan output bound to the exact task ID and routing fingerprint.",
+            "Automated test results demonstrating required gates remain G1 and G2."
+          ],
+          "traceability": {
+            "derives_from": [
+              "intent-record-sdlc-guardrails-20260724-r2:intent-success-criteria"
+            ],
+            "implemented_by": [],
+            "verified_by": [
+              "G6"
+            ]
+          }
+        },
+        {
+          "requirement_id": "REQ-GR-002",
+          "category": "functional",
+          "statement": "The run record shall bind each lifecycle gate artifact to exact immutable revision and digest values and maintain authority requirements consistent with the current overlay assignments.",
+          "acceptance_criteria": [
+            "G1 and G2 artifact bindings identify exact artifact IDs, revisions, and SHA-256 digests.",
+            "Authority requirements for G1 and G2 reflect assigned Product Owner and Engineering Lead applicability without stale unknown states."
+          ],
+          "dependencies": [
+            "REQ-GR-001"
+          ],
+          "owner": "github.com/deagy",
+          "test_obligations": [
+            "Validate run-record schema conformance after artifact binding changes.",
+            "Exercise validator checks that would fail on stale or mutable bindings."
+          ],
+          "evidence_obligations": [
+            "Validated run-record JSON for the exact task ID.",
+            "Digest verification evidence for bound artifacts."
+          ],
+          "traceability": {
+            "derives_from": [
+              "intent-record-sdlc-guardrails-20260724-r2:intent-record-body"
+            ],
+            "implemented_by": [],
+            "verified_by": [
+              "G6"
+            ]
+          }
+        },
+        {
+          "requirement_id": "REQ-GR-003",
+          "category": "non-functional",
+          "statement": "The lifecycle guardrail change shall preserve portable Agentic SDLC schema-valid, reviewable, and traceable run-record state throughout intent, requirements, and later implementation phases.",
+          "acceptance_criteria": [
+            "Portable Agentic SDLC validation reports valid=true and ready=true after requirements-baseline updates.",
+            "Trace links from intent to requirements and from requirements to future verification obligations remain explicit."
+          ],
+          "dependencies": [
+            "REQ-GR-001",
+            "REQ-GR-002"
+          ],
+          "owner": "github.com/deagy",
+          "test_obligations": [
+            "Run the portable SDLC validator after each material run-record update.",
+            "Preserve regression checks for execution-summary and lifecycle-gate consistency within the portable SDLC contracts in use for this run."
+          ],
+          "evidence_obligations": [
+            "Portable SDLC validator output for the repository root.",
+            "Requirements artifact and run-record digests."
+          ],
+          "traceability": {
+            "derives_from": [
+              "intent-record-sdlc-guardrails-20260724-r2:intent-success-criteria"
+            ],
+            "implemented_by": [],
+            "verified_by": [
+              "G6"
+            ]
+          }
+        },
+        {
+          "requirement_id": "REQ-GR-004",
+          "category": "control",
+          "statement": "The change shall preserve separation of duties between artifact preparers, independent reviewers, and human approvers for G1 and G2 evidence flows.",
+          "acceptance_criteria": [
+            "G2 author evidence is produced by requirements-agent and independent review evidence is produced by code-reviewer.",
+            "No G2 approval is recorded without separate Product Owner and Engineering Lead approvals."
+          ],
+          "dependencies": [
+            "REQ-GR-002"
+          ],
+          "owner": "github.com/deagy",
+          "test_obligations": [
+            "Inspect run-record identities and attestation artifacts for role separation.",
+            "Retain validator coverage for approver/verifier independence."
+          ],
+          "evidence_obligations": [
+            "Role-bound attestation artifacts for G2.",
+            "Run-record identities and approval evidence."
+          ],
+          "traceability": {
+            "derives_from": [
+              "intent-record-sdlc-guardrails-20260724-r2:intent-record-body"
+            ],
+            "implemented_by": [],
+            "verified_by": [
+              "G2",
+              "G6"
+            ]
+          }
+        },
+        {
+          "requirement_id": "REQ-GR-005",
+          "category": "test-and-evidence",
+          "statement": "The change shall include positive and negative regression coverage for gate-dispatch and lifecycle evidence packaging scenarios relevant to this guardrail task.",
+          "acceptance_criteria": [
+            "At least one positive scenario verifies the intended G1/G2 path for the guardrail task.",
+            "At least one negative scenario fails when required evidence or artifact binding metadata is missing or stale."
+          ],
+          "dependencies": [
+            "REQ-GR-001",
+            "REQ-GR-003",
+            "REQ-GR-004"
+          ],
+          "owner": "github.com/deagy",
+          "test_obligations": [
+            "Add or update automated tests in the portable SDLC test suite or repository validation suite.",
+            "Record exact test command outputs in later verification evidence."
+          ],
+          "evidence_obligations": [
+            "Automated test logs tied to the exact revision under verification.",
+            "References to the commands recorded in .agentic-sdlc/commands.json."
+          ],
+          "traceability": {
+            "derives_from": [
+              "intent-record-sdlc-guardrails-20260724-r2:intent-success-criteria"
+            ],
+            "implemented_by": [],
+            "verified_by": [
+              "G6"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "evidence_id": "g2-revision-note",
+      "type": "revision-note",
+      "supersedes_revision": "1",
+      "updated_at": "2026-07-24T05:18:28Z",
+      "reason": "Align downstream gate applicability with the run record and scope validation obligations to the portable Agentic SDLC contracts in use for this task."
+    }
+  ]
+}

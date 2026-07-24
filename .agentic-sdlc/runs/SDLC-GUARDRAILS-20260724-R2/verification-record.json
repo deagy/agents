@@ -1,0 +1,129 @@
+{
+  "artifact_id": "verification-record-sdlc-guardrails-20260724-r2",
+  "revision": "1",
+  "kind": "verification-record",
+  "authors": [
+    "application-engineer"
+  ],
+  "verifiers": [],
+  "upstream_ids": [
+    "requirements-baseline-sdlc-guardrails-20260724-r2"
+  ],
+  "downstream_ids": [
+    "SDLC-GUARDRAILS-20260724-R2:G6"
+  ],
+  "provenance": {
+    "created_at": "2026-07-24T05:37:35Z",
+    "ai_generated": true
+  },
+  "evidence": [
+    {
+      "evidence_id": "g6-source-requirements",
+      "type": "approved-requirements-reference",
+      "artifact_id": "requirements-baseline-sdlc-guardrails-20260724-r2",
+      "revision": "2",
+      "digest": "sha256:f9bbc027e154817bfd456fee0dcceb19fe03c22a4e8303a9332ac6538727bb9e",
+      "g2_decided_at": "2026-07-24T05:29:29Z",
+      "classification": "internal"
+    },
+    {
+      "evidence_id": "g6-exact-revision",
+      "type": "source-revision",
+      "git_commit": "925f2241eea688eb53cd42c83fb05596a139bdd5",
+      "classification": "internal",
+      "changed_files": [
+        "plugins/agentic-sdlc/scripts/agentic_sdlc.py",
+        "plugins/agentic-sdlc/test/test_agentic_sdlc.py",
+        ".agentic-sdlc/runs/SDLC-GUARDRAILS-20260724-R2/run-record.json"
+      ]
+    },
+    {
+      "evidence_id": "g6-implementation-summary",
+      "type": "implementation-summary",
+      "requirements_verified": [
+        "REQ-GR-001",
+        "REQ-GR-002",
+        "REQ-GR-003",
+        "REQ-GR-005"
+      ],
+      "summary": [
+        "Status reporting now derives the current lifecycle phase from the next applicable non-approved gate, which automatically advances phase visibility after approved gates.",
+        "The portable validator now performs explicit ISO 8601 date-time checks for run-record and gate decision fields so malformed evidence metadata is rejected deterministically.",
+        "Regression coverage was extended for automatic phase advancement and the malformed date-time negative path."
+      ]
+    },
+    {
+      "evidence_id": "g6-test-results",
+      "type": "automated-verification",
+      "commands": [
+        {
+          "command_ref": ".agentic-sdlc/commands.json#commands.agentic_sdlc_plugin_tests",
+          "invocation": "python3 -m unittest discover -s plugins/agentic-sdlc/test -p 'test_*.py'",
+          "result": "passed",
+          "tests_run": 40
+        },
+        {
+          "command_ref": ".agentic-sdlc/commands.json#commands.repository_health",
+          "invocation": "python3 -m unittest agents.orchestration.test.test_repository_health",
+          "result": "passed",
+          "tests_run": 16,
+          "tests_skipped": 2
+        },
+        {
+          "invocation": "python3 plugins/agentic-sdlc/scripts/agentic_sdlc.py validate --root .",
+          "result": "passed",
+          "validator_result": {
+            "valid": true,
+            "ready": true,
+            "errors": [],
+            "blockers": []
+          }
+        }
+      ]
+    },
+    {
+      "evidence_id": "g6-traceability",
+      "type": "requirement-traceability",
+      "mappings": [
+        {
+          "requirement_id": "REQ-GR-001",
+          "implemented_by": [
+            "plugins/agentic-sdlc/scripts/agentic_sdlc.py:derive_current_phase"
+          ],
+          "verified_by": [
+            "plugins/agentic-sdlc/test/test_agentic_sdlc.py:test_status_advances_to_next_applicable_gate_phase"
+          ]
+        },
+        {
+          "requirement_id": "REQ-GR-002",
+          "implemented_by": [
+            ".agentic-sdlc/runs/SDLC-GUARDRAILS-20260724-R2/run-record.json"
+          ],
+          "verified_by": [
+            "python3 plugins/agentic-sdlc/scripts/agentic_sdlc.py validate --root ."
+          ]
+        },
+        {
+          "requirement_id": "REQ-GR-003",
+          "implemented_by": [
+            "plugins/agentic-sdlc/scripts/agentic_sdlc.py"
+          ],
+          "verified_by": [
+            "python3 -m unittest discover -s plugins/agentic-sdlc/test -p 'test_*.py'",
+            "python3 plugins/agentic-sdlc/scripts/agentic_sdlc.py validate --root ."
+          ]
+        },
+        {
+          "requirement_id": "REQ-GR-005",
+          "implemented_by": [
+            "plugins/agentic-sdlc/test/test_agentic_sdlc.py"
+          ],
+          "verified_by": [
+            "plugins/agentic-sdlc/test/test_agentic_sdlc.py:test_status_advances_to_next_applicable_gate_phase",
+            "plugins/agentic-sdlc/test/test_agentic_sdlc.py:test_validate_rejects_malformed_date_time_with_full_validator"
+          ]
+        }
+      ]
+    }
+  ]
+}

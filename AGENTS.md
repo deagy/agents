@@ -31,3 +31,12 @@ Use `unittest` for internal Python tools, Go `testing` plus Testify for services
 Use short imperative commit subjects and focused changes. GitLab merge requests must describe scope, security implications, validation, affected decisions, and linked issues. Include CLI or UI evidence when behavior changes.
 
 Never commit secrets, raw chat exports, real documents, local environment files, databases, object data, generated credentials, Terraform state, or rendered secrets. Preserve independent review and human gates for persistent mutations, production, risk acceptance, and release.
+
+<!-- agentic-sdlc:start -->
+## Agentic SDLC
+
+This repository uses the portable Agentic SDLC project overlay in `.agentic-sdlc/`.
+Use its orchestration skill or CLI for multi-role delivery work. Run records are authoritative.
+Never infer gate approval, production/destructive authority, risk acceptance, or compliance applicability.
+Artifact authors must remain separate from independent reviewers and human approvers.
+<!-- agentic-sdlc:end -->

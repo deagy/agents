@@ -63,11 +63,18 @@ class PortableCliTests(unittest.TestCase):
         project = self.load(".agentic-sdlc/project.json")
         self.assertEqual("quick", project["profile"])
 
-    def test_quick_profile_plan_has_no_required_quality_gates_for_ordinary_work(self):
+    def test_quick_profile_change_work_requires_intent_and_requirements(self):
         self.run_cli("init", "--profile", "quick")
         plan = self.run_cli("plan", "--task-id", "QUICK-1", "--task", "Fix a failing login test")
-        self.assertEqual([], plan["required_quality_gates"])
+        self.assertEqual(["G1", "G2"], [gate["id"] for gate in plan["required_quality_gates"]])
+        self.assertIn("product-intent-agent", plan["agents"]["support"])
+        self.assertIn("requirements-agent", plan["agents"]["support"])
         self.assertEqual([], plan["human_gates"])
+
+    def test_quick_profile_non_change_question_has_no_quality_gates(self):
+        self.run_cli("init", "--profile", "quick")
+        plan = self.run_cli("plan", "--task-id", "QUICK-1B", "--task", "Explain the local validation command")
+        self.assertEqual([], plan["required_quality_gates"])
 
     def test_quick_profile_still_enforces_mutation_gates(self):
         self.run_cli("init", "--profile", "quick")
@@ -244,6 +251,20 @@ class PortableCliTests(unittest.TestCase):
         self.assertEqual("DEMO-5", result["task_id"])
         self.assertEqual(10, len(result["gates"]))
 
+    def test_status_advances_to_next_applicable_gate_phase(self):
+        self.init()
+        self.run_cli("plan", "--task-id", "DEMO-5B", "--task", "Fix a failing login test")
+        path = self.root / ".agentic-sdlc" / "runs" / "DEMO-5B" / "run-record.json"
+        record = json.loads(path.read_text(encoding="utf-8"))
+        record["current_lifecycle_phase"] = "requirements"
+        record["lifecycle_gates"][0]["status"] = "approved"
+        record["lifecycle_gates"][1]["status"] = "approved"
+        for index in (2, 3, 4, 6, 7, 8, 9):
+            record["lifecycle_gates"][index]["applicability"] = "not-applicable"
+        path.write_text(json.dumps(record), encoding="utf-8")
+        result = self.run_cli("status", "--task-id", "DEMO-5B")
+        self.assertEqual("verify", result["current_phase"])
+
     def test_validate_rejects_author_reviewer_overlap(self):
         self.init()
         routing_path = self.root / ".agentic-sdlc" / "routing.json"
@@ -310,6 +331,9 @@ class PortableCliTests(unittest.TestCase):
         self.init()
         self.run_cli("plan", "--task-id", "SCHEMA-1", "--task", "Create the service architecture")
         record = self.load(".agentic-sdlc/runs/SCHEMA-1/run-record.json")
+        self.assertEqual([f"G{i}" for i in range(1, 11)], list(record["execution_summary"]["gates"]))
+        self.assertTrue(record["execution_summary"]["gates"]["G1"]["configured"])
+        self.assertEqual([], record["execution_summary"]["gates"]["G1"]["dispatched_agents"])
         schema = json.loads((PLUGIN_ROOT / "contracts" / "run-record.schema.json").read_text(encoding="utf-8"))
         jsonschema.Draft202012Validator(
             schema,
