@@ -265,9 +265,13 @@ def record_github_approval(
     if authority.get("status") != "assigned" or not expected_assignee:
         raise ValueError(f"authority {authority_role} is not assigned")
     expected_login = authority_github_login(authority)
-    if expected_login and reviewer_login != expected_login:
-        raise ValueError(f"GitHub reviewer {reviewer_login} does not match assigned authority login {expected_login}")
-    review_uri = f"github-review:{repo}:pull/{pr}:review/{review_id}:reviewer/{reviewer_login}"
+    normalized_reviewer_login = reviewer_login.lower()
+    normalized_expected_login = expected_login.lower() if isinstance(expected_login, str) else None
+    if normalized_expected_login and normalized_reviewer_login != normalized_expected_login:
+        raise ValueError(
+            f"GitHub reviewer {reviewer_login} does not match assigned authority login {expected_login}"
+        )
+    review_uri = f"github-review:{repo}:pull/{pr}:review/{review_id}:reviewer/{normalized_reviewer_login}"
     if parse_github_review_uri(review_uri) is None:
         raise ValueError(f"invalid GitHub review URI components for {review_uri}")
     chosen_time = decided_at or now()
