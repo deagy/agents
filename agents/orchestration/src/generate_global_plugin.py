@@ -1,19 +1,9 @@
 #!/usr/bin/env python3
-"""Regenerate plugins/secure-cloud-agents/: thin, absolute-path pointer files.
+"""Regenerate the self-contained Secure Cloud Agents plugin.
 
-This plugin makes this repository's own skills and agent roles reachable from
-any project directory once installed at global/user scope. Unlike the portable
-plugins/agentic-sdlc kernel, this suite is a single fixed instance on this
-machine, not something copied into other repositories, so every generated file
-below embeds this checkout's absolute path rather than a relative one —
-required because an installed plugin is cached by the runner and loses access
-to sibling repository content outside its own directory (component *discovery*
-is confined to the plugin root; the *prose* inside a discovered file is free to
-reference any absolute path, which is what these pointers rely on).
-
-Skills are handled identically for both runners: plugin-bundled under
-plugins/secure-cloud-agents/skills/, discoverable once the plugin is installed
-at global/user scope (see plugins/agentic-sdlc/contracts/runner-adapters.md).
+The generated package carries full skill content, embedded role instructions,
+the tracked runtime suite, and a package-relative Agentic SDLC provider catalog.
+It does not depend on this source checkout after installation.
 
 Agent-role wrappers are NOT symmetric, because the two runners differ here:
 - Claude Code supports plugin-bundled subagents, auto-discovered from the
@@ -39,15 +29,11 @@ README.md "System-wide install"; no plugin can modify a user's shell profile).
 Codex CLI has no equivalent bin/ auto-discovery, so this is a Claude-Code-only
 convenience layered on top of the manual PATH setup, not a replacement for it.
 
-A generated agent-catalog.json (id -> {phase, kind, definition-as-absolute-path})
-is also included: plugins/agentic-sdlc/scripts/agentic_sdlc.py's
-AGENT_CATALOG_SEARCH_PATH picks it up when this plugin sits alongside it, which
-is what lets that portable kernel's "secure-cloud" profile bake real AGENT.md
-content into a target project's generated wrappers instead of a generic stub —
-see rich_agent_content() there. Every other profile ignores this file entirely.
+A generated package-relative agent-catalog.json is loaded by the standalone
+kernel through provider.json.
 
 Regenerate after adding/removing a role in agents/catalog.yaml or a skill under
-.agents/skills/, or if this checkout is ever moved or renamed:
+.agents/skills/:
 
     agents generate-plugin
 
@@ -59,6 +45,8 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -74,11 +62,6 @@ SHARED_POLICIES = [
     "agents/shared/knowledge-use-policy.md",
     "agents/shared/agent-autonomy.yaml",
 ]
-REGENERATE_NOTE = (
-    "This absolute path is specific to this machine's checkout. If it moves, "
-    "regenerate this plugin with `agents generate-plugin` (bin/agents at the "
-    "repository root)."
-)
 ASK_HUMAN_RULE = (
     "You are a dispatched subagent: you cannot ask the human directly. If you "
     "reach a decision only a human can make, stop and return a clearly labeled "
@@ -123,49 +106,53 @@ def write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def generate_skill_pointers() -> list[Path]:
+def reset_generated_content() -> None:
+    for name in ("skills", "agents", "codex-agents", "suite"):
+        path = PLUGIN_ROOT / name
+        if path.exists():
+            shutil.rmtree(path)
+    for path in (PLUGIN_ROOT / "agent-catalog.json", PLUGIN_ROOT / "bin" / "agents"):
+        if path.exists():
+            path.unlink()
+
+
+def generate_skill_copies() -> list[Path]:
     written = []
     for skill_dir in sorted(p for p in SKILLS_ROOT.iterdir() if p.is_dir()):
         skill_file = skill_dir / "SKILL.md"
         if not skill_file.is_file():
             continue
-        frontmatter = load_skill_frontmatter(skill_file)
-        name = frontmatter["name"]
-        target = PLUGIN_ROOT / "skills" / name / "SKILL.md"
-        body = "\n".join(
-            [
-                "---",
-                f"name: {name}",
-                f"description: {frontmatter['description']}",
-                "---",
-                "",
-                "Read and follow the full instructions in",
-                f"`{skill_file}`. Do not duplicate or summarize them here —",
-                "treat that file as authoritative.",
-                "",
-                REGENERATE_NOTE,
-                "",
-            ]
+        target_dir = PLUGIN_ROOT / "skills" / skill_dir.name
+        shutil.copytree(skill_dir, target_dir)
+        target = target_dir / "SKILL.md"
+        content = target.read_text(encoding="utf-8")
+        frontmatter_end = content.find("---", 3) + 3
+        package_note = (
+            "\n\n> Packaged suite note: when the current project has no local `agents/` "
+            "tree, resolve suite files under `../../suite/agents/` relative to this "
+            "`SKILL.md`. The packaged plugin is self-contained; do not look for the "
+            "source checkout.\n"
         )
-        write(target, body)
-        written.append(target)
+        target.write_text(content[:frontmatter_end] + package_note + content[frontmatter_end:], encoding="utf-8")
+        written.extend(path for path in target_dir.rglob("*") if path.is_file())
     return written
 
 
-def generate_agent_pointers(catalog: dict[str, dict[str, str]]) -> list[Path]:
+def generate_agent_wrappers(catalog: dict[str, dict[str, str]]) -> list[Path]:
     written = []
     for agent_id, metadata in sorted(catalog.items()):
         definition = metadata["definition"]
         phase = metadata.get("phase", "unknown")
         reviewer = definition.startswith("review/")
         definition_path = AGENTS_ROOT / definition
-        shared_paths = [str(REPOSITORY_ROOT / relative) for relative in SHARED_POLICIES]
+        shared_content = "\n\n".join(
+            f"# Shared policy: {relative}\n\n{(REPOSITORY_ROOT / relative).read_text(encoding='utf-8').strip()}"
+            for relative in SHARED_POLICIES
+        )
         description = f"Secure cloud agent suite role for the {phase} phase ({agent_id})."
         instructions = (
-            f"Repository root: {REPOSITORY_ROOT}\n\n"
-            f"Read and follow {definition_path}, plus {', '.join(shared_paths)}, "
-            "then act as this role for the task you're given.\n\n"
-            f"{ASK_HUMAN_RULE}\n\n{REGENERATE_NOTE}"
+            f"# Role: {agent_id}\n\n{definition_path.read_text(encoding='utf-8').strip()}"
+            f"\n\n{shared_content}\n\n{ASK_HUMAN_RULE}"
         )
 
         md_target = PLUGIN_ROOT / "agents" / f"{agent_id}.md"
@@ -202,7 +189,7 @@ def generate_agent_pointers(catalog: dict[str, dict[str, str]]) -> list[Path]:
 
 
 def derive_kind(definition: str) -> str:
-    if definition.startswith("review/"):
+    if definition.startswith("review/") or definition == "engineering/test-engineer/AGENT.md":
         return "reviewer"
     if definition.startswith("support/"):
         return "support"
@@ -212,15 +199,12 @@ def derive_kind(definition: str) -> str:
 
 
 def generate_agent_catalog_export(catalog: dict[str, dict[str, str]]) -> Path:
-    """Absolute-path catalog export consumed by plugins/agentic-sdlc's
-    AGENT_CATALOG_SEARCH_PATH, so a project that opts into the "secure-cloud"
-    portable profile gets real role content instead of the generic stub —
-    see agentic_sdlc.py's rich_agent_content()."""
+    """Package-relative catalog export consumed through provider.json."""
     agents = {
         agent_id: {
             "phase": metadata.get("phase", "unknown"),
             "kind": derive_kind(metadata["definition"]),
-            "definition": str(AGENTS_ROOT / metadata["definition"]),
+            "definition": f"suite/agents/{metadata['definition']}",
         }
         for agent_id, metadata in sorted(catalog.items())
     }
@@ -230,13 +214,35 @@ def generate_agent_catalog_export(catalog: dict[str, dict[str, str]]) -> Path:
 
 
 def generate_bin_wrapper() -> Path:
-    real_wrapper = REPOSITORY_ROOT / "bin" / "agents"
     target = PLUGIN_ROOT / "bin" / "agents"
     body = "\n".join(
         [
             "#!/bin/sh",
-            f"# {REGENERATE_NOTE}",
-            f'exec "{real_wrapper}" "$@"',
+            "set -eu",
+            'BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)',
+            'PLUGIN_ROOT=$(CDPATH= cd -- "$BIN_DIR/.." && pwd)',
+            'SUITE_ROOT="$PLUGIN_ROOT/suite"',
+            'command_name="${1:-help}"',
+            '[ "$#" -gt 0 ] && shift || true',
+            'if [ "$command_name" = "sdlc" ]; then',
+            '  sdlc_bin="${AGENTIC_SDLC_BIN:-}"',
+            '  if [ -z "$sdlc_bin" ]; then sdlc_bin=$(command -v agentic-sdlc || true); fi',
+            '  [ -n "$sdlc_bin" ] || { echo "agents: install Agentic SDLC v0.2.x from https://github.com/deagy/agentic-sdlc" >&2; exit 1; }',
+            '  exec "$sdlc_bin" --provider "$PLUGIN_ROOT/provider.json" "$@"',
+            "fi",
+            "AGENT_PYTHON=",
+            "for candidate in python3 python; do",
+            '  command -v "$candidate" >/dev/null 2>&1 || continue',
+            '  if "$candidate" -c \'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)\' 2>/dev/null; then AGENT_PYTHON="$candidate"; break; fi',
+            "done",
+            '[ -n "$AGENT_PYTHON" ] || { echo "agents: Python 3.10+ is required" >&2; exit 1; }',
+            'case "$command_name" in',
+            '  select) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/select_agents.py" "$@" ;;',
+            '  knowledge) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/knowledge-store/src/cli.py" "$@" ;;',
+            '  validate-run) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/validate_run_record.py" "$@" ;;',
+            '  help|-h|--help) echo "Usage: agents {select|knowledge|sdlc|validate-run} [args...]" ;;',
+            '  *) echo "agents: unknown subcommand $command_name" >&2; exit 1 ;;',
+            "esac",
             "",
         ]
     )
@@ -245,13 +251,56 @@ def generate_bin_wrapper() -> Path:
     return target
 
 
+def generate_suite_copy(catalog: dict[str, dict[str, str]]) -> list[Path]:
+    tracked = set(subprocess.run(
+        ["git", "ls-files", "agents"],
+        cwd=REPOSITORY_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    ).stdout.splitlines())
+    contract_helper = "agents/orchestration/src/agentic_sdlc_contracts.py"
+    if (REPOSITORY_ROOT / contract_helper).is_file():
+        tracked.add(contract_helper)
+    role_paths = {f"agents/{metadata['definition']}" for metadata in catalog.values()}
+    selected: list[str] = []
+    for relative in sorted(tracked):
+        if relative in role_paths or relative in {"agents/catalog.yaml", "agents/README.md", "agents/RUNBOOK.md"}:
+            selected.append(relative)
+        elif relative.startswith(("agents/shared/", "agents/workflows/")):
+            selected.append(relative)
+        elif (
+            relative.startswith("agents/orchestration/")
+            and "/runs/" not in relative
+            and "/test/" not in relative
+            and "/examples/" not in relative
+            and not relative.endswith("generate_global_plugin.py")
+        ):
+            selected.append(relative)
+        elif relative.startswith("agents/knowledge-store/src/") or relative in {
+            "agents/knowledge-store/README.md",
+            "agents/knowledge-store/SECURITY.md",
+        }:
+            selected.append(relative)
+    written: list[Path] = []
+    for relative in selected:
+        source = REPOSITORY_ROOT / relative
+        target = PLUGIN_ROOT / "suite" / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+        written.append(target)
+    return written
+
+
 def main() -> int:
     catalog = load_catalog(AGENTS_ROOT / "catalog.yaml")
-    written = generate_skill_pointers() + generate_agent_pointers(catalog) + [
+    reset_generated_content()
+    written = generate_skill_copies() + generate_suite_copy(catalog) + generate_agent_wrappers(catalog) + [
         generate_bin_wrapper(),
         generate_agent_catalog_export(catalog),
     ]
-    print(f"Generated {len(written)} pointer files under {PLUGIN_ROOT}")
+    print(f"Generated {len(written)} self-contained files under {PLUGIN_ROOT}")
     return 0
 
 

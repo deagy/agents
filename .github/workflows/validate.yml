@@ -15,15 +15,21 @@ permissions:
 jobs:
   python-contracts:
     runs-on: ubuntu-latest
+    env:
+      AGENTIC_SDLC_BIN: ${{ github.workspace }}/.dependencies/agentic-sdlc/bin/agentic-sdlc
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: deagy/agentic-sdlc
+          ref: v0.2.0
+          path: .dependencies/agentic-sdlc
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.14"
       - run: pip install --no-cache-dir --require-hashes -r .github/requirements-validation.lock
       - run: python -B -m unittest discover -s agents/orchestration/test -p "test_*.py"
       - run: python -B -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
-      - run: python -B -m unittest discover -s plugins/agentic-sdlc/test -p "test_*.py"
       - run: ./bin/agents help
       - run: ./bin/agents select --task "CI wrapper smoke test" --files README.md --classification internal --task-id CI-SMOKE-1 >/dev/null
 

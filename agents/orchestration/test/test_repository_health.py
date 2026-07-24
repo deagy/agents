@@ -187,9 +187,9 @@ class RepositoryHealthTests(unittest.TestCase):
         for skill_file in skills_root.glob("*/SKILL.md"):
             skill_name = skill_file.parent.name
             with self.subTest(skill=skill_name):
-                pointer = plugin_root / "skills" / skill_name / "SKILL.md"
-                self.assertTrue(pointer.is_file(), str(pointer))
-                self.assertIn(f"name: {skill_name}", pointer.read_text(encoding="utf-8"))
+                packaged_skill = plugin_root / "skills" / skill_name / "SKILL.md"
+                self.assertTrue(packaged_skill.is_file(), str(packaged_skill))
+                self.assertIn(f"name: {skill_name}", packaged_skill.read_text(encoding="utf-8"))
 
     def test_secure_cloud_agents_agent_catalog_export_covers_every_role(self) -> None:
         catalog_agents: dict[str, str] = {}
@@ -206,12 +206,39 @@ class RepositoryHealthTests(unittest.TestCase):
             with self.subTest(agent=agent_id):
                 self.assertIn(metadata["kind"], {"author", "reviewer", "curator", "support"})
                 self.assertTrue(metadata["phase"])
-                self.assertTrue(Path(metadata["definition"]).is_file(), metadata["definition"])
+                self.assertTrue((export_path.parent / metadata["definition"]).is_file(), metadata["definition"])
+
+    def test_secure_cloud_agents_plugin_is_self_contained(self) -> None:
+        plugin_root = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents"
+        provider = json.loads((plugin_root / "provider.json").read_text(encoding="utf-8"))
+        self.assertEqual("secure-cloud-agents", provider["id"])
+        self.assertEqual("0.2.0", provider["version"])
+        self.assertTrue((plugin_root / "suite" / "agents" / "catalog.yaml").is_file())
+        offenders = []
+        for path in plugin_root.rglob("*"):
+            if path.is_file() and str(REPOSITORY_ROOT) in path.read_text(encoding="utf-8", errors="ignore"):
+                offenders.append(str(path.relative_to(plugin_root)))
+        self.assertEqual([], offenders)
 
     def test_bin_agents_wrapper_is_executable(self) -> None:
         wrapper = REPOSITORY_ROOT / "bin" / "agents"
         self.assertTrue(wrapper.is_file(), str(wrapper))
         self.assertTrue(os.access(wrapper, os.X_OK), f"{wrapper} is not executable")
+
+    def test_bin_agents_delegates_sdlc_to_standalone_kernel(self) -> None:
+        executable = os.environ.get("AGENTIC_SDLC_BIN")
+        if not executable:
+            self.skipTest("AGENTIC_SDLC_BIN is not configured")
+        result = subprocess.run(
+            [str(REPOSITORY_ROOT / "bin" / "agents"), "sdlc", "--version"],
+            cwd=REPOSITORY_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=os.environ.copy(),
+        )
+        self.assertEqual("0.2.0", result.stdout.strip())
 
     @unittest.skipUnless(sys.platform != "win32", "bin/agents is a POSIX sh script")
     def test_bin_agents_wrapper_dispatches_select_matching_direct_invocation(self) -> None:
@@ -307,6 +334,9 @@ class RepositoryHealthTests(unittest.TestCase):
         wrapper_payload = json.loads(via_plugin_wrapper.stdout)
         direct_payload.pop("generated_at", None)
         wrapper_payload.pop("generated_at", None)
+        for payload in (direct_payload, wrapper_payload):
+            for request in payload.get("knowledge_context", {}).get("requests", []):
+                request["invocation"]["args"][0] = "<packaged-knowledge-cli>"
         self.assertEqual(direct_payload, wrapper_payload)
 
     def test_bin_agents_subcommand_table_is_the_single_source_of_truth(self) -> None:

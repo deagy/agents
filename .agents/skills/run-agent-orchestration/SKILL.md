@@ -7,9 +7,9 @@ description: Select, coordinate, and consolidate this repository's secure cloud 
 
 Turn one scoped request into a deterministic agent selection, authorized knowledge retrieval, staged subagent execution, independent reviews, and a consolidated decision. Treat invocation of this skill as authorization to dispatch in-scope subagents, but never as authorization for production, destructive, or persistent-environment actions.
 
-A bare task description is enough to start this skill. See
-[`../../../plugins/agentic-sdlc/contracts/runner-adapters.md`](../../../plugins/agentic-sdlc/contracts/runner-adapters.md)
-for how "ask the human" and "spawn a subagent" map to the current runner, and for
+A bare task description is enough to start this skill. The separately installed
+Agentic SDLC plugin defines how "ask the human" and "spawn a subagent" map to
+the current runner, and supplies
 the rule this skill depends on throughout: **only this top-level orchestrator asks
 the human — a dispatched subagent that hits a decision only a human can make must
 return a blocking question in its result instead of prompting directly.**
@@ -28,7 +28,9 @@ return a blocking question in its result instead of prompting directly.**
 
 ## Bootstrap Local Setup
 
-Before the first dispatch this session, using the repository root located above (the directory containing `agents/catalog.yaml`; if you reached this file via an absolute path baked into an installed plugin's pointer, that path's root is the same repository root):
+Before the first dispatch this session, use the project-local suite when it
+contains `agents/catalog.yaml`; otherwise use the self-contained suite under
+`../../suite/agents/` relative to this packaged skill:
 
 - **Codex CLI only, no question needed**: copy any `<repo-root>/plugins/secure-cloud-agents/codex-agents/*.toml` that's missing from or different than `~/.codex/agents/` (create the directory first if needed) — this is plumbing, not a decision: without it, dispatch to any of the 34 roles fails outright, since Codex has no plugin-bundled-agent mechanism. Mention in your final report that wrappers were synced, so it isn't a silent write. Claude Code needs no equivalent step: its plugin-bundled `agents/*.md` wrappers are auto-discovered once the plugin is installed.
 - **Both runners, ask first**: if none of the three knowledge-store config tiers resolve yet (no explicit `--config`, no project-local `.agents/knowledge-store/config.json`, and no `~/.agents/knowledge-store/config.json` — i.e. this is genuinely the first knowledge-store use anywhere on this machine, or the first use in a project that hasn't opted in either way), this is a real decision, not plumbing: ask the human once, before creating anything —
@@ -40,7 +42,7 @@ Before the first dispatch this session, using the repository root located above 
 
 ## Select Agents
 
-The internal tools require Python 3.10 or newer; this is not an organization-wide Python standard. `bin/agents` (repository root) resolves and probes the interpreter for you — `python3`/`python`, plus `py -3` in the PowerShell `bin/agents.ps1` — stops rather than installing one or falling back to retired Node tooling if none qualifies. Invoke it as `agents` if it's on `PATH` (see `../../../README.md` "System-wide install"), or `<repo-root>/bin/agents` / `<repo-root>\bin\agents.ps1` directly:
+The internal tools require Python 3.10 or newer; this is not an organization-wide Python standard. `bin/agents` resolves and probes the interpreter and delegates lifecycle commands to the separately installed Agentic SDLC executable.
 
 ```sh
 agents select --task "<objective>" --task-id "<id>" --classification "<level>" --files "<comma-separated paths>"

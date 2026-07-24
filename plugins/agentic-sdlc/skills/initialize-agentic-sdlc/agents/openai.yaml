@@ -1,4 +1,0 @@
-interface:
-  display_name: "Initialize Agentic SDLC"
-  short_description: "Bootstrap a portable project overlay"
-  default_prompt: "Use $initialize-agentic-sdlc to initialize this repository for the portable Agentic SDLC."

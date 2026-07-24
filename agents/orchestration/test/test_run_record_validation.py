@@ -115,11 +115,8 @@ def _record() -> dict:
         for bom_type in sorted(BOM_TYPES)
     ]
     execution_gates = {}
-    lifecycle_contract = json.loads(
-        (ROOT.parent.parent / "plugins" / "agentic-sdlc" / "contracts" / "lifecycle-gates.json").read_text(
-            encoding="utf-8"
-        )
-    )["gates"]
+    from agentic_sdlc_contracts import lifecycle_contract
+    lifecycle_contract = lifecycle_contract()["gates"]
     for contract in lifecycle_contract:
         gate_id = contract["id"]
         agents = list(dict.fromkeys(

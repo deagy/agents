@@ -4,6 +4,7 @@
   "classification": "internal",
   "profile": "quick",
   "extensions": [],
+  "providers": ["secure-cloud-agents"],
   "approval_sources": {
     "human_gate_default": "github-review",
     "allow_manual_fallback": true
