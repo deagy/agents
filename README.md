@@ -268,3 +268,9 @@ reads the new version and, if no `vX.Y.Z` tag exists for it yet, creates one
 at that commit and publishes a matching GitHub Release automatically — no
 manual `git tag`/`git push` step. The workflow only ever tags content that
 has already been reviewed and merged, so tags stay immutable.
+
+**Merging a version-bump PR is the release approval.** The workflow itself
+runs unattended and asks no further confirmation, so review of that PR is
+where a human deliberately authorizes the release — treat a `version` bump
+in a PR's diff as an explicit release request, not an incidental change, and
+review it accordingly.

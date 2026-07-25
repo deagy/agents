@@ -68,12 +68,22 @@ def check_versions() -> list[str]:
     return problems
 
 
+# Line-based, not JSON-structure-aware: matches the first line naming a
+# top-level-shaped "version" key. set_version() below always re-parses the
+# result and checks it against the intended value before accepting it, so a
+# manifest shape this pattern can't handle correctly fails loudly instead of
+# writing wrong content — do not remove that check as "redundant."
 VERSION_LINE_PATTERN = re.compile(r'^(\s*"version"\s*:\s*")[^"]*(",?\s*)$', re.MULTILINE)
 
 
 def set_version(version: str) -> None:
     if not is_semver(version):
         raise SystemExit(f"agents version: {version!r} is not MAJOR.MINOR.PATCH semver")
+
+    # Build and validate every manifest's new content before writing any of
+    # them, so a problem with one manifest can never leave a different one
+    # already rewritten on disk — the two must change together or not at all.
+    updates: dict[Path, str] = {}
     for path in MANIFESTS.values():
         original = path.read_text(encoding="utf-8")
         updated, count = VERSION_LINE_PATTERN.subn(rf"\g<1>{version}\g<2>", original, count=1)
@@ -82,7 +92,21 @@ def set_version(version: str) -> None:
         # Re-parse to confirm the substitution kept the file valid JSON with the intended value.
         if json.loads(updated).get("version") != version:
             raise SystemExit(f"agents version: substitution produced unexpected JSON in {path}")
+        updates[path] = updated
+
+    for path, updated in updates.items():
         path.write_text(updated, encoding="utf-8")
+
+
+def _print_current_version_or_fail() -> int:
+    problems = check_versions()
+    if problems:
+        for problem in problems:
+            print(f"agents version: {problem}", file=sys.stderr)
+        return 1
+    versions = read_versions()
+    print(next(iter(versions.values())))
+    return 0
 
 
 def main() -> int:
@@ -97,24 +121,10 @@ def main() -> int:
         print(f"agents version: set to {arguments.set}")
         return 0
 
-    if arguments.check:
-        problems = check_versions()
-        if problems:
-            for problem in problems:
-                print(f"agents version: {problem}", file=sys.stderr)
-            return 1
-        versions = read_versions()
-        print(next(iter(versions.values())))
-        return 0
-
-    problems = check_versions()
-    if problems:
-        for problem in problems:
-            print(f"agents version: {problem}", file=sys.stderr)
-        return 1
-    versions = read_versions()
-    print(next(iter(versions.values())))
-    return 0
+    # Bare invocation and --check are deliberately the same: read-and-verify,
+    # printing the version on success. --check exists as a self-documenting,
+    # explicit flag for CI (see .github/workflows/release.yml).
+    return _print_current_version_or_fail()
 
 
 if __name__ == "__main__":
