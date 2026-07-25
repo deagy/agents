@@ -55,3 +55,11 @@ governance:
   grant_policy_exception: never
   authorize_production_release: never
   bypass_required_gate: never
+
+team_dispatch:
+  spawn_teammate: allowed_within_selected_scope
+  cross_teammate_messaging: allowed
+  claim_shared_task: allowed_within_selected_scope
+  message_human_directly_from_teammate: never
+  approve_own_teammates_plan: never
+  shared_file_ownership_across_teammates: never
