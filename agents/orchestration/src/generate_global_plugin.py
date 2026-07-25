@@ -408,7 +408,10 @@ def files_equal(left: Path, right: Path) -> bool:
         return {
             path.relative_to(root)
             for path in root.rglob("*")
-            if path.is_file() and path.relative_to(root).parts[0] in GENERATED_TOP_LEVEL
+            if path.is_file()
+            and path.relative_to(root).parts[0] in GENERATED_TOP_LEVEL
+            and "__pycache__" not in path.relative_to(root).parts
+            and path.suffix not in (".pyc", ".pyo")
         }
 
     left_files = generated_files(left)

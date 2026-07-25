@@ -8,12 +8,14 @@ its external Agentic SDLC provider. It does not contain the lifecycle kernel;
 that remains a separately versioned dependency.
 
 The lifecycle kernel is maintained separately at
-[`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc). Install that
-plugin first, then install this repository's marketplace:
+[`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc) and is not
+installed as a Claude Code/Codex plugin — clone it and put its CLI on `PATH`
+(or set `AGENTIC_SDLC_BIN`), then install this repository's own marketplace:
 
 ```sh
-codex plugin marketplace add /path/to/agentic-sdlc
-codex plugin add agentic-sdlc@agentic-sdlc
+git clone https://github.com/deagy/agentic-sdlc.git
+git -C agentic-sdlc checkout v0.3.0
+export AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc
 codex plugin marketplace add /path/to/agents
 codex plugin add secure-cloud-agents@agents-team
 ```
@@ -21,8 +23,6 @@ codex plugin add secure-cloud-agents@agents-team
 For Claude Code:
 
 ```text
-/plugin marketplace add /path/to/agentic-sdlc
-/plugin install agentic-sdlc@agentic-sdlc
 /plugin marketplace add /path/to/agents
 /plugin install secure-cloud-agents@agents-team
 ```

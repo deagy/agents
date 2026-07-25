@@ -563,7 +563,7 @@ distribution separates the reusable lifecycle kernel from target-project state:
 provider/plugin -> consuming target-project `.agentic-sdlc/` overlay and run record
 ```
 
-Install its marketplace and expose `bin/agentic-sdlc` on `PATH` or through
+Clone it and expose `bin/agentic-sdlc` on `PATH` or through
 `AGENTIC_SDLC_BIN`, then initialize through this repository's compatibility
 launcher:
 
@@ -578,7 +578,7 @@ If the target project uses this repository's cloud stack, use
 `plugins/secure-cloud-agents/provider.json`, and generated project wrappers are
 static copies bound to that provider version.
 
-For a first task, use the installed `orchestrate-agentic-sdlc` skill in `planning-review-only` mode or generate a deterministic plan with the bundled `plan` command. Keep lifecycle `required_quality_gates` separate from mutation-oriented `human_gates`, and store task state in the target repository rather than the plugin installation.
+For a first task, generate a deterministic dispatch plan with the bundled `plan` command, or drive full lifecycle orchestration with the standalone kernel's LangGraph engine — see `https://github.com/deagy/agentic-sdlc` for its CLI and service. Keep lifecycle `required_quality_gates` separate from mutation-oriented `human_gates`, and store task state in the target repository rather than the plugin installation.
 
 Before team adoption:
 
