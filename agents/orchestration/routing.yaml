@@ -305,7 +305,7 @@
       "keywords": ["delete resource", "drop table", "drop database", "delete namespace", "terraform destroy", "terraform state rm", "terraform state remove", "truncate table", "purge data", "force replace"],
       "keyword_groups": [
         ["destroy", "delete", "drop", "wipe", "erase", "purge", "remove", "truncate", "force replace"],
-        ["resource", "database", "table", "schema", "cluster", "namespace", "volume", "bucket", "state", "data"]
+        ["resource", "database", "table", "schema", "cluster", "namespace", "volume", "bucket", "state", "data", "environment", "vm", "virtual machine", "instance", "disk", "cache", "server", "node", "pod", "deployment", "container", "queue", "topic", "secret", "key", "certificate", "config", "configuration", "network", "service", "stack", "it"]
       ],
       "paths": [],
       "reviewers": ["security-reviewer"],

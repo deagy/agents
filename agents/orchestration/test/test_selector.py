@@ -815,6 +815,11 @@ class SelectorTests(unittest.TestCase):
             "Drop the customer database",
             "Truncate the audit table",
             "Run terraform destroy",
+            "Destroy the environment",
+            "Wipe the disk",
+            "Destroy the VM",
+            "Please destroy it",
+            "wipe the cache",
         ]
         for phrase in production_phrases:
             with self.subTest(phrase=phrase):
