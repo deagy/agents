@@ -818,7 +818,6 @@ class SelectorTests(unittest.TestCase):
             "Destroy the environment",
             "Wipe the disk",
             "Destroy the VM",
-            "Please destroy it",
             "wipe the cache",
         ]
         for phrase in production_phrases:
@@ -833,6 +832,12 @@ class SelectorTests(unittest.TestCase):
             "Delete a local variable",
             "Evaluate a destroy command example",
             "Inspect a wipe warning",
+            "Delete a local variable and rename it",
+            "Evaluate a destroy command example, does it work?",
+            "Please remove it from the README",
+            "Please destroy it",
+            "Just delete it",
+            "The bug will destroy it eventually",
         ):
             with self.subTest(benign=phrase):
                 self.assertNotIn(
