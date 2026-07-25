@@ -322,6 +322,43 @@ class RepositoryHealthTests(unittest.TestCase):
             len(list((plugin_root / "codex-agents").glob("secure-cloud-agents-*.toml"))),
         )
 
+    def test_repository_profile_and_local_override_policy_stay_current(self) -> None:
+        profile = (ROOT / "shared" / "team-profile.yaml").read_text(encoding="utf-8")
+        self.assertIn(
+            "source_control:\n  platform: github\n  change_model: pull_request",
+            profile,
+        )
+
+        for local_root in (
+            REPOSITORY_ROOT / ".claude" / "agents",
+            REPOSITORY_ROOT / ".codex" / "agents",
+        ):
+            self.assertFalse(
+                any(local_root.glob("*.md")) or any(local_root.glob("*.toml")),
+                f"stale project-local agent overrides remain under {local_root}",
+            )
+
+        secure_cloud = json.loads(
+            (
+                REPOSITORY_ROOT
+                / "plugins"
+                / "secure-cloud-agents"
+                / "profiles"
+                / "secure-cloud"
+                / "profile.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(16, len(secure_cloud["agents"]))
+        catalog = json.loads(
+            (
+                REPOSITORY_ROOT
+                / "plugins"
+                / "secure-cloud-agents"
+                / "agent-catalog.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual(36, len(catalog["agents"]))
+
     def test_codex_bootstrap_preserves_bare_files_and_rejects_unowned_collision(self) -> None:
         script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
         with tempfile.TemporaryDirectory() as temporary_directory:

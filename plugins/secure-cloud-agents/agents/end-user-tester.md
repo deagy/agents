@@ -126,8 +126,8 @@ testing:
   chaos_engineering_tool: not_yet_selected
 
 source_control:
-  platform: gitlab
-  change_model: merge_request
+  platform: github
+  change_model: pull_request
   protected_default_branch: required
 
 cicd:
