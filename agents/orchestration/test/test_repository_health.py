@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -345,6 +346,15 @@ class RepositoryHealthTests(unittest.TestCase):
             self.assertEqual("user-owned bare wrapper\n", bare.read_text(encoding="utf-8"))
 
             namespaced = target / "secure-cloud-agents-code-reviewer.toml"
+            namespaced.write_text("", encoding="utf-8")
+            empty_rejected = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertNotEqual(0, empty_rejected.returncode)
+            self.assertIn("Refusing to overwrite unowned", empty_rejected.stderr)
+            self.assertEqual("", namespaced.read_text(encoding="utf-8"))
+
             namespaced.write_text("user-owned collision\n", encoding="utf-8")
             rejected = subprocess.run(
                 [sys.executable, str(script), "--source", str(source), "--target", str(target)],
@@ -354,7 +364,7 @@ class RepositoryHealthTests(unittest.TestCase):
             self.assertIn("Refusing to overwrite unowned", rejected.stderr)
             self.assertEqual("user-owned collision\n", namespaced.read_text(encoding="utf-8"))
 
-    @unittest.skipUnless(hasattr(os, "symlink"), "symlink support is required")
+    @unittest.skipIf(sys.platform == "win32", "POSIX symlink behavior is required")
     def test_codex_bootstrap_rejects_symlinked_wrappers(self) -> None:
         script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -397,6 +407,35 @@ class RepositoryHealthTests(unittest.TestCase):
             self.assertNotEqual(0, destination_rejected.returncode)
             self.assertIn("Refusing symlinked destination wrapper", destination_rejected.stderr)
             self.assertEqual("user-owned destination\n", real_destination.read_text(encoding="utf-8"))
+
+    @unittest.skipUnless(hasattr(os, "O_NOFOLLOW"), "O_NOFOLLOW support is required")
+    def test_codex_bootstrap_no_follow_guards_run_at_open_time(self) -> None:
+        import importlib.util
+
+        script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
+        spec = importlib.util.spec_from_file_location("sync_codex_agents_under_test", script)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            source_target = temporary / "source-target.toml"
+            source_target.write_text("source content\n", encoding="utf-8")
+            source_link = temporary / "secure-cloud-agents-source.toml"
+            os.symlink(source_target, source_link)
+            with self.assertRaises(OSError):
+                module._read_regular_file(source_link)
+
+            destination_target = temporary / "destination-target.toml"
+            destination_target.write_text("destination content\n", encoding="utf-8")
+            destination_link = temporary / "secure-cloud-agents-destination.toml"
+            os.symlink(destination_target, destination_link)
+            with mock.patch.object(Path, "is_symlink", return_value=False):
+                with self.assertRaises(OSError):
+                    module._write_owned_wrapper(destination_link, b"new content\n")
+            self.assertEqual("destination content\n", destination_target.read_text(encoding="utf-8"))
 
     @unittest.skipUnless(sys.platform != "win32", "packaged wrapper is a POSIX sh script")
     def test_packaged_selector_targets_callers_git_repository(self) -> None:

@@ -35,11 +35,29 @@ def _read_regular_file(path: Path) -> bytes:
         os.close(descriptor)
 
 
+def _write_all(descriptor: int, content: bytes) -> None:
+    offset = 0
+    while offset < len(content):
+        offset += os.write(descriptor, content[offset:])
+
+
 def _write_owned_wrapper(destination: Path, content: bytes) -> str:
     if destination.is_symlink():
         raise RuntimeError(f"Refusing symlinked destination wrapper: {destination}")
-    flags = os.O_RDWR | os.O_CREAT | _nofollow_flag()
-    descriptor = os.open(destination, flags, 0o644)
+    create_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | _nofollow_flag()
+    try:
+        descriptor = os.open(destination, create_flags, 0o644)
+    except FileExistsError:
+        descriptor = os.open(destination, os.O_RDWR | _nofollow_flag())
+    else:
+        try:
+            file_stat = os.fstat(descriptor)
+            if not stat.S_ISREG(file_stat.st_mode):
+                raise RuntimeError(f"Refusing non-regular destination wrapper: {destination}")
+            _write_all(descriptor, content)
+            return "installed"
+        finally:
+            os.close(descriptor)
     try:
         file_stat = os.fstat(descriptor)
         if not stat.S_ISREG(file_stat.st_mode):
@@ -51,15 +69,13 @@ def _write_owned_wrapper(destination: Path, content: bytes) -> str:
                 break
             existing.append(chunk)
         existing_content = b"".join(existing)
-        if existing_content and PROVENANCE_MARKER.encode("utf-8") not in existing_content:
+        if PROVENANCE_MARKER.encode("utf-8") not in existing_content:
             raise RuntimeError(f"Refusing to overwrite unowned namespaced Codex wrapper: {destination}")
         if existing_content == content:
             return "unchanged"
         os.ftruncate(descriptor, 0)
         os.lseek(descriptor, 0, os.SEEK_SET)
-        offset = 0
-        while offset < len(content):
-            offset += os.write(descriptor, content[offset:])
+        _write_all(descriptor, content)
         return "installed"
     finally:
         os.close(descriptor)
