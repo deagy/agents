@@ -4,7 +4,7 @@
   "title": "Local Agent Selection Plan",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "task_id", "dispatch_fingerprint", "generated_at", "status", "workflow", "inputs", "matched_routes", "matched_risks", "agents", "required_quality_gates", "ignored_quality_gates", "gate_dispatch", "human_gates", "knowledge_context"],
+  "required": ["schema_version", "task_id", "dispatch_fingerprint", "generated_at", "status", "workflow", "inputs", "matched_routes", "matched_risks", "agents", "teams", "lifecycle_tracking", "required_quality_gates", "ignored_quality_gates", "gate_dispatch", "human_gates", "knowledge_context"],
   "properties": {
     "schema_version": { "const": 2 },
     "task_id": { "type": "string", "minLength": 1 },
@@ -22,6 +22,52 @@
         "primary": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
         "reviewers": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
         "support": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      }
+    },
+    "teams": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "trigger_reason", "communication_mode", "fallback", "description"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "type": { "enum": ["fixed", "dynamic"] },
+          "members": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+          "role": { "type": "string", "minLength": 1 },
+          "instances": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["min", "max"],
+            "properties": {
+              "min": { "type": "integer", "minimum": 1 },
+              "max": { "type": "integer", "minimum": 1 }
+            }
+          },
+          "trigger_reason": { "type": "object" },
+          "communication_mode": { "enum": ["peer"] },
+          "fallback": { "enum": ["orchestrator-relayed"] },
+          "description": { "type": "string", "minLength": 1 }
+        },
+        "oneOf": [
+          {
+            "properties": { "type": { "const": "fixed" } },
+            "required": ["members"]
+          },
+          {
+            "properties": { "type": { "const": "dynamic" } },
+            "required": ["role", "instances"]
+          }
+        ]
+      }
+    },
+    "lifecycle_tracking": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["standalone", "integrated"] },
+        "reason": { "type": "string", "minLength": 1 }
       }
     },
     "required_quality_gates": {

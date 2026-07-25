@@ -71,6 +71,31 @@ wave — see [team-recipes.md](team-recipes.md) for when that's warranted.
   orchestrating session reviews all N results and reconciles disagreements
   itself," since Codex has no way to let the roles do that directly.
 
+## Team communication contract
+
+`agents select` deterministically emits a `teams` array in its plan (see
+[team-recipes.md](team-recipes.md) for the named recipes and
+`agents/orchestration/routing.yaml`'s `team_recipes` for the trigger rules).
+Every team entry carries `communication_mode: "peer"` and
+`fallback: "orchestrator-relayed"` — this is not a choice made per dispatch,
+it's a fixed statement of what's actually possible:
+
+- **`peer`** is honored only on Claude Code with
+  `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` set. Spawn the team's members as an
+  Agent Team exactly as described above.
+- **`fallback: orchestrator-relayed`** applies everywhere else — Codex always,
+  and Claude Code whenever the experimental flag isn't set. Dispatch the same
+  member list as an ordinary parallel wave and perform all reconciliation
+  yourself as the orchestrating session. Never report that agents "discussed"
+  or "challenged" each other's findings when this fallback was actually used —
+  the consolidated report (see SKILL.md's "Consolidate Results") must name
+  which mode actually ran for each team.
+
+A `type: "dynamic"` team (the competing-hypotheses debugging recipe) only
+supplies a `role` and an `instances: {min, max}` range — decide the actual
+instance count and each instance's named hypothesis at dispatch time; the
+selector can't know either in advance.
+
 ## Choosing between an ordinary wave and a team
 
 Default to an ordinary parallel wave — it's cheaper and works identically on

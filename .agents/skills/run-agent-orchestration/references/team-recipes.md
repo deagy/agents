@@ -1,14 +1,29 @@
 # Team Recipes
 
 Three team compositions drawn from signals already present in this repo — not
-invented groupings. Each names the roles, each teammate's distinct focus, and
-how the lead synthesizes. See [runner-adapters.md](runner-adapters.md) for how
-to actually spawn these on each runner, and what changes on Codex.
+invented groupings. Each is now also a deterministic entry in
+`agents/orchestration/routing.yaml`'s `team_recipes` list: `agents select`
+evaluates the same trigger described here and, when it matches, emits the
+team in its `teams` field with a members/role list already intersected with
+whichever agents routing actually selected — no team recipe ever pulls in an
+agent that wasn't already going to be dispatched. Treat that emitted `teams`
+entry as the trigger source of record; this document adds the operational
+detail the selector can't decide (each teammate's distinct focus, how the
+lead synthesizes, file-ownership assignment). See
+[runner-adapters.md](runner-adapters.md) for how to actually spawn these on
+each runner, what `communication_mode`/`fallback` mean, and what changes on
+Codex.
 
 ## Parallel review team
 
 **Roles**: `code-reviewer` + `infrastructure-reviewer` +
 `pipeline-security-reviewer` + `supply-chain-security-reviewer`.
+
+**Selector trigger**: `team_recipes` id `parallel-review` in `routing.yaml` —
+fires when 2 or more of `frontend`/`backend`/`infrastructure`/`pipeline`/
+`supply-chain` routes match and at least 2 of the four roles above are
+already selected; the emitted `teams` entry's `members` is that intersection,
+not always all four.
 
 **When**: a change touches multiple review-relevant surfaces at once
 (application code, infrastructure, pipeline, dependencies). This is exactly
@@ -46,11 +61,13 @@ can't run as an independent peer in the same team.
 **Roles**: `frontend-engineer` + `backend-engineer` +
 `infrastructure-provisioner` + `cicd-engineer`.
 
-**When**: `agents/orchestration/routing.yaml`'s `cross_stack` block already
-detects this signal automatically — when 2 or more of the `frontend`,
-`backend`, `infrastructure`, `pipeline` routes match the same task, it adds
-`application-engineer` as support. That is this repo's own existing evidence
-these four roles' work is independent and commonly concurrent —
+**Selector trigger**: `team_recipes` id `cross-stack-build` in
+`routing.yaml`, sharing its trigger with the existing `cross_stack` block
+(2 or more of `frontend`/`backend`/`infrastructure`/`pipeline` routes match
+the same task) — that block still separately adds `application-engineer` as
+support; the team recipe additionally surfaces the matching engineers
+themselves as a named team. That shared trigger is this repo's own existing
+evidence these four roles' work is independent and commonly concurrent —
 `RUNBOOK.md`: "Implementation roles may work concurrently after architecture
 and threat requirements are stable."
 
@@ -74,6 +91,16 @@ completion, hand the combined output to the parallel review team above.
 **Roles**: `debugging-engineer`, spawned 2–4 times — this is the one recipe
 built on multiple instances of a *single* role pursuing different theories,
 not multiple different roles.
+
+**Selector trigger**: `team_recipes` id `competing-hypotheses-debugging` in
+`routing.yaml`, `type: dynamic` — fires when the `debugging` route matches,
+`debugging-engineer` is selected, and the task text carries an
+intermittent/flaky/recurring/unconverged signal. The emitted `teams` entry
+gives a `role` and an `instances: {min: 2, max: 4}` range, not fixed
+membership or named hypotheses — those are decided at dispatch time, below.
+A plain "debug this and find the root cause" task without that signal does
+not trigger this recipe; it dispatches a single `debugging-engineer` as
+usual.
 
 **When**: `agents/workflows/debugging.md`'s root-cause loop hasn't converged
 on one explanation from a single investigation, or the failure is

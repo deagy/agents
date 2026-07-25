@@ -65,9 +65,12 @@ def load_routing(file_path: Path) -> dict[str, Any]:
         or not isinstance(config.get("risk_rules"), list)
     ):
         raise ValueError("routing.yaml must contain version 1 routes and risk_rules")
-    ids = [rule.get("id") for rule in [*config["routes"], *config["risk_rules"]]]
+    ids = [
+        rule.get("id")
+        for rule in [*config["routes"], *config["risk_rules"], *config.get("team_recipes", [])]
+    ]
     if len(set(ids)) != len(ids):
-        raise ValueError("Routing and risk rule IDs must be unique")
+        raise ValueError("Routing, risk rule, and team recipe IDs must be unique")
     return config
 
 
@@ -86,7 +89,7 @@ def parse_catalog_entries(content: str) -> dict[str, dict[str, str]]:
             current = match.group(1)
             agents[current] = {}
             continue
-        if current and line.strip().startswith(("definition:", "phase:", "capability:")):
+        if current and line.strip().startswith(("definition:", "phase:", "capability:", "model:", "codex_model:")):
             key, value = line.strip().split(":", 1)
             agents[current][key] = value.strip()
     return agents

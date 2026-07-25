@@ -2,6 +2,7 @@
 name: escalation-manager
 description: Secure cloud agent suite role for the support phase (escalation-manager).
 tools: Read, Grep, Glob, Bash, Edit, Write
+model: haiku
 generated: true
 canonical_source: agents/support/escalation-manager/AGENT.md
 ---

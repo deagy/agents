@@ -81,6 +81,9 @@ ASK_HUMAN_RULE = (
     "blocking question in your result instead of guessing or proceeding."
 )
 
+ALLOWED_MODELS = {"haiku", "sonnet", "opus"}
+ALLOWED_CODEX_MODELS = {"gpt-5", "gpt-5-codex", "gpt-5-mini"}
+
 CAPABILITY_PROFILES: dict[str, dict[str, Any]] = {
     "read_only": {
         "tools": ["Read", "Grep", "Glob"],
@@ -117,6 +120,18 @@ def load_catalog(path: Path) -> dict[str, dict[str, Any]]:
         if capability not in CAPABILITY_PROFILES:
             raise ValueError(
                 f"Agent {agent_id} must declare one of: {', '.join(sorted(CAPABILITY_PROFILES))}"
+            )
+        model = metadata.get("model")
+        if model is not None and model not in ALLOWED_MODELS:
+            raise ValueError(
+                f"Agent {agent_id} declares an unsupported model tier {model!r}; "
+                f"must be one of: {', '.join(sorted(ALLOWED_MODELS))}"
+            )
+        codex_model = metadata.get("codex_model")
+        if codex_model is not None and codex_model not in ALLOWED_CODEX_MODELS:
+            raise ValueError(
+                f"Agent {agent_id} declares an unsupported codex_model {codex_model!r}; "
+                f"must be one of: {', '.join(sorted(ALLOWED_CODEX_MODELS))}"
             )
     return agents
 
@@ -193,6 +208,8 @@ def generate_agent_wrappers(catalog: dict[str, dict[str, Any]], plugin_root: Pat
         definition = metadata["definition"]
         phase = metadata.get("phase", "unknown")
         capability = metadata["capability"]
+        model = metadata.get("model")
+        codex_model = metadata.get("codex_model")
         profile = CAPABILITY_PROFILES[capability]
         definition_path = AGENTS_ROOT / definition
         shared_content = "\n\n".join(
@@ -206,36 +223,45 @@ def generate_agent_wrappers(catalog: dict[str, dict[str, Any]], plugin_root: Pat
         )
 
         md_target = plugin_root / "agents" / f"{agent_id}.md"
-        md_body = "\n".join(
-            [
-                "---",
-                f"name: {agent_id}",
-                f"description: {description}",
-                f"tools: {', '.join(profile['tools'])}",
-                "generated: true",
-                f"canonical_source: agents/{definition}",
-                "---",
-                "",
-                instructions,
-                "",
-            ]
-        )
-        write(md_target, md_body)
+        md_lines = [
+            "---",
+            f"name: {agent_id}",
+            f"description: {description}",
+            f"tools: {', '.join(profile['tools'])}",
+        ]
+        if model:
+            md_lines.append(f"model: {model}")
+        md_lines += [
+            "generated: true",
+            f"canonical_source: agents/{definition}",
+            "---",
+            "",
+            instructions,
+            "",
+        ]
+        write(md_target, "\n".join(md_lines))
         written.append(md_target)
 
         # Codex has no plugin-bundled-agent mechanism; this is a repo-tracked
         # staging copy, not something Codex discovers directly (see module docstring).
+        # `model` uses catalog.yaml's separate `codex_model` OpenAI identifier, not
+        # the Claude Code wrapper's haiku/sonnet/opus tier name above — the two
+        # runners don't share a model-naming space. Re-verify these identifiers
+        # against current Codex CLI docs before relying on them in automation.
         toml_target = plugin_root / "codex-agents" / f"{agent_id}.toml"
-        toml_body = "\n".join(
-            [
-                f"# GENERATED FILE: canonical source is agents/{definition}",
-                f"name = {toml_string(agent_id)}",
-                f"description = {toml_string(description)}",
-                f"sandbox_mode = {toml_string(profile['sandbox_mode'])}",
-                f"developer_instructions = {toml_string(instructions)}",
-                "",
-            ]
-        )
+        toml_lines = [
+            f"# GENERATED FILE: canonical source is agents/{definition}",
+            f"name = {toml_string(agent_id)}",
+            f"description = {toml_string(description)}",
+            f"sandbox_mode = {toml_string(profile['sandbox_mode'])}",
+        ]
+        if codex_model:
+            toml_lines.append(f"model = {toml_string(codex_model)}")
+        toml_lines += [
+            f"developer_instructions = {toml_string(instructions)}",
+            "",
+        ]
+        toml_body = "\n".join(toml_lines)
         write(toml_target, toml_body)
         written.append(toml_target)
     return written

@@ -68,6 +68,9 @@ agents:
   completed: []
   blocked: []
   deferred: []
+teams:
+  - id: <team id from the plan's teams field>
+    communication_mode_used: <peer|orchestrator-relayed>
 knowledge:
   status_by_agent: {}
 findings: []
@@ -78,3 +81,5 @@ validation: []
 disposition: <approve|request-changes|needs-information|blocked|plan-only>
 next_safe_action: <action>
 ```
+
+Record `communication_mode_used` per dispatched team even in standalone mode — it reflects what the runner actually did (see [runner-adapters.md](runner-adapters.md)'s "Team communication contract"), not a lifecycle decision, so it belongs in the plain summary regardless of `lifecycle_tracking.status`.

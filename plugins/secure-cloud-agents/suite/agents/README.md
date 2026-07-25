@@ -49,6 +49,14 @@ when that integration is required (for example, a larger or multi-project
 effort tracked through Agentic SDLC). Check the emitted `lifecycle_tracking.status`
 (`standalone` or `integrated`) to see which mode a given plan used.
 
+The plan additionally emits a deterministic `teams` array (from
+`orchestration/routing.yaml`'s `team_recipes`) and each role in `catalog.yaml`
+may declare a `model` tier (`haiku`/`sonnet`/`opus`) propagated into the
+generated wrappers — see `RUNBOOK.md` "Select the agent" and the
+`run-agent-orchestration` skill's `references/team-recipes.md` and
+`references/runner-adapters.md` for details, including the
+peer-vs-orchestrator-relayed communication contract each team carries.
+
 ## Operating model
 
 1. Capture human-owned intent and establish traceable requirements before architecture and implementation.

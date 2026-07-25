@@ -2,6 +2,7 @@
 name: policy-as-code-engineer
 description: Secure cloud agent suite role for the security phase (policy-as-code-engineer).
 tools: Read, Grep, Glob, Bash, Edit, Write
+model: sonnet
 generated: true
 canonical_source: agents/security/policy-as-code-engineer/AGENT.md
 ---

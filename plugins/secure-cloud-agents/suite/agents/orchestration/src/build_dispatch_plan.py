@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from risk_classifier import apply_cross_stack, classify_risks
-from routing import match_routes
+from routing import _keyword_matches, match_routes
 from agentic_sdlc_contracts import require_lifecycle_contract, try_lifecycle_contract
 
 CLASSIFICATIONS = {"public", "internal", "confidential", "restricted"}
@@ -169,6 +169,60 @@ def _build_human_gates(risks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         }
         for gate_id in gate_ids
     ]
+
+
+def _build_teams(
+    config: dict[str, Any],
+    matched_routes: list[dict[str, Any]],
+    selected_agents: list[str],
+    task_text: str,
+) -> list[dict[str, Any]]:
+    """Deterministically form named teams from the same signals routing already matched.
+
+    Fixed-type recipes only ever surface agents already selected by routing/risk
+    rules; a team never pulls in an agent that wouldn't otherwise be dispatched.
+    """
+    selected = set(selected_agents)
+    matched_route_ids = {route["id"] for route in matched_routes}
+    teams: list[dict[str, Any]] = []
+    for recipe in config.get("team_recipes", []):
+        if recipe["type"] == "fixed":
+            triggering_routes = sorted(matched_route_ids & set(recipe["route_ids"]))
+            if len(triggering_routes) < recipe["minimum_matches"]:
+                continue
+            members = [agent for agent in recipe["members"] if agent in selected]
+            if len(members) < recipe.get("minimum_members_selected", 2):
+                continue
+            teams.append({
+                "id": recipe["id"],
+                "type": "fixed",
+                "members": members,
+                "trigger_reason": {"routes": triggering_routes},
+                "communication_mode": recipe["communication_mode"],
+                "fallback": recipe["fallback"],
+                "description": recipe["description"],
+            })
+        elif recipe["type"] == "dynamic":
+            if recipe["role"] not in selected:
+                continue
+            if recipe.get("requires_route") and recipe["requires_route"] not in matched_route_ids:
+                continue
+            matched_keywords = [
+                keyword for keyword in recipe.get("keywords", []) if _keyword_matches(task_text.lower(), keyword)
+            ]
+            if not matched_keywords:
+                continue
+            teams.append({
+                "id": recipe["id"],
+                "type": "dynamic",
+                "role": recipe["role"],
+                "instances": recipe["instances"],
+                "trigger_reason": {"keywords": matched_keywords},
+                "communication_mode": recipe["communication_mode"],
+                "fallback": recipe["fallback"],
+                "description": recipe["description"],
+            })
+    return teams
 
 
 def _build_quality_gates(
@@ -335,6 +389,7 @@ def build_dispatch_plan(
     selected_agents = _ordered(
         [*groups["primary"], *groups["reviewers"], *groups["support"]], catalog
     )
+    teams = _build_teams(config, matched_routes, selected_agents, input_data["task"])
     route_ids = [route["id"] for route in matched_routes]
     risk_ids = [risk["id"] for risk in matched_risks]
     task_id = input_data.get("task_id")
@@ -418,6 +473,7 @@ def build_dispatch_plan(
         "matched_routes": [match["id"] for match in matched_routes],
         "matched_risks": [{"id": match["id"], "reasons": _reasons(match)} for match in matched_risks],
         "agents": groups,
+        "teams": teams,
         "lifecycle_tracking": lifecycle_tracking,
         "required_quality_gates": required_quality_gates,
         "ignored_quality_gates": ignored_quality_gates,
