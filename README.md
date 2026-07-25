@@ -245,3 +245,32 @@ Start here:
 - [AGENTS.md](AGENTS.md) for repository rules
 - [agents/README.md](agents/README.md) for the agent-suite overview
 - [agents/RUNBOOK.md](agents/RUNBOOK.md) for orchestration examples
+
+## Releasing
+
+Git tags follow `vMAJOR.MINOR.PATCH` and always match the packaged plugin's
+own version, declared independently in
+`plugins/secure-cloud-agents/.claude-plugin/plugin.json` and
+`plugins/secure-cloud-agents/.codex-plugin/plugin.json` (`agents
+generate-plugin` never touches this field, so a release is always a
+deliberate, reviewed action). Tags before `v0.3.0` predate this scheme and
+are a plain incrementing counter; they are left as-is.
+
+To cut a release:
+
+1. `agents version --set X.Y.Z` to bump both manifests together (or edit
+   them by hand — either way, `agents version --check` must pass).
+2. `agents generate-plugin` to regenerate the packaged plugin.
+3. Open a pull request describing the release; merge it once reviewed.
+
+Once the version bump lands on `main`, [`.github/workflows/release.yml`](.github/workflows/release.yml)
+reads the new version and, if no `vX.Y.Z` tag exists for it yet, creates one
+at that commit and publishes a matching GitHub Release automatically — no
+manual `git tag`/`git push` step. The workflow only ever tags content that
+has already been reviewed and merged, so tags stay immutable.
+
+**Merging a version-bump PR is the release approval.** The workflow itself
+runs unattended and asks no further confirmation, so review of that PR is
+where a human deliberately authorizes the release — treat a `version` bump
+in a PR's diff as an explicit release request, not an incidental change, and
+review it accordingly.

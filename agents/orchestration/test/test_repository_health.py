@@ -359,6 +359,56 @@ class RepositoryHealthTests(unittest.TestCase):
         )
         self.assertEqual(36, len(catalog["agents"]))
 
+    def test_packaged_plugin_manifests_declare_a_matching_semver_version(self) -> None:
+        sys.path.insert(0, str(ROOT / "orchestration" / "src"))
+        try:
+            import plugin_version
+        finally:
+            sys.path.pop(0)
+
+        self.assertEqual([], plugin_version.check_versions())
+        versions = plugin_version.read_versions()
+        self.assertRegex(versions["claude"], r"^\d+\.\d+\.\d+$")
+        self.assertEqual(versions["claude"], versions["codex"])
+
+    def test_plugin_version_set_writes_both_manifests_or_neither(self) -> None:
+        sys.path.insert(0, str(ROOT / "orchestration" / "src"))
+        try:
+            import plugin_version
+        finally:
+            sys.path.pop(0)
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            claude_manifest = temporary / "claude.json"
+            codex_manifest = temporary / "codex.json"
+            claude_manifest.write_text('{\n  "name": "x",\n  "version": "0.1.0"\n}\n', encoding="utf-8")
+            codex_manifest.write_text('{\n  "name": "x",\n  "version": "0.1.0"\n}\n', encoding="utf-8")
+
+            with mock.patch.object(
+                plugin_version,
+                "MANIFESTS",
+                {"claude": claude_manifest, "codex": codex_manifest},
+            ):
+                plugin_version.set_version("0.2.0")
+                self.assertEqual("0.2.0", plugin_version.read_versions()["claude"])
+                self.assertEqual("0.2.0", plugin_version.read_versions()["codex"])
+
+                # Corrupt only the second manifest so validation must fail partway
+                # through; neither manifest should end up changed by the attempt.
+                codex_manifest.write_text('{\n  "name": "x",\n  "ver_sion": "0.2.0"\n}\n', encoding="utf-8")
+                with self.assertRaisesRegex(SystemExit, 'could not locate a "version" line'):
+                    plugin_version.set_version("0.3.0")
+                self.assertEqual(
+                    '{\n  "name": "x",\n  "version": "0.2.0"\n}\n',
+                    claude_manifest.read_text(encoding="utf-8"),
+                    "claude manifest must be untouched when the codex manifest fails validation",
+                )
+                self.assertEqual(
+                    '{\n  "name": "x",\n  "ver_sion": "0.2.0"\n}\n',
+                    codex_manifest.read_text(encoding="utf-8"),
+                )
+
     def test_codex_bootstrap_preserves_bare_files_and_rejects_unowned_collision(self) -> None:
         script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
         with tempfile.TemporaryDirectory() as temporary_directory:
