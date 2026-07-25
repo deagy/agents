@@ -109,6 +109,80 @@ class SelectorTests(unittest.TestCase):
         self.assertTrue(all(Path(request["invocation"]["args"][0]).is_absolute() for request in requests))
         self.assertTrue(all(request["invocation"]["args"][1] == "context" for request in requests))
 
+    def test_two_route_task_forms_cross_stack_build_team_only(self) -> None:
+        result = plan(
+            task="Add a React upload form backed by a PostgreSQL API",
+            changed_files=["frontend/src/Upload.tsx", "services/upload/main.go"],
+            classification="internal",
+            task_id="APP-42",
+        )
+        team_ids = [team["id"] for team in result["teams"]]
+        self.assertEqual(team_ids, ["cross-stack-build"])
+        team = result["teams"][0]
+        self.assertEqual(team["type"], "fixed")
+        self.assertEqual(set(team["members"]), {"frontend-engineer", "backend-engineer"})
+        self.assertEqual(team["communication_mode"], "peer")
+        self.assertEqual(team["fallback"], "orchestrator-relayed")
+
+    def test_three_stack_task_also_forms_parallel_review_team(self) -> None:
+        result = plan(
+            task="Add a React upload form backed by a PostgreSQL API with Terraform infra",
+            changed_files=["frontend/src/Upload.tsx", "services/upload/main.go", "terraform/main.tf"],
+            classification="internal",
+            task_id="APP-43",
+        )
+        team_ids = {team["id"] for team in result["teams"]}
+        self.assertEqual(team_ids, {"cross-stack-build", "parallel-review"})
+        review_team = next(team for team in result["teams"] if team["id"] == "parallel-review")
+        self.assertEqual(set(review_team["members"]), {"code-reviewer", "infrastructure-reviewer"})
+
+    def test_intermittent_debugging_task_forms_dynamic_team(self) -> None:
+        result = plan(
+            task="Debug an intermittent panic that has not converged after several fixes",
+            changed_files=["services/internal/repository/regression/panic_test.go"],
+            classification="internal",
+            task_id="DBG-TEAM-1",
+        )
+        team = next(team for team in result["teams"] if team["id"] == "competing-hypotheses-debugging")
+        self.assertEqual(team["type"], "dynamic")
+        self.assertEqual(team["role"], "debugging-engineer")
+        self.assertEqual(team["instances"], {"min": 2, "max": 4})
+        self.assertIn("intermittent", team["trigger_reason"]["keywords"])
+
+    def test_ordinary_debugging_task_does_not_form_dynamic_team(self) -> None:
+        result = plan(
+            task="Debug a panic and identify the root cause from the stack trace",
+            changed_files=["services/internal/repository/regression/panic_test.go"],
+            classification="internal",
+            task_id="DBG-1",
+        )
+        self.assertNotIn("competing-hypotheses-debugging", [team["id"] for team in result["teams"]])
+
+    def test_single_route_task_has_no_teams(self) -> None:
+        result = plan(task="Update Terraform", changed_files=["main.tf"])
+        self.assertEqual(result["teams"], [])
+
+    def test_team_members_are_always_a_subset_of_selected_agents(self) -> None:
+        cases = [
+            (
+                "Add a React upload form backed by a PostgreSQL API with Terraform infra",
+                ["frontend/src/Upload.tsx", "services/upload/main.go", "terraform/main.tf"],
+            ),
+            (
+                "Review dependency SBOM and container image provenance for the pipeline and infra change",
+                ["services/go.mod", ".gitlab-ci.yml", "terraform/main.tf"],
+            ),
+        ]
+        for task, changed_files in cases:
+            with self.subTest(task=task):
+                result = plan(task=task, changed_files=changed_files)
+                selected = {*result["agents"]["primary"], *result["agents"]["reviewers"], *result["agents"]["support"]}
+                for team in result["teams"]:
+                    if team["type"] == "fixed":
+                        self.assertTrue(set(team["members"]).issubset(selected))
+                    else:
+                        self.assertIn(team["role"], selected)
+
     def test_knowledge_invocation_defaults_source_to_repository_name_when_unset(self) -> None:
         from build_dispatch_plan import DEFAULT_KNOWLEDGE_SOURCE, KNOWLEDGE_STORE_ROOT
 

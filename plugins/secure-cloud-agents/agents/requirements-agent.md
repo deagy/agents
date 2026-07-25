@@ -2,6 +2,7 @@
 name: requirements-agent
 description: Secure cloud agent suite role for the planning phase (requirements-agent).
 tools: Read, Grep, Glob, Bash, Edit, Write
+model: sonnet
 generated: true
 canonical_source: agents/planning/requirements-agent/AGENT.md
 ---

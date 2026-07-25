@@ -2,6 +2,7 @@
 name: cloud-architect
 description: Secure cloud agent suite role for the design phase (cloud-architect).
 tools: Read, Grep, Glob, Bash, Edit, Write
+model: opus
 generated: true
 canonical_source: agents/architecture/cloud-architect/AGENT.md
 ---

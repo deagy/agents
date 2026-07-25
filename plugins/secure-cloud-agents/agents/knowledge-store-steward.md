@@ -2,6 +2,7 @@
 name: knowledge-store-steward
 description: Secure cloud agent suite role for the knowledge phase (knowledge-store-steward).
 tools: Read, Grep, Glob, Bash, Edit, Write
+model: haiku
 generated: true
 canonical_source: agents/knowledge-store/AGENT.md
 ---

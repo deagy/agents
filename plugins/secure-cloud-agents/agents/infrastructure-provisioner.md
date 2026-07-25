@@ -2,6 +2,7 @@
 name: infrastructure-provisioner
 description: Secure cloud agent suite role for the build phase (infrastructure-provisioner).
 tools: Read, Grep, Glob, Bash, Edit, Write
+model: sonnet
 generated: true
 canonical_source: agents/engineering/infrastructure-provisioner/AGENT.md
 ---

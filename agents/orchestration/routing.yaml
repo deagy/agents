@@ -325,6 +325,41 @@
     "minimum_matches": 2,
     "support": ["application-engineer"]
   },
+  "team_recipes": [
+    {
+      "id": "parallel-review",
+      "type": "fixed",
+      "route_ids": ["frontend", "backend", "infrastructure", "pipeline", "supply-chain"],
+      "minimum_matches": 2,
+      "members": ["code-reviewer", "infrastructure-reviewer", "pipeline-security-reviewer", "supply-chain-security-reviewer"],
+      "minimum_members_selected": 2,
+      "communication_mode": "peer",
+      "fallback": "orchestrator-relayed",
+      "description": "Independent reviewers dispatched together for a change that spans multiple review-relevant surfaces at once."
+    },
+    {
+      "id": "cross-stack-build",
+      "type": "fixed",
+      "route_ids": ["frontend", "backend", "infrastructure", "pipeline"],
+      "minimum_matches": 2,
+      "members": ["frontend-engineer", "backend-engineer", "infrastructure-provisioner", "cicd-engineer"],
+      "minimum_members_selected": 2,
+      "communication_mode": "peer",
+      "fallback": "orchestrator-relayed",
+      "description": "Cross-stack implementers coordinating shared contracts for a change spanning 2 or more stack layers."
+    },
+    {
+      "id": "competing-hypotheses-debugging",
+      "type": "dynamic",
+      "role": "debugging-engineer",
+      "instances": {"min": 2, "max": 4},
+      "requires_route": "debugging",
+      "keywords": ["intermittent", "flaky", "recurring", "hasn't converged", "elusive", "hard to reproduce"],
+      "communication_mode": "peer",
+      "fallback": "orchestrator-relayed",
+      "description": "Multiple debugging-engineer instances pursuing distinct hypotheses for a root-cause loop that hasn't converged."
+    }
+  ],
   "knowledge_focus": {
     "cloud-architect": "prior architecture decisions, constraints, alternatives, failure domains, and recovery objectives",
     "threat-modeler": "prior threats, incidents, mitigations, trust boundaries, and residual risks",

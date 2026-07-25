@@ -2,6 +2,7 @@
 name: debugging-engineer
 description: Secure cloud agent suite role for the build phase (debugging-engineer).
 tools: Read, Grep, Glob, Bash, Edit, Write
+model: sonnet
 generated: true
 canonical_source: agents/engineering/debugging-engineer/AGENT.md
 ---
