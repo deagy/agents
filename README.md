@@ -37,7 +37,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 
 Key areas:
 
-- [bin/agents](bin/agents) dispatches the suite tools (`agents select`, `agents knowledge`, `agents sdlc`, and `agents generate-plugin`); lifecycle validation is provided by the standalone `agentic-sdlc` CLI.
+- [bin/agents](bin/agents) dispatches the suite tools (`agents select`, `agents knowledge`, `agents sdlc`, and `agents generate-plugin`). `agents select` works standalone, deterministically dispatching roles from this suite's own catalog and routing rules; it automatically enriches its plan with lifecycle-gate tracking when the standalone `agentic-sdlc` CLI is also available (or fails fast with `--require-sdlc` if that's required), and lifecycle *validation* itself is always provided by that separate `agentic-sdlc` CLI, never by this suite.
 - [agents/catalog.yaml](agents/catalog.yaml) is the machine-readable role inventory.
 - [agents/RUNBOOK.md](agents/RUNBOOK.md) explains how to select, dispatch, review, and escalate agent work.
 - [agents/orchestration/](agents/orchestration/) contains routing rules, lifecycle applicability mappings, handoff contracts, escalation policy, selectors, and tests.
@@ -63,12 +63,13 @@ Every role definition and orchestration tool is runner-neutral text and data. Co
 
 ## Quick start
 
-Read [AGENTS.md](AGENTS.md) first, then use the [getting-started guide](docs/getting-started.md). `bin/agents` resolves a Python 3.10+ interpreter for you (checks `python3`/`python`; `.\bin\agents.ps1` also checks `py -3` in PowerShell) — see "Put `agents` on `PATH`" to put it on `PATH`, or run it as `./bin/agents` (`.\bin\agents.ps1` in PowerShell) from the repository root. Then validate the suite-only component and, when the standalone lifecycle executable is available, the orchestration tools:
+Read [AGENTS.md](AGENTS.md) first, then use the [getting-started guide](docs/getting-started.md). `bin/agents` resolves a Python 3.10+ interpreter for you (checks `python3`/`python`; `.\bin\agents.ps1` also checks `py -3` in PowerShell) — see "Put `agents` on `PATH`" to put it on `PATH`, or run it as `./bin/agents` (`.\bin\agents.ps1` in PowerShell) from the repository root. Then validate the suite-only component and the orchestration tools (most of these run standalone; a handful of lifecycle-contract-specific tests only run when the standalone lifecycle executable is also available):
 
 ```sh
 python3 -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
+python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"
 # AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc \
-#   python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"
+#   python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"  # also runs the lifecycle-contract-specific tests
 ```
 
 Generate a reviewable dispatch plan:

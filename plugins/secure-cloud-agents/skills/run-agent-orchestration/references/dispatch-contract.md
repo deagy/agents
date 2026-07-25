@@ -55,7 +55,10 @@ and handoff to <receiver>.
 
 ## Consolidated run record
 
-Use the standalone Agentic SDLC kernel's run-record contract as the authoritative structure when saving a target-project run record. At minimum, preserve this summary together with the kernel-required lifecycle, impact-profile, gate, evidence, exception, and invalidation fields:
+Check the plan's `lifecycle_tracking.status` (see SKILL.md's "Operating modes"):
+
+- **`standalone`**: the plain summary below is sufficient on its own. Do not write a `.agentic-sdlc/` record — there is no lifecycle contract behind it to validate against.
+- **`integrated`**: use the standalone Agentic SDLC kernel's run-record contract as the authoritative structure when saving a target-project run record, preserving this summary together with the kernel-required lifecycle, impact-profile, gate, evidence, exception, and invalidation fields:
 
 ```yaml
 task_id: <id>

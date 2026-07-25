@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 AGENTS_ROOT = ROOT.parent
 sys.path.insert(0, str(ROOT / "src"))
 
+import agentic_sdlc_contracts  # noqa: E402
 from build_dispatch_plan import build_dispatch_plan  # noqa: E402
 from routing import glob_to_regex, load_catalog, load_routing  # noqa: E402
 from select_agents import discover_changed_files, explicit_files  # noqa: E402
@@ -47,7 +48,6 @@ def plan(**overrides: object) -> dict[str, object]:
     return build_dispatch_plan(CONFIG, CATALOG, values)
 
 
-@unittest.skipUnless(AGENTIC_SDLC_AVAILABLE, "Agentic SDLC executable is required")
 class SelectorTests(unittest.TestCase):
     @staticmethod
     def quality_gate_ids(result: dict[str, object]) -> list[str]:
@@ -128,6 +128,7 @@ class SelectorTests(unittest.TestCase):
             self.assertNotIn("--config", args)
             self.assertNotIn("cwd", request["invocation"])
 
+    @unittest.skipUnless(AGENTIC_SDLC_AVAILABLE, "Agentic SDLC executable is required")
     def test_emits_schema_v2_quality_gates_separately_from_human_gates(self) -> None:
         result = plan(
             task="Deploy to production with Terraform",
@@ -142,6 +143,7 @@ class SelectorTests(unittest.TestCase):
         self.assertEqual(production_gate["contributing_routes"], ["production"])
         self.assertEqual([gate["id"] for gate in result["human_gates"]], ["production-change"])
 
+    @unittest.skipUnless(AGENTIC_SDLC_AVAILABLE, "Agentic SDLC executable is required")
     def test_selects_product_intake_agents_and_gates_for_intent_only(self) -> None:
         result = plan(task="Capture product intent and requirements decomposition", changed_files=[])
         self.assertEqual(result["workflow"], "product-intake")
@@ -149,12 +151,14 @@ class SelectorTests(unittest.TestCase):
         self.assertIn("requirements-agent", result["agents"]["primary"])
         self.assertEqual(self.quality_gate_ids(result), ["G1", "G2"])
 
+    @unittest.skipUnless(AGENTIC_SDLC_AVAILABLE, "Agentic SDLC executable is required")
     def test_change_work_always_adds_intent_and_requirements_gates(self) -> None:
         result = plan(task="Implement a GitHub approval integration", changed_files=[])
         self.assertEqual(self.quality_gate_ids(result), ["G1", "G2"])
         self.assertIn("product-intent-agent", result["agents"]["support"])
         self.assertIn("requirements-agent", result["agents"]["support"])
 
+    @unittest.skipUnless(AGENTIC_SDLC_AVAILABLE, "Agentic SDLC executable is required")
     def test_combined_product_intent_and_architecture_uses_new_service(self) -> None:
         result = plan(task="Capture product intent and define the service architecture", changed_files=[])
         self.assertEqual(result["workflow"], "new-service")
@@ -179,6 +183,7 @@ class SelectorTests(unittest.TestCase):
             set(crypto["agents"]["primary"]).isdisjoint(crypto["agents"]["reviewers"])
         )
 
+    @unittest.skipUnless(AGENTIC_SDLC_AVAILABLE, "Agentic SDLC executable is required")
     def test_selects_runtime_assurance_without_production_release(self) -> None:
         result = plan(task="Observe production runtime for deployed behavior conformance", changed_files=[])
         self.assertEqual(result["workflow"], "runtime-assurance")
@@ -201,6 +206,7 @@ class SelectorTests(unittest.TestCase):
         self.assertEqual(result["workflow"], "debugging")
         self.assertIn("debugging-engineer", result["agents"]["primary"])
 
+    @unittest.skipUnless(AGENTIC_SDLC_AVAILABLE, "Agentic SDLC executable is required")
     def test_narrow_lifecycle_routes_avoid_generic_collisions(self) -> None:
         cases = [
             ("Update README requirements", ["README.md"]),
@@ -730,6 +736,51 @@ class SelectorTests(unittest.TestCase):
         self.assertIn("Añadir navegación React – café", decoded)
         self.assertIn("frontend/src/Café.tsx", decoded)
         self.assertTrue(result.stdout.endswith(b"\n"))
+
+    @patch("build_dispatch_plan.try_lifecycle_contract", return_value=None)
+    def test_standalone_mode_still_dispatches_teams_without_agentic_sdlc(self, _mock) -> None:
+        result = plan(
+            task="Add a React upload form backed by a PostgreSQL API",
+            changed_files=["frontend/src/Upload.tsx", "services/upload/main.go"],
+            classification="internal",
+            task_id="STANDALONE-1",
+        )
+        from build_dispatch_plan import STANDALONE_REASON
+
+        self.assertEqual(result["lifecycle_tracking"], {"status": "standalone", "reason": STANDALONE_REASON})
+        self.assertEqual(result["agents"]["primary"], ["frontend-engineer", "backend-engineer"])
+        self.assertIn("test-engineer", result["agents"]["reviewers"])
+        self.assertEqual(result["gate_dispatch"], [])
+
+    @patch("build_dispatch_plan.try_lifecycle_contract", return_value=None)
+    def test_standalone_mode_still_reports_needs_triage(self, _mock) -> None:
+        result = plan(task="Investigate an unexplained issue", changed_files=["unknown/file.xyz"])
+        self.assertEqual(result["status"], "needs-triage")
+        self.assertEqual(result["lifecycle_tracking"]["status"], "standalone")
+
+    @patch(
+        "build_dispatch_plan.require_lifecycle_contract",
+        side_effect=RuntimeError(agentic_sdlc_contracts.INSTALL_MESSAGE),
+    )
+    def test_require_sdlc_fails_fast_without_agentic_sdlc(self, _mock) -> None:
+        with self.assertRaisesRegex(RuntimeError, "Agentic SDLC v0.3.x is required"):
+            build_dispatch_plan(
+                CONFIG,
+                CATALOG,
+                {
+                    "task": "Update Terraform",
+                    "changed_files": ["main.tf"],
+                    "changed_file_source": "test",
+                },
+                require_sdlc=True,
+            )
+
+    @patch("agentic_sdlc_contracts._resolve_executable", return_value=None)
+    def test_agentic_sdlc_contracts_try_returns_none_when_unresolved(self, _mock) -> None:
+        agentic_sdlc_contracts._fetch_contract.cache_clear()
+        self.assertIsNone(agentic_sdlc_contracts.try_lifecycle_contract())
+        with self.assertRaisesRegex(RuntimeError, "Agentic SDLC v0.3.x is required"):
+            agentic_sdlc_contracts.require_lifecycle_contract()
 
 
 if __name__ == "__main__":
