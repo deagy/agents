@@ -359,6 +359,18 @@ class RepositoryHealthTests(unittest.TestCase):
         )
         self.assertEqual(36, len(catalog["agents"]))
 
+    def test_packaged_plugin_manifests_declare_a_matching_semver_version(self) -> None:
+        sys.path.insert(0, str(ROOT / "orchestration" / "src"))
+        try:
+            import plugin_version
+        finally:
+            sys.path.pop(0)
+
+        self.assertEqual([], plugin_version.check_versions())
+        versions = plugin_version.read_versions()
+        self.assertRegex(versions["claude"], r"^\d+\.\d+\.\d+$")
+        self.assertEqual(versions["claude"], versions["codex"])
+
     def test_codex_bootstrap_preserves_bare_files_and_rejects_unowned_collision(self) -> None:
         script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
         with tempfile.TemporaryDirectory() as temporary_directory:

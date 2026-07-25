@@ -381,6 +381,7 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
             and "/examples/" not in relative
             and not relative.endswith("generate_global_plugin.py")
             and not relative.endswith("migrate_execution_summary.py")
+            and not relative.endswith("plugin_version.py")
         ):
             selected.append(relative)
         elif relative.startswith("agents/knowledge-store/src/") or relative in {
