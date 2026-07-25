@@ -15,10 +15,10 @@ Agent-role wrappers are NOT symmetric, because the two runners differ here:
 - Codex CLI has no such mechanism — custom agents are only discovered from
   .codex/agents/ (project) or ~/.codex/agents/ (global) on disk, never from a
   plugin manifest. The *.toml wrappers are generated to the repo-tracked
-  staging directory plugins/secure-cloud-agents/codex-agents/ instead; copying
-  them into ~/.codex/agents/ is a separate, explicit step (see
-  plugins/secure-cloud-agents/README.md) rather than something this script does
-  on its own, since it would otherwise be writing outside the repository.
+  staging directory plugins/secure-cloud-agents/codex-agents/ instead. The
+  separate `agents bootstrap-codex` command safely installs their namespaced
+  IDs under ~/.codex/agents/ without overwriting bare roles or unowned files;
+  this generator itself never writes outside the repository.
 
 A generated bin/agents wrapper is included too: Claude Code auto-discovers a
 plugin's bin/ directory onto the Bash tool's PATH for the duration of a session
@@ -248,10 +248,11 @@ def generate_agent_wrappers(catalog: dict[str, dict[str, Any]], plugin_root: Pat
         # the Claude Code wrapper's haiku/sonnet/opus tier name above — the two
         # runners don't share a model-naming space. Re-verify these identifiers
         # against current Codex CLI docs before relying on them in automation.
-        toml_target = plugin_root / "codex-agents" / f"{agent_id}.toml"
+        codex_agent_id = f"secure-cloud-agents-{agent_id}"
+        toml_target = plugin_root / "codex-agents" / f"{codex_agent_id}.toml"
         toml_lines = [
             f"# GENERATED FILE: canonical source is agents/{definition}",
-            f"name = {toml_string(agent_id)}",
+            f"name = {toml_string(codex_agent_id)}",
             f"description = {toml_string(description)}",
             f"sandbox_mode = {toml_string(profile['sandbox_mode'])}",
         ]
@@ -322,8 +323,9 @@ def generate_bin_wrapper(plugin_root: Path) -> Path:
             '[ -n "$AGENT_PYTHON" ] || { echo "agents: Python 3.10+ is required" >&2; exit 1; }',
             'case "$command_name" in',
             '  select) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/select_agents.py" "$@" ;;',
+            '  bootstrap-codex) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/sync_codex_agents.py" --source "$PLUGIN_ROOT/codex-agents" "$@" ;;',
             '  knowledge) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/knowledge-store/src/cli.py" "$@" ;;',
-            '  help|-h|--help) echo "Usage: agents {select|knowledge|sdlc} [args...]" ;;',
+            '  help|-h|--help) echo "Usage: agents {select|knowledge|bootstrap-codex|sdlc} [args...]" ;;',
             '  *) echo "agents: unknown subcommand $command_name" >&2; exit 1 ;;',
             "esac",
             "",
@@ -350,6 +352,9 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
     contract_helper = "agents/orchestration/src/agentic_sdlc_contracts.py"
     if (REPOSITORY_ROOT / contract_helper).is_file():
         tracked.add(contract_helper)
+    bootstrap_helper = "agents/orchestration/src/sync_codex_agents.py"
+    if (REPOSITORY_ROOT / bootstrap_helper).is_file():
+        tracked.add(bootstrap_helper)
     role_paths = {f"agents/{metadata['definition']}" for metadata in catalog.values()}
     documentation_paths = {
         "AGENTS.md",

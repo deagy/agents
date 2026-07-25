@@ -73,12 +73,18 @@ risk.
 ## Codex role wrappers
 
 Codex discovers custom agents only under project `.codex/agents/` or global
-`~/.codex/agents/`. Copy the staged wrappers after installation:
+`~/.codex/agents/`. Install the staged, namespaced wrappers safely:
 
 ```sh
-mkdir -p ~/.codex/agents
-cp plugins/secure-cloud-agents/codex-agents/*.toml ~/.codex/agents/
+agents bootstrap-codex
 ```
+
+The generated IDs and filenames use `secure-cloud-agents-<role>`. The command
+never touches legacy bare `<role>.toml` files and refuses to overwrite an
+existing namespaced file unless it carries this generator's provenance marker.
+Legacy bare global files may be removed manually after confirming nothing still
+dispatches them; installation never deletes them. A project-local bare
+`.codex/agents/<role>.toml` remains the preferred override.
 
 Claude Code discovers `agents/*.md` directly from the plugin.
 

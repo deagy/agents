@@ -7,21 +7,69 @@
   "required": ["schema_version", "task_id", "dispatch_fingerprint", "generated_at", "status", "workflow", "inputs", "matched_routes", "matched_risks", "agents", "teams", "lifecycle_tracking", "required_quality_gates", "ignored_quality_gates", "gate_dispatch", "human_gates", "knowledge_context"],
   "properties": {
     "schema_version": { "const": 2 },
-    "task_id": { "type": "string", "minLength": 1 },
+    "task_id": { "$ref": "#/$defs/nonempty" },
     "dispatch_fingerprint": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
     "generated_at": { "type": "string", "format": "date-time" },
     "status": { "enum": ["ready", "needs-triage"] },
     "workflow": { "enum": ["new-service", "product-intake", "runtime-assurance", "debugging", "infrastructure-change", "pipeline-change", "knowledge-ingestion", "support-escalation", "production-release", "rollback", "needs-triage"] },
-    "inputs": { "type": "object" },
-    "matched_routes": { "type": "array", "items": { "type": "string" } },
-    "matched_risks": { "type": "array", "items": { "type": "object" } },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task", "repository_root", "base", "changed_file_source", "changed_files", "classification", "source_filter"],
+      "properties": {
+        "task": { "$ref": "#/$defs/nonempty" },
+        "repository_root": { "$ref": "#/$defs/nonempty" },
+        "base": { "type": ["string", "null"], "minLength": 1 },
+        "changed_file_source": { "$ref": "#/$defs/nonempty" },
+        "changed_files": { "$ref": "#/$defs/stringArray" },
+        "classification": { "type": ["string", "null"], "enum": ["public", "internal", "confidential", "restricted", null] },
+        "source_filter": { "$ref": "#/$defs/nonempty" }
+      }
+    },
+    "matched_routes": { "$ref": "#/$defs/stringArray" },
+    "matched_risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "reasons"],
+        "properties": {
+          "id": { "$ref": "#/$defs/nonempty" },
+          "reasons": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["keywords", "keyword_groups", "paths"],
+            "properties": {
+              "keywords": { "$ref": "#/$defs/stringArray" },
+              "keyword_groups": {
+                "type": "array",
+                "items": { "$ref": "#/$defs/nonemptyStringArray" }
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["pattern", "file"],
+                  "properties": {
+                    "pattern": { "$ref": "#/$defs/nonempty" },
+                    "file": { "$ref": "#/$defs/nonempty" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "agents": {
       "type": "object",
+      "additionalProperties": false,
       "required": ["primary", "reviewers", "support"],
       "properties": {
-        "primary": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
-        "reviewers": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
-        "support": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+        "primary": { "$ref": "#/$defs/stringArray" },
+        "reviewers": { "$ref": "#/$defs/stringArray" },
+        "support": { "$ref": "#/$defs/stringArray" }
       }
     },
     "teams": {
@@ -31,10 +79,10 @@
         "additionalProperties": false,
         "required": ["id", "type", "trigger_reason", "communication_mode", "fallback", "description"],
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
+          "id": { "$ref": "#/$defs/nonempty" },
           "type": { "enum": ["fixed", "dynamic"] },
-          "members": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
-          "role": { "type": "string", "minLength": 1 },
+          "members": { "$ref": "#/$defs/nonemptyStringArray" },
+          "role": { "$ref": "#/$defs/nonempty" },
           "instances": {
             "type": "object",
             "additionalProperties": false,
@@ -44,19 +92,29 @@
               "max": { "type": "integer", "minimum": 1 }
             }
           },
-          "trigger_reason": { "type": "object" },
-          "communication_mode": { "enum": ["peer"] },
-          "fallback": { "enum": ["orchestrator-relayed"] },
-          "description": { "type": "string", "minLength": 1 }
+          "trigger_reason": {
+            "type": "object",
+            "additionalProperties": false,
+            "minProperties": 1,
+            "properties": {
+              "routes": { "$ref": "#/$defs/nonemptyStringArray" },
+              "keywords": { "$ref": "#/$defs/nonemptyStringArray" }
+            }
+          },
+          "communication_mode": { "const": "peer" },
+          "fallback": { "const": "orchestrator-relayed" },
+          "description": { "$ref": "#/$defs/nonempty" }
         },
         "oneOf": [
           {
             "properties": { "type": { "const": "fixed" } },
-            "required": ["members"]
+            "required": ["members"],
+            "not": { "anyOf": [{ "required": ["role"] }, { "required": ["instances"] }] }
           },
           {
             "properties": { "type": { "const": "dynamic" } },
-            "required": ["role", "instances"]
+            "required": ["role", "instances"],
+            "not": { "required": ["members"] }
           }
         ]
       }
@@ -67,8 +125,12 @@
       "required": ["status"],
       "properties": {
         "status": { "enum": ["standalone", "integrated"] },
-        "reason": { "type": "string", "minLength": 1 }
-      }
+        "reason": { "$ref": "#/$defs/nonempty" }
+      },
+      "oneOf": [
+        { "properties": { "status": { "const": "standalone" } }, "required": ["reason"] },
+        { "properties": { "status": { "const": "integrated" } }, "not": { "required": ["reason"] } }
+      ]
     },
     "required_quality_gates": {
       "type": "array",
@@ -77,20 +139,29 @@
         "additionalProperties": false,
         "required": ["id", "required", "reason", "contributing_routes"],
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
+          "id": { "$ref": "#/$defs/nonempty" },
           "required": { "const": true },
-          "reason": { "type": "string", "minLength": 1 },
-          "contributing_routes": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": { "type": "string", "minLength": 1 }
-          }
+          "reason": { "$ref": "#/$defs/nonempty" },
+          "contributing_routes": { "$ref": "#/$defs/nonemptyStringArray" }
         }
       }
     },
-    "ignored_quality_gates": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
-    "gate_dispatch": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["gate_id", "status", "agents", "tasks", "artifacts"], "properties": { "gate_id": { "type": "string", "minLength": 1 }, "status": { "enum": ["required", "ignored"] }, "agents": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }, "tasks": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }, "artifacts": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } } } } },
+    "ignored_quality_gates": { "$ref": "#/$defs/stringArray" },
+    "gate_dispatch": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["gate_id", "status", "agents", "tasks", "artifacts"],
+        "properties": {
+          "gate_id": { "$ref": "#/$defs/nonempty" },
+          "status": { "enum": ["required", "ignored"] },
+          "agents": { "$ref": "#/$defs/stringArray" },
+          "tasks": { "$ref": "#/$defs/stringArray" },
+          "artifacts": { "$ref": "#/$defs/stringArray" }
+        }
+      }
+    },
     "human_gates": {
       "type": "array",
       "items": {
@@ -98,12 +169,82 @@
         "additionalProperties": false,
         "required": ["id", "required", "reason"],
         "properties": {
-          "id": { "type": "string", "minLength": 1 },
+          "id": { "$ref": "#/$defs/nonempty" },
           "required": { "const": true },
-          "reason": { "type": "string", "minLength": 1 }
+          "reason": { "$ref": "#/$defs/nonempty" }
         }
       }
     },
-    "knowledge_context": { "type": "object" }
+    "knowledge_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "requests"],
+      "properties": {
+        "status": { "enum": ["not-applicable", "authorization-required", "planned"] },
+        "reason": { "$ref": "#/$defs/nonempty" },
+        "classification": { "enum": ["public", "internal", "confidential", "restricted"] },
+        "source_filter": { "$ref": "#/$defs/nonempty" },
+        "requests": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["agent", "query", "invocation"],
+            "properties": {
+              "agent": { "$ref": "#/$defs/nonempty" },
+              "query": { "$ref": "#/$defs/nonempty" },
+              "invocation": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["launcher", "args"],
+                "properties": {
+                  "launcher": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["runtime", "minimum_version", "resolution"],
+                    "properties": {
+                      "runtime": { "const": "python" },
+                      "minimum_version": { "const": "3.10" },
+                      "resolution": { "const": "runner-probed" }
+                    }
+                  },
+                  "args": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/nonempty" } }
+                }
+              }
+            }
+          }
+        }
+      },
+      "oneOf": [
+        {
+          "properties": { "status": { "const": "planned" }, "requests": { "minItems": 1 } },
+          "required": ["classification", "source_filter"],
+          "not": { "required": ["reason"] }
+        },
+        {
+          "properties": { "status": { "const": "authorization-required" }, "requests": { "maxItems": 0 } },
+          "required": ["reason"],
+          "not": { "anyOf": [{ "required": ["classification"] }, { "required": ["source_filter"] }] }
+        },
+        {
+          "properties": { "status": { "const": "not-applicable" }, "requests": { "maxItems": 0 } },
+          "not": { "anyOf": [{ "required": ["reason"] }, { "required": ["classification"] }, { "required": ["source_filter"] }] }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "nonempty": { "type": "string", "minLength": 1 },
+    "stringArray": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/nonempty" }
+    },
+    "nonemptyStringArray": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/nonempty" }
+    }
   }
 }

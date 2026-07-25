@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -19,7 +21,12 @@ sys.path.insert(0, str(ROOT / "src"))
 import agentic_sdlc_contracts  # noqa: E402
 from build_dispatch_plan import build_dispatch_plan  # noqa: E402
 from routing import glob_to_regex, load_catalog, load_routing  # noqa: E402
-from select_agents import discover_changed_files, explicit_files  # noqa: E402
+from select_agents import (  # noqa: E402
+    _origin_slug,
+    discover_changed_files,
+    explicit_files,
+    resolve_knowledge_source,
+)
 
 CONFIG = load_routing(ROOT / "routing.yaml")
 CATALOG = load_catalog(AGENTS_ROOT / "catalog.yaml")
@@ -43,6 +50,8 @@ def plan(**overrides: object) -> dict[str, object]:
         "task": "Change the application",
         "changed_files": [],
         "changed_file_source": "test",
+        "repository_root": str(AGENTS_ROOT.parent),
+        "source": "example/repository",
         **overrides,
     }
     return build_dispatch_plan(CONFIG, CATALOG, values)
@@ -183,8 +192,8 @@ class SelectorTests(unittest.TestCase):
                     else:
                         self.assertIn(team["role"], selected)
 
-    def test_knowledge_invocation_defaults_source_to_repository_name_when_unset(self) -> None:
-        from build_dispatch_plan import DEFAULT_KNOWLEDGE_SOURCE, KNOWLEDGE_STORE_ROOT
+    def test_knowledge_invocation_uses_resolved_repository_source(self) -> None:
+        from build_dispatch_plan import KNOWLEDGE_STORE_ROOT
 
         result = plan(
             task="Add a React upload form backed by a PostgreSQL API",
@@ -197,7 +206,7 @@ class SelectorTests(unittest.TestCase):
         for request in requests:
             args = request["invocation"]["args"]
             self.assertIn("--source", args)
-            self.assertEqual(DEFAULT_KNOWLEDGE_SOURCE, args[args.index("--source") + 1])
+            self.assertEqual("example/repository", args[args.index("--source") + 1])
             self.assertEqual(str(KNOWLEDGE_STORE_ROOT / "src" / "cli.py"), args[0])
             self.assertNotIn("--config", args)
             self.assertNotIn("cwd", request["invocation"])
@@ -686,7 +695,10 @@ class SelectorTests(unittest.TestCase):
                 "files": ["frontend/a.ts", "infra/new.tf", "tests/new.feature"],
             },
         )
-        run_git.assert_called_once_with(["status", "--short", "-z"])
+        run_git.assert_called_once_with(
+            ["status", "--short", "-z", "--untracked-files=all"],
+            AGENTS_ROOT.parent.resolve(),
+        )
 
     @patch("select_agents._run_git")
     def test_git_status_discovery_preserves_quoted_paths_verbatim(self, run_git) -> None:
@@ -713,7 +725,182 @@ class SelectorTests(unittest.TestCase):
                 "files": ["services/a.go", "infra/main.tf"],
             },
         )
-        run_git.assert_called_once_with(["diff", "--name-only", "main...HEAD"])
+        run_git.assert_called_once_with(["diff", "--name-only", "main...HEAD"], AGENTS_ROOT.parent.resolve())
+
+    def test_origin_slug_supports_common_git_url_forms(self) -> None:
+        origins = {
+            "https://github.com/Owner/Repository.git": "owner/repository",
+            "ssh://git@github.com/Owner/Repository.git": "owner/repository",
+            "git@github.com:Owner/Repository.git": "owner/repository",
+        }
+        for origin, expected in origins.items():
+            with self.subTest(origin=origin), patch("select_agents._run_git", return_value=origin):
+                self.assertEqual(expected, _origin_slug(AGENTS_ROOT.parent))
+
+    def test_repository_source_falls_back_to_canonical_path_hash(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="Source Repo ") as temporary_directory:
+            root = Path(temporary_directory).resolve()
+            expected_hash = hashlib.sha256(str(root).encode("utf-8")).hexdigest()[:12]
+            expected_name = re.sub(r"[^a-z0-9._-]+", "-", root.name.lower()).strip("-")
+            with patch("select_agents._run_git", side_effect=RuntimeError("no origin")):
+                self.assertEqual(
+                    f"local-{expected_name}-{expected_hash}",
+                    resolve_knowledge_source(root),
+                )
+
+    def test_cli_root_targets_unrelated_git_repository_for_status_and_base(self) -> None:
+        selector = ROOT / "src" / "select_agents.py"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            target = Path(temporary_directory) / "target"
+            caller = Path(temporary_directory) / "caller"
+            target.mkdir()
+            caller.mkdir()
+            subprocess.run(["git", "init", "-q", str(target)], check=True)
+            subprocess.run(["git", "-C", str(target), "config", "user.email", "test@example.invalid"], check=True)
+            subprocess.run(["git", "-C", str(target), "config", "user.name", "Test"], check=True)
+            subprocess.run(
+                ["git", "-C", str(target), "remote", "add", "origin", "https://github.com/Example/TargetRepo.git"],
+                check=True,
+            )
+            (target / "frontend").mkdir()
+            (target / "frontend" / "base.tsx").write_text("base\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(target), "add", "."], check=True)
+            subprocess.run(["git", "-C", str(target), "commit", "-qm", "base"], check=True)
+            base = subprocess.run(
+                ["git", "-C", str(target), "rev-parse", "HEAD"],
+                check=True, capture_output=True, text=True, encoding="utf-8",
+            ).stdout.strip()
+            (target / "services").mkdir()
+            (target / "services" / "api.go").write_text("package services\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(target), "add", "."], check=True)
+            subprocess.run(["git", "-C", str(target), "commit", "-qm", "service"], check=True)
+            (target / "frontend" / "base.tsx").write_text("dirty\n", encoding="utf-8")
+
+            common = [sys.executable, str(selector), "--root", str(target), "--task", "Update React and API"]
+            status = subprocess.run(common, cwd=caller, check=True, capture_output=True, text=True)
+            status_plan = json.loads(status.stdout)
+            self.assertEqual(str(target.resolve()), status_plan["inputs"]["repository_root"])
+            self.assertEqual("example/targetrepo", status_plan["inputs"]["source_filter"])
+            self.assertEqual(["frontend/base.tsx"], status_plan["inputs"]["changed_files"])
+
+            diff = subprocess.run([*common, "--base", base], cwd=caller, check=True, capture_output=True, text=True)
+            diff_plan = json.loads(diff.stdout)
+            self.assertEqual(str(target.resolve()), diff_plan["inputs"]["repository_root"])
+            self.assertEqual("example/targetrepo", diff_plan["inputs"]["source_filter"])
+            self.assertEqual(["services/api.go"], diff_plan["inputs"]["changed_files"])
+
+    def test_non_git_root_requires_explicit_files(self) -> None:
+        selector = ROOT / "src" / "select_agents.py"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            implicit = subprocess.run(
+                [sys.executable, str(selector), "--root", str(root), "--task", "Update React"],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertNotEqual(0, implicit.returncode)
+            explicit = subprocess.run(
+                [sys.executable, str(selector), "--root", str(root), "--task", "Update React", "--files", "frontend/App.tsx"],
+                check=True, capture_output=True, text=True,
+            )
+            self.assertEqual("explicit", json.loads(explicit.stdout)["inputs"]["changed_file_source"])
+
+    def test_conjunctive_production_and_destructive_gates(self) -> None:
+        production_phrases = [
+            "Apply the Helm chart in production",
+            "Rotate credentials in the live environment",
+            "Restart the prod service",
+        ]
+        destructive_phrases = [
+            "Delete the Kubernetes namespace",
+            "Drop the customer database",
+            "Truncate the audit table",
+            "Run terraform destroy",
+            "Destroy the environment",
+            "Wipe the disk",
+            "Destroy the VM",
+            "wipe the cache",
+        ]
+        for phrase in production_phrases:
+            with self.subTest(phrase=phrase):
+                self.assertIn("production-change", [gate["id"] for gate in plan(task=phrase)["human_gates"]])
+        for phrase in destructive_phrases:
+            with self.subTest(phrase=phrase):
+                self.assertIn("destructive-action", [gate["id"] for gate in plan(task=phrase)["human_gates"]])
+        for phrase in (
+            "Observe production runtime health",
+            "Read the production dashboard",
+            "Delete a local variable",
+            "Evaluate a destroy command example",
+            "Inspect a wipe warning",
+            "Delete a local variable and rename it",
+            "Evaluate a destroy command example, does it work?",
+            "Please remove it from the README",
+            "Please destroy it",
+            "Just delete it",
+            "The bug will destroy it eventually",
+        ):
+            with self.subTest(benign=phrase):
+                self.assertNotIn(
+                    "production-change",
+                    [gate["id"] for gate in plan(task=phrase)["human_gates"]],
+                )
+                self.assertNotIn(
+                    "destructive-action",
+                    [gate["id"] for gate in plan(task=phrase)["human_gates"]],
+                )
+
+    def test_load_routing_rejects_malformed_keyword_groups(self) -> None:
+        for keyword_groups in ("destroy delete", [[]], [["destroy", ""]], [["destroy", 42]]):
+            with self.subTest(keyword_groups=keyword_groups):
+                config = json.loads((ROOT / "routing.yaml").read_text(encoding="utf-8"))
+                config["risk_rules"][-1]["keyword_groups"] = keyword_groups
+                with tempfile.TemporaryDirectory() as temporary_directory:
+                    path = Path(temporary_directory) / "routing.json"
+                    path.write_text(json.dumps(config), encoding="utf-8")
+                    with self.assertRaisesRegex(ValueError, "keyword_groups"):
+                        load_routing(path)
+
+    def test_load_routing_rejects_inverted_dynamic_team_range(self) -> None:
+        config = json.loads((ROOT / "routing.yaml").read_text(encoding="utf-8"))
+        config["team_recipes"][-1]["instances"] = {"min": 4, "max": 2}
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            path = Path(temporary_directory) / "routing.json"
+            path.write_text(json.dumps(config), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "1 <= min <= max"):
+                load_routing(path)
+
+    def test_selection_schema_rejects_malformed_closed_contracts(self) -> None:
+        import jsonschema
+
+        schema = json.loads((ROOT / "selection.schema.json").read_text(encoding="utf-8"))
+        validator = jsonschema.Draft202012Validator(schema)
+        valid = plan(
+            task="Deploy the API to production",
+            changed_files=["services/api/main.go"],
+            classification="internal",
+            task_id="SCHEMA-1",
+        )
+        validator.validate(valid)
+
+        malformed = []
+        value = json.loads(json.dumps(valid))
+        value["inputs"]["unknown"] = True
+        malformed.append(value)
+        value = json.loads(json.dumps(valid))
+        value["matched_risks"][0]["reasons"]["keywords"] = "deploy"
+        malformed.append(value)
+        value = json.loads(json.dumps(valid))
+        value["agents"]["unknown"] = []
+        malformed.append(value)
+        value = json.loads(json.dumps(valid))
+        value["lifecycle_tracking"] = {"status": "integrated", "reason": "not allowed"}
+        malformed.append(value)
+        value = json.loads(json.dumps(valid))
+        value["knowledge_context"]["requests"][0]["invocation"]["unknown"] = True
+        malformed.append(value)
+        for index, candidate in enumerate(malformed):
+            with self.subTest(index=index):
+                self.assertTrue(list(validator.iter_errors(candidate)))
 
     def test_rejects_invalid_classification_for_selected_agents(self) -> None:
         with self.assertRaisesRegex(ValueError, "Invalid classification: secret"):
@@ -845,6 +1032,8 @@ class SelectorTests(unittest.TestCase):
                     "task": "Update Terraform",
                     "changed_files": ["main.tf"],
                     "changed_file_source": "test",
+                    "repository_root": str(AGENTS_ROOT.parent),
+                    "source": "example/repository",
                 },
                 require_sdlc=True,
             )
@@ -855,6 +1044,43 @@ class SelectorTests(unittest.TestCase):
         self.assertIsNone(agentic_sdlc_contracts.try_lifecycle_contract())
         with self.assertRaisesRegex(RuntimeError, "Agentic SDLC v0.3.x is required"):
             agentic_sdlc_contracts.require_lifecycle_contract()
+
+    def test_resolved_lifecycle_executable_failures_never_degrade(self) -> None:
+        cases = [
+            (
+                subprocess.CompletedProcess(["kernel"], 2, "", "contract unavailable"),
+                "contract lookup failed",
+            ),
+            (
+                subprocess.CompletedProcess(["kernel"], 0, "not json", ""),
+                "malformed JSON",
+            ),
+            (
+                subprocess.CompletedProcess(["kernel"], 0, '{"version": 1, "gates": []}', ""),
+                "incompatible",
+            ),
+        ]
+        for completed, message in cases:
+            with self.subTest(message=message):
+                agentic_sdlc_contracts._fetch_contract.cache_clear()
+                with (
+                    patch("agentic_sdlc_contracts._resolve_executable", return_value="/fake/kernel"),
+                    patch("agentic_sdlc_contracts.subprocess.run", return_value=completed),
+                    self.assertRaisesRegex(RuntimeError, message),
+                ):
+                    agentic_sdlc_contracts.try_lifecycle_contract()
+
+    def test_resolved_lifecycle_timeout_is_actionable(self) -> None:
+        agentic_sdlc_contracts._fetch_contract.cache_clear()
+        with (
+            patch("agentic_sdlc_contracts._resolve_executable", return_value="/fake/kernel"),
+            patch(
+                "agentic_sdlc_contracts.subprocess.run",
+                side_effect=subprocess.TimeoutExpired(["/fake/kernel"], 10),
+            ),
+            self.assertRaisesRegex(RuntimeError, "timed out"),
+        ):
+            agentic_sdlc_contracts.try_lifecycle_contract()
 
 
 if __name__ == "__main__":

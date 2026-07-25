@@ -1,3 +1,4 @@
 select	agents/orchestration/src/select_agents.py	Deterministic agent/gate selection (select_agents.py)
 knowledge	agents/knowledge-store/src/cli.py	Vectorized knowledge store CLI (knowledge-store/src/cli.py)
 generate-plugin	agents/orchestration/src/generate_global_plugin.py	Regenerate plugins/secure-cloud-agents/ (generate_global_plugin.py)
+bootstrap-codex	agents/orchestration/src/sync_codex_agents.py	Safely install namespaced Codex role wrappers

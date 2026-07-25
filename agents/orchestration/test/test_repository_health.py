@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -245,11 +246,12 @@ class RepositoryHealthTests(unittest.TestCase):
         for agent_id in catalog_agents:
             with self.subTest(agent=agent_id):
                 md_path = plugin_root / "agents" / f"{agent_id}.md"
-                toml_path = plugin_root / "codex-agents" / f"{agent_id}.toml"
+                codex_id = f"secure-cloud-agents-{agent_id}"
+                toml_path = plugin_root / "codex-agents" / f"{codex_id}.toml"
                 self.assertTrue(md_path.is_file(), str(md_path))
                 self.assertTrue(toml_path.is_file(), str(toml_path))
                 self.assertIn(f"name: {agent_id}", md_path.read_text(encoding="utf-8"))
-                self.assertIn(f'name = "{agent_id}"', toml_path.read_text(encoding="utf-8"))
+                self.assertIn(f'name = "{codex_id}"', toml_path.read_text(encoding="utf-8"))
 
         skills_root = REPOSITORY_ROOT / ".agents" / "skills"
         for skill_file in skills_root.glob("*/SKILL.md"):
@@ -291,7 +293,7 @@ class RepositoryHealthTests(unittest.TestCase):
             self.assertEqual(0, result.returncode)
             for agent_id in ("code-reviewer", "security-reviewer", "test-engineer"):
                 markdown = (plugin_root / "agents" / f"{agent_id}.md").read_text(encoding="utf-8")
-                toml = (plugin_root / "codex-agents" / f"{agent_id}.toml").read_text(encoding="utf-8")
+                toml = (plugin_root / "codex-agents" / f"secure-cloud-agents-{agent_id}.toml").read_text(encoding="utf-8")
                 self.assertIn("tools: Read, Grep, Glob", markdown)
                 self.assertNotIn("tools: Read, Grep, Glob, Bash", markdown)
                 self.assertIn('sandbox_mode = "read-only"', toml)
@@ -300,7 +302,175 @@ class RepositoryHealthTests(unittest.TestCase):
                 self.assertIn("# GENERATED FILE:", toml)
             author = (plugin_root / "agents" / "application-engineer.md").read_text(encoding="utf-8")
             self.assertIn("tools: Read, Grep, Glob, Bash, Edit, Write", author)
-            self.assertIn('sandbox_mode = "workspace-write"', (plugin_root / "codex-agents" / "application-engineer.toml").read_text(encoding="utf-8"))
+            self.assertIn('sandbox_mode = "workspace-write"', (plugin_root / "codex-agents" / "secure-cloud-agents-application-engineer.toml").read_text(encoding="utf-8"))
+
+    def test_plugin_advertised_role_count_matches_generated_catalog(self) -> None:
+        plugin_root = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents"
+        catalog_count = len(
+            json.loads((plugin_root / "agent-catalog.json").read_text(encoding="utf-8"))["agents"]
+        )
+        self.assertEqual(36, catalog_count)
+        for manifest in (
+            plugin_root / ".codex-plugin" / "plugin.json",
+            plugin_root / ".claude-plugin" / "plugin.json",
+        ):
+            content = manifest.read_text(encoding="utf-8")
+            advertised = {int(value) for value in re.findall(r"(\d+) specialist roles", content)}
+            self.assertEqual({catalog_count}, advertised, str(manifest))
+        self.assertEqual(
+            catalog_count,
+            len(list((plugin_root / "codex-agents").glob("secure-cloud-agents-*.toml"))),
+        )
+
+    def test_codex_bootstrap_preserves_bare_files_and_rejects_unowned_collision(self) -> None:
+        script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            source = temporary / "source"
+            target = temporary / "home" / ".codex" / "agents"
+            source.mkdir()
+            target.mkdir(parents=True)
+            generated = (
+                "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
+                'name = "secure-cloud-agents-code-reviewer"\n'
+            )
+            (source / "secure-cloud-agents-code-reviewer.toml").write_text(generated, encoding="utf-8")
+            bare = target / "code-reviewer.toml"
+            bare.write_text("user-owned bare wrapper\n", encoding="utf-8")
+
+            installed = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=True, capture_output=True, text=True,
+            )
+            self.assertIn("Installed 1", installed.stdout)
+            self.assertEqual("user-owned bare wrapper\n", bare.read_text(encoding="utf-8"))
+
+            namespaced = target / "secure-cloud-agents-code-reviewer.toml"
+            namespaced.write_text("", encoding="utf-8")
+            empty_rejected = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertNotEqual(0, empty_rejected.returncode)
+            self.assertIn("Refusing to overwrite unowned", empty_rejected.stderr)
+            self.assertEqual("", namespaced.read_text(encoding="utf-8"))
+
+            namespaced.write_text("user-owned collision\n", encoding="utf-8")
+            rejected = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertNotEqual(0, rejected.returncode)
+            self.assertIn("Refusing to overwrite unowned", rejected.stderr)
+            self.assertEqual("user-owned collision\n", namespaced.read_text(encoding="utf-8"))
+
+    @unittest.skipIf(sys.platform == "win32", "POSIX symlink behavior is required")
+    def test_codex_bootstrap_rejects_symlinked_wrappers(self) -> None:
+        script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            source = temporary / "source"
+            target = temporary / "home" / ".codex" / "agents"
+            source.mkdir()
+            target.mkdir(parents=True)
+            generated = (
+                "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
+                'name = "secure-cloud-agents-code-reviewer"\n'
+            )
+            real_source = source / "real.toml"
+            real_source.write_text(generated, encoding="utf-8")
+            symlinked_source = source / "secure-cloud-agents-code-reviewer.toml"
+            os.symlink(real_source, symlinked_source)
+
+            source_rejected = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertNotEqual(0, source_rejected.returncode)
+            self.assertIn("Refusing non-regular source wrapper", source_rejected.stderr)
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            source = temporary / "source"
+            target = temporary / "home" / ".codex" / "agents"
+            source.mkdir()
+            target.mkdir(parents=True)
+            (source / "secure-cloud-agents-code-reviewer.toml").write_text(generated, encoding="utf-8")
+            real_destination = target / "real-destination.toml"
+            real_destination.write_text("user-owned destination\n", encoding="utf-8")
+            os.symlink(real_destination, target / "secure-cloud-agents-code-reviewer.toml")
+
+            destination_rejected = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertNotEqual(0, destination_rejected.returncode)
+            self.assertIn("Refusing symlinked destination wrapper", destination_rejected.stderr)
+            self.assertEqual("user-owned destination\n", real_destination.read_text(encoding="utf-8"))
+
+    @unittest.skipUnless(hasattr(os, "O_NOFOLLOW"), "O_NOFOLLOW support is required")
+    def test_codex_bootstrap_no_follow_guards_run_at_open_time(self) -> None:
+        import importlib.util
+
+        script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
+        spec = importlib.util.spec_from_file_location("sync_codex_agents_under_test", script)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            source_target = temporary / "source-target.toml"
+            source_target.write_text("source content\n", encoding="utf-8")
+            source_link = temporary / "secure-cloud-agents-source.toml"
+            os.symlink(source_target, source_link)
+            with self.assertRaises(OSError):
+                module._read_regular_file(source_link)
+
+            destination_target = temporary / "destination-target.toml"
+            destination_target.write_text("destination content\n", encoding="utf-8")
+            destination_link = temporary / "secure-cloud-agents-destination.toml"
+            os.symlink(destination_target, destination_link)
+            with mock.patch.object(Path, "is_symlink", return_value=False):
+                with self.assertRaises(OSError):
+                    module._write_owned_wrapper(destination_link, b"new content\n")
+            self.assertEqual("destination content\n", destination_target.read_text(encoding="utf-8"))
+
+    @unittest.skipUnless(sys.platform != "win32", "packaged wrapper is a POSIX sh script")
+    def test_packaged_selector_targets_callers_git_repository(self) -> None:
+        wrapper = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents" / "bin" / "agents"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            target = Path(temporary_directory) / "unrelated"
+            target.mkdir()
+            subprocess.run(["git", "init", "-q", str(target)], check=True)
+            subprocess.run(["git", "-C", str(target), "config", "user.email", "test@example.invalid"], check=True)
+            subprocess.run(["git", "-C", str(target), "config", "user.name", "Test"], check=True)
+            (target / "README.md").write_text("base\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(target), "add", "."], check=True)
+            subprocess.run(["git", "-C", str(target), "commit", "-qm", "base"], check=True)
+            base = subprocess.run(
+                ["git", "-C", str(target), "rev-parse", "HEAD"],
+                check=True, capture_output=True, text=True, encoding="utf-8",
+            ).stdout.strip()
+            (target / "frontend").mkdir()
+            (target / "frontend" / "App.tsx").write_text("export default 1\n", encoding="utf-8")
+
+            status = subprocess.run(
+                [str(wrapper), "select", "--task", "Update React"],
+                cwd=target, check=True, capture_output=True, text=True,
+            )
+            status_plan = json.loads(status.stdout)
+            self.assertEqual(str(target.resolve()), status_plan["inputs"]["repository_root"])
+            self.assertEqual(["frontend/App.tsx"], status_plan["inputs"]["changed_files"])
+
+            subprocess.run(["git", "-C", str(target), "add", "."], check=True)
+            subprocess.run(["git", "-C", str(target), "commit", "-qm", "frontend"], check=True)
+            diff = subprocess.run(
+                [str(wrapper), "select", "--task", "Update React", "--base", base],
+                cwd=target, check=True, capture_output=True, text=True,
+            )
+            self.assertEqual(["frontend/App.tsx"], json.loads(diff.stdout)["inputs"]["changed_files"])
 
     def test_generated_package_has_no_source_paths_or_unsafe_relative_documentation_paths(self) -> None:
         generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_global_plugin.py"
@@ -402,7 +572,14 @@ class RepositoryHealthTests(unittest.TestCase):
             link = Path(temporary_directory) / "agents"
             link.symlink_to(wrapper)
             result = subprocess.run(
-                [str(link), "select", "--task", "Capture product intent", "--classification", "internal", "--task-id", "WRAPPER-HEALTH-2"],
+                [
+                    str(link), "select",
+                    "--root", str(REPOSITORY_ROOT),
+                    "--task", "Capture product intent",
+                    "--files", "README.md",
+                    "--classification", "internal",
+                    "--task-id", "WRAPPER-HEALTH-2",
+                ],
                 cwd=temporary_directory,
                 check=True,
                 capture_output=True,
@@ -432,6 +609,7 @@ class RepositoryHealthTests(unittest.TestCase):
         self.assertTrue(os.access(wrapper, os.X_OK), f"{wrapper} is not executable")
         selector = ROOT / "orchestration" / "src" / "select_agents.py"
         arguments = [
+            "--root", str(REPOSITORY_ROOT),
             "--task", "Update the React navigation",
             "--files", "frontend/src/Nav.tsx",
             "--classification", "internal",

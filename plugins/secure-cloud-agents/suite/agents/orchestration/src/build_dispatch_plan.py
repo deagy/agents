@@ -16,12 +16,7 @@ from agentic_sdlc_contracts import require_lifecycle_contract, try_lifecycle_con
 CLASSIFICATIONS = {"public", "internal", "confidential", "restricted"}
 MAXIMUM_KNOWLEDGE_TOP = 20
 KNOWLEDGE_STORE_ROOT = Path(__file__).resolve().parents[2] / "knowledge-store"
-DEFAULT_KNOWLEDGE_SOURCE = "secure-cloud-agents"
 STANDALONE_REASON = "Agentic SDLC executable not found; team dispatch is unaffected."
-
-
-def _default_knowledge_source() -> str:
-    return DEFAULT_KNOWLEDGE_SOURCE
 
 
 def _lifecycle_gates(require_sdlc: bool) -> list[dict[str, Any]] | None:
@@ -104,6 +99,7 @@ def _ordered(values: Iterable[str], catalog: list[str]) -> list[str]:
 def _reasons(match: dict[str, Any]) -> dict[str, Any]:
     return {
         "keywords": match["reasons"]["keywords"],
+        "keyword_groups": match["reasons"].get("keyword_groups", []),
         "paths": match["reasons"]["paths"],
     }
 
@@ -302,7 +298,7 @@ def _build_knowledge_context(
             "--top",
             str(top),
             "--source",
-            input_data.get("source") or _default_knowledge_source(),
+            input_data["source"],
         ]
         requests.append(
             {
@@ -321,7 +317,7 @@ def _build_knowledge_context(
     return {
         "status": "planned",
         "classification": classification,
-        "source_filter": input_data.get("source") or _default_knowledge_source(),
+        "source_filter": input_data["source"],
         "requests": requests,
     }
 
@@ -464,11 +460,12 @@ def build_dispatch_plan(
         "workflow": _select_workflow(route_ids, risk_ids, bool(selected_agents)),
         "inputs": {
             "task": input_data["task"],
+            "repository_root": input_data["repository_root"],
             "base": input_data.get("base"),
             "changed_file_source": input_data["changed_file_source"],
             "changed_files": input_data["changed_files"],
             "classification": input_data.get("classification"),
-            "source_filter": input_data.get("source"),
+            "source_filter": input_data["source"],
         },
         "matched_routes": [match["id"] for match in matched_routes],
         "matched_risks": [{"id": match["id"], "reasons": _reasons(match)} for match in matched_risks],
