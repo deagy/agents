@@ -36,6 +36,22 @@ Use the contracts and templates under
 independent review. A reviewer assesses the exact revision and does not
 silently repair the author's work while claiming an independent result.
 
+## Team dispatch
+
+Most parallel work is an ordinary wave: independent roles run side by side and
+report back to whoever is orchestrating. Some tasks specifically benefit from
+roles challenging or building on each other's findings before anyone
+synthesizes a result — a parallel review across code/infrastructure/pipeline/
+supply-chain surfaces, a cross-stack build split by layer, or a debugging
+investigation running competing hypotheses. For those cases, see
+[team-recipes.md](../.agents/skills/run-agent-orchestration/references/team-recipes.md)
+for named compositions and
+[runner-adapters.md](../.agents/skills/run-agent-orchestration/references/runner-adapters.md)
+for how each runner supports this: Claude Code has an experimental Agent Teams
+feature with peer-to-peer messaging; Codex CLI does not, and falls back to an
+ordinary parallel wave with the orchestrator performing synthesis itself.
+Team dispatch is an upgrade for specific cases, not a default.
+
 ## Resolve findings
 
 Record findings with evidence, severity, owner, status, and a next action. Stop

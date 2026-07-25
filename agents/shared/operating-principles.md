@@ -11,3 +11,4 @@
 - Stop and escalate for missing authority, ambiguous production impact, or unresolved critical/high risk.
 - Preserve an audit trail: actor, inputs, decision, evidence, approvals, timestamps, and resulting artifact identifiers.
 - Do not silently weaken tests, security controls, compliance mappings, approval gates, or alerting.
+- When working alongside other agents in parallel (an agent team or an ordinary parallel wave), keep file ownership exclusive per agent — never edit a path another teammate owns for the same task. Resolve overlaps by narrowing scope before work starts, not by reconciling conflicting edits afterward.
