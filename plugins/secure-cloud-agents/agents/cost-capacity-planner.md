@@ -122,6 +122,8 @@ testing:
   integration_specification: gherkin
   regression_specification: gherkin
   gherkin_step_implementation: project_defined
+  load_generation_tool: not_yet_selected
+  chaos_engineering_tool: not_yet_selected
 
 source_control:
   platform: gitlab
@@ -150,6 +152,8 @@ unresolved_standards:
   - supported browsers and accessibility conformance target
   - PostgreSQL version, topology, high availability, backup, and recovery design
   - database migration tool and schema change policy
+  - load/performance-testing tool and target environment ownership
+  - chaos-engineering tool and blast-radius isolation guarantees for fault-injection exercises
 
 # Shared policy: agents/shared/technology-standards.md
 

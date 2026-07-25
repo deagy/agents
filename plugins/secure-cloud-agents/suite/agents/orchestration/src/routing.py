@@ -71,16 +71,32 @@ def load_routing(file_path: Path) -> dict[str, Any]:
     return config
 
 
-def load_catalog(file_path: Path) -> list[str]:
-    content = file_path.read_text(encoding="utf-8")
-    agents = []
+def parse_catalog_entries(content: str) -> dict[str, dict[str, str]]:
+    """Parse catalog.yaml's line-oriented agent blocks into id -> metadata.
+
+    Shared by this module (which only needs agent IDs) and
+    generate_global_plugin.py (which needs the full per-agent metadata) so
+    the two never silently diverge on catalog.yaml's format.
+    """
+    agents: dict[str, dict[str, str]] = {}
+    current: str | None = None
     for line in content.splitlines():
         match = re.match(r"^  ([a-z0-9-]+):\s*$", line)
         if match:
-            agents.append(match.group(1))
+            current = match.group(1)
+            agents[current] = {}
+            continue
+        if current and line.strip().startswith(("definition:", "phase:", "capability:")):
+            key, value = line.strip().split(":", 1)
+            agents[current][key] = value.strip()
+    return agents
+
+
+def load_catalog(file_path: Path) -> list[str]:
+    agents = parse_catalog_entries(file_path.read_text(encoding="utf-8"))
     if not agents:
         raise ValueError("No agents found in catalog.yaml")
-    return agents
+    return list(agents.keys())
 
 
 def match_routes(

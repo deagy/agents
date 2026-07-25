@@ -15,6 +15,7 @@ permissions:
 jobs:
   python-contracts:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       AGENTIC_SDLC_BIN: ${{ github.workspace }}/.dependencies/agentic-sdlc/bin/agentic-sdlc
     steps:
@@ -49,6 +50,7 @@ jobs:
 
   secret-scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: >

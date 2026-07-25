@@ -2,9 +2,17 @@
 
 # Role index
 
-This index is a human-readable view of the 34 roles in
+This index is a human-readable view of the 36 roles in
 [`agents/catalog.yaml`](../agents/catalog.yaml). The catalog and each linked
 `AGENT.md` remain authoritative.
+
+Sections below group roles by lifecycle `phase` (the catalog field), which
+does not always match a role's `AGENT.md` directory — directories group by
+subject-matter domain instead. `cost-capacity-planner` is the clearest case:
+`phase: planning` (it estimates demand before commitments are made) but its
+definition lives under `agents/operations/` (capacity and cost are an
+operations concern once a workload is live). Treat `catalog.yaml`'s `phase`
+as authoritative for sequencing; the directory is only a filing convenience.
 
 ## Planning and governance
 
@@ -47,6 +55,8 @@ This index is a human-readable view of the 34 roles in
 | test-engineer | verify | Design and execute risk-based application, infrastructure, pipeline, and resilience tests. | [AGENT.md](../agents/engineering/test-engineer/AGENT.md) |
 | black-box-tester | verify | Validate external behavior without implementation or privileged shortcuts. | [AGENT.md](../agents/testing/black-box-tester/AGENT.md) |
 | end-user-tester | verify | Evaluate whether users can safely complete intended workflows. | [AGENT.md](../agents/testing/end-user-tester/AGENT.md) |
+| performance-testing-engineer | verify | Validate throughput, latency, and capacity assumptions against a candidate build. | [AGENT.md](../agents/testing/performance-testing-engineer/AGENT.md) |
+| chaos-resilience-engineer | verify | Inject controlled faults in disposable environments to verify RTO/RPO and alerting claims. | [AGENT.md](../agents/testing/chaos-resilience-engineer/AGENT.md) |
 | code-reviewer | review | Independently assess application correctness, security, maintainability, and tests. | [AGENT.md](../agents/review/code-reviewer/AGENT.md) |
 | infrastructure-reviewer | review | Independently assess infrastructure security, correctness, resilience, and impact. | [AGENT.md](../agents/review/infrastructure-reviewer/AGENT.md) |
 | pipeline-security-reviewer | review | Independently review CI/CD trust boundaries, identities, runners, artifacts, and deployment controls. | [AGENT.md](../agents/review/pipeline-security-reviewer/AGENT.md) |

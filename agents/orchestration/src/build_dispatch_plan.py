@@ -91,7 +91,7 @@ def _ordered(values: Iterable[str], catalog: list[str]) -> list[str]:
 
 
 def _reasons(match: dict[str, Any]) -> dict[str, Any]:
-    dispatch = {
+    return {
         "keywords": match["reasons"]["keywords"],
         "paths": match["reasons"]["paths"],
     }

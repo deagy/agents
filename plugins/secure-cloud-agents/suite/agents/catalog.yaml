@@ -64,6 +64,14 @@ agents:
     definition: testing/end-user-tester/AGENT.md
     phase: verify
     capability: test_author
+  performance-testing-engineer:
+    definition: testing/performance-testing-engineer/AGENT.md
+    phase: verify
+    capability: test_author
+  chaos-resilience-engineer:
+    definition: testing/chaos-resilience-engineer/AGENT.md
+    phase: verify
+    capability: environment_operator
   support-triage-agent:
     definition: support/support-triage-agent/AGENT.md
     phase: support
