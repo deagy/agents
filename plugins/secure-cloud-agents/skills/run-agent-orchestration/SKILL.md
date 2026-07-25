@@ -10,9 +10,11 @@ description: Select, coordinate, and consolidate this repository's secure cloud 
 
 Turn one scoped request into a deterministic agent selection, authorized knowledge retrieval, staged subagent execution, independent reviews, and a consolidated decision. Treat invocation of this skill as authorization to dispatch in-scope subagents, but never as authorization for production, destructive, or persistent-environment actions.
 
-A bare task description is enough to start this skill. The separately installed
-Agentic SDLC plugin defines how "ask the human" and "spawn a subagent" map to
-the current runner, and supplies
+A bare task description is enough to start this skill; it does not require the
+separately installed Agentic SDLC plugin (see "Operating modes" under
+"Select Agents" below). How "ask the human" and "spawn a subagent" map to the
+current runner is defined by this skill together with
+[references/runner-adapters.md](references/runner-adapters.md), and supplies
 the rule this skill depends on throughout: **only this top-level orchestrator asks
 the human — a dispatched subagent that hits a decision only a human can make must
 return a blocking question in its result instead of prompting directly.**
@@ -45,7 +47,7 @@ contains `agents/catalog.yaml`; otherwise use the self-contained suite under
 
 ## Select Agents
 
-The internal tools require Python 3.10 or newer; this is not an organization-wide Python standard. `bin/agents` resolves and probes the interpreter and delegates lifecycle commands to the separately installed Agentic SDLC executable.
+The internal tools require Python 3.10 or newer; this is not an organization-wide Python standard. `bin/agents` resolves and probes the interpreter.
 
 ```sh
 agents select --task "<objective>" --task-id "<id>" --classification "<level>" --files "<comma-separated paths>"
@@ -53,7 +55,14 @@ agents select --task "<objective>" --task-id "<id>" --classification "<level>" -
 
 Omit `--files` to use Git status, including staged, unstaged, and untracked paths. Alternatively, use `--base <ref>` for committed `<ref>...HEAD` changes; that mode excludes dirty worktree changes. Review the emitted `inputs.changed_files` before dispatch. `--output <path>` creates parent directories and overwrites the file, so use it only when run-artifact writes are authorized. Do not invent changed paths. Schema version 2 emits lifecycle `required_quality_gates` separately from mutation-oriented `human_gates`; attach both to each applicable brief. If the selector returns `needs-triage`, stop dispatch and request the missing scope. Validate every selected role against `agents/catalog.yaml`.
 
-Read the selected workflow under `agents/workflows/` plus `agents/orchestration/escalation-policy.md` and `agents/orchestration/handoff-contracts.md`. Use the detailed contract in [references/dispatch-contract.md](references/dispatch-contract.md). Record lifecycle gate state only in the target project's `.agentic-sdlc/` record using the standalone Agentic SDLC kernel; the suite contributes dispatch plans and agent evidence but does not validate lifecycle records.
+### Operating modes
+
+Check the emitted `lifecycle_tracking.status` field:
+
+- **`standalone`** (default whenever `agentic-sdlc`/`AGENTIC_SDLC_BIN` doesn't resolve): `agents.primary/reviewers/support` team dispatch, routing, and risk-driven human gates are fully deterministic and unaffected. There is no lifecycle-contract-derived `gate_dispatch`, and no `.agentic-sdlc/` run record is written. This is the right mode for a small, single project that just wants specialist roles dispatched directly — no lifecycle-gate tracking overhead.
+- **`integrated`** (when `agentic-sdlc`/`AGENTIC_SDLC_BIN` resolves, or the caller passes `--require-sdlc` to fail fast instead of degrading): the plan additionally carries contract-derived `gate_dispatch` and gate-augmented `required_quality_gates`/`support` agents. Record lifecycle gate state in the target project's `.agentic-sdlc/` record using the standalone Agentic SDLC kernel; the suite still only contributes dispatch plans and agent evidence, never validates lifecycle records itself. Use `--require-sdlc` for a larger or multi-project effort that must compose with and track Agentic SDLC's G1-G10 lifecycle gates — it fails loudly instead of silently falling back to standalone if Agentic SDLC isn't actually available.
+
+Read the selected workflow under `agents/workflows/` plus `agents/orchestration/escalation-policy.md` and `agents/orchestration/handoff-contracts.md`. Use the detailed contract in [references/dispatch-contract.md](references/dispatch-contract.md).
 
 ## Retrieve Agent Context
 

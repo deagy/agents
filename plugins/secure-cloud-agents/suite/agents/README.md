@@ -28,17 +28,26 @@ Useful entry points:
 - [Contributing](../CONTRIBUTING.md) for changes to this GitHub repository.
 
 The Python selector component requires Python 3.10 or newer, without
-establishing an organization-wide Python version. It also requires the
-standalone Agentic SDLC executable when it loads lifecycle-gate contracts for
-dispatch plans. `bin/agents` (repository root) resolves an interpreter for you
-and delegates lifecycle calls through `AGENTIC_SDLC_BIN` or `agentic-sdlc` on
-`PATH` — run `agents select --task "..."` from anywhere it's on `PATH`, or
-`../../bin/agents select --task "..."` (`..\bin\agents.ps1` in PowerShell) from
-this directory. See `RUNBOOK.md` for the wrapper's interpreter-probe details.
-The schema version 2 selector evaluates task text and Git changes, validates
-roles against `catalog.yaml`, and emits a reviewable plan with provider
-lifecycle applicability kept separate from mutation-oriented human gates; it
-does not execute agents, approve gates, or retrieve knowledge.
+establishing an organization-wide Python version. `bin/agents` (repository
+root) resolves an interpreter for you — run `agents select --task "..."` from
+anywhere it's on `PATH`, or `../../bin/agents select --task "..."`
+(`..\bin\agents.ps1` in PowerShell) from this directory. See `RUNBOOK.md` for
+the wrapper's interpreter-probe details. The schema version 2 selector
+evaluates task text and Git changes, validates roles against `catalog.yaml`,
+and emits a reviewable plan with provider lifecycle applicability kept
+separate from mutation-oriented human gates; it does not execute agents,
+approve gates, or retrieve knowledge.
+
+`agents select` works standalone by default — team dispatch (`agents.primary/
+reviewers/support`) needs only this suite's own `catalog.yaml` and
+`routing.yaml`, useful on its own for a single small project. When the
+standalone Agentic SDLC executable is also available (`AGENTIC_SDLC_BIN` or
+`agentic-sdlc` on `PATH`), the plan is automatically enriched with
+lifecycle-contract-derived `gate_dispatch` and gate-augmented quality gates;
+pass `--require-sdlc` to fail instead of silently falling back to standalone
+when that integration is required (for example, a larger or multi-project
+effort tracked through Agentic SDLC). Check the emitted `lifecycle_tracking.status`
+(`standalone` or `integrated`) to see which mode a given plan used.
 
 ## Operating model
 

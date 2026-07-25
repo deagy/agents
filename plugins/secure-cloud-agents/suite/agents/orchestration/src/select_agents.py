@@ -30,6 +30,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--source", help="Optional knowledge-store source filter")
     parser.add_argument("--top", help="Maximum knowledge results per agent", default="5")
     parser.add_argument("--output", help="Write the JSON plan to this path")
+    parser.add_argument(
+        "--require-sdlc",
+        action="store_true",
+        help="Fail instead of degrading to standalone mode if Agentic SDLC isn't available",
+    )
     return parser
 
 
@@ -102,6 +107,7 @@ def main(argv: list[str] | None = None) -> int:
             "source": options.source,
             "top": options.top,
         },
+        require_sdlc=options.require_sdlc,
     )
     serialized = f"{json.dumps(plan, indent=2, ensure_ascii=False)}\n"
     if options.output:
