@@ -81,9 +81,16 @@ def load_routing(file_path: Path) -> dict[str, Any]:
         groups = rule.get("keyword_groups", [])
         if groups and (
             not isinstance(groups, list)
-            or any(not isinstance(group, list) or not group for group in groups)
+            or any(
+                not isinstance(group, list)
+                or not group
+                or any(not isinstance(keyword, str) or not keyword for keyword in group)
+                for group in groups
+            )
         ):
-            raise ValueError(f"{rule.get('id', 'rule')} keyword_groups must contain non-empty groups")
+            raise ValueError(
+                f"{rule.get('id', 'rule')} keyword_groups must contain non-empty string groups"
+            )
     for recipe in config.get("team_recipes", []):
         if recipe.get("type") == "dynamic":
             instances = recipe.get("instances", {})

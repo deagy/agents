@@ -302,7 +302,7 @@
     },
     {
       "id": "destructive",
-      "keywords": ["destroy", "delete resource", "drop table", "drop database", "delete namespace", "terraform destroy", "terraform state rm", "terraform state remove", "truncate table", "purge data", "force replace", "wipe"],
+      "keywords": ["delete resource", "drop table", "drop database", "delete namespace", "terraform destroy", "terraform state rm", "terraform state remove", "truncate table", "purge data", "force replace"],
       "keyword_groups": [
         ["destroy", "delete", "drop", "wipe", "erase", "purge", "remove", "truncate", "force replace"],
         ["resource", "database", "table", "schema", "cluster", "namespace", "volume", "bucket", "state", "data"]

@@ -758,6 +758,10 @@ class SelectorTests(unittest.TestCase):
             subprocess.run(["git", "init", "-q", str(target)], check=True)
             subprocess.run(["git", "-C", str(target), "config", "user.email", "test@example.invalid"], check=True)
             subprocess.run(["git", "-C", str(target), "config", "user.name", "Test"], check=True)
+            subprocess.run(
+                ["git", "-C", str(target), "remote", "add", "origin", "https://github.com/Example/TargetRepo.git"],
+                check=True,
+            )
             (target / "frontend").mkdir()
             (target / "frontend" / "base.tsx").write_text("base\n", encoding="utf-8")
             subprocess.run(["git", "-C", str(target), "add", "."], check=True)
@@ -776,10 +780,14 @@ class SelectorTests(unittest.TestCase):
             status = subprocess.run(common, cwd=caller, check=True, capture_output=True, text=True)
             status_plan = json.loads(status.stdout)
             self.assertEqual(str(target.resolve()), status_plan["inputs"]["repository_root"])
+            self.assertEqual("example/targetrepo", status_plan["inputs"]["source_filter"])
             self.assertEqual(["frontend/base.tsx"], status_plan["inputs"]["changed_files"])
 
             diff = subprocess.run([*common, "--base", base], cwd=caller, check=True, capture_output=True, text=True)
-            self.assertEqual(["services/api.go"], json.loads(diff.stdout)["inputs"]["changed_files"])
+            diff_plan = json.loads(diff.stdout)
+            self.assertEqual(str(target.resolve()), diff_plan["inputs"]["repository_root"])
+            self.assertEqual("example/targetrepo", diff_plan["inputs"]["source_filter"])
+            self.assertEqual(["services/api.go"], diff_plan["inputs"]["changed_files"])
 
     def test_non_git_root_requires_explicit_files(self) -> None:
         selector = ROOT / "src" / "select_agents.py"
@@ -806,6 +814,7 @@ class SelectorTests(unittest.TestCase):
             "Delete the Kubernetes namespace",
             "Drop the customer database",
             "Truncate the audit table",
+            "Run terraform destroy",
         ]
         for phrase in production_phrases:
             with self.subTest(phrase=phrase):
@@ -813,7 +822,13 @@ class SelectorTests(unittest.TestCase):
         for phrase in destructive_phrases:
             with self.subTest(phrase=phrase):
                 self.assertIn("destructive-action", [gate["id"] for gate in plan(task=phrase)["human_gates"]])
-        for phrase in ("Observe production runtime health", "Read the production dashboard", "Delete a local variable"):
+        for phrase in (
+            "Observe production runtime health",
+            "Read the production dashboard",
+            "Delete a local variable",
+            "Evaluate a destroy command example",
+            "Inspect a wipe warning",
+        ):
             with self.subTest(benign=phrase):
                 self.assertNotIn(
                     "production-change",
@@ -823,6 +838,17 @@ class SelectorTests(unittest.TestCase):
                     "destructive-action",
                     [gate["id"] for gate in plan(task=phrase)["human_gates"]],
                 )
+
+    def test_load_routing_rejects_malformed_keyword_groups(self) -> None:
+        for keyword_groups in ("destroy delete", [[]], [["destroy", ""]], [["destroy", 42]]):
+            with self.subTest(keyword_groups=keyword_groups):
+                config = json.loads((ROOT / "routing.yaml").read_text(encoding="utf-8"))
+                config["risk_rules"][-1]["keyword_groups"] = keyword_groups
+                with tempfile.TemporaryDirectory() as temporary_directory:
+                    path = Path(temporary_directory) / "routing.json"
+                    path.write_text(json.dumps(config), encoding="utf-8")
+                    with self.assertRaisesRegex(ValueError, "keyword_groups"):
+                        load_routing(path)
 
     def test_load_routing_rejects_inverted_dynamic_team_range(self) -> None:
         config = json.loads((ROOT / "routing.yaml").read_text(encoding="utf-8"))

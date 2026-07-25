@@ -354,6 +354,50 @@ class RepositoryHealthTests(unittest.TestCase):
             self.assertIn("Refusing to overwrite unowned", rejected.stderr)
             self.assertEqual("user-owned collision\n", namespaced.read_text(encoding="utf-8"))
 
+    @unittest.skipUnless(hasattr(os, "symlink"), "symlink support is required")
+    def test_codex_bootstrap_rejects_symlinked_wrappers(self) -> None:
+        script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            source = temporary / "source"
+            target = temporary / "home" / ".codex" / "agents"
+            source.mkdir()
+            target.mkdir(parents=True)
+            generated = (
+                "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
+                'name = "secure-cloud-agents-code-reviewer"\n'
+            )
+            real_source = source / "real.toml"
+            real_source.write_text(generated, encoding="utf-8")
+            symlinked_source = source / "secure-cloud-agents-code-reviewer.toml"
+            os.symlink(real_source, symlinked_source)
+
+            source_rejected = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertNotEqual(0, source_rejected.returncode)
+            self.assertIn("Refusing non-regular source wrapper", source_rejected.stderr)
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            source = temporary / "source"
+            target = temporary / "home" / ".codex" / "agents"
+            source.mkdir()
+            target.mkdir(parents=True)
+            (source / "secure-cloud-agents-code-reviewer.toml").write_text(generated, encoding="utf-8")
+            real_destination = target / "real-destination.toml"
+            real_destination.write_text("user-owned destination\n", encoding="utf-8")
+            os.symlink(real_destination, target / "secure-cloud-agents-code-reviewer.toml")
+
+            destination_rejected = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertNotEqual(0, destination_rejected.returncode)
+            self.assertIn("Refusing symlinked destination wrapper", destination_rejected.stderr)
+            self.assertEqual("user-owned destination\n", real_destination.read_text(encoding="utf-8"))
+
     @unittest.skipUnless(sys.platform != "win32", "packaged wrapper is a POSIX sh script")
     def test_packaged_selector_targets_callers_git_repository(self) -> None:
         wrapper = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents" / "bin" / "agents"

@@ -4,7 +4,8 @@
 from __future__ import annotations
 
 import argparse
-import shutil
+import os
+import stat
 import sys
 from pathlib import Path
 
@@ -13,41 +14,78 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_SOURCE = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents" / "codex-agents"
 
 
+def _nofollow_flag() -> int:
+    return getattr(os, "O_NOFOLLOW", 0)
+
+
+def _read_regular_file(path: Path) -> bytes:
+    descriptor = os.open(path, os.O_RDONLY | _nofollow_flag())
+    try:
+        file_stat = os.fstat(descriptor)
+        if not stat.S_ISREG(file_stat.st_mode):
+            raise RuntimeError(f"Refusing non-regular wrapper: {path}")
+        chunks = []
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        return b"".join(chunks)
+    finally:
+        os.close(descriptor)
+
+
+def _write_owned_wrapper(destination: Path, content: bytes) -> str:
+    if destination.is_symlink():
+        raise RuntimeError(f"Refusing symlinked destination wrapper: {destination}")
+    flags = os.O_RDWR | os.O_CREAT | _nofollow_flag()
+    descriptor = os.open(destination, flags, 0o644)
+    try:
+        file_stat = os.fstat(descriptor)
+        if not stat.S_ISREG(file_stat.st_mode):
+            raise RuntimeError(f"Refusing non-regular destination wrapper: {destination}")
+        existing = []
+        while True:
+            chunk = os.read(descriptor, 1024 * 1024)
+            if not chunk:
+                break
+            existing.append(chunk)
+        existing_content = b"".join(existing)
+        if existing_content and PROVENANCE_MARKER.encode("utf-8") not in existing_content:
+            raise RuntimeError(f"Refusing to overwrite unowned namespaced Codex wrapper: {destination}")
+        if existing_content == content:
+            return "unchanged"
+        os.ftruncate(descriptor, 0)
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        offset = 0
+        while offset < len(content):
+            offset += os.write(descriptor, content[offset:])
+        return "installed"
+    finally:
+        os.close(descriptor)
+
+
 def sync_wrappers(source: Path, target: Path) -> dict[str, list[str]]:
     wrappers = sorted(source.glob("secure-cloud-agents-*.toml"))
     if not wrappers:
         raise ValueError(f"No namespaced Codex wrappers found under {source}")
 
-    collisions = []
+    contents: list[tuple[Path, bytes]] = []
     for wrapper in wrappers:
         if wrapper.is_symlink() or not wrapper.is_file():
             raise RuntimeError(f"Refusing non-regular source wrapper: {wrapper}")
-        destination = target / wrapper.name
-        destination_exists = destination.exists() or destination.is_symlink()
-        owned = (
-            destination.is_file()
-            and not destination.is_symlink()
-            and PROVENANCE_MARKER
-            in destination.read_text(encoding="utf-8", errors="replace")
-        )
-        if destination_exists and not owned:
-            collisions.append(str(destination))
-    if collisions:
-        raise RuntimeError(
-            "Refusing to overwrite unowned namespaced Codex wrapper(s): "
-            + ", ".join(collisions)
-        )
+        contents.append((wrapper, _read_regular_file(wrapper)))
 
     target.mkdir(parents=True, exist_ok=True)
     installed: list[str] = []
     unchanged: list[str] = []
-    for wrapper in wrappers:
+    for wrapper, content in contents:
         destination = target / wrapper.name
-        if destination.is_file() and destination.read_bytes() == wrapper.read_bytes():
+        status = _write_owned_wrapper(destination, content)
+        if status == "unchanged":
             unchanged.append(str(destination))
-            continue
-        shutil.copyfile(wrapper, destination)
-        installed.append(str(destination))
+        else:
+            installed.append(str(destination))
     return {"installed": installed, "unchanged": unchanged}
 
 
