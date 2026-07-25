@@ -51,11 +51,22 @@ def discover_changed_files(base: str | None) -> dict[str, object]:
     if base:
         files = [line for line in _run_git(["diff", "--name-only", f"{base}...HEAD"]).splitlines() if line]
         return {"source": f"git-diff:{base}...HEAD", "files": files}
-    lines = [line for line in _run_git(["status", "--short"]).splitlines() if line]
+    # -z gives NUL-separated, never-quoted paths; git's default --short quotes
+    # paths containing non-ASCII/special characters (core.quotePath), which
+    # plain line[3:] parsing would leave mangled. Renamed/copied entries add
+    # one extra NUL-separated original-path field we don't need and must skip.
+    fields = _run_git(["status", "--short", "-z"]).split("\0")
     files = []
-    for line in lines:
-        value = line[3:].strip()
-        files.append(value.rsplit(" -> ", 1)[-1])
+    index = 0
+    while index < len(fields):
+        entry = fields[index]
+        index += 1
+        if not entry:
+            continue
+        status, path = entry[:2], entry[3:]
+        files.append(path)
+        if "R" in status or "C" in status:
+            index += 1
     return {"source": "git-status", "files": files}
 
 

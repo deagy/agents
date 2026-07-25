@@ -137,6 +137,24 @@
       "quality_gates": ["G6"]
     },
     {
+      "id": "performance-testing",
+      "paths": ["**/load-test/**", "**/performance-test/**", "**/perf/**", "**/benchmarks/**"],
+      "keywords": ["load test", "performance test", "stress test", "benchmark", "throughput", "latency slo", "capacity validation"],
+      "primary": ["performance-testing-engineer"],
+      "reviewers": ["infrastructure-reviewer"],
+      "support": ["cost-capacity-planner"],
+      "quality_gates": ["G6"]
+    },
+    {
+      "id": "chaos-resilience",
+      "paths": ["**/chaos/**", "**/resilience-test/**", "**/game-day/**", "**/fault-injection/**"],
+      "keywords": ["chaos engineering", "fault injection", "resilience test", "failure injection", "disaster recovery test", "game day", "rto validation", "rpo validation"],
+      "primary": ["chaos-resilience-engineer"],
+      "reviewers": ["infrastructure-reviewer"],
+      "support": ["cloud-architect", "observability-sre"],
+      "quality_gates": ["G6"]
+    },
+    {
       "id": "support",
       "paths": ["support/**", "docs/support/**", "**/runbooks/support/**", "**/incidents/**", "**/tickets/**"],
       "keywords": ["support", "triage", "user report", "customer report", "incident ticket", "reproduction steps", "workaround"],
@@ -211,6 +229,14 @@
       "keywords": ["knowledge store", "chat history", "embedding", "vector search", "retrieval", "rag"],
       "primary": ["knowledge-store-steward"],
       "reviewers": ["security-reviewer", "compliance-reviewer"]
+    },
+    {
+      "id": "architecture-design",
+      "paths": ["**/architecture/**"],
+      "keywords": ["design the architecture", "system design", "architecture proposal", "platform topology design", "failure domain design"],
+      "primary": ["cloud-architect"],
+      "reviewers": ["threat-modeler"],
+      "quality_gates": ["G3"]
     }
   ],
   "risk_rules": [
@@ -311,6 +337,8 @@
     "test-engineer": "Gherkin scenarios, regressions, failure cases, and quality history",
     "black-box-tester": "externally visible behavior, public API and UI contracts, black-box regressions, client compatibility, and reproducible defects",
     "end-user-tester": "personas, user journeys, UAT decisions, accessibility observations, user-readiness risks, and supportability gaps",
+    "performance-testing-engineer": "load profiles, throughput and latency results, capacity-assumption drift, bottlenecks, and scaling-trigger accuracy",
+    "chaos-resilience-engineer": "fault-injection exercises, observed recovery times, data-loss windows, alerting gaps, and resilience-assumption drift",
     "support-triage-agent": "prior incidents, user reports, reproduction notes, support runbooks, known workarounds, severity patterns, and ownership history",
     "escalation-manager": "escalation history, approval chains, human owner decisions, unresolved blockers, incident communications, and risk acceptance boundaries",
     "incident-commander": "incident timelines, severity decisions, mitigation history, communication cadence, owner chains, postmortems, and unresolved blockers",

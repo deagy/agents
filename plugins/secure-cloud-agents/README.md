@@ -1,9 +1,11 @@
 # Secure Cloud Agents plugin
 
-This self-contained plugin v0.3.0 packages the repository's 34 specialist
-roles, six suite skills, orchestration runtime, knowledge-store runtime, and
-its external Agentic SDLC provider. It does not contain the lifecycle kernel;
-that remains a separately versioned dependency.
+This self-contained plugin packages the repository's 36 specialist roles, six
+suite skills, orchestration runtime, knowledge-store runtime, and its external
+Agentic SDLC provider (`provider.json` is the versioned source of truth — see
+`version` and `kernel_compatibility` there rather than this prose). It does
+not contain the lifecycle kernel; that remains a separately versioned
+dependency.
 
 The lifecycle kernel is maintained separately at
 [`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc) and is not

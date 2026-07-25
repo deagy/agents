@@ -519,6 +519,46 @@ class SelectorTests(unittest.TestCase):
             ["persistent-database-migration", "production-change"],
         )
 
+    def test_selects_performance_testing_engineer_for_load_tests(self) -> None:
+        result = plan(
+            task="Add a load test to measure checkout throughput and latency under peak traffic",
+            changed_files=["perf/checkout-load-test.js"],
+        )
+        self.assertIn("performance-testing-engineer", result["agents"]["primary"])
+        self.assertIn("infrastructure-reviewer", result["agents"]["reviewers"])
+        self.assertIn("cost-capacity-planner", result["agents"]["support"])
+
+    def test_selects_chaos_resilience_engineer_for_fault_injection(self) -> None:
+        result = plan(
+            task="Run a game day exercise to inject node failure and verify automated recovery",
+            changed_files=["chaos/node-failure-scenario.yaml"],
+        )
+        self.assertIn("chaos-resilience-engineer", result["agents"]["primary"])
+        self.assertIn("infrastructure-reviewer", result["agents"]["reviewers"])
+        self.assertIn("cloud-architect", result["agents"]["support"])
+        self.assertIn("observability-sre", result["agents"]["support"])
+
+    def test_selects_cloud_architect_as_primary_for_architecture_design(self) -> None:
+        result = plan(
+            task="Design the architecture for a new document-ingestion service",
+            changed_files=["architecture/document-ingestion/adr-0001.md"],
+        )
+        self.assertIn("cloud-architect", result["agents"]["primary"])
+        self.assertIn("threat-modeler", result["agents"]["reviewers"])
+        self.assertNotIn("threat-modeler", result["agents"]["support"])
+
+    def test_matched_risks_include_populated_reasons(self) -> None:
+        result = plan(
+            task="Run a production database migration that alters the users table",
+            changed_files=["services/users/migrations/0042_users.sql"],
+        )
+        matched_risks = {risk["id"]: risk for risk in result["matched_risks"]}
+        self.assertIn("database-migration", matched_risks)
+        reasons = matched_risks["database-migration"]["reasons"]
+        self.assertIsNotNone(reasons)
+        self.assertTrue(reasons["keywords"] or reasons["paths"])
+        self.assertNotIn("matched", reasons)
+
     def test_returns_needs_triage_instead_of_guessing(self) -> None:
         result = plan(task="Investigate an unexplained issue", changed_files=["unknown/file.xyz"])
         self.assertEqual(result["status"], "needs-triage")
@@ -558,7 +598,7 @@ class SelectorTests(unittest.TestCase):
 
     @patch("select_agents._run_git")
     def test_git_status_discovery_preserves_order_and_rename_destination(self, run_git) -> None:
-        run_git.return_value = " M frontend/a.ts\nR  old.tf -> infra/new.tf\n?? tests/new.feature\n"
+        run_git.return_value = " M frontend/a.ts\0R  infra/new.tf\0old.tf\0?? tests/new.feature\0"
         self.assertEqual(
             discover_changed_files(None),
             {
@@ -566,7 +606,22 @@ class SelectorTests(unittest.TestCase):
                 "files": ["frontend/a.ts", "infra/new.tf", "tests/new.feature"],
             },
         )
-        run_git.assert_called_once_with(["status", "--short"])
+        run_git.assert_called_once_with(["status", "--short", "-z"])
+
+    @patch("select_agents._run_git")
+    def test_git_status_discovery_preserves_quoted_paths_verbatim(self, run_git) -> None:
+        # -z output is never quoted/escaped (unlike plain --short, which
+        # octal-escapes non-ASCII/special-character paths under the default
+        # core.quotePath) — a path containing a literal " -> " substring or
+        # non-ASCII characters must survive intact.
+        run_git.return_value = "A  frontend/café -> menu.ts\0?? weird dir/file with spaces.txt\0"
+        self.assertEqual(
+            discover_changed_files(None),
+            {
+                "source": "git-status",
+                "files": ["frontend/café -> menu.ts", "weird dir/file with spaces.txt"],
+            },
+        )
 
     @patch("select_agents._run_git")
     def test_git_base_discovery_uses_three_dot_diff(self, run_git) -> None:

@@ -45,6 +45,8 @@ Choose agents by the capability the task needs. The examples in this runbook sta
 | Design or run tests | Test engineer | Relevant independent reviewer |
 | Validate externally visible behavior | Black-box tester | Test engineer, then support triage agent |
 | Validate user journeys and readiness | End-user tester | Technical writer, then support triage agent |
+| Validate load, throughput, and capacity assumptions | Performance testing engineer | Infrastructure reviewer, then release engineer |
+| Verify RTO/RPO and alerting claims via fault injection | Chaos & resilience engineer | Infrastructure reviewer, then release engineer |
 | Triage user or customer reports | Support triage agent | Escalation manager |
 | Coordinate escalation to owner/human | Escalation manager | Accountable human owner |
 | Command a major incident | Incident commander | Escalation manager, then accountable human owner |
@@ -595,7 +597,7 @@ See `https://github.com/deagy/agentic-sdlc` for lifecycle command and upgrade do
 
 ## 17. Make this repository's own suite available system-wide
 
-Most projects want §16's `agents sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 34 roles, 6 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
+Most projects want §16's `agents sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 36 roles, 6 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
 
 ```sh
 codex plugin marketplace add .
@@ -607,7 +609,7 @@ codex plugin add secure-cloud-agents@agents-team
 /plugin install secure-cloud-agents@agents-team
 ```
 
-Codex has no plugin-bundled-subagent mechanism, so its 34 `.toml` role wrappers are staged under `plugins/secure-cloud-agents/codex-agents/` rather than loaded from the plugin directly; `run-agent-orchestration`'s bootstrap step syncs whatever is missing into `~/.codex/agents/` on first dispatch each session, so this is normally zero-touch (see `../plugins/secure-cloud-agents/README.md` to do it yourself instead of waiting for that). Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
+Codex has no plugin-bundled-subagent mechanism, so its 36 `.toml` role wrappers are staged under `plugins/secure-cloud-agents/codex-agents/` rather than loaded from the plugin directly; `run-agent-orchestration`'s bootstrap step syncs whatever is missing into `~/.codex/agents/` on first dispatch each session, so this is normally zero-touch (see `../plugins/secure-cloud-agents/README.md` to do it yourself instead of waiting for that). Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
 
 The plugin is self-contained: generated wrappers embed role and shared-policy
 instructions, while skills and runtime files are packaged under `skills/` and

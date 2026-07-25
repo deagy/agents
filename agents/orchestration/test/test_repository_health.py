@@ -56,7 +56,7 @@ class RepositoryHealthTests(unittest.TestCase):
                 key, value = line.strip().split(":", 1)
                 metadata[current_agent][key] = value.strip()
 
-        self.assertEqual(34, len(metadata))
+        self.assertEqual(36, len(metadata))
         allowed = {"read_only", "document_author", "code_author", "test_author", "environment_operator"}
         for agent_id, values in metadata.items():
             with self.subTest(agent=agent_id):

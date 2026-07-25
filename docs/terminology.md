@@ -14,6 +14,7 @@
 | Human gate | A decision reserved for an accountable human, such as risk acceptance, policy exception, production authorization, or release approval. |
 | Independent reviewer | A role that evaluates an exact revision separately from its author and cannot approve its own work. |
 | Generated artifact | A runner or package file produced from canonical source; it is regenerated rather than edited by hand. |
+| SQS | An external organization/platform whose impact-category and BOM (SBOM/CBOM/QBOM/AI-BOM/Trust-BOM/Time-BOM) semantics this repository deliberately does not define — see `agents/shared/sqs-impact-profile.yaml`. A consuming project must supply its own authorized definitions and owners before treating any category as applicable; `unknown` blocks the relevant gates by design, not by omission. |
 
 ## Relationship between the two repositories
 

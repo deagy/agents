@@ -22,7 +22,7 @@ from cli import run  # noqa: E402
 from config import load_config  # noqa: E402
 from content import chunk_text, protect_content  # noqa: E402
 from database import open_store, store_stats  # noqa: E402
-from embeddings import _RejectRedirects, embed_texts, hashing_embedding  # noqa: E402
+from embeddings import MAX_RESPONSE_BYTES, _RejectRedirects, embed_texts, hashing_embedding  # noqa: E402
 from normalize import normalize_file  # noqa: E402
 from service import build_agent_context, ingest_file, search_store, stable_query_id, top_limit  # noqa: E402
 
@@ -340,6 +340,31 @@ class KnowledgeStoreTests(unittest.TestCase):
                 embed_texts(["private query text"], config["embedding"])
             self.assertNotIn("private query text", str(captured.exception))
             self.assertNotIn("sensitive response body", str(captured.exception))
+
+    def test_remote_embedding_reports_non_2xx_status_oversized_body_and_bad_json(self) -> None:
+        config = test_config(self.directory / "unused.db", provider="openai-compatible", dimensions=3, base_url="https://embedding.test/v1", api_key_env="TEST_EMBED_KEY")
+
+        class Response:
+            def __init__(self, status, body):
+                self.status = status
+                self._body = body
+            def __enter__(self): return self
+            def __exit__(self, *args): return False
+            def read(self): return self._body
+
+        cases = {
+            "non_2xx_status": Response(500, b"{}"),
+            "oversized_body": Response(200, b" " * (MAX_RESPONSE_BYTES + 1)),
+            "invalid_json": Response(200, b"not json"),
+        }
+        for name, response in cases.items():
+            with self.subTest(failure=name), mock.patch.dict(os.environ, {"TEST_EMBED_KEY": "key"}), mock.patch("embeddings._open_request", return_value=response), self.assertRaises(RuntimeError):
+                embed_texts(["a"], config["embedding"])
+
+    def test_remote_embedding_reports_url_error(self) -> None:
+        config = test_config(self.directory / "unused.db", provider="openai-compatible", dimensions=3, base_url="https://embedding.test/v1", api_key_env="TEST_EMBED_KEY")
+        with mock.patch.dict(os.environ, {"TEST_EMBED_KEY": "key"}), mock.patch("embeddings._open_request", side_effect=urllib.error.URLError("network unreachable")), self.assertRaisesRegex(RuntimeError, "request failed"):
+            embed_texts(["a"], config["embedding"])
 
     def test_remote_embedding_redirects_are_rejected(self) -> None:
         handler = _RejectRedirects()

@@ -28,6 +28,15 @@
       ],
       "definition": "suite/agents/testing/black-box-tester/AGENT.md"
     },
+    "chaos-resilience-engineer": {
+      "phase": "verify",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/agents/testing/chaos-resilience-engineer/AGENT.md"
+    },
     "cicd-engineer": {
       "phase": "build",
       "kind": "author",
@@ -195,6 +204,15 @@
         "dispatch"
       ],
       "definition": "suite/agents/operations/observability-sre/AGENT.md"
+    },
+    "performance-testing-engineer": {
+      "phase": "verify",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/agents/testing/performance-testing-engineer/AGENT.md"
     },
     "pipeline-security-reviewer": {
       "phase": "review",

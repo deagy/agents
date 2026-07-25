@@ -60,6 +60,9 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from routing import parse_catalog_entries  # noqa: E402
+
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 AGENTS_ROOT = REPOSITORY_ROOT / "agents"
 SKILLS_ROOT = REPOSITORY_ROOT / ".agents" / "skills"
@@ -106,17 +109,7 @@ GENERATED_TOP_LEVEL = {"skills", "agents", "codex-agents", "suite", "agent-catal
 
 
 def load_catalog(path: Path) -> dict[str, dict[str, Any]]:
-    agents: dict[str, dict[str, Any]] = {}
-    current: str | None = None
-    for line in path.read_text(encoding="utf-8").splitlines():
-        match = re.match(r"^  ([a-z0-9-]+):\s*$", line)
-        if match:
-            current = match.group(1)
-            agents[current] = {}
-            continue
-        if current and line.strip().startswith(("definition:", "phase:", "capability:")):
-            key, value = line.strip().split(":", 1)
-            agents[current][key] = value.strip()
+    agents: dict[str, dict[str, Any]] = parse_catalog_entries(path.read_text(encoding="utf-8"))
     if not agents:
         raise ValueError("No agents found in catalog.yaml")
     for agent_id, metadata in agents.items():
