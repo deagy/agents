@@ -50,8 +50,9 @@ wave — see [team-recipes.md](team-recipes.md) for when that's warranted.
   `.codex/agents/` (project) or `~/.codex/agents/` (global) with `name`,
   `description`, `developer_instructions`, and optional `model` /
   `sandbox_mode` / `mcp_servers` — this repo's
-  `plugins/secure-cloud-agents/codex-agents/*.toml` wrappers, synced into
-  `~/.codex/agents/` per this skill's bootstrap step.
+  `plugins/secure-cloud-agents/codex-agents/secure-cloud-agents-*.toml`
+  wrappers, safely synced into `~/.codex/agents/` per this skill's bootstrap
+  step. Project-local bare role IDs remain preferred overrides.
 - **Ordinary parallel wave**: request the same role set in one instruction
   (for example, "spawn one agent per role listed below"). Codex fans the
   requests out, waits for every result, and returns a consolidated response.

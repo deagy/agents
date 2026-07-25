@@ -25,10 +25,10 @@ enforced partitions for materially different classifications or tenants" rule
 rests on two mechanisms together: a project with materially different
 requirements should use tier 1 (its own store) rather than the shared default,
 and every ingestion/retrieval call against the shared store should carry a
-`--source` that identifies the originating project (the deterministic
-dispatch-plan builder in `agents/orchestration/src/build_dispatch_plan.py`
-already defaults `--source` to the repository directory name when a caller
-doesn't supply one).
+`--source` that identifies the originating project. `agents select` uses an
+explicit caller value first, then the target repository's lowercase
+`owner/repository` origin slug, and finally a
+`local-<basename>-<canonical-path-hash>` fallback.
 
 ## Security boundary
 

@@ -42,6 +42,11 @@ def match_rule(rule: dict[str, Any], task_text: str, changed_files: list[str]) -
     matched_keywords = [
         keyword for keyword in rule.get("keywords", []) if _keyword_matches(normalized_task, keyword)
     ]
+    matched_keyword_groups = [
+        [keyword for keyword in group if _keyword_matches(normalized_task, keyword)]
+        for group in rule.get("keyword_groups", [])
+    ]
+    conjunctive_match = bool(matched_keyword_groups) and all(matched_keyword_groups)
     matched_paths: list[dict[str, str]] = []
     for pattern in rule.get("paths", []):
         matcher = glob_to_regex(pattern)
@@ -50,8 +55,9 @@ def match_rule(rule: dict[str, Any], task_text: str, changed_files: list[str]) -
             if matcher.search(normalized_file):
                 matched_paths.append({"pattern": pattern, "file": file_name})
     return {
-        "matched": bool(matched_keywords or matched_paths),
+        "matched": bool(matched_keywords or conjunctive_match or matched_paths),
         "keywords": matched_keywords,
+        "keyword_groups": matched_keyword_groups if conjunctive_match else [],
         "paths": matched_paths,
     }
 
@@ -71,6 +77,26 @@ def load_routing(file_path: Path) -> dict[str, Any]:
     ]
     if len(set(ids)) != len(ids):
         raise ValueError("Routing, risk rule, and team recipe IDs must be unique")
+    for rule in [*config["routes"], *config["risk_rules"]]:
+        groups = rule.get("keyword_groups", [])
+        if groups and (
+            not isinstance(groups, list)
+            or any(not isinstance(group, list) or not group for group in groups)
+        ):
+            raise ValueError(f"{rule.get('id', 'rule')} keyword_groups must contain non-empty groups")
+    for recipe in config.get("team_recipes", []):
+        if recipe.get("type") == "dynamic":
+            instances = recipe.get("instances", {})
+            minimum, maximum = instances.get("min"), instances.get("max")
+            if (
+                not isinstance(minimum, int)
+                or isinstance(minimum, bool)
+                or not isinstance(maximum, int)
+                or isinstance(maximum, bool)
+                or minimum < 1
+                or maximum < minimum
+            ):
+                raise ValueError(f"{recipe.get('id', 'team recipe')} instances must satisfy 1 <= min <= max")
     return config
 
 

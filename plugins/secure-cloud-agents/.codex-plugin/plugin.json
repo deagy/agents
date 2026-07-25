@@ -1,7 +1,7 @@
 {
   "name": "secure-cloud-agents",
   "version": "0.2.0",
-  "description": "System-wide access to this repository's secure cloud agent suite: 34 specialist roles, orchestration skills, and the shared knowledge store, reachable from any project once installed at global scope.",
+  "description": "System-wide access to this repository's secure cloud agent suite: 36 specialist roles, orchestration skills, and the shared knowledge store, reachable from any project once installed at global scope.",
   "author": {
     "name": "Agents maintainers",
     "url": "https://github.com/deagy/agents"
@@ -13,7 +13,7 @@
   "interface": {
     "displayName": "Secure Cloud Agents",
     "shortDescription": "System-wide secure cloud agent suite and orchestration.",
-    "longDescription": "Makes 34 specialist roles, orchestration skills, knowledge-store retrieval, and the secure-cloud Agentic SDLC provider available as a self-contained package.",
+    "longDescription": "Makes 36 specialist roles, orchestration skills, knowledge-store retrieval, and the secure-cloud Agentic SDLC provider available as a self-contained package.",
     "developerName": "Agents maintainers",
     "category": "Productivity",
     "capabilities": ["Interactive", "Write"],

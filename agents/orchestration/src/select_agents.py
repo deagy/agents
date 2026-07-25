@@ -4,10 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 from build_dispatch_plan import build_dispatch_plan
 from routing import load_catalog, load_routing
@@ -23,6 +26,10 @@ def _parser() -> argparse.ArgumentParser:
         allow_abbrev=False,
     )
     parser.add_argument("--task", required=True, help="Task objective used for routing")
+    parser.add_argument(
+        "--root",
+        help="Target repository root (defaults to the caller's working directory)",
+    )
     parser.add_argument("--files", action="append", help="Changed path or comma-separated paths; repeatable")
     parser.add_argument("--base", help="Git base ref used with <base>...HEAD")
     parser.add_argument("--task-id", help="Stable caller-supplied task identifier")
@@ -38,10 +45,10 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _run_git(args: list[str]) -> str:
+def _run_git(args: list[str], repository_root: Path) -> str:
     result = subprocess.run(
         ["git", *args],
-        cwd=REPOSITORY_ROOT,
+        cwd=repository_root,
         check=False,
         capture_output=True,
         text=True,
@@ -52,15 +59,24 @@ def _run_git(args: list[str]) -> str:
     return result.stdout
 
 
-def discover_changed_files(base: str | None) -> dict[str, object]:
+def discover_changed_files(base: str | None, repository_root: Path | None = None) -> dict[str, object]:
+    repository_root = (repository_root or REPOSITORY_ROOT).resolve()
     if base:
-        files = [line for line in _run_git(["diff", "--name-only", f"{base}...HEAD"]).splitlines() if line]
+        files = [
+            line
+            for line in _run_git(
+                ["diff", "--name-only", f"{base}...HEAD"], repository_root
+            ).splitlines()
+            if line
+        ]
         return {"source": f"git-diff:{base}...HEAD", "files": files}
     # -z gives NUL-separated, never-quoted paths; git's default --short quotes
     # paths containing non-ASCII/special characters (core.quotePath), which
     # plain line[3:] parsing would leave mangled. Renamed/copied entries add
     # one extra NUL-separated original-path field we don't need and must skip.
-    fields = _run_git(["status", "--short", "-z"]).split("\0")
+    fields = _run_git(
+        ["status", "--short", "-z", "--untracked-files=all"], repository_root
+    ).split("\0")
     files = []
     index = 0
     while index < len(fields):
@@ -84,14 +100,49 @@ def explicit_files(values: list[str] | None) -> list[str] | None:
     return list(dict.fromkeys(files))
 
 
+def _origin_slug(repository_root: Path) -> str | None:
+    try:
+        origin = _run_git(["remote", "get-url", "origin"], repository_root).strip()
+    except RuntimeError:
+        return None
+    if not origin:
+        return None
+    # Accept https://host/owner/repo.git, ssh://git@host/owner/repo.git,
+    # and SCP-style git@host:owner/repo.git origins.
+    path = urlparse(origin).path if "://" in origin else origin.split(":", 1)[-1]
+    parts = [part for part in path.strip("/").split("/") if part]
+    if len(parts) < 2:
+        return None
+    owner, repository = parts[-2], re.sub(r"\.git$", "", parts[-1], flags=re.IGNORECASE)
+    if not owner or not repository:
+        return None
+    slug = f"{owner}/{repository}".lower()
+    return slug if re.fullmatch(r"[a-z0-9._-]+/[a-z0-9._-]+", slug) else None
+
+
+def resolve_knowledge_source(repository_root: Path) -> str:
+    slug = _origin_slug(repository_root)
+    if slug:
+        return slug
+    digest = hashlib.sha256(str(repository_root.resolve()).encode("utf-8")).hexdigest()[:12]
+    basename = re.sub(r"[^a-z0-9._-]+", "-", repository_root.name.lower()).strip("-") or "repository"
+    return f"local-{basename}-{digest}"
+
+
 def main(argv: list[str] | None = None) -> int:
     options = _parser().parse_args(argv)
+    repository_root = Path(options.root).expanduser().resolve() if options.root else Path.cwd().resolve()
+    if not repository_root.is_dir():
+        raise ValueError(f"Repository root is not a directory: {repository_root}")
     supplied_files = explicit_files(options.files)
+    if supplied_files is not None and options.base:
+        raise ValueError("--base cannot be combined with --files")
     changes = (
         {"source": "explicit", "files": supplied_files}
         if supplied_files is not None
-        else discover_changed_files(options.base)
+        else discover_changed_files(options.base, repository_root)
     )
+    source = options.source or resolve_knowledge_source(repository_root)
     config = load_routing(ORCHESTRATION_ROOT / "routing.yaml")
     catalog = load_catalog(AGENTS_ROOT / "catalog.yaml")
     plan = build_dispatch_plan(
@@ -100,11 +151,12 @@ def main(argv: list[str] | None = None) -> int:
         {
             "task": options.task,
             "task_id": options.task_id,
+            "repository_root": str(repository_root),
             "base": options.base,
             "changed_files": [str(file_name).replace("\\", "/") for file_name in changes["files"]],
             "changed_file_source": changes["source"],
             "classification": options.classification,
-            "source": options.source,
+            "source": source,
             "top": options.top,
         },
         require_sdlc=options.require_sdlc,
