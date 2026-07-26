@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
+import re
 import stat
 import sys
 from pathlib import Path
@@ -12,6 +14,11 @@ from pathlib import Path
 PROVENANCE_MARKER = "# GENERATED FILE: canonical source is agents/"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_SOURCE = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents" / "codex-agents"
+INDEX_FILENAME = "secure-cloud-agents-index.json"
+INDEX_SCHEMA_VERSION = 1
+_WRAPPER_NAME_PREFIX = "secure-cloud-agents-"
+_WRAPPER_NAME_SUFFIX = ".toml"
+_MODEL_LINE_PATTERN = re.compile(r'(?m)^model\s*=\s*(".*")\s*$')
 
 
 def _nofollow_flag() -> int:
@@ -81,7 +88,38 @@ def _write_owned_wrapper(destination: Path, content: bytes) -> str:
         os.close(descriptor)
 
 
-def sync_wrappers(source: Path, target: Path) -> dict[str, list[str]]:
+def _role_id_from_wrapper_name(name: str) -> str:
+    return name[len(_WRAPPER_NAME_PREFIX) : -len(_WRAPPER_NAME_SUFFIX)]
+
+
+def _extract_model(content: bytes) -> str | None:
+    """Best-effort extraction of the `model = "..."` line from a generated wrapper.
+
+    The wrapper format is a small, fixed, generator-produced subset of TOML
+    (see generate_global_plugin.py's `toml_string`, which encodes values with
+    `json.dumps`), so a targeted line scan is sufficient and avoids requiring
+    `tomllib` (Python 3.11+) on this repository's Python 3.10+ floor.
+    """
+    match = _MODEL_LINE_PATTERN.search(content.decode("utf-8"))
+    if not match:
+        return None
+    return json.loads(match.group(1))
+
+
+def _build_index(contents: list[tuple[Path, bytes]], target: Path) -> dict:
+    roles: dict[str, dict[str, str | None]] = {}
+    for wrapper, content in contents:
+        role_id = _role_id_from_wrapper_name(wrapper.name)
+        destination = (target / wrapper.name).resolve()
+        roles[role_id] = {"path": str(destination), "model": _extract_model(content)}
+    return {
+        "generated_marker": PROVENANCE_MARKER,
+        "schema_version": INDEX_SCHEMA_VERSION,
+        "roles": roles,
+    }
+
+
+def sync_wrappers(source: Path, target: Path) -> dict[str, object]:
     wrappers = sorted(source.glob("secure-cloud-agents-*.toml"))
     if not wrappers:
         raise ValueError(f"No namespaced Codex wrappers found under {source}")
@@ -102,7 +140,22 @@ def sync_wrappers(source: Path, target: Path) -> dict[str, list[str]]:
             unchanged.append(str(destination))
         else:
             installed.append(str(destination))
-    return {"installed": installed, "unchanged": unchanged}
+
+    # Only construct and write the index once every wrapper above has been
+    # written successfully; if any wrapper write raised, this code never
+    # runs, so the index is left at its prior on-disk state (absent or
+    # unchanged), never partially/inconsistently updated.
+    index = _build_index(contents, target)
+    index_content = (json.dumps(index, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    index_destination = target / INDEX_FILENAME
+    index_status = _write_owned_wrapper(index_destination, index_content)
+
+    return {
+        "installed": installed,
+        "unchanged": unchanged,
+        "index_status": index_status,
+        "index_path": str(index_destination),
+    }
 
 
 def main() -> int:
@@ -114,7 +167,10 @@ def main() -> int:
     parser.add_argument("--target", type=Path, default=Path.home() / ".codex" / "agents")
     options = parser.parse_args()
     result = sync_wrappers(options.source.resolve(), options.target.expanduser().resolve())
-    print(f"Installed {len(result['installed'])}; unchanged {len(result['unchanged'])}.")
+    print(
+        f"Installed {len(result['installed'])}; unchanged {len(result['unchanged'])}. "
+        f"Index {result['index_status']} at {result['index_path']}."
+    )
     return 0
 
 
