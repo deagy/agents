@@ -80,6 +80,14 @@ ASK_HUMAN_RULE = (
     "reach a decision only a human can make, stop and return a clearly labeled "
     "blocking question in your result instead of guessing or proceeding."
 )
+SHARED_OVERRIDE_NOTE = (
+    "The shared policy content above is this package's global defaults, "
+    "embedded at packaging time. The project you are dispatched into may "
+    "extend or override them under its own `.agents/shared/`; run `agents "
+    "resolve-shared <filename>` from that project's directory for each "
+    "shared file's effective content instead of trusting the embedded text "
+    "alone (see agents/shared/README.md in the source suite)."
+)
 
 ALLOWED_MODELS = {"haiku", "sonnet", "opus"}
 ALLOWED_CODEX_MODELS = {"gpt-5", "gpt-5-codex", "gpt-5-mini"}
@@ -219,7 +227,7 @@ def generate_agent_wrappers(catalog: dict[str, dict[str, Any]], plugin_root: Pat
         description = f"Secure cloud agent suite role for the {phase} phase ({agent_id})."
         instructions = (
             f"# Role: {agent_id}\n\n{definition_path.read_text(encoding='utf-8').strip()}"
-            f"\n\n{shared_content}\n\n{ASK_HUMAN_RULE}"
+            f"\n\n{shared_content}\n\n{SHARED_OVERRIDE_NOTE}\n\n{ASK_HUMAN_RULE}"
         )
 
         md_target = plugin_root / "agents" / f"{agent_id}.md"
@@ -325,7 +333,8 @@ def generate_bin_wrapper(plugin_root: Path) -> Path:
             '  select) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/select_agents.py" "$@" ;;',
             '  bootstrap-codex) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/sync_codex_agents.py" --source "$PLUGIN_ROOT/codex-agents" "$@" ;;',
             '  knowledge) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/knowledge-store/src/cli.py" "$@" ;;',
-            '  help|-h|--help) echo "Usage: agents {select|knowledge|bootstrap-codex|sdlc} [args...]" ;;',
+            '  resolve-shared) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/shared/src/resolve.py" "$@" ;;',
+            '  help|-h|--help) echo "Usage: agents {select|knowledge|bootstrap-codex|resolve-shared|sdlc} [args...]" ;;',
             '  *) echo "agents: unknown subcommand $command_name" >&2; exit 1 ;;',
             "esac",
             "",

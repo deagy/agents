@@ -37,11 +37,11 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 
 Key areas:
 
-- [bin/agents](bin/agents) dispatches the suite tools (`agents select`, `agents knowledge`, `agents sdlc`, and `agents generate-plugin`). `agents select` works standalone, deterministically dispatching roles from this suite's own catalog and routing rules; it automatically enriches its plan with lifecycle-gate tracking when the standalone `agentic-sdlc` CLI is also available (or fails fast with `--require-sdlc` if that's required), and lifecycle *validation* itself is always provided by that separate `agentic-sdlc` CLI, never by this suite.
+- [bin/agents](bin/agents) dispatches the suite tools (`agents select`, `agents knowledge`, `agents sdlc`, `agents generate-plugin`, `agents bootstrap-codex`, `agents version`, and `agents resolve-shared`). `agents select` works standalone, deterministically dispatching roles from this suite's own catalog and routing rules; it automatically enriches its plan with lifecycle-gate tracking when the standalone `agentic-sdlc` CLI is also available (or fails fast with `--require-sdlc` if that's required), and lifecycle *validation* itself is always provided by that separate `agentic-sdlc` CLI, never by this suite.
 - [agents/catalog.yaml](agents/catalog.yaml) is the machine-readable role inventory.
 - [agents/RUNBOOK.md](agents/RUNBOOK.md) explains how to select, dispatch, review, and escalate agent work.
 - [agents/orchestration/](agents/orchestration/) contains routing rules, lifecycle applicability mappings, handoff contracts, escalation policy, selectors, and tests.
-- [agents/shared/](agents/shared/) contains operating principles, autonomy policy, technology standards, library standards, knowledge-store rules, and risk guidance.
+- [agents/shared/](agents/shared/) contains operating principles, autonomy policy, technology standards, library standards, knowledge-store rules, and risk guidance — these are global defaults; a project can extend or override them per-project the same way it can isolate its own knowledge store below, see [agents/shared/README.md](agents/shared/README.md).
 - [agents/workflows/](agents/workflows/) defines workflows for new services, infrastructure, CI/CD, releases, rollback, knowledge ingestion, and support escalation.
 - [agents/knowledge-store/](agents/knowledge-store/) contains the retrieval layer for approved historical context.
 - [agents/testing/](agents/testing/) and [agents/support/](agents/support/) define black-box testing, end-user testing, support triage, and escalation roles.

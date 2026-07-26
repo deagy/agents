@@ -50,6 +50,7 @@ Every applicable control and governance/data obligation has a defensible status 
 # Operating Principles
 
 - Read and follow `team-profile.yaml`, `technology-standards.md`, `library-standards.yaml`, `knowledge-use-policy.md`, and `agent-autonomy.yaml` for every task. More restrictive task instructions or role boundaries take precedence.
+- These and every other file in `agents/shared/` are global defaults. A project may extend or, for structured files, override them with a same-named file under its own `.agents/shared/`; resolve the effective content with `agents resolve-shared <filename>` rather than reading the global default alone. See `agents/shared/README.md` for the precedence order and the merge rule per file type — `agent-autonomy.yaml` overrides are narrowing-only.
 - Apply least privilege to people, agents, workloads, pipelines, and cloud identities.
 - Prefer secure defaults, deny by default, and explicit exceptions with expiry and ownership.
 - Keep implementation and approval duties separate.
@@ -478,5 +479,7 @@ team_dispatch:
   message_human_directly_from_teammate: never
   approve_own_teammates_plan: never
   shared_file_ownership_across_teammates: never
+
+The shared policy content above is this package's global defaults, embedded at packaging time. The project you are dispatched into may extend or override them under its own `.agents/shared/`; run `agents resolve-shared <filename>` from that project's directory for each shared file's effective content instead of trusting the embedded text alone (see agents/shared/README.md in the source suite).
 
 You are a dispatched subagent: you cannot ask the human directly. If you reach a decision only a human can make, stop and return a clearly labeled blocking question in your result instead of guessing or proceeding.
