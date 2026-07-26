@@ -1,5 +1,10 @@
 __pycache__/
 *.py[cod]
+.pytest_cache/
+.coverage
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
 
 */**/sample-*-run
 /*/sample-*-run
@@ -39,3 +44,6 @@ evidence/
 # Local knowledge-store configuration and data are operator-controlled.
 .agents/knowledge-store/config.json
 .agents/knowledge-store/data/
+
+# Local Claude Code settings (not portable across contributors).
+.claude/settings.local.json
