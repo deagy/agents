@@ -178,7 +178,7 @@ class RepositoryHealthTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="secure-cloud-agents-health-") as temporary_directory:
             output = Path(temporary_directory) / "plugin"
             generated = subprocess.run(
-                ["python3", str(generator), "--output", str(output)],
+                [sys.executable, str(generator), "--output", str(output)],
                 cwd=REPOSITORY_ROOT,
                 check=False,
                 capture_output=True,
@@ -187,7 +187,7 @@ class RepositoryHealthTests(unittest.TestCase):
             )
             self.assertEqual(0, generated.returncode, generated.stderr)
             checked = subprocess.run(
-                ["python3", str(generator), "--check", "--output", str(output)],
+                [sys.executable, str(generator), "--check", "--output", str(output)],
                 cwd=REPOSITORY_ROOT,
                 check=False,
                 capture_output=True,
@@ -195,6 +195,23 @@ class RepositoryHealthTests(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual(0, checked.returncode, checked.stderr)
+
+            canonical_plugin = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents"
+            static_assets = (
+                ".claude-plugin/plugin.json",
+                ".codex-plugin/plugin.json",
+                "provider.json",
+                "profiles/generic/profile.json",
+                "profiles/secure-cloud/profile.json",
+                "extensions/sqs-platform/extension.json",
+                "README.md",
+            )
+            for relative_path in static_assets:
+                with self.subTest(path=relative_path):
+                    self.assertEqual(
+                        (canonical_plugin / relative_path).read_bytes(),
+                        (output / relative_path).read_bytes(),
+                    )
 
     def test_removed_lifecycle_migration_utility_cannot_ship(self) -> None:
         source_path = ROOT / "orchestration" / "src" / "migrate_execution_summary.py"
@@ -283,7 +300,7 @@ class RepositoryHealthTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="secure-cloud-agents-capabilities-") as temporary_directory:
             plugin_root = Path(temporary_directory) / "plugin"
             result = subprocess.run(
-                ["python3", str(generator), "--output", str(plugin_root)],
+                [sys.executable, str(generator), "--output", str(plugin_root)],
                 cwd=REPOSITORY_ROOT,
                 check=True,
                 capture_output=True,
@@ -564,7 +581,7 @@ class RepositoryHealthTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="secure-cloud-agents-packaging-") as temporary_directory:
             plugin_root = Path(temporary_directory) / "plugin"
             subprocess.run(
-                ["python3", str(generator), "--output", str(plugin_root)],
+                [sys.executable, str(generator), "--output", str(plugin_root)],
                 cwd=REPOSITORY_ROOT,
                 check=True,
                 capture_output=True,

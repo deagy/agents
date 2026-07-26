@@ -117,6 +117,15 @@ CAPABILITY_PROFILES: dict[str, dict[str, Any]] = {
 
 GENERATED_MARKER = "<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->"
 GENERATED_TOP_LEVEL = {"skills", "agents", "codex-agents", "suite", "agent-catalog.json", "bin"}
+STATIC_TOP_LEVEL = {
+    ".claude-plugin",
+    ".codex-plugin",
+    "extensions",
+    "profiles",
+    "provider.json",
+    "README.md",
+}
+MANAGED_TOP_LEVEL = GENERATED_TOP_LEVEL | STATIC_TOP_LEVEL
 
 
 def load_catalog(path: Path) -> dict[str, dict[str, Any]]:
@@ -172,6 +181,24 @@ def reset_generated_content(plugin_root: Path) -> None:
     for path in (plugin_root / "agent-catalog.json", plugin_root / "bin" / "agents"):
         if path.exists():
             path.unlink()
+
+
+def copy_static_package_assets(plugin_root: Path) -> list[Path]:
+    """Copy the canonical non-generated files required to install the package."""
+    written: list[Path] = []
+    for name in sorted(STATIC_TOP_LEVEL):
+        source = PLUGIN_ROOT / name
+        target = plugin_root / name
+        if source.is_dir():
+            if target.exists():
+                shutil.rmtree(target)
+            shutil.copytree(source, target, copy_function=shutil.copy2)
+            written.extend(path for path in target.rglob("*") if path.is_file())
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+            written.append(target)
+    return written
 
 
 def generate_skill_copies(plugin_root: Path) -> list[Path]:
@@ -431,7 +458,10 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
 
 def generate_package(catalog: dict[str, dict[str, Any]], plugin_root: Path) -> list[Path]:
     reset_generated_content(plugin_root)
-    return generate_skill_copies(plugin_root) + generate_suite_copy(catalog, plugin_root) + generate_agent_wrappers(catalog, plugin_root) + [
+    static_assets: list[Path] = []
+    if plugin_root != PLUGIN_ROOT:
+        static_assets = copy_static_package_assets(plugin_root)
+    return static_assets + generate_skill_copies(plugin_root) + generate_suite_copy(catalog, plugin_root) + generate_agent_wrappers(catalog, plugin_root) + [
         generate_bin_wrapper(plugin_root),
         generate_agent_catalog_export(catalog, plugin_root),
     ]
@@ -443,7 +473,7 @@ def files_equal(left: Path, right: Path) -> bool:
             path.relative_to(root)
             for path in root.rglob("*")
             if path.is_file()
-            and path.relative_to(root).parts[0] in GENERATED_TOP_LEVEL
+            and path.relative_to(root).parts[0] in MANAGED_TOP_LEVEL
             and "__pycache__" not in path.relative_to(root).parts
             and path.suffix not in (".pyc", ".pyo")
         }
