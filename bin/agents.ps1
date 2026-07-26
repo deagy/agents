@@ -1,13 +1,9 @@
-# Dispatcher for this repository's Python tools. Run `agents.ps1 help` for the
-# subcommand list. See README.md "System-wide install" for wrapping this in a
-# $PROFILE function so it can be invoked as bare `agents`.
-
-$RepoRoot = Split-Path -Parent $PSScriptRoot
-$SubcommandsPath = Join-Path $PSScriptRoot "subcommands.tsv"
-$Subcommands = Get-Content $SubcommandsPath | Where-Object { $_ -ne "" } | ForEach-Object {
-  $Fields = $_ -split "`t"
-  [pscustomobject]@{ Name = $Fields[0]; Script = $Fields[1]; Description = $Fields[2] }
-}
+# Entry point for this repository's `agents` CLI. Finds a Python 3.10+
+# interpreter and hands off to bin/agents.py, which owns the subcommand
+# table, sdlc delegation, usage text, and dispatch logic (kept in one place
+# instead of duplicated here and in bin/agents). See README.md "System-wide
+# install" for wrapping this in a $PROFILE function so it can be invoked as
+# bare `agents`.
 
 $AgentPython = $null
 foreach ($Candidate in @(
@@ -23,44 +19,5 @@ foreach ($Candidate in @(
 }
 if (-not $AgentPython) { throw "agents: Python 3.10+ is required (checked python, python3, py -3)" }
 
-function Show-Usage {
-  Write-Output "Usage: agents <subcommand> [args...]"
-  Write-Output ""
-  Write-Output "Subcommands:"
-  foreach ($Sub in $Subcommands) {
-    Write-Output ("  {0,-16} {1}" -f $Sub.Name, $Sub.Description)
-  }
-  Write-Output ("  {0,-16} {1}" -f "sdlc", "Delegated Agentic SDLC v0.3.x CLI")
-  Write-Output ("  {0,-16} {1}" -f "help", "Show this message")
-  Write-Output ""
-  Write-Output "Each subcommand's own --help documents its arguments, e.g. ``agents sdlc plan --help``."
-}
-
-$Command, $Rest = $args
-if (-not $Command) { $Command = "help" }
-
-if ($Command -in @("help", "-h", "--help")) {
-  Show-Usage
-} elseif ($Command -eq "sdlc") {
-  $SdlcPath = $env:AGENTIC_SDLC_BIN
-  if (-not $SdlcPath) {
-    $SdlcCommand = Get-Command "agentic-sdlc" -ErrorAction SilentlyContinue
-    if ($SdlcCommand) { $SdlcPath = $SdlcCommand.Source }
-  }
-  if (-not $SdlcPath) {
-    throw "agents: Agentic SDLC v0.3.x is required; install it from https://github.com/deagy/agentic-sdlc"
-  }
-  $Provider = Join-Path $RepoRoot "plugins/secure-cloud-agents/provider.json"
-  & $SdlcPath "--provider" $Provider @Rest
-} else {
-  $Match = $Subcommands | Where-Object { $_.Name -eq $Command } | Select-Object -First 1
-  if ($Match) {
-    $ScriptPath = Join-Path $RepoRoot ($Match.Script -replace "/", [System.IO.Path]::DirectorySeparatorChar)
-    & $AgentPython.Path @($AgentPython.Args) $ScriptPath @Rest
-  } else {
-    Write-Error "agents: unknown subcommand '$Command'"
-    Show-Usage
-    exit 1
-  }
-}
+& $AgentPython.Path @($AgentPython.Args) (Join-Path $PSScriptRoot "agents.py") @args
 exit $LASTEXITCODE
