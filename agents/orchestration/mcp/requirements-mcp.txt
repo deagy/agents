@@ -1,0 +1,25 @@
+# Official MCP Python SDK for agents/orchestration/mcp/dispatch_server.py.
+# Optional: dispatch_core.py (the actual dispatch/authorization/isolation
+# logic) has no dependency on this package and is fully unit-testable
+# without it, matching agents/shared/requirements-validation.txt's PyYAML
+# pattern -- only running dispatch_server.py requires this, and it fails
+# closed with an install pointer (not a silent no-op) if it's missing.
+#
+# Stdio transport only. Do not install an extra that pulls in a networked
+# transport (e.g. `mcp[cli]` brings in starlette/uvicorn for HTTP/SSE
+# serving, which this component does not use and must not depend on) --
+# install the bare `mcp` package.
+#
+# Version pin below is this suite's best-known-good reference at authoring
+# time and has not been re-verified against PyPI from this sandbox (no
+# network access here). Re-verify and bump deliberately before relying on
+# it; do not silently widen this to an unpinned or range spec.
+#
+# TODO(2026-07-25, M-2, tracked follow-up -- see security review of the MCP
+# dispatch server): this pin is version-only, not hash-pinned. Add a
+# `--hash=sha256:...` pin (and pin/hash its transitive dependencies) once
+# this sandbox has network/package access to resolve and verify the actual
+# published artifact hashes from PyPI. Not done here because doing so
+# without being able to verify the hash against the real published package
+# would just be fabricating a hash, which is worse than no hash.
+mcp==1.2.1
