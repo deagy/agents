@@ -177,17 +177,23 @@ class KnowledgeStoreTests(unittest.TestCase):
         (home / "config.json").write_text(
             json.dumps({"database": "store.db", "embedding": {"dimensions": 128}}), encoding="utf-8"
         )
+        no_project_local_cwd = self.directory / "no-project-local"
+        no_project_local_cwd.mkdir()
         with mock.patch.dict(os.environ, {"KNOWLEDGE_STORE_HOME": str(home)}):
-            config = load_config()
+            with mock.patch("config.Path.cwd", return_value=no_project_local_cwd):
+                config = load_config()
         self.assertEqual(str((home / "store.db").resolve()), config["database"])
 
     def test_default_config_path_falls_back_to_home_directory_when_unset(self) -> None:
         fake_home = self.directory / "fake-home"
         fake_home.mkdir()
+        no_project_local_cwd = self.directory / "no-project-local"
+        no_project_local_cwd.mkdir()
         with mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop("KNOWLEDGE_STORE_HOME", None)
             with mock.patch("config.Path.home", return_value=fake_home):
-                config = load_config()
+                with mock.patch("config.Path.cwd", return_value=no_project_local_cwd):
+                    config = load_config()
         expected = fake_home / ".agents" / "knowledge-store" / "data" / "knowledge.db"
         self.assertEqual(str(expected.resolve()), config["database"])
 
