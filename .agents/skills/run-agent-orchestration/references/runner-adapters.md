@@ -53,12 +53,43 @@ wave — see [team-recipes.md](team-recipes.md) for when that's warranted.
   `plugins/secure-cloud-agents/codex-agents/secure-cloud-agents-*.toml`
   wrappers, safely synced into `~/.codex/agents/` per this skill's bootstrap
   step. Project-local bare role IDs remain preferred overrides.
+- **Known upstream limitation — the model-visible dispatch tool cannot select
+  a named custom agent.** As of current Codex CLI releases, the `spawn_agent`
+  tool surface exposed to a running session accepts only a generic
+  `agent_type` plus explicit `prompt`/`model` overrides; it has no parameter
+  for "spawn the custom agent named `secure-cloud-agents-<role>` from
+  `.codex/agents/`" (tracked upstream as openai/codex#15250, #26363, #26408,
+  #26828, #26868, #27061 — the regressed versions fall back silently to a
+  generic thread that inherits the parent's model instead of erroring). This
+  is why a Codex-hosted run of this skill can correctly select roles (`agents
+  select` and the catalog are unaffected — selection is pure Python, not a
+  Codex tool call) and then appear to stop: there is no tool argument that
+  actually dispatches to the named role, so nothing beyond identification
+  happens unless you use the workaround below.
+  - **Workaround (do this instead of naming the custom agent to
+    `spawn_agent`):** read the target role's `.toml` file directly — project
+    override first (`.codex/agents/<role-id>.toml`), else the synced global
+    wrapper (`~/.codex/agents/secure-cloud-agents-<role-id>.toml`), else this
+    plugin's own `codex-agents/secure-cloud-agents-<role-id>.toml` if sync
+    hasn't run yet — and extract its `developer_instructions` string. Call
+    `spawn_agent` with the generic `agent_type`, pass that
+    `developer_instructions` text plus the task brief as the `prompt`
+    argument, and pass the file's `model` value as the explicit `model`
+    override (do not assume the tool infers either from a bare name). Report
+    in the final summary that this per-file-injection workaround was used, so
+    it isn't mistaken for native named-agent dispatch.
+  - **A2A was evaluated as a fix for this exact limitation and rejected.** A2A
+    is transport between separately-hosted agent processes; it cannot add a
+    parameter to a running Codex session's `spawn_agent` tool surface, so it
+    does not address this limitation at all. The identified fix path is a
+    Python MCP server, owned by this repo, exposing a dispatch tool Codex can
+    call directly — in development, not yet available.
 - **Ordinary parallel wave**: request the same role set in one instruction
-  (for example, "spawn one agent per role listed below"). Codex fans the
-  requests out, waits for every result, and returns a consolidated response.
-  Concurrency is bounded by the user's own
-  `agents.max_concurrent_threads_per_session` (`[agents]` block in their
-  `config.toml`) — this repo has no way to override that from inside a
+  (for example, "spawn one agent per role listed below"), applying the
+  workaround above per role. Codex fans the requests out, waits for every
+  result, and returns a consolidated response. Concurrency is bounded by the
+  user's own `agents.max_concurrent_threads_per_session` (`[agents]` block in
+  their `config.toml`) — this repo has no way to override that from inside a
   project.
 - **No team equivalent exists.** Codex's spawned subagents have no
   peer-to-peer messaging and no shared task list — coordination is entirely

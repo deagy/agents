@@ -114,6 +114,18 @@ Initialization detects candidate technologies and validation commands, but delib
 
 See the [standalone lifecycle guide](https://github.com/deagy/agentic-sdlc/tree/main/plugins/agentic-sdlc) for commands and upgrades.
 
+### No A2A surface today
+
+This suite has no A2A surface today. A2A was evaluated as a Codex-dispatch
+mechanism and deferred (not in progress), pending a confirmed second consumer
+that isn't Codex CLI and pending A2A protocol conformance/auth maturity. If
+this suite ever adopts A2A, it will be a standalone, standards-compliant layer
+owned by this repo — not built on Agentic SDLC's SDLC-task-bound A2A
+implementation — and it will carry no lifecycle authority into this repo, per
+the lifecycle-exempt boundary described in [AGENTS.md](AGENTS.md). The
+identified fix path for the underlying Codex-dispatch limitation is a Python
+MCP server, owned by this repo, currently in development.
+
 ### GitHub review-backed approvals
 
 Projects can make an approved GitHub pull-request review the authoritative
