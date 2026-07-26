@@ -1,0 +1,151 @@
+"""Direct unit coverage for bin/agents.py's subcommand dispatcher.
+
+bin/agents (sh) and bin/agents.ps1 exercise this only indirectly, through
+slow subprocess-based wrapper tests (see test_repository_health.py); this
+module tests load_subcommands/usage/main/dispatch_sdlc directly instead.
+Loaded via importlib rather than a sys.path + `import agents`, since a bare
+`agents` import would collide with the top-level agents/ package this whole
+test suite already runs under.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import importlib.util
+import io
+import os
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+ROOT = Path(__file__).resolve().parents[2]
+REPOSITORY_ROOT = ROOT.parent
+DISPATCHER_PATH = REPOSITORY_ROOT / "bin" / "agents.py"
+
+_spec = importlib.util.spec_from_file_location("agents_cli_dispatcher", DISPATCHER_PATH)
+agents_cli = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(agents_cli)
+
+
+def _run_capturing(func, *args, **kwargs):
+    stdout, stderr = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+        result = func(*args, **kwargs)
+    return result, stdout.getvalue(), stderr.getvalue()
+
+
+class LoadSubcommandsTests(unittest.TestCase):
+    def test_parses_tab_separated_rows(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="agents-dispatcher-") as directory:
+            table = Path(directory) / "subcommands.tsv"
+            table.write_text("select\tagents/orchestration/src/select_agents.py\tDo the thing\n", encoding="utf-8")
+            rows = agents_cli.load_subcommands(table)
+            self.assertEqual(rows, [("select", "agents/orchestration/src/select_agents.py", "Do the thing")])
+
+    def test_skips_blank_lines(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="agents-dispatcher-") as directory:
+            table = Path(directory) / "subcommands.tsv"
+            table.write_text("a\tx.py\tdesc\n\nb\ty.py\tdesc\n", encoding="utf-8")
+            rows = agents_cli.load_subcommands(table)
+            self.assertEqual([row[0] for row in rows], ["a", "b"])
+
+    def test_reads_the_real_repository_table(self) -> None:
+        rows = agents_cli.load_subcommands()
+        names = [row[0] for row in rows]
+        self.assertIn("select", names)
+        self.assertIn("resolve-shared", names)
+        self.assertNotIn("sdlc", names)  # sdlc is a special case, not table-driven
+
+
+class UsageTests(unittest.TestCase):
+    def test_renders_subcommands_sdlc_and_help_footer(self) -> None:
+        text = agents_cli.usage([("select", "path/to/select.py", "Pick an agent")])
+        self.assertIn("Usage: agents <subcommand> [args...]", text)
+        self.assertIn("select", text)
+        self.assertIn("Pick an agent", text)
+        self.assertIn("sdlc", text)
+        self.assertIn(agents_cli.SDLC_DESCRIPTION, text)
+        self.assertIn("help", text)
+        self.assertIn("--help", text)
+
+
+class MainTests(unittest.TestCase):
+    def test_no_arguments_defaults_to_help(self) -> None:
+        code, out, _err = _run_capturing(agents_cli.main, [])
+        self.assertEqual(code, 0)
+        self.assertIn("Usage: agents <subcommand> [args...]", out)
+
+    def test_help_flag_variants(self) -> None:
+        for flag in ("help", "-h", "--help"):
+            with self.subTest(flag=flag):
+                code, out, _err = _run_capturing(agents_cli.main, [flag])
+                self.assertEqual(code, 0)
+                self.assertIn("Usage: agents <subcommand> [args...]", out)
+
+    def test_unknown_subcommand_fails_closed(self) -> None:
+        code, _out, err = _run_capturing(agents_cli.main, ["not-a-real-subcommand"])
+        self.assertEqual(code, 1)
+        self.assertIn("agents: unknown subcommand 'not-a-real-subcommand'", err)
+        self.assertIn("Usage: agents <subcommand> [args...]", err)
+
+    def test_dispatches_to_the_matching_script_and_relays_its_exit_code(self) -> None:
+        # main()'s dispatch path shells out via subprocess.run, which writes
+        # to the real stdout file descriptor rather than sys.stdout, so
+        # contextlib.redirect_stdout can't observe it from within this
+        # process — invoke the dispatcher as a subprocess instead. A real,
+        # fast, harmless invocation: forwarding --help to an actual
+        # registered subcommand exercises the REPO_ROOT/script join and the
+        # exit-code relay without depending on that subcommand's own logic.
+        result = subprocess.run(
+            [sys.executable, str(DISPATCHER_PATH), "select", "--help"],
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("usage: select_agents.py", result.stdout)
+
+
+class SdlcDispatchTests(unittest.TestCase):
+    def test_missing_binary_fails_closed(self) -> None:
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("AGENTIC_SDLC_BIN", None)
+            with mock.patch.object(agents_cli.shutil, "which", return_value=None):
+                code, _out, err = _run_capturing(agents_cli.dispatch_sdlc, ["--version"])
+        self.assertEqual(code, 1)
+        self.assertIn("Agentic SDLC v0.3.x is required", err)
+
+    def test_prefers_agentic_sdlc_bin_env_var_over_path_lookup(self) -> None:
+        captured: dict[str, list[str]] = {}
+
+        def fake_run(args, **_kwargs):
+            captured["args"] = args
+            return subprocess.CompletedProcess(args, 0)
+
+        with mock.patch.dict(os.environ, {"AGENTIC_SDLC_BIN": "/fake/agentic-sdlc"}):
+            with mock.patch.object(agents_cli.shutil, "which", side_effect=AssertionError("should not be called")):
+                with mock.patch.object(agents_cli.subprocess, "run", side_effect=fake_run):
+                    code = agents_cli.dispatch_sdlc(["plan", "--foo"])
+
+        self.assertEqual(code, 0)
+        self.assertEqual(captured["args"][0], "/fake/agentic-sdlc")
+        self.assertEqual(captured["args"][1], "--provider")
+        self.assertTrue(captured["args"][2].endswith("provider.json"))
+        self.assertEqual(captured["args"][3:], ["plan", "--foo"])
+
+    def test_relays_the_delegate_exit_code(self) -> None:
+        def fake_run(args, **_kwargs):
+            return subprocess.CompletedProcess(args, 7)
+
+        with mock.patch.dict(os.environ, {"AGENTIC_SDLC_BIN": "/fake/agentic-sdlc"}):
+            with mock.patch.object(agents_cli.subprocess, "run", side_effect=fake_run):
+                code = agents_cli.dispatch_sdlc(["--version"])
+        self.assertEqual(code, 7)
+
+
+if __name__ == "__main__":
+    unittest.main()

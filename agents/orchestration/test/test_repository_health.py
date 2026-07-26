@@ -738,12 +738,21 @@ class RepositoryHealthTests(unittest.TestCase):
             with self.subTest(subcommand=name):
                 self.assertTrue((REPOSITORY_ROOT / script).is_file(), script)
                 self.assertTrue(description)
+
+        # bin/agents.py owns table parsing, sdlc delegation, usage text, and
+        # dispatch; the per-platform shims (bin/agents, bin/agents.ps1) only
+        # find a Python interpreter and hand off to it, so this logic exists
+        # exactly once instead of being duplicated per shell language.
+        dispatcher_source = (REPOSITORY_ROOT / "bin" / "agents.py").read_text(encoding="utf-8")
+        self.assertIn("subcommands.tsv", dispatcher_source)
+
         sh_source = (REPOSITORY_ROOT / "bin" / "agents").read_text(encoding="utf-8")
         ps1_source = (REPOSITORY_ROOT / "bin" / "agents.ps1").read_text(encoding="utf-8")
         for source in (sh_source, ps1_source):
-            self.assertIn("subcommands.tsv", source)
+            self.assertNotIn("subcommands.tsv", source, "shims must not also parse the subcommand table")
+            self.assertIn("agents.py", source, "shims must hand off to the shared dispatcher")
             for _name, script, _description in rows:
-                self.assertNotIn(script, source, "subcommand table must not also be hardcoded in the wrapper")
+                self.assertNotIn(script, source, "subcommand table must not also be hardcoded in the shim")
 
     def _powershell_interpreter(self) -> str | None:
         return shutil.which("pwsh") or shutil.which("powershell")

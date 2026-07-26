@@ -21,6 +21,7 @@ case "$command_name" in
   select) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/select_agents.py" "$@" ;;
   bootstrap-codex) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/sync_codex_agents.py" --source "$PLUGIN_ROOT/codex-agents" "$@" ;;
   knowledge) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/knowledge-store/src/cli.py" "$@" ;;
-  help|-h|--help) echo "Usage: agents {select|knowledge|bootstrap-codex|sdlc} [args...]" ;;
+  resolve-shared) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/shared/src/resolve.py" "$@" ;;
+  help|-h|--help) echo "Usage: agents {select|knowledge|bootstrap-codex|resolve-shared|sdlc} [args...]" ;;
   *) echo "agents: unknown subcommand $command_name" >&2; exit 1 ;;
 esac
