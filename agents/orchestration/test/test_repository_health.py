@@ -495,6 +495,256 @@ class RepositoryHealthTests(unittest.TestCase):
             self.assertIn("Refusing symlinked destination wrapper", destination_rejected.stderr)
             self.assertEqual("user-owned destination\n", real_destination.read_text(encoding="utf-8"))
 
+    def test_codex_bootstrap_writes_role_index_with_resolved_paths_and_models(self) -> None:
+        script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            source = temporary / "source"
+            target = temporary / "home" / ".codex" / "agents"
+            source.mkdir()
+            target.mkdir(parents=True)
+            (source / "secure-cloud-agents-code-reviewer.toml").write_text(
+                "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
+                'name = "secure-cloud-agents-code-reviewer"\n'
+                'model = "gpt-5-mini"\n',
+                encoding="utf-8",
+            )
+            (source / "secure-cloud-agents-test-engineer.toml").write_text(
+                "# GENERATED FILE: canonical source is agents/review/test-engineer/AGENT.md\n"
+                'name = "secure-cloud-agents-test-engineer"\n',
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=True, capture_output=True, text=True,
+            )
+            self.assertIn("Index installed", result.stdout)
+
+            index_path = target / "secure-cloud-agents-index.json"
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+            self.assertEqual(1, index["schema_version"])
+            self.assertEqual("# GENERATED FILE: canonical source is agents/", index["generated_marker"])
+            self.assertEqual(
+                {
+                    "code-reviewer": {
+                        "path": str((target / "secure-cloud-agents-code-reviewer.toml").resolve()),
+                        "model": "gpt-5-mini",
+                    },
+                    "test-engineer": {
+                        "path": str((target / "secure-cloud-agents-test-engineer.toml").resolve()),
+                        "model": None,
+                    },
+                },
+                index["roles"],
+            )
+
+    def test_codex_bootstrap_role_index_is_byte_identical_across_unchanged_reruns(self) -> None:
+        script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            source = temporary / "source"
+            target = temporary / "home" / ".codex" / "agents"
+            source.mkdir()
+            target.mkdir(parents=True)
+            (source / "secure-cloud-agents-code-reviewer.toml").write_text(
+                "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
+                'name = "secure-cloud-agents-code-reviewer"\n'
+                'model = "gpt-5-mini"\n',
+                encoding="utf-8",
+            )
+            index_path = target / "secure-cloud-agents-index.json"
+
+            first = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=True, capture_output=True, text=True,
+            )
+            self.assertIn("Index installed", first.stdout)
+            first_bytes = index_path.read_bytes()
+
+            second = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=True, capture_output=True, text=True,
+            )
+            self.assertIn("Index unchanged", second.stdout)
+            self.assertEqual(first_bytes, index_path.read_bytes())
+
+    def test_codex_bootstrap_role_index_updates_when_source_model_changes(self) -> None:
+        script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            source = temporary / "source"
+            target = temporary / "home" / ".codex" / "agents"
+            source.mkdir()
+            target.mkdir(parents=True)
+            wrapper_source = source / "secure-cloud-agents-code-reviewer.toml"
+            wrapper_source.write_text(
+                "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
+                'name = "secure-cloud-agents-code-reviewer"\n'
+                'model = "gpt-5-mini"\n',
+                encoding="utf-8",
+            )
+            index_path = target / "secure-cloud-agents-index.json"
+
+            subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=True, capture_output=True, text=True,
+            )
+            self.assertEqual("gpt-5-mini", json.loads(index_path.read_text(encoding="utf-8"))["roles"]["code-reviewer"]["model"])
+
+            wrapper_source.write_text(
+                "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
+                'name = "secure-cloud-agents-code-reviewer"\n'
+                'model = "gpt-5"\n',
+                encoding="utf-8",
+            )
+            updated = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=True, capture_output=True, text=True,
+            )
+            self.assertIn("Index installed", updated.stdout)
+            self.assertEqual("gpt-5", json.loads(index_path.read_text(encoding="utf-8"))["roles"]["code-reviewer"]["model"])
+
+    def test_codex_bootstrap_role_index_rejects_unowned_collision(self) -> None:
+        script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            source = temporary / "source"
+            target = temporary / "home" / ".codex" / "agents"
+            source.mkdir()
+            target.mkdir(parents=True)
+            (source / "secure-cloud-agents-code-reviewer.toml").write_text(
+                "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
+                'name = "secure-cloud-agents-code-reviewer"\n',
+                encoding="utf-8",
+            )
+            index_path = target / "secure-cloud-agents-index.json"
+            index_path.write_text('{"unowned": true}', encoding="utf-8")
+
+            rejected = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertNotEqual(0, rejected.returncode)
+            self.assertIn("Refusing to overwrite unowned", rejected.stderr)
+            self.assertEqual('{"unowned": true}', index_path.read_text(encoding="utf-8"))
+
+    @unittest.skipIf(sys.platform == "win32", "POSIX symlink behavior is required")
+    def test_codex_bootstrap_rejects_symlinked_role_index(self) -> None:
+        script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            source = temporary / "source"
+            target = temporary / "home" / ".codex" / "agents"
+            source.mkdir()
+            target.mkdir(parents=True)
+            (source / "secure-cloud-agents-code-reviewer.toml").write_text(
+                "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
+                'name = "secure-cloud-agents-code-reviewer"\n',
+                encoding="utf-8",
+            )
+            real_destination = target / "real-index.json"
+            real_destination.write_text("user-owned index\n", encoding="utf-8")
+            os.symlink(real_destination, target / "secure-cloud-agents-index.json")
+
+            rejected = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertNotEqual(0, rejected.returncode)
+            self.assertIn("Refusing symlinked destination wrapper", rejected.stderr)
+            self.assertEqual("user-owned index\n", real_destination.read_text(encoding="utf-8"))
+
+    def test_codex_bootstrap_role_index_left_unchanged_when_a_wrapper_write_fails(self) -> None:
+        script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            source = temporary / "source"
+            target = temporary / "home" / ".codex" / "agents"
+            source.mkdir()
+            target.mkdir(parents=True)
+            # "code-reviewer" sorts before "test-engineer", so the loop writes
+            # it successfully before reaching the collision below.
+            (source / "secure-cloud-agents-code-reviewer.toml").write_text(
+                "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
+                'name = "secure-cloud-agents-code-reviewer"\n',
+                encoding="utf-8",
+            )
+            (source / "secure-cloud-agents-test-engineer.toml").write_text(
+                "# GENERATED FILE: canonical source is agents/review/test-engineer/AGENT.md\n"
+                'name = "secure-cloud-agents-test-engineer"\n',
+                encoding="utf-8",
+            )
+            index_path = target / "secure-cloud-agents-index.json"
+
+            # First run: no collision yet, establishes an installed index.
+            first = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=True, capture_output=True, text=True,
+            )
+            self.assertIn("Index installed", first.stdout)
+            established_index_bytes = index_path.read_bytes()
+
+            # Corrupt one of the already-installed namespaced wrappers so the
+            # next run fails partway through the per-wrapper loop, before the
+            # index would be rebuilt.
+            (target / "secure-cloud-agents-test-engineer.toml").write_text(
+                "user-owned collision\n", encoding="utf-8",
+            )
+            failing = subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=False, capture_output=True, text=True,
+            )
+            self.assertNotEqual(0, failing.returncode)
+            self.assertIn("Refusing to overwrite unowned", failing.stderr)
+            self.assertTrue(
+                (target / "secure-cloud-agents-code-reviewer.toml").read_text(encoding="utf-8").startswith(
+                    "# GENERATED FILE:"
+                ),
+                "the wrapper preceding the collision should still have been written",
+            )
+            self.assertEqual(
+                established_index_bytes,
+                index_path.read_bytes(),
+                "the index must not change when a wrapper write fails mid-loop",
+            )
+
+    def test_codex_bootstrap_role_index_prunes_roles_removed_from_source(self) -> None:
+        script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temporary = Path(temporary_directory)
+            source = temporary / "source"
+            target = temporary / "home" / ".codex" / "agents"
+            source.mkdir()
+            target.mkdir(parents=True)
+            code_reviewer_source = source / "secure-cloud-agents-code-reviewer.toml"
+            code_reviewer_source.write_text(
+                "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
+                'name = "secure-cloud-agents-code-reviewer"\n',
+                encoding="utf-8",
+            )
+            (source / "secure-cloud-agents-test-engineer.toml").write_text(
+                "# GENERATED FILE: canonical source is agents/review/test-engineer/AGENT.md\n"
+                'name = "secure-cloud-agents-test-engineer"\n',
+                encoding="utf-8",
+            )
+            index_path = target / "secure-cloud-agents-index.json"
+
+            subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=True, capture_output=True, text=True,
+            )
+            first_roles = json.loads(index_path.read_text(encoding="utf-8"))["roles"]
+            self.assertEqual({"code-reviewer", "test-engineer"}, set(first_roles))
+
+            code_reviewer_source.unlink()
+            subprocess.run(
+                [sys.executable, str(script), "--source", str(source), "--target", str(target)],
+                check=True, capture_output=True, text=True,
+            )
+            second_roles = json.loads(index_path.read_text(encoding="utf-8"))["roles"]
+            self.assertEqual({"test-engineer"}, set(second_roles))
+
     @unittest.skipUnless(hasattr(os, "O_NOFOLLOW"), "O_NOFOLLOW support is required")
     def test_codex_bootstrap_no_follow_guards_run_at_open_time(self) -> None:
         import importlib.util
@@ -599,6 +849,55 @@ class RepositoryHealthTests(unittest.TestCase):
             ):
                 offenders.append(str(path.relative_to(plugin_root)))
         self.assertEqual([], offenders)
+
+    @staticmethod
+    def _semver_tuple(value: str) -> tuple[int, int, int]:
+        # Verbatim copy of `semver_tuple` from
+        # /home/deagy/sdk/agentic-sdlc/plugins/agentic-sdlc/scripts/agentic_sdlc.py
+        # (lines 84-88). Reimplemented locally rather than imported because
+        # `AGENTIC_SDLC_BIN`/`PATH` resolution does not guarantee an importable
+        # layout for the standalone kernel script.
+        match = re.fullmatch(r"([0-9]+)\.([0-9]+)\.([0-9]+)", value)
+        if not match:
+            raise ValueError(f"invalid semantic version: {value}")
+        return tuple(int(part) for part in match.groups())  # type: ignore[return-value]
+
+    @classmethod
+    def _kernel_version_in_range(cls, live: str, minimum: str, maximum_exclusive: str) -> bool:
+        return cls._semver_tuple(minimum) <= cls._semver_tuple(live) < cls._semver_tuple(maximum_exclusive)
+
+    def test_kernel_version_in_range_enforces_half_open_bounds(self) -> None:
+        self.assertFalse(self._kernel_version_in_range("0.2.9", "0.3.0", "0.4.0"))
+        self.assertTrue(self._kernel_version_in_range("0.3.0", "0.3.0", "0.4.0"))
+        self.assertFalse(self._kernel_version_in_range("0.4.0", "0.3.0", "0.4.0"))
+        self.assertTrue(self._kernel_version_in_range("0.3.9", "0.3.0", "0.4.0"))
+
+    def test_secure_cloud_agents_provider_kernel_compatibility_covers_live_sdlc_version(self) -> None:
+        self._require_agentic_sdlc()
+        provider = json.loads(
+            (REPOSITORY_ROOT / "plugins" / "secure-cloud-agents" / "provider.json").read_text(encoding="utf-8")
+        )
+        minimum = provider["kernel_compatibility"]["minimum"]
+        maximum_exclusive = provider["kernel_compatibility"]["maximum_exclusive"]
+        self.assertRegex(minimum, r"^\d+\.\d+\.\d+$")
+        self.assertRegex(maximum_exclusive, r"^\d+\.\d+\.\d+$")
+
+        result = subprocess.run(
+            [str(REPOSITORY_ROOT / "bin" / "agents"), "sdlc", "--version"],
+            cwd=REPOSITORY_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=os.environ.copy(),
+        )
+        live_version = result.stdout.strip()
+
+        self.assertTrue(
+            self._kernel_version_in_range(live_version, minimum, maximum_exclusive),
+            f"live agentic-sdlc kernel version {live_version!r} is outside the "
+            f"provider-declared range [{minimum}, {maximum_exclusive})",
+        )
 
     def test_bin_agents_wrapper_is_executable(self) -> None:
         wrapper = REPOSITORY_ROOT / "bin" / "agents"
