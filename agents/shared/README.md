@@ -72,6 +72,18 @@ fill-in). Nothing is written without `--force`; omitting it previews only.
 Every generated overlay is validated by resolving it exactly as `agents
 resolve-shared` would before success is reported.
 
+Answer the run either non-interactively with `--answers <file.yaml>` (a
+`schema_version: 1` file in the shape `init_project.py`'s module docstring
+documents — the same shape `--print-answers` echoes, so a prior run's
+answers are directly reusable) or interactively with `--interactive`
+(exactly one of the two is required). `--stack <preset-id>` names a starter
+preset from `agents/shared/init-presets/*.yaml` — a static, human-reviewed,
+RG-A-only fragment (it can never touch `agent-autonomy.yaml` or
+`cloud-guardrails.md`) whose values are shown as prompt defaults in
+`--interactive` mode, or merged under an `--answers` file (the answer file's
+own values win). `--sections` restricts the run to a comma-separated subset
+of `rg-a-stack,rg-b-governance,rg-c-sqs` (default: all three).
+
 Pass `--print-answers` to echo the resolved answer set (after validation)
 alongside the write preview, so a run is reproducible from a saved answer
 file. `agent-autonomy.yaml` and `cloud-guardrails.md` fields are redacted in
