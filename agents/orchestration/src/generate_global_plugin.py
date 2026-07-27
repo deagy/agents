@@ -10,12 +10,12 @@ Agent-role wrappers are NOT symmetric, because the two runners differ here:
   plugin's default agents/ directory (do NOT also declare an "agents" field in
   plugin.json for this — that field expects individual file paths, not a
   directory, and a bare directory string fails manifest validation), so the
-  role wrappers go under plugins/secure-cloud-agents/agents/*.md and become
+  role wrappers go under plugins/agents/agents/*.md and become
   global automatically when the plugin is installed at user scope.
 - Codex CLI has no such mechanism — custom agents are only discovered from
   .codex/agents/ (project) or ~/.codex/agents/ (global) on disk, never from a
   plugin manifest. The *.toml wrappers are generated to the repo-tracked
-  staging directory plugins/secure-cloud-agents/codex-agents/ instead. The
+  staging directory plugins/agents/codex-agents/ instead. The
   separate `agents bootstrap-codex` command safely installs their namespaced
   IDs under ~/.codex/agents/ without overwriting bare roles or unowned files;
   this generator itself never writes outside the repository.
@@ -66,7 +66,7 @@ from routing import parse_catalog_entries  # noqa: E402
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 AGENTS_ROOT = REPOSITORY_ROOT / "agents"
 SKILLS_ROOT = REPOSITORY_ROOT / ".agents" / "skills"
-PLUGIN_ROOT = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents"
+PLUGIN_ROOT = REPOSITORY_ROOT / "plugins" / "agents"
 SHARED_POLICIES = [
     "agents/shared/operating-principles.md",
     "agents/shared/team-profile.yaml",
@@ -256,7 +256,7 @@ def generate_agent_wrappers(catalog: dict[str, dict[str, Any]], plugin_root: Pat
         # the Claude Code wrapper's haiku/sonnet/opus tier name above — the two
         # runners don't share a model-naming space. Re-verify these identifiers
         # against current Codex CLI docs before relying on them in automation.
-        codex_agent_id = f"secure-cloud-agents-{agent_id}"
+        codex_agent_id = f"agents-{agent_id}"
         toml_target = plugin_root / "codex-agents" / f"{codex_agent_id}.toml"
         toml_lines = [
             f"# GENERATED FILE: canonical source is agents/{definition}",
@@ -420,8 +420,8 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
             content = content.replace("../bin/agents", "../../bin/agents")
             content = content.replace("../README.md", "README.md")
             content = content.replace("`../README.md`", "`README.md`")
-            content = content.replace("../plugins/secure-cloud-agents/README.md", "../README.md")
-            content = content.replace("../plugins/secure-cloud-agents/", "./")
+            content = content.replace("../plugins/agents/README.md", "../README.md")
+            content = content.replace("../plugins/agents/", "./")
             content = f"{GENERATED_MARKER}\n\n{content}"
             write(target, content)
         else:
@@ -471,8 +471,8 @@ def main() -> int:
         if any(output_root.iterdir()) and not marker.is_file():
             raise SystemExit("--output must be a new directory or an existing generated plugin")
     if "--check" in arguments:
-        with tempfile.TemporaryDirectory(prefix="secure-cloud-agents-plugin-") as temporary_directory:
-            candidate = Path(temporary_directory) / "secure-cloud-agents"
+        with tempfile.TemporaryDirectory(prefix="agents-plugin-") as temporary_directory:
+            candidate = Path(temporary_directory) / "agents"
             generate_package(catalog, candidate)
             if not output_root.exists() or not files_equal(candidate, output_root):
                 print("Generated plugin is stale or non-deterministic; run agents generate-plugin", file=sys.stderr)

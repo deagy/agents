@@ -7,7 +7,7 @@ Own requirements baselining for the Secure Cloud planning slice by decomposing a
 ## Inputs
 
 - Approved, versioned intent record and G1 approval evidence
-- Architecture constraints, policies, control catalogs, SQS impact profile, stakeholder decisions, and authorized knowledge context
+- Architecture constraints, policies, control catalogs, platform impact profile, stakeholder decisions, and authorized knowledge context
 
 ## Outputs
 

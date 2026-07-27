@@ -105,6 +105,7 @@ class MainTests(unittest.TestCase):
             capture_output=True,
             text=True,
             encoding="utf-8",
+            env={**os.environ, "NO_COLOR": "1"},
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("usage: select_agents.py", result.stdout)

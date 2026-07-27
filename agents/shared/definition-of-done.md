@@ -16,7 +16,7 @@ A change is done only when:
 - Requirements, controls, implementation, tests, findings, decisions, and
   evidence are bidirectionally traceable with stable identifiers and integrity
   metadata.
-- Every SQS impact category and specialized BOM has explicit applicability;
+- Every platform impact category and specialized BOM has explicit applicability;
   no item remains `unknown`, and no applicable item depends on undefined semantics.
 - Material changes have invalidated and re-entered the earliest affected gate,
   and no author or material corrector approved its own artifact revision.

@@ -75,7 +75,7 @@ Technology preferences live in `shared/team-profile.yaml`, `shared/technology-st
 
 ## Portable adoption
 
-This repository is the source implementation for the Secure Cloud agent suite. The lifecycle kernel, schemas, command interface, gate transitions, approvals, and lifecycle skills are maintained separately at `github.com/deagy/agentic-sdlc`. This suite contributes its catalog, `secure-cloud` profile, routing, and provider extensions through `plugins/secure-cloud-agents/provider.json`.
+This repository is the source implementation for the Secure Cloud agent suite. The lifecycle kernel, schemas, command interface, gate transitions, approvals, and lifecycle skills are maintained separately at `github.com/deagy/agentic-sdlc`. This suite contributes its catalog, `secure-cloud` profile, routing, and provider extensions through `plugins/agents/provider.json`.
 
 Initialize a consuming target project from the repository checkout with:
 
@@ -83,7 +83,7 @@ Initialize a consuming target project from the repository checkout with:
 agents sdlc init --root /path/to/target
 ```
 
-The portable initializer proposes detectable values and leaves consequential unknowns unresolved. Human authority, compliance applicability, environment persistence/production status, risk acceptance, and SQS applicability must be assigned or decided by accountable humans. It writes lifecycle state only in the consuming target project's `.agentic-sdlc/` directory, never in this provider checkout. See `https://github.com/deagy/agentic-sdlc` for installation and upgrades.
+The portable initializer proposes detectable values and leaves consequential unknowns unresolved. Human authority, compliance applicability, environment persistence/production status, risk acceptance, and platform applicability must be assigned or decided by accountable humans. It writes lifecycle state only in the consuming target project's `.agentic-sdlc/` directory, never in this provider checkout. See `https://github.com/deagy/agentic-sdlc` for installation and upgrades.
 
 For GitHub-backed human gates, set `approval_sources.human_gate_default` to
 `github-review`, bind authorities to their GitHub logins, and use
@@ -95,4 +95,4 @@ advance the run record only when all gate criteria and authority checks pass.
 
 ## System-wide adoption
 
-Unlike the portable kernel above, `../plugins/secure-cloud-agents/` does not get copied into other repositories — it makes *this* suite (roles, skills, knowledge store) reachable from any project directory on the machine once installed at global/user scope, since none of it is discoverable from outside this checkout by default. See `../plugins/secure-cloud-agents/README.md` and `RUNBOOK.md` section 17.
+Unlike the portable kernel above, `../plugins/agents/` does not get copied into other repositories — it makes *this* suite (roles, skills, knowledge store) reachable from any project directory on the machine once installed at global/user scope, since none of it is discoverable from outside this checkout by default. See `../plugins/agents/README.md` and `RUNBOOK.md` section 17.

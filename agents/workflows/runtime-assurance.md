@@ -12,4 +12,4 @@ generic Runtime Agent.
 7. Record every invalidated downstream gate and required re-entry. Preserve the previous decision as immutable history.
 
 Unknown deployed identity, missing observation evidence, material drift,
-unowned findings, or unknown applicable SQS semantics block conformance.
+unowned findings, or unknown applicable platform semantics block conformance.

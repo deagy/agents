@@ -14,7 +14,7 @@ Every handoff includes:
   target project's lifecycle record.
 - Trace links from requirements to architecture, controls, implementation,
   tests, findings, and evidence using the target project's lifecycle contract.
-- SQS impact-profile reference when applicable, including every `unknown`
+- platform impact-profile reference when applicable, including every `unknown`
   applicability or undefined-semantics blocker.
 - For any `team_recipes` dispatch (`agents/orchestration/routing.yaml`): the
   `communication_mode` that actually executed — `peer` or its

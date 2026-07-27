@@ -56,7 +56,7 @@ def dispatch_sdlc(rest: list[str]) -> int:
     if not sdlc_bin:
         print(SDLC_INSTALL_MESSAGE, file=sys.stderr)
         return 1
-    provider = REPO_ROOT / "plugins" / "secure-cloud-agents" / "provider.json"
+    provider = REPO_ROOT / "plugins" / "agents" / "provider.json"
     result = subprocess.run([sdlc_bin, "--provider", str(provider), *rest])
     return result.returncode
 

@@ -1,7 +1,7 @@
 name: release
 
 # Auto-tags `main` once a version bump lands: a maintainer bumps
-# plugins/secure-cloud-agents/{.claude-plugin,.codex-plugin}/plugin.json
+# plugins/agents/{.claude-plugin,.codex-plugin}/plugin.json
 # (via `agents version --set X.Y.Z`, see README.md "Releasing") through the
 # normal PR flow. Once that PR merges, this workflow reads the now-current
 # version, and if no `vX.Y.Z` tag exists for it yet, creates one at the
@@ -13,8 +13,8 @@ on:
   push:
     branches: [main]
     paths:
-      - "plugins/secure-cloud-agents/.claude-plugin/plugin.json"
-      - "plugins/secure-cloud-agents/.codex-plugin/plugin.json"
+      - "plugins/agents/.claude-plugin/plugin.json"
+      - "plugins/agents/.codex-plugin/plugin.json"
 
 concurrency:
   group: ${{ github.workflow }}

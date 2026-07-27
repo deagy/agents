@@ -43,7 +43,7 @@ For documentation-only work:
 - check local Markdown links and command names before opening the PR.
 
 Edit canonical role and policy documentation under `agents/`. Files under
-`plugins/secure-cloud-agents/` may be generated artifacts. When a source change
+`plugins/agents/` may be generated artifacts. When a source change
 requires regeneration, follow the repository command in `AGENTS.md`, inspect
 the generated diff, and include the reason in the pull request.
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Read, check, or set the packaged plugin's release version.
 
-The packaged plugin at ``plugins/secure-cloud-agents/`` declares its own
+The packaged plugin at ``plugins/agents/`` declares its own
 version independently in two manifests: ``.claude-plugin/plugin.json`` (Claude
 Code) and ``.codex-plugin/plugin.json`` (Codex CLI). Both must always agree,
 and should track this repository's release tags (``vMAJOR.MINOR.PATCH``) one
@@ -29,7 +29,7 @@ from pathlib import Path
 ORCHESTRATION_ROOT = Path(__file__).resolve().parent.parent
 AGENTS_ROOT = ORCHESTRATION_ROOT.parent
 REPOSITORY_ROOT = AGENTS_ROOT.parent
-PLUGIN_ROOT = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents"
+PLUGIN_ROOT = REPOSITORY_ROOT / "plugins" / "agents"
 
 MANIFESTS = {
     "claude": PLUGIN_ROOT / ".claude-plugin" / "plugin.json",
