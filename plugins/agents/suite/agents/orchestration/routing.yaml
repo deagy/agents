@@ -226,11 +226,11 @@
     },
     {
       "id": "api-contract",
-      "paths": ["api/contracts/**", "contracts/**", "**/openapi.yaml", "**/openapi.yml", "**/*.proto", "**/schema.graphql"],
+      "paths": ["contracts/**", "**/openapi.yaml", "**/openapi.yml", "**/*.proto", "**/schema.graphql"],
       "keywords": ["api contract", "schema contract", "api versioning", "breaking change", "contract compatibility", "openapi", "graphql schema", "proto schema"],
       "primary": ["api-contract-engineer"],
       "reviewers": ["code-reviewer"],
-      "support": ["cloud-architect"],
+      "support": ["cloud-architect", "backend-engineer", "frontend-engineer"],
       "quality_gates": ["G3"]
     },
     {
