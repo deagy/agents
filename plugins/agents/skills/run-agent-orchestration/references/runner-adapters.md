@@ -66,14 +66,20 @@ wave — see [team-recipes.md](team-recipes.md) for when that's warranted.
   Codex tool call) and then appear to stop: there is no tool argument that
   actually dispatches to the named role, so nothing beyond identification
   happens unless the MCP server below is registered, or the manual workaround
-  is used. The same fallback is also why a Codex-dispatched "agent" can
-  appear to never close when its task finishes: a generic fallback thread is
-  not an isolated child process the way a properly dispatched subagent is —
-  there is nothing separate for Codex to wait on and reap, so no clean
-  completion boundary is ever reached. `dispatch_secure_cloud_role` below
-  spawns a real, isolated child process and explicitly waits on it
-  (`agents/orchestration/mcp/dispatch_core.py`'s `spawn_and_wait()`), which is
-  the actual fix for this, not just for role selection.
+  is used. The same fallback is also the most plausible explanation for why a
+  Codex-dispatched "agent" can appear to never close when its task finishes:
+  a generic fallback thread is not an isolated child process the way a
+  properly dispatched subagent is, so there would be nothing separate for
+  Codex to wait on and reap. This repo cannot directly observe Codex CLI's
+  own internal thread/process handling (no live `codex` binary available
+  from inside this sandbox, same limitation as the TOML snippet below) — this
+  is inference from the fallback behavior tracked in the issues above, not a
+  confirmed root cause. What this repo *can* confirm and control:
+  `dispatch_secure_cloud_role` below spawns a real, isolated child process
+  and explicitly waits on it
+  (`agents/orchestration/mcp/dispatch_core.py`'s `spawn_and_wait()`), which
+  is a verified fix for the process-lifecycle question regardless of the
+  above, not just for role selection.
   - **Preferred: register this repo's MCP dispatch server.**
     `agents/orchestration/mcp/dispatch_server.py` exposes a real
     `dispatch_secure_cloud_role` tool that resolves `role_id` to its `.toml`
