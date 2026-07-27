@@ -21,13 +21,79 @@ SHARED_DEFAULTS_DIR = Path(__file__).resolve().parents[1]
 PROJECT_OVERLAY_RELATIVE_DIR = Path(".agents") / "shared"
 MAXIMUM_WALK_DEPTH = 64
 
-# The only two sentinel values that make a narrowing check meaningful without
-# hand-ranking every bespoke autonomy string in agent-autonomy.yaml: the
-# fully permissive value and the fully forbidden value. An overlay may not
-# loosen a restricted default (anything other than "allowed") to "allowed",
-# and may not loosen a "never" default to anything else.
-_UNRESTRICTED = "allowed"
-_MAXIMUM_RESTRICTION = "never"
+# Every leaf value that appears in agent-autonomy.yaml today, ranked from
+# least restrictive (0) to most restrictive (10). This is a genuine policy
+# judgment call, not an arbitrary implementation detail, so the rationale for
+# each tier is recorded here for the next maintainer:
+#
+#  0  allowed
+#       Unconditional permission. No precondition, no gate.
+#  1  allowed_within_selected_scope
+#       Unconditional within the agent's already-assigned task/scope; the
+#       "condition" (staying in scope) is something the agent is expected to
+#       satisfy anyway, so it is only a hair more restrictive than plain
+#       "allowed".
+#  2  allowed_with_explicit_read_only_credentials
+#       Unconditional once a real, separately-provisioned constraint (read-
+#       only credentials) is satisfied. That provisioning step is an actual
+#       operational barrier beyond "stay in scope", so it ranks above
+#       allowed_within_selected_scope.
+#  3  on_request
+#       The agent does not act on its own initiative; it acts only once a
+#       human asks for that specific action in the moment. Lighter than a
+#       formal authorization or approval process, but strictly more
+#       restrictive than any unconditional/self-serve "allowed" variant, and
+#       strictly lighter than needing a standing authorization or an
+#       approval decision. Sits, as intended, between "always allowed" and
+#       "needs a human decision".
+#  4  explicit_task_authorization
+#       Requires the dispatched task itself to carry a documented, scoped
+#       authorization for this action (e.g. a disposable test environment
+#       explicitly called out in the task). Heavier than a bare human
+#       request because it must be established as part of task setup, not
+#       just asked for in-session.
+#  5  explicitly_authorized
+#       Requires a standing authorization decision, made outside normal task
+#       flow, before the agent may read a shared system at all. Heavier than
+#       explicit_task_authorization because it is not just a per-task grant;
+#       it is an access decision about a shared system that outlives any one
+#       task.
+#  6  explicitly_authorized_and_minimum_scope
+#       explicitly_authorized plus a minimum-necessary-scope constraint on
+#       top; strictly more restrictive than plain explicitly_authorized.
+#  7  human_approval_except_authorized_disposable_test
+#       Requires human approval in general, but carves out an exception for
+#       an already-authorized disposable test environment. Because that
+#       exception exists, it is less restrictive than unconditional
+#       human_approval, but the default case still blocks on a human, so it
+#       ranks above every value that never requires human approval.
+#  8  human_approval
+#       Requires a human approval decision for every instance, with no
+#       exception.
+#  9  knowledge_store_steward_only
+#       Restricted to a single named role rather than "any human approves".
+#       A narrower approver population is a stricter gate than general
+#       human_approval, so it ranks above it.
+# 10  never
+#       Categorically forbidden. The maximum restriction.
+#
+# No two values in the current vocabulary were judged genuinely
+# incomparable; if a future value cannot be placed in this order with
+# confidence, add it as a new tier (or introduce real incomparability
+# handling) rather than guessing.
+_AUTONOMY_RESTRICTIVENESS_RANK: dict[str, int] = {
+    "allowed": 0,
+    "allowed_within_selected_scope": 1,
+    "allowed_with_explicit_read_only_credentials": 2,
+    "on_request": 3,
+    "explicit_task_authorization": 4,
+    "explicitly_authorized": 5,
+    "explicitly_authorized_and_minimum_scope": 6,
+    "human_approval_except_authorized_disposable_test": 7,
+    "human_approval": 8,
+    "knowledge_store_steward_only": 9,
+    "never": 10,
+}
 _AUTONOMY_FILENAME = "agent-autonomy.yaml"
 # The autonomy contract itself, not a per-project dial; an overlay may not
 # touch these two keys at all.
@@ -108,13 +174,29 @@ def _autonomy_leaf_paths(node: dict[str, Any], prefix: str = "") -> list[tuple[s
     return paths
 
 
+def _autonomy_rank(path: str, value: Any) -> int:
+    """Return the restrictiveness rank of a leaf value, or fail closed.
+
+    Rejects anything that is not an exact, recognized member of
+    _AUTONOMY_RESTRICTIVENESS_RANK: wrong type, wrong case, and stray
+    whitespace are all rejected rather than silently passed through.
+    """
+    if isinstance(value, str) and value in _AUTONOMY_RESTRICTIVENESS_RANK:
+        return _AUTONOMY_RESTRICTIVENESS_RANK[value]
+    raise OverlayError(
+        f"{path}: {value!r} is not a recognized agent-autonomy.yaml permission "
+        f"value; expected one of {sorted(_AUTONOMY_RESTRICTIVENESS_RANK)}"
+    )
+
+
 def _check_autonomy_overlay(base: dict[str, Any], overlay: dict[str, Any]) -> None:
     """Enforce that an agent-autonomy.yaml overlay only narrows autonomy.
 
     Raises OverlayError if the overlay touches the fixed policy_version /
     default_rule keys, references a category or key the default doesn't
-    define, loosens a "never" default, or loosens any other restricted
-    default to "allowed".
+    define, sets a value outside the recognized ranked vocabulary (including
+    wrong type, wrong case, or extra whitespace), or moves a leaf value to a
+    strictly lower (less restrictive) rank than the base default.
     """
     for fixed_key in _AUTONOMY_FIXED_KEYS:
         if fixed_key in overlay:
@@ -130,11 +212,18 @@ def _check_autonomy_overlay(base: dict[str, Any], overlay: dict[str, Any]) -> No
             )
         default_value = base_values[path]
         if default_value == overlay_value:
+            # Still validate that an unchanged value is itself recognized;
+            # a corrupted base default should not be able to smuggle a
+            # bogus value through as a no-op.
+            _autonomy_rank(path, default_value)
             continue
-        if default_value == _MAXIMUM_RESTRICTION:
-            raise OverlayError(f"{path}: overlay may not loosen a 'never' default")
-        if default_value != _UNRESTRICTED and overlay_value == _UNRESTRICTED:
-            raise OverlayError(f"{path}: overlay may not loosen {default_value!r} to 'allowed'")
+        default_rank = _autonomy_rank(path, default_value)
+        overlay_rank = _autonomy_rank(path, overlay_value)
+        if overlay_rank < default_rank:
+            raise OverlayError(
+                f"{path}: overlay may not loosen {default_value!r} "
+                f"(rank {default_rank}) to {overlay_value!r} (rank {overlay_rank})"
+            )
 
 
 def resolve_shared_config(filename: str, start: Path | None = None) -> Any:

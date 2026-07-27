@@ -134,6 +134,66 @@ class ResolveSharedConfigTests(unittest.TestCase):
         with self.assertRaises(OverlayError):
             resolve_shared_config("agent-autonomy.yaml", start=self.project)
 
+    # -- Threat-model bypass regression tests --------------------------------
+    # These reproduce the five demonstrated bypasses of the old two-sentinel
+    # ("allowed" / "never") equality check, which the ranked-vocabulary check
+    # must now reject.
+
+    def test_autonomy_overlay_rejects_capitalized_allowed(self) -> None:
+        # Bypass 1: case variation ("Allowed" != "allowed") slipped past the
+        # old exact string-equality comparison.
+        self._write_overlay("agent-autonomy.yaml", "repository:\n  merge: Allowed\n")
+        with self.assertRaises(OverlayError):
+            resolve_shared_config("agent-autonomy.yaml", start=self.project)
+
+    def test_autonomy_overlay_rejects_trailing_whitespace_allowed(self) -> None:
+        # Bypass 2: whitespace variation ("allowed " != "allowed") slipped
+        # past the old exact string-equality comparison.
+        self._write_overlay("agent-autonomy.yaml", "repository:\n  merge: \"allowed \"\n")
+        with self.assertRaises(OverlayError):
+            resolve_shared_config("agent-autonomy.yaml", start=self.project)
+
+    def test_autonomy_overlay_rejects_non_string_list_value(self) -> None:
+        # Bypass 3a: a non-string value (a list) never equals the "allowed"
+        # or "never" sentinel strings, so neither old branch triggered.
+        self._write_overlay("agent-autonomy.yaml", "repository:\n  merge:\n    - allowed\n")
+        with self.assertRaises(OverlayError):
+            resolve_shared_config("agent-autonomy.yaml", start=self.project)
+
+    def test_autonomy_overlay_rejects_null_value(self) -> None:
+        # Bypass 3b: null never equals the "allowed" or "never" sentinel
+        # strings either.
+        self._write_overlay("agent-autonomy.yaml", "repository:\n  merge: null\n")
+        with self.assertRaises(OverlayError):
+            resolve_shared_config("agent-autonomy.yaml", start=self.project)
+
+    def test_autonomy_overlay_rejects_loosening_between_non_sentinel_values(self) -> None:
+        # Bypass 4: mutations.production defaults to human_approval; an
+        # overlay loosening it to explicit_task_authorization (a genuinely
+        # weaker value used elsewhere in the same file) involves neither the
+        # literal string "allowed" nor "never", so it slipped past the old
+        # check entirely.
+        self._write_overlay(
+            "agent-autonomy.yaml", "mutations:\n  production: explicit_task_authorization\n"
+        )
+        with self.assertRaises(OverlayError):
+            resolve_shared_config("agent-autonomy.yaml", start=self.project)
+
+    def test_autonomy_overlay_accepts_genuine_narrowing_between_ranked_values(self) -> None:
+        # A genuinely valid narrowing between two non-sentinel ranked values:
+        # repository.commit defaults to on_request (rank 3); tightening it to
+        # human_approval (rank 8) is a real narrowing and must still work.
+        self._write_overlay("agent-autonomy.yaml", "repository:\n  commit: human_approval\n")
+        resolved = resolve_shared_config("agent-autonomy.yaml", start=self.project)
+        self.assertEqual(resolved["repository"]["commit"], "human_approval")
+
+    def test_autonomy_overlay_accepts_identical_value_as_noop(self) -> None:
+        # An overlay setting a leaf to the exact same value as the base
+        # default is always a no-op and must remain accepted.
+        self._write_overlay("agent-autonomy.yaml", "mutations:\n  production: human_approval\n")
+        resolved = resolve_shared_config("agent-autonomy.yaml", start=self.project)
+        self.assertEqual(resolved["mutations"]["production"], "human_approval")
+
     def test_malformed_overlay_fails_closed(self) -> None:
         self._write_overlay("library-standards.yaml", "not: [valid, yaml, :::\n")
         with self.assertRaises(Exception):
