@@ -570,8 +570,8 @@ distribution separates the reusable lifecycle kernel from target-project state:
 provider/plugin -> consuming target-project `.agentic-sdlc/` overlay and run record
 ```
 
-Clone it and expose `bin/agentic-sdlc` on `PATH` or through
-`AGENTIC_SDLC_BIN`, then initialize through this repository's compatibility
+Install it with `pipx` (puts `agentic-sdlc` directly on `PATH` — see the standalone repository's own README for the exact install command and current release tag), or clone it and expose `bin/agentic-sdlc` on `PATH` or through
+`AGENTIC_SDLC_BIN` for development against an unreleased change. Either way, initialize through this repository's compatibility
 launcher:
 
 ```sh

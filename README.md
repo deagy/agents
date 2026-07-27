@@ -88,17 +88,31 @@ The selector emits a plan only. It does not run agents, retrieve knowledge, depl
 
 Install the reusable G1-G10 lifecycle from its standalone repository, then use
 this suite's compatibility command to inject the Secure Cloud provider. Pin
-the standalone repository to a reviewed release in automation; `main` is useful
-for exploration but is not an immutable dependency:
+to a reviewed release in automation; `main` is useful for exploration but is
+not an immutable dependency — check
+[the repository's releases](https://github.com/deagy/agentic-sdlc/releases)
+for the current tag rather than hardcoding one here, since this section goes
+stale otherwise.
+
+The kernel is a real pip/pipx-installable distribution (puts `agentic-sdlc`
+directly on `PATH`, no repository checkout needed at runtime) — see the
+[standalone lifecycle guide](https://github.com/deagy/agentic-sdlc/tree/main/plugins/agentic-sdlc)
+for the exact `pipx install` command and current release tag, since
+duplicating that command here would just go stale again.
+
+For development against an unreleased change, clone and run from the
+checkout instead:
 
 ```sh
 git clone https://github.com/deagy/agentic-sdlc.git
-git -C agentic-sdlc checkout v0.3.0
+git -C agentic-sdlc checkout <reviewed-tag>
 ```
 
 Put `agentic-sdlc/bin/agentic-sdlc` on `PATH`, or set
-`AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc`, then run
-`agents sdlc init --root /path/to/target`.
+`AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc`.
+
+Either way, once `agentic-sdlc` resolves on `PATH` (or via `AGENTIC_SDLC_BIN`),
+run `agents sdlc init --root /path/to/target`.
 
 This defaults to the low-ceremony `quick` profile and generates subagent wrappers for both runners (`init --runner {codex,claude,both}`).
 
