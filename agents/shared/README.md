@@ -61,6 +61,52 @@ Only files a project actually wants to extend or override need to exist
 under `.agents/shared/`; anything absent resolves straight to the global
 default.
 
+## Generating overlays with `agents init`
+
+Rather than hand-authoring `.agents/shared/<filename>` overlays from scratch,
+run `agents init --target <project-root>` (see `agents/shared/src/
+init_project.py`) to be guided through RG-A (stack/tooling opinions), RG-B
+(governance/autonomy narrowing, with a closed allowlist — never free text —
+for `agent-autonomy.yaml`), and RG-C (guided `sqs-impact-profile.yaml`
+fill-in). Nothing is written without `--force`; omitting it previews only.
+Every generated overlay is validated by resolving it exactly as `agents
+resolve-shared` would before success is reported.
+
+Answer the run either non-interactively with `--answers <file.yaml>` (a
+`schema_version: 1` file in the shape `init_project.py`'s module docstring
+documents — the same shape `--print-answers` echoes, so a prior run's
+answers are directly reusable) or interactively with `--interactive`
+(exactly one of the two is required). `--stack <preset-id>` names a starter
+preset from `agents/shared/init-presets/*.yaml` — a static, human-reviewed,
+RG-A-only fragment (it can never touch `agent-autonomy.yaml` or
+`cloud-guardrails.md`) whose values are shown as prompt defaults in
+`--interactive` mode, or merged under an `--answers` file (the answer file's
+own values win). `--sections` restricts the run to a comma-separated subset
+of `rg-a-stack,rg-b-governance,rg-c-sqs` (default: all three).
+
+Pass `--print-answers` to echo the resolved answer set (after validation)
+alongside the write preview, so a run is reproducible from a saved answer
+file. `agent-autonomy.yaml` and `cloud-guardrails.md` fields are redacted in
+that echo to a per-field `accepted`/`rejected` status plus a sha256 hash
+rather than the raw value — the raw value is never printed to stdout/stderr,
+only ever written to the audit log (or the resulting overlay file itself) as
+a hash or as real file content.
+
+`technology-standards.md` and `cloud-guardrails.md` overlays use a managed
+block (`<!-- agents-init:managed:start/end -->`): re-running `agents init`
+against the same project accumulates new addendum entries/guardrail bullets
+onto whatever a prior run already wrote there instead of replacing it
+(exact-duplicate bullets are deduped), and any content a human has manually
+added outside the managed block is left untouched.
+
+Every field an answer set supplies a value for must have a corresponding
+`field_decisions` entry recording a `kept`/`overridden`/`deferred` status and
+a `category` of either `stack` (team-profile.yaml/library-standards.yaml/
+technology-standards.md/sqs-impact-profile.yaml) or `governance`
+(agent-autonomy.yaml/cloud-guardrails.md). `agents init` fails closed (no
+writes) if a touched field is missing a decision entry, or if a field's
+declared category doesn't match which file it actually touches.
+
 ## The SQS impact profile
 
 `sqs-impact-profile.yaml` defines the impact-category and BOM vocabulary for

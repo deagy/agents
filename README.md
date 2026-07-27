@@ -37,7 +37,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 
 Key areas:
 
-- [bin/agents](bin/agents) dispatches the suite tools (`agents select`, `agents knowledge`, `agents sdlc`, `agents generate-plugin`, `agents bootstrap-codex`, `agents version`, and `agents resolve-shared`). `agents select` works standalone, deterministically dispatching roles from this suite's own catalog and routing rules; it automatically enriches its plan with lifecycle-gate tracking when the standalone `agentic-sdlc` CLI is also available (or fails fast with `--require-sdlc` if that's required), and lifecycle *validation* itself is always provided by that separate `agentic-sdlc` CLI, never by this suite.
+- [bin/agents](bin/agents) dispatches the suite tools (`agents select`, `agents knowledge`, `agents sdlc`, `agents generate-plugin`, `agents bootstrap-codex`, `agents version`, `agents resolve-shared`, and `agents init`). `agents select` works standalone, deterministically dispatching roles from this suite's own catalog and routing rules; it automatically enriches its plan with lifecycle-gate tracking when the standalone `agentic-sdlc` CLI is also available (or fails fast with `--require-sdlc` if that's required), and lifecycle *validation* itself is always provided by that separate `agentic-sdlc` CLI, never by this suite.
 - [agents/catalog.yaml](agents/catalog.yaml) is the machine-readable role inventory.
 - [agents/RUNBOOK.md](agents/RUNBOOK.md) explains how to select, dispatch, review, and escalate agent work.
 - [agents/orchestration/](agents/orchestration/) contains routing rules, lifecycle applicability mappings, handoff contracts, escalation policy, selectors, and tests.
