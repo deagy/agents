@@ -9,11 +9,12 @@ platform:
   package_deployment: helm
 
 infrastructure:
-  infrastructure_as_code: terraform
+  infrastructure_as_code: opentofu
+  infrastructure_as_code_note: OpenTofu chosen over Terraform CLI to avoid BUSL license terms; bpg/proxmox provider is drop-in compatible
   desired_state_required: true
   manual_configuration: exception_only
   terraform_provider: bpg/proxmox, pinned ~> 0.66
-  state_backend: self-hosted MinIO, Terraform s3 backend with native state locking, versioned bucket + scheduled replication/snapshot backup
+  state_backend: self-hosted MinIO, Terraform/OpenTofu s3 backend with native state locking, versioned bucket + scheduled replication/snapshot backup
   policy_as_code: kyverno
 
 engineering:
@@ -88,8 +89,38 @@ secrets_management:
   platform: openbao (Vault-API-compatible, MPL-licensed), Kubernetes auth + JWT/OIDC auth for GitLab CI, External Secrets Operator for workload sync/rotation
   bootstrap_only: sops + age for pre-bootstrap/break-glass material
 
-unresolved_standards:
-  - supported tool and language versions
+version_policy:
+  approved: 2026-07-26
+  policy: >
+    Track N-1 minor for platform/operator components (Kubernetes, Talos, Helm,
+    CNPG, Kyverno, Chaos Mesh) to allow ecosystem compatibility catch-up; always
+    take the latest patch within the pinned minor. Exact versions are pinned in
+    a single machine-readable version manifest (e.g. versions.yaml/.tool-versions),
+    kept current via automated dependency updates (e.g. Renovate) with human
+    review, and re-verified quarterly. Kubernetes/Talos/CNPG/Kyverno must be
+    validated together as one compatibility set, not upgraded independently.
+  note: >
+    Specific version numbers are deliberately not hardcoded here: they go stale
+    quickly and any number recorded by an LLM-based recommendation reflects its
+    training data, not a live check of what's current or CVE-affected. The
+    Engineering Lead must resolve exact pinned versions for the components below
+    into the version manifest at adoption time, verifying current-stable status
+    and known CVEs before pinning.
+  components_needing_pins:
+    - go (primary backend language; team-profile.yaml does not yet state a version)
+    - python (secondary language)
+    - opentofu (CLI version, distinct from the bpg/proxmox provider version already pinned)
+    - kubernetes
+    - talos (selects the compatible kubernetes version; upgrade talos first)
+    - helm (stay on 3.x; defer helm 4 until chart/plugin ecosystem is validated)
+    - golangci-lint
+    - kyverno
+    - cloudnativepg
+    - golang-migrate
+    - cosign
+    - k6
+    - chaos-mesh
+    - typescript, pnpm, vite, vitest, playwright (frontend toolchain, matched to node 22 lts)
 
 out_of_scope_standards:
   - description: compliance frameworks and evidence retention
@@ -119,3 +150,4 @@ resolved_standards_2026_07_26:
     - database migration tool and schema change policy
     - load/performance-testing tool and target environment ownership
     - chaos-engineering tool and blast-radius isolation guarantees for fault-injection exercises
+    - supported tool and language versions (policy resolved; exact pins deferred to version manifest, see version_policy above)
