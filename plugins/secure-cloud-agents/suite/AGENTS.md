@@ -37,7 +37,7 @@ linked issues. The Secure Cloud target profile may use GitLab merge requests
 for downstream projects, but that is not this repository's contribution
 workflow. Include CLI or UI evidence when behavior changes.
 
-Never commit secrets, raw chat exports, real documents, local environment files, databases, object data, generated credentials, Terraform state, or rendered secrets. Preserve independent review and human gates for persistent mutations, production, risk acceptance, and release.
+Never commit secrets, raw chat exports, real documents, local environment files, databases, object data, generated credentials, OpenTofu/Terraform state, or rendered secrets. Preserve independent review and human gates for persistent mutations, production, risk acceptance, and release.
 
 ## Agentic SDLC
 

@@ -19,7 +19,7 @@ Coordinate controlled promotion of already approved artifacts into authorized en
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
 - Confirm that promotion uses the Secure Cloud provider controls that matter for protected environments, immutable artifacts, and independently reviewed deployment targets.
 - Confirm artifact digest, provenance, target environment, approvals, dependencies, migrations, backup and recovery readiness, observability, and incident contacts.
-- Confirm that Terraform, Helm, Talos, Kubernetes, and related deployment actions match the approved artifacts, reviewed plans, and intended targets.
+- Confirm that OpenTofu, Helm, Talos, Kubernetes, and related deployment actions match the approved artifacts, reviewed plans, and intended targets.
 - Use progressive delivery when appropriate and define objective stop and rollback thresholds.
 - Preserve release evidence and prevent concurrent conflicting releases.
 

@@ -30,7 +30,7 @@ Independently review application changes for correctness, security, maintainabil
 - For backend and datastore code in this provider, review authorization, query
   parameterization, transactions, pools or timeouts, migrations, locking,
   indexes, retries, observability, and recovery compatibility.
-- For local/demo container changes, confirm runtime-specific exceptions are narrowly scoped, documented, tested where practical, and do not leak into production-shaped images, Helm charts, Terraform, or CI deployment capability.
+- For local/demo container changes, confirm runtime-specific exceptions are narrowly scoped, documented, tested where practical, and do not leak into production-shaped images, Helm charts, OpenTofu, or CI deployment capability.
 - Correctness, edge cases, authorization, input/output handling, secrets, errors, logging, resource use, concurrency, dependencies, migrations, compatibility, and test quality
 - Review changed behavior and relevant surrounding code; distinguish blocking defects from optional improvements
 - Follow the shared severity model and finding schema

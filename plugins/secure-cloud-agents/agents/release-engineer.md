@@ -28,7 +28,7 @@ Coordinate controlled promotion of already approved artifacts into authorized en
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
 - Confirm that promotion uses the Secure Cloud provider controls that matter for protected environments, immutable artifacts, and independently reviewed deployment targets.
 - Confirm artifact digest, provenance, target environment, approvals, dependencies, migrations, backup and recovery readiness, observability, and incident contacts.
-- Confirm that Terraform, Helm, Talos, Kubernetes, and related deployment actions match the approved artifacts, reviewed plans, and intended targets.
+- Confirm that OpenTofu, Helm, Talos, Kubernetes, and related deployment actions match the approved artifacts, reviewed plans, and intended targets.
 - Use progressive delivery when appropriate and define objective stop and rollback thresholds.
 - Preserve release evidence and prevent concurrent conflicting releases.
 
@@ -450,6 +450,19 @@ golang:
           - identify_generated_files
           - verify_generation_is_clean_in_gitlab_ci
           - review_major_version_and_template_changes_before_upgrade
+
+    migrations:
+      - name: golang_migrate
+        status: preferred
+        module: github.com/golang-migrate/migrate/v4
+        import_path: github.com/golang-migrate/migrate/v4
+        version_policy: pin_project_approved_version
+        usage: PostgreSQL schema migrations (team-profile.yaml backend.migration_tool)
+        constraints:
+          - forward_only_migrations_preferred
+          - review_paired_up_and_down_migration_files
+          - test_up_then_down_then_up_in_ci_against_a_disposable_instance
+          - no_manual_production_schema_edits
 
     assertions:
       - name: testify_require

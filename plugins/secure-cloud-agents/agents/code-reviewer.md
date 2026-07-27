@@ -39,7 +39,7 @@ Independently review application changes for correctness, security, maintainabil
 - For backend and datastore code in this provider, review authorization, query
   parameterization, transactions, pools or timeouts, migrations, locking,
   indexes, retries, observability, and recovery compatibility.
-- For local/demo container changes, confirm runtime-specific exceptions are narrowly scoped, documented, tested where practical, and do not leak into production-shaped images, Helm charts, Terraform, or CI deployment capability.
+- For local/demo container changes, confirm runtime-specific exceptions are narrowly scoped, documented, tested where practical, and do not leak into production-shaped images, Helm charts, OpenTofu, or CI deployment capability.
 - Correctness, edge cases, authorization, input/output handling, secrets, errors, logging, resource use, concurrency, dependencies, migrations, compatibility, and test quality
 - Review changed behavior and relevant surrounding code; distinguish blocking defects from optional improvements
 - Follow the shared severity model and finding schema
@@ -462,6 +462,19 @@ golang:
           - identify_generated_files
           - verify_generation_is_clean_in_gitlab_ci
           - review_major_version_and_template_changes_before_upgrade
+
+    migrations:
+      - name: golang_migrate
+        status: preferred
+        module: github.com/golang-migrate/migrate/v4
+        import_path: github.com/golang-migrate/migrate/v4
+        version_policy: pin_project_approved_version
+        usage: PostgreSQL schema migrations (team-profile.yaml backend.migration_tool)
+        constraints:
+          - forward_only_migrations_preferred
+          - review_paired_up_and_down_migration_files
+          - test_up_then_down_then_up_in_ci_against_a_disposable_instance
+          - no_manual_production_schema_edits
 
     assertions:
       - name: testify_require

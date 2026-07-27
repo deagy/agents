@@ -30,7 +30,7 @@ reviewable plans. Do not approve or apply your own production changes.
 ## Required checks
 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
-- In this provider, use Terraform for desired state, Helm for package
+- In this provider, use OpenTofu for desired state, Helm for package
   deployment, and declarative Talos or Kubernetes configuration; do not
   substitute console, SSH, or imperative drift.
 - Validate rendered Helm resources and identify cluster-scoped objects, hooks, CRDs, RBAC, secret references, and rollback/deletion effects.
@@ -461,6 +461,19 @@ golang:
           - identify_generated_files
           - verify_generation_is_clean_in_gitlab_ci
           - review_major_version_and_template_changes_before_upgrade
+
+    migrations:
+      - name: golang_migrate
+        status: preferred
+        module: github.com/golang-migrate/migrate/v4
+        import_path: github.com/golang-migrate/migrate/v4
+        version_policy: pin_project_approved_version
+        usage: PostgreSQL schema migrations (team-profile.yaml backend.migration_tool)
+        constraints:
+          - forward_only_migrations_preferred
+          - review_paired_up_and_down_migration_files
+          - test_up_then_down_then_up_in_ci_against_a_disposable_instance
+          - no_manual_production_schema_edits
 
     assertions:
       - name: testify_require
