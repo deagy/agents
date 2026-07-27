@@ -4,6 +4,45 @@ Use orchestration to turn a bounded task into a reviewable plan with the right
 specialists, evidence expectations, and handoffs. The selector plans work; it
 does not grant authority or replace accountable humans.
 
+## Example: review a new upload feature
+
+Suppose a team is adding a browser upload form and a Go API that stores
+metadata in PostgreSQL. Start with a bounded task description and the files in
+scope:
+
+```sh
+agents select \
+  --task "Add an authenticated document upload form and Go API" \
+  --files frontend/src/Upload.tsx,services/upload,db/migrations \
+  --classification confidential \
+  --task-id UPLOAD-42
+```
+
+The resulting plan can coordinate a sequence like this:
+
+1. The API contract engineer defines request, response, error, and size-limit
+   behavior.
+2. The frontend and backend engineers implement the UI and service against
+   that contract. The infrastructure provisioner handles only required
+   disposable-environment configuration.
+3. The secrets and identity engineer checks authentication, authorization, and
+   storage permissions. The threat modeler reviews malicious files, upload
+   abuse, tenant isolation, and metadata leakage.
+4. The test engineer verifies unit, integration, negative-path, and regression
+   behavior. The end-user tester checks the upload, progress, validation, and
+   failure journeys.
+5. The code reviewer independently reviews the exact resulting revision. A
+   release engineer packages evidence for an authorized human release
+   decision.
+
+Each agent receives its role definition, the approved task brief, the exact
+revision, relevant policies, and a clear handoff destination. For example, the
+backend engineer may return an implementation and test evidence, while the
+code reviewer returns findings against that revision; the reviewer does not
+silently modify the implementation or approve its own work. Unresolved
+high-severity findings, policy exceptions, production changes, and risk
+acceptance stop for an accountable human decision.
+
 ## Plan a task
 
 Run the selector through the repository launcher:
