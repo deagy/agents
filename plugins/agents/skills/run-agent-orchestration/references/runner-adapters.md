@@ -65,9 +65,51 @@ wave — see [team-recipes.md](team-recipes.md) for when that's warranted.
   select` and the catalog are unaffected — selection is pure Python, not a
   Codex tool call) and then appear to stop: there is no tool argument that
   actually dispatches to the named role, so nothing beyond identification
-  happens unless you use the workaround below.
-  - **Workaround (do this instead of naming the custom agent to
-    `spawn_agent`):** read the target role's `.toml` file directly — project
+  happens unless the MCP server below is registered, or the manual workaround
+  is used. The same fallback is also why a Codex-dispatched "agent" can
+  appear to never close when its task finishes: a generic fallback thread is
+  not an isolated child process the way a properly dispatched subagent is —
+  there is nothing separate for Codex to wait on and reap, so no clean
+  completion boundary is ever reached. `dispatch_secure_cloud_role` below
+  spawns a real, isolated child process and explicitly waits on it
+  (`agents/orchestration/mcp/dispatch_core.py`'s `spawn_and_wait()`), which is
+  the actual fix for this, not just for role selection.
+  - **Preferred: register this repo's MCP dispatch server.**
+    `agents/orchestration/mcp/dispatch_server.py` exposes a real
+    `dispatch_secure_cloud_role` tool that resolves `role_id` to its `.toml`
+    wrapper, extracts `developer_instructions`/`model`/`sandbox_mode` itself,
+    enforces sandbox narrowing and a human confirmation gate for
+    write-capable dispatch, and spawns the child in its own process group
+    with an explicit wait/timeout/group-kill and a bounded concurrency
+    limiter (see `agents/orchestration/mcp/SECURITY-CONTROLS.md` for exactly
+    which of those guarantees are mechanically enforced and tested). Once
+    registered, call it directly instead of `spawn_agent` — no per-file
+    reading or manual `developer_instructions` injection needed. Setup:
+    1. `pip install -r agents/orchestration/mcp/requirements-mcp.txt` (installs
+       the official `mcp` SDK; stdio transport only — do not add a networked
+       extra).
+    2. Add a server entry to Codex CLI's `config.toml` (global
+       `~/.codex/config.toml` or project-local `.codex/config.toml`) pointing
+       at `agents mcp-dispatch-server` (repository-root `bin/agents`, resolves
+       a Python 3.10+ interpreter the same way every other subcommand does) or
+       directly at `python3 <repo>/agents/orchestration/mcp/dispatch_server.py`
+       if `agents` isn't on `PATH`. The exact `[mcp_servers]` table syntax
+       below is this suite's best current understanding of Codex CLI's config
+       format and has not been verified against a live `codex` binary from
+       inside this sandbox (no network/package access here) — verify against
+       current Codex CLI docs before relying on it in production, matching
+       this file's other unverified-Codex-specifics caveats:
+       ```toml
+       [mcp_servers.agents-dispatch]
+       command = "agents"
+       args = ["mcp-dispatch-server"]
+       ```
+    3. This server only ever spawns `codex exec` child processes for
+       whichever role you dispatch; it does not itself replace or wrap your
+       interactive Codex session.
+  - **Fallback (only when the MCP server above is not registered): manual
+    per-file injection instead of naming the custom agent to
+    `spawn_agent`.** Read the target role's `.toml` file directly — project
     override first (`.codex/agents/<role-id>.toml`), else the synced global
     wrapper (`~/.codex/agents/agents-<role-id>.toml`), else this
     plugin's own `codex-agents/agents-<role-id>.toml` if sync
@@ -76,20 +118,23 @@ wave — see [team-recipes.md](team-recipes.md) for when that's warranted.
     `developer_instructions` text plus the task brief as the `prompt`
     argument, and pass the file's `model` value as the explicit `model`
     override (do not assume the tool infers either from a bare name). Report
-    in the final summary that this per-file-injection workaround was used, so
-    it isn't mistaken for native named-agent dispatch.
+    in the final summary that this per-file-injection fallback was used
+    (rather than the MCP server), so it isn't mistaken for a properly closed
+    dispatch — the "agent doesn't close on completion" symptom above applies
+    to this fallback, not to the MCP path.
   - **A2A was evaluated as a fix for this exact limitation and rejected.** A2A
     is transport between separately-hosted agent processes; it cannot add a
     parameter to a running Codex session's `spawn_agent` tool surface, so it
-    does not address this limitation at all. The identified fix path is a
-    Python MCP server, owned by this repo, exposing a dispatch tool Codex can
-    call directly — in development, not yet available.
+    does not address this limitation at all.
 - **Ordinary parallel wave**: request the same role set in one instruction
-  (for example, "spawn one agent per role listed below"), applying the
-  workaround above per role. Codex fans the requests out, waits for every
-  result, and returns a consolidated response. Concurrency is bounded by the
-  user's own `agents.max_concurrent_threads_per_session` (`[agents]` block in
-  their `config.toml`) — this repo has no way to override that from inside a
+  (for example, "spawn one agent per role listed below"), applying the MCP
+  dispatch tool (or, if it isn't registered, the manual-injection fallback)
+  per role. Codex fans the requests out, waits for every result, and returns
+  a consolidated response. Concurrency is bounded by the user's own
+  `agents.max_concurrent_threads_per_session` (`[agents]` block in their
+  `config.toml`) for native `spawn_agent` dispatch, and separately by this
+  repo's own `MAX_CONCURRENT_CHILDREN` limiter when dispatched through the
+  MCP server — this repo has no way to override the former from inside a
   project.
 - **No team equivalent exists.** Codex's spawned subagents have no
   peer-to-peer messaging and no shared task list — coordination is entirely
