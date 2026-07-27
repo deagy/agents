@@ -533,8 +533,8 @@ local_validation:
   golang_tests: allowed
   python_tests: allowed
   gherkin_tests: allowed
-  terraform_format_validate_lint_and_security_scan: allowed
-  terraform_plan: allowed_with_explicit_read_only_credentials
+  opentofu_format_validate_lint_and_security_scan: allowed
+  opentofu_plan: allowed_with_explicit_read_only_credentials
   helm_lint_template_and_schema_validation: allowed
   talos_configuration_validation: allowed
   kubernetes_client_side_dry_run: allowed
@@ -562,8 +562,8 @@ mutations:
   proxmox_cluster_storage_network_or_access: human_approval
   talos_machine_or_cluster_operation: human_approval
   kubernetes_or_helm_persistent_environment: human_approval
-  terraform_apply: human_approval_except_authorized_disposable_test
-  terraform_state_operation: human_approval
+  opentofu_apply: human_approval_except_authorized_disposable_test
+  opentofu_state_operation: human_approval
   gitlab_protection_runner_variable_or_credential: human_approval
   destructive_action: human_approval
 
