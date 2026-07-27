@@ -587,6 +587,31 @@ class SelectorTests(unittest.TestCase):
         self.assertIn("cost-capacity-planner", result["agents"]["primary"])
         self.assertIn("observability-sre", result["agents"]["support"])
 
+    def test_selects_finops_engineer_for_cost_drift(self) -> None:
+        result = plan(
+            task="Investigate a spend anomaly and quota exhaustion drift observed in production",
+            changed_files=["reports/anomaly-2026-07.txt"],
+        )
+        self.assertIn("finops-engineer", result["agents"]["primary"])
+        self.assertIn("observability-sre", result["agents"]["support"])
+
+    def test_selects_api_contract_engineer_for_openapi_changes(self) -> None:
+        result = plan(
+            task="Add a versioned breaking change to the checkout API contract",
+            changed_files=["api/contracts/checkout/openapi.yaml"],
+        )
+        self.assertIn("api-contract-engineer", result["agents"]["primary"])
+        self.assertIn("cloud-architect", result["agents"]["support"])
+        self.assertIn("code-reviewer", result["agents"]["reviewers"])
+
+    def test_frontend_route_includes_accessibility_reviewer(self) -> None:
+        result = plan(
+            task="Update the React navigation for keyboard accessibility",
+            changed_files=["frontend/src/Nav.tsx"],
+        )
+        self.assertIn("frontend-engineer", result["agents"]["primary"])
+        self.assertIn("accessibility-reviewer", result["agents"]["reviewers"])
+
     def test_selects_engineering_and_review_for_orchestration_config_only(self) -> None:
         result = plan(
             task="Adjust configuration behavior",
