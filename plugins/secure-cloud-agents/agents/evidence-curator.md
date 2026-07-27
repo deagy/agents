@@ -193,7 +193,21 @@ version_policy:
 out_of_scope_standards:
   - description: compliance frameworks and evidence retention
     decision: no compliance framework currently applies to this internal tooling; explicitly declared out of scope by Product Owner (2026-07-26) rather than resolved
-    revisit_when: a consuming project or accreditation requirement makes this material
+    owner: Product Owner (Daniel Eagy)
+    review_by: 2027-01-26
+    scope_note: >
+      This exception covers named regulatory/accreditation frameworks only
+      (e.g. SOC 2, ISO 27001, GDPR-specific evidence-retention obligations).
+      It does not exempt secrets_management, observability, or cicd.artifact_signing
+      above from baseline secret-hygiene and telemetry-scrubbing practice: no
+      secret values in logs/traces, least-privilege credential issuance, and
+      short-lived credentials remain expected regardless of framework applicability.
+    compensating_control: >
+      OpenBao issues only short-lived, scoped credentials (no long-lived static
+      secrets in CI variables or Kubernetes manifests); observability collectors
+      must not be configured to capture request/response bodies or credential
+      material by default.
+    revisit_when: a consuming project or accreditation requirement makes this material; owner re-evaluates at review_by regardless
 
 resolved_standards_2026_07_26:
   note: >
@@ -202,6 +216,18 @@ resolved_standards_2026_07_26:
     secrets_management sections above for the recorded decisions. Sizing, node-pool/taint
     detail, HA topology depth, retention windows, and trust-root choices remain open
     follow-up decisions for the Engineering Lead during implementation.
+  gate_rigor_note: >
+    An independent compliance review of this resolution noted that agents/orchestration/
+    routing.yaml's own routing rules (governance-planning, compliance, sensitive-data,
+    secrets-identity, supply-chain) would ordinarily route decisions touching compliance
+    scope, secrets platforms, and artifact signing/registry through independent
+    compliance-reviewer/security-reviewer sign-off and a G4/G5/G7 gate record, separate
+    from G1-G3 intent/requirements/architecture approval. Product Owner explicitly
+    accepted G1-G3 approval alone as sufficient for this internal-tooling technology-
+    standards baseline (2026-07-26) rather than retroactively simulating G4/G5/G7. This
+    is a conscious, recorded scope decision, not an oversight; a future decision with
+    real regulatory, customer-data, or production-security stakes should not treat this
+    as precedent for skipping those gates.
   items:
     - Proxmox Terraform provider and version policy
     - Terraform state backend and recovery process
