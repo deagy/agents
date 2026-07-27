@@ -51,7 +51,7 @@ and handoff to <receiver>.
 - Preserve separation between authors, reviewers, risk owners, and production approvers.
 - Treat `needs-information`, `request-changes`, and `blocked` as non-approval.
 - Stop release progression for unresolved critical/high risk, ambiguous targets, stale artifacts, mismatched revisions, or missing required evidence.
-- Require an authorized human before persistent environments, production, destructive operations, database migration application, Terraform apply/state mutation, privileged identity or key changes, risk acceptance, or policy exceptions.
+- Require an authorized human before persistent environments, production, destructive operations, database migration application, OpenTofu apply/state mutation, privileged identity or key changes, risk acceptance, or policy exceptions.
 
 ## Consolidated run record
 

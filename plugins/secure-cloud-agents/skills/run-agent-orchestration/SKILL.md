@@ -29,7 +29,7 @@ return a blocking question in its result instead of prompting directly.**
    - **changed paths / base revision**: omit `--files` to use Git status (staged, unstaged, untracked), or use `--base <ref>` when the prompt clearly scopes to committed changes. Only ask when neither resolves to a sensible scope.
    - **acceptance criteria / exclusions**: whatever the prompt states; otherwise proceed without inventing them and note the gap in the final report rather than blocking on it.
 4. Default to `planning-review-only` when execution mode is absent. In that mode, inspect and report without editing application or infrastructure artifacts.
-5. Do not infer approval for persistent infrastructure changes, production actions, Terraform apply/state changes, Talos or Kubernetes mutations, database migrations, merge/push, destructive actions, risk acceptance, or policy exceptions. When a `human_gate` or mutation-oriented stop applies, ask the human directly instead of guessing; batch every question raised this round (by the selector or by dispatched agents) into one turn.
+5. Do not infer approval for persistent infrastructure changes, production actions, OpenTofu apply/state changes, Talos or Kubernetes mutations, database migrations, merge/push, destructive actions, risk acceptance, or policy exceptions. When a `human_gate` or mutation-oriented stop applies, ask the human directly instead of guessing; batch every question raised this round (by the selector or by dispatched agents) into one turn.
 
 ## Bootstrap Local Setup
 

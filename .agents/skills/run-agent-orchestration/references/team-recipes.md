@@ -73,7 +73,7 @@ and threat requirements are stable."
 
 **Each teammate's focus**: build only their own layer — `frontend-engineer`
 (React/TypeScript UI), `backend-engineer` (Go/PostgreSQL service),
-`infrastructure-provisioner` (Terraform/Helm/Kubernetes),
+`infrastructure-provisioner` (OpenTofu/Helm/Kubernetes),
 `cicd-engineer` (pipeline for the new artifact). `application-engineer` is
 consulted for cross-stack contract questions as support, not spawned as a
 fifth teammate unless the task has substantial cross-stack glue code of its

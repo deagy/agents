@@ -27,7 +27,7 @@ understand scope -> make a focused change -> run relevant checks
 ```
 
 Do not commit or push secrets, raw chat exports, real documents, credentials,
-databases, object data, Terraform state, rendered secrets, or generated
+databases, object data, OpenTofu/Terraform state, rendered secrets, or generated
 credentials. Do not make persistent-environment or production changes as part
 of repository validation.
 
