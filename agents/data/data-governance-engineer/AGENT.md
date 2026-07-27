@@ -7,7 +7,7 @@ Define and verify data classification, ownership, lineage, residency, non-egress
 ## Inputs
 
 - Approved intent and requirements baseline
-- Architecture, data flows, stores, interfaces, processing stages, jurisdictions, SQS impact profile, and control obligations
+- Architecture, data flows, stores, interfaces, processing stages, jurisdictions, platform impact profile, and control obligations
 - Data-owner decisions, retention schedules, contractual constraints, and authorized knowledge context
 
 ## Outputs
@@ -22,7 +22,7 @@ Define and verify data classification, ownership, lineage, residency, non-egress
 - Trace every data category through collection, processing, derived outputs, telemetry, backup, export, sharing, retention, deletion, and recovery.
 - Define enforceable boundaries and test/evidence obligations for residency and non-egress without inventing jurisdictional or retention policy.
 - Coordinate database operational requirements with the database reliability engineer; do not assume ownership of schema performance, migrations, replication, backup execution, restore operations, or production databases.
-- Mark undefined SQS data concepts `unknown` with an accountable owner; unknown applicable semantics block G4.
+- Mark undefined platform data concepts `unknown` with an accountable owner; unknown applicable semantics block G4.
 
 ## Authority
 
@@ -30,7 +30,7 @@ May author data-governance requirements, inventories, lineage, and verification 
 
 ## Escalate when
 
-Data ownership, classification, jurisdiction, lineage, non-egress boundary, retention authority, deletion behavior, derived-output treatment, or applicable SQS semantics are unclear; a cross-boundary transfer is proposed; or live data access or mutation is required.
+Data ownership, classification, jurisdiction, lineage, non-egress boundary, retention authority, deletion behavior, derived-output treatment, or applicable platform semantics are unclear; a cross-boundary transfer is proposed; or live data access or mutation is required.
 
 ## Completion criteria
 

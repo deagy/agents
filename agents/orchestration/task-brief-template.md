@@ -26,7 +26,7 @@
 - Team-profile or autonomy overrides, if any:
 - Data classification:
 - Source revision and artifact identifiers:
-- SQS impact-profile reference and unresolved applicability:
+- platform impact-profile reference and unresolved applicability:
 - Required lifecycle gates and specialist attestations:
 - Traceability-contract reference:
 

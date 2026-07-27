@@ -27,7 +27,7 @@ fallback to the default.
 
 - **Structured files** (`*.yaml`, `*.json` — `team-profile.yaml`,
   `library-standards.yaml`, `agent-autonomy.yaml`,
-  `control-mapping-template.yaml`, `sqs-impact-profile.yaml`): deep-merged,
+  `control-mapping-template.yaml`, `platform-impact-profile.yaml`): deep-merged,
   overlay wins per key. Keys the overlay doesn't mention keep the global
   default.
 - **`agent-autonomy.yaml` specifically**: the merge is narrowing-only. This
@@ -67,7 +67,7 @@ Rather than hand-authoring `.agents/shared/<filename>` overlays from scratch,
 run `agents init --target <project-root>` (see `agents/shared/src/
 init_project.py`) to be guided through RG-A (stack/tooling opinions), RG-B
 (governance/autonomy narrowing, with a closed allowlist — never free text —
-for `agent-autonomy.yaml`), and RG-C (guided `sqs-impact-profile.yaml`
+for `agent-autonomy.yaml`), and RG-C (guided `platform-impact-profile.yaml`
 fill-in). Nothing is written without `--force`; omitting it previews only.
 Every generated overlay is validated by resolving it exactly as `agents
 resolve-shared` would before success is reported.
@@ -82,7 +82,7 @@ RG-A-only fragment (it can never touch `agent-autonomy.yaml` or
 `cloud-guardrails.md`) whose values are shown as prompt defaults in
 `--interactive` mode, or merged under an `--answers` file (the answer file's
 own values win). `--sections` restricts the run to a comma-separated subset
-of `rg-a-stack,rg-b-governance,rg-c-sqs` (default: all three).
+of `rg-a-stack,rg-b-governance,rg-c-platform` (default: all three).
 
 Pass `--print-answers` to echo the resolved answer set (after validation)
 alongside the write preview, so a run is reproducible from a saved answer
@@ -102,16 +102,16 @@ added outside the managed block is left untouched.
 Every field an answer set supplies a value for must have a corresponding
 `field_decisions` entry recording a `kept`/`overridden`/`deferred` status and
 a `category` of either `stack` (team-profile.yaml/library-standards.yaml/
-technology-standards.md/sqs-impact-profile.yaml) or `governance`
+technology-standards.md/platform-impact-profile.yaml) or `governance`
 (agent-autonomy.yaml/cloud-guardrails.md). `agents init` fails closed (no
 writes) if a touched field is missing a decision entry, or if a field's
 declared category doesn't match which file it actually touches.
 
-## The SQS impact profile
+## The platform impact profile
 
-`sqs-impact-profile.yaml` defines the impact-category and BOM vocabulary for
+`platform-impact-profile.yaml` defines the impact-category and BOM vocabulary for
 an external organization/platform this repository deliberately does not
-define the semantics of (see `docs/terminology.md`'s SQS entry) — a
+define the semantics of (see `docs/terminology.md`'s platform entry) — a
 consuming project supplies its own authorized definitions and owners, and
 `unknown` blocks the relevant gates by design in whatever system enforces
 that lifecycle (this repository's own run-record/quality-gate machinery was

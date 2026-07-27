@@ -115,7 +115,7 @@ Always attach or reference:
 - Exact artifact identifiers and acceptance criteria.
 - Approved intent and requirements-baseline identifiers when the task has entered design.
 - Lifecycle phase, applicable provider gate mappings, and the target project's authoritative run-record location.
-- The SQS impact profile when any supplied Platform category may apply; `unknown` applicable items fail closed.
+- The platform impact profile when any supplied Platform category may apply; `unknown` applicable items fail closed.
 - `shared/definition-of-done.md` for the completion criteria a reviewer checks against.
 
 ### Generic dispatch prompt
@@ -553,7 +553,7 @@ As of 2026-07-26, `shared/team-profile.yaml` records resolved decisions for all 
 - Compliance frameworks, control owners, and evidence retention rules.
 - Named support escalation levels, human owner groups, customer communication expectations, and emergency contacts.
 - Data classifications, tenant boundaries, approved embedding services, and knowledge-store retention/deletion procedures.
-- Authoritative definitions and owners for SQS impact categories and any required CBOM, QBOM, AI-BOM, Trust-BOM, or Time-BOM formats.
+- Authoritative definitions and owners for platform impact categories and any required CBOM, QBOM, AI-BOM, Trust-BOM, or Time-BOM formats.
 - Named human approval groups and emergency escalation contacts.
 
 Keep organization-wide requirements under `shared/`; keep role authority in each `AGENT.md`; keep change-specific facts in task briefs.
@@ -589,7 +589,7 @@ Before team adoption:
 - Review the detected profile, repository paths, and validation commands.
 - Assign the required Product Owner, Engineering Lead, System Architect, Governance Lead, Security Lead, Release Owner, Release Authority, and Service Owner roles. Explicitly decide applicability for the Data/Control Owner, Human Key Owner, UAT Product Owner, and runtime-implicated Security and Governance Lead roles; applicable roles require named assignees, while `not-applicable` requires a rationale.
 - Decide which environments are disposable, persistent, and production.
-- Decide generic and optional SQS impact-profile applicability; do not invent undefined SQS or BOM semantics.
+- Decide generic and optional platform impact-profile applicability; do not invent undefined platform or BOM semantics.
 - Configure authoritative approval and evidence references.
 - Run the plugin `validate` command and preserve the version lock with the reviewed overlay.
 

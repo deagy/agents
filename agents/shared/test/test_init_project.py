@@ -22,7 +22,7 @@ from init_project import (  # noqa: E402
     build_autonomy_overlay,
     build_guardrails_overlay,
     build_prose_addendum_overlay,
-    build_sqs_overlay,
+    build_platform_overlay,
     build_structured_overlay,
     parse_field_decisions,
     plan_writes,
@@ -31,7 +31,7 @@ from init_project import (  # noqa: E402
     run_init,
     scan_guardrail_bullet,
     validate_autonomy_overlay_content,
-    validate_sqs_fragment,
+    validate_platform_fragment,
 )
 from init_project_interactive import run_interactive_flow  # noqa: E402
 
@@ -198,10 +198,10 @@ class IdempotencyTests(unittest.TestCase):
         _content, merged = result
         self.assertEqual(merged, {"engineering": {"primary_language": "golang"}})
 
-    def test_sqs_overlay_updates_only_touched_category(self) -> None:
+    def test_platform_overlay_updates_only_touched_category(self) -> None:
         init_mod._write_overlay(
             self.root,
-            "sqs-impact-profile.yaml",
+            "platform-impact-profile.yaml",
             "impact_categories:\n"
             "  - id: platform-phase\n"
             "    applicability: not-applicable\n"
@@ -210,7 +210,7 @@ class IdempotencyTests(unittest.TestCase):
             "    owner: null\n"
             "    evidence_refs: []\n",
         )
-        content, merged = build_sqs_overlay(
+        content, merged = build_platform_overlay(
             self.root,
             {
                 "impact_categories": {
@@ -621,14 +621,14 @@ class AuditLogTests(unittest.TestCase):
         self.assertTrue(any(e["kind"] == "accepted" for e in lines))
 
 
-class SqsGuidedFillInTests(unittest.TestCase):
+class PlatformGuidedFillInTests(unittest.TestCase):
     def test_applicable_requires_definition_reference_and_owner(self) -> None:
         with self.assertRaises(InitError):
-            validate_sqs_fragment(
+            validate_platform_fragment(
                 {"impact_categories": {"platform-phase": {"applicability": "applicable", "owner": "me"}}}
             )
         with self.assertRaises(InitError):
-            validate_sqs_fragment(
+            validate_platform_fragment(
                 {
                     "impact_categories": {
                         "platform-phase": {"applicability": "applicable", "definition_reference": "doc://x"}
@@ -637,7 +637,7 @@ class SqsGuidedFillInTests(unittest.TestCase):
             )
 
     def test_applicable_with_both_fields_is_accepted(self) -> None:
-        validate_sqs_fragment(
+        validate_platform_fragment(
             {
                 "impact_categories": {
                     "platform-phase": {
@@ -650,34 +650,34 @@ class SqsGuidedFillInTests(unittest.TestCase):
         )  # must not raise
 
     def test_unknown_stays_valid_without_citation(self) -> None:
-        validate_sqs_fragment({"impact_categories": {"platform-phase": {"applicability": "unknown"}}})
+        validate_platform_fragment({"impact_categories": {"platform-phase": {"applicability": "unknown"}}})
 
     def test_not_applicable_stays_valid_without_citation(self) -> None:
-        validate_sqs_fragment({"impact_categories": {"platform-phase": {"applicability": "not-applicable"}}})
+        validate_platform_fragment({"impact_categories": {"platform-phase": {"applicability": "not-applicable"}}})
 
     def test_referencing_unknown_category_id_is_rejected(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="agents-init-sqs-") as tmp:
+        with tempfile.TemporaryDirectory(prefix="agents-init-platform-") as tmp:
             root = _make_project(Path(tmp))
             with self.assertRaises(InitError):
-                build_sqs_overlay(root, {"impact_categories": {"not-a-real-category": {"applicability": "unknown"}}})
+                build_platform_overlay(root, {"impact_categories": {"not-a-real-category": {"applicability": "unknown"}}})
 
     def test_invalid_applicability_value_is_rejected(self) -> None:
         # Finding 3: applicability must be one of exactly
         # applicable/not-applicable/unknown; a typo or "n/a" must not be
         # silently accepted.
         with self.assertRaises(InitError):
-            validate_sqs_fragment({"impact_categories": {"platform-phase": {"applicability": "aplicable"}}})
+            validate_platform_fragment({"impact_categories": {"platform-phase": {"applicability": "aplicable"}}})
         with self.assertRaises(InitError):
-            validate_sqs_fragment({"impact_categories": {"platform-phase": {"applicability": "n/a"}}})
+            validate_platform_fragment({"impact_categories": {"platform-phase": {"applicability": "n/a"}}})
 
 
 class TemplateImmutabilityTests(unittest.TestCase):
-    def test_global_sqs_template_file_is_never_modified(self) -> None:
-        template_path = init_project_root = ROOT / "sqs-impact-profile.yaml"
+    def test_global_platform_template_file_is_never_modified(self) -> None:
+        template_path = init_project_root = ROOT / "platform-impact-profile.yaml"
         original = template_path.read_text()
         with tempfile.TemporaryDirectory(prefix="agents-init-immutable-") as tmp:
             root = _make_project(Path(tmp))
-            build_sqs_overlay(
+            build_platform_overlay(
                 root,
                 {
                     "impact_categories": {
@@ -694,7 +694,7 @@ class TemplateImmutabilityTests(unittest.TestCase):
     def test_overlay_never_adds_or_removes_categories(self) -> None:
         with tempfile.TemporaryDirectory(prefix="agents-init-immutable2-") as tmp:
             root = _make_project(Path(tmp))
-            _content, merged = build_sqs_overlay(
+            _content, merged = build_platform_overlay(
                 root,
                 {
                     "impact_categories": {
@@ -708,7 +708,7 @@ class TemplateImmutabilityTests(unittest.TestCase):
             )
             from resolve import _load_structured
 
-            base = _load_structured(ROOT / "sqs-impact-profile.yaml")
+            base = _load_structured(ROOT / "platform-impact-profile.yaml")
             base_ids = [e["id"] for e in base["impact_categories"]]
             overlay_ids = [e["id"] for e in merged["impact_categories"]]
             self.assertEqual(set(overlay_ids), set(base_ids) & set(overlay_ids))

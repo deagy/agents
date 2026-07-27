@@ -34,7 +34,7 @@
     },
     {
       "id": "data-governance",
-      "paths": ["governance/data/**", "data-governance/**", "sqs/data/**"],
+      "paths": ["governance/data/**", "data-governance/**", "platform/data/**"],
       "keywords": ["non-egress", "derived output", "data residency", "data lineage requirements"],
       "primary": ["data-governance-engineer"],
       "reviewers": ["security-reviewer", "compliance-reviewer"],
@@ -42,7 +42,7 @@
     },
     {
       "id": "cryptographic-assurance",
-      "paths": ["security/crypto-assurance/**", "crypto-assurance/**", "sqs/crypto/**"],
+      "paths": ["security/crypto-assurance/**", "crypto-assurance/**", "platform/crypto/**"],
       "keywords": ["crypto agility", "algorithm posture", "pqc", "qkms", "qkd", "qrng", "downgrade risk"],
       "primary": ["cryptographic-assurance-engineer"],
       "reviewers": ["security-reviewer"],

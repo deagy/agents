@@ -22,8 +22,8 @@ from typing import Any, Callable
 
 from init_project import (
     SHARED_DEFAULTS_DIR,
-    SQS_APPLICABILITY_VALUES,
-    SQS_FILENAME,
+    PLATFORM_APPLICABILITY_VALUES,
+    PLATFORM_FILENAME,
     TECHNOLOGY_STANDARDS_FILENAME,
     _AUTONOMY_FILENAME,
     _leaf_paths,
@@ -225,11 +225,11 @@ def collect_governance_answers(
     return {"rg_b_autonomy": fragment, "rg_b_guardrails_addendum": bullets}, decisions
 
 
-def collect_sqs_answers(
+def collect_platform_answers(
     input_func: Callable[[str], str] = input,
 ) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
-    print("\n=== RG-C: guided SQS impact-profile fill-in (sqs-impact-profile.yaml) ===")
-    base = _load_structured(SHARED_DEFAULTS_DIR / SQS_FILENAME)
+    print("\n=== RG-C: guided platform impact-profile fill-in (platform-impact-profile.yaml) ===")
+    base = _load_structured(SHARED_DEFAULTS_DIR / PLATFORM_FILENAME)
     categories: dict[str, Any] = {}
     boms: dict[str, Any] = {}
     decisions: dict[str, dict[str, Any]] = {}
@@ -239,7 +239,7 @@ def collect_sqs_answers(
         # Closed choice only (C-002/finding-3): no free-typed applicability
         # value is ever accepted, mirroring the autonomy allowlist pattern.
         print("  applicability:")
-        for index, choice in enumerate(SQS_APPLICABILITY_VALUES):
+        for index, choice in enumerate(PLATFORM_APPLICABILITY_VALUES):
             marker = " (default)" if choice == "unknown" else ""
             print(f"    [{index}] {choice}{marker}")
         print("    [d] defer")
@@ -257,7 +257,7 @@ def collect_sqs_answers(
             applicability = "unknown"
         else:
             try:
-                applicability = SQS_APPLICABILITY_VALUES[int(selection)]
+                applicability = PLATFORM_APPLICABILITY_VALUES[int(selection)]
             except (ValueError, IndexError):
                 print("  invalid selection, defaulting to unknown")
                 applicability = "unknown"
@@ -283,12 +283,12 @@ def collect_sqs_answers(
         }
 
     for item in base.get("impact_categories", []):
-        _one(item["id"], "id", categories, "rg_c_sqs.impact_categories")
+        _one(item["id"], "id", categories, "rg_c_platform.impact_categories")
     for item in base.get("specialized_boms", []):
-        _one(item["type"], "type", boms, "rg_c_sqs.specialized_boms")
+        _one(item["type"], "type", boms, "rg_c_platform.specialized_boms")
 
     fragment = {"impact_categories": categories, "specialized_boms": boms}
-    return {"rg_c_sqs": fragment}, decisions
+    return {"rg_c_platform": fragment}, decisions
 
 
 def run_interactive_flow(
@@ -325,9 +325,9 @@ def run_interactive_flow(
         governance_answers, governance_decisions = collect_governance_answers(input_func)
         answers.update(governance_answers)
         answers["field_decisions"].update(governance_decisions)
-    if "rg-c-sqs" in sections:
-        sqs_answers, sqs_decisions = collect_sqs_answers(input_func)
-        answers.update(sqs_answers)
-        answers["field_decisions"].update(sqs_decisions)
+    if "rg-c-platform" in sections:
+        platform_answers, platform_decisions = collect_platform_answers(input_func)
+        answers.update(platform_answers)
+        answers["field_decisions"].update(platform_decisions)
 
     return answers

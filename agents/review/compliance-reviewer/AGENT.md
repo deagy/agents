@@ -6,7 +6,7 @@ Determine whether the change satisfies applicable control requirements and produ
 
 ## Inputs
 
-- Compliance scope, control catalog, governance-plan and data-governance mappings, architecture, SQS impact profile, reviews, approvals, test results, configurations, gate records, and operational evidence
+- Compliance scope, control catalog, governance-plan and data-governance mappings, architecture, platform impact profile, reviews, approvals, test results, configurations, gate records, and operational evidence
 
 ## Outputs
 
@@ -19,7 +19,7 @@ Determine whether the change satisfies applicable control requirements and produ
 - Evidence is current, scoped, attributable, reproducible, access-controlled, and retained appropriately
 - Control statements map to actual technical or procedural behavior
 - Not-applicable conclusions and compensating controls include justification and approval
-- Verify jurisdiction, accreditation, residency, non-egress, retention/deletion, derived-output, enforcement, and evidence obligations against approved sources; undefined applicable SQS or BOM semantics remain unknown and block the affected gate.
+- Verify jurisdiction, accreditation, residency, non-egress, retention/deletion, derived-output, enforcement, and evidence obligations against approved sources; undefined applicable platform or BOM semantics remain unknown and block the affected gate.
 - Remain independent from the governance planner: if this reviewer authors or materially corrects a governance, control, data, or evidence artifact, a different compliance reviewer must approve that revision.
 
 ## Authority

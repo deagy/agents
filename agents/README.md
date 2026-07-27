@@ -83,7 +83,7 @@ Initialize a consuming target project from the repository checkout with:
 agents sdlc init --root /path/to/target
 ```
 
-The portable initializer proposes detectable values and leaves consequential unknowns unresolved. Human authority, compliance applicability, environment persistence/production status, risk acceptance, and SQS applicability must be assigned or decided by accountable humans. It writes lifecycle state only in the consuming target project's `.agentic-sdlc/` directory, never in this provider checkout. See `https://github.com/deagy/agentic-sdlc` for installation and upgrades.
+The portable initializer proposes detectable values and leaves consequential unknowns unresolved. Human authority, compliance applicability, environment persistence/production status, risk acceptance, and platform applicability must be assigned or decided by accountable humans. It writes lifecycle state only in the consuming target project's `.agentic-sdlc/` directory, never in this provider checkout. See `https://github.com/deagy/agentic-sdlc` for installation and upgrades.
 
 For GitHub-backed human gates, set `approval_sources.human_gate_default` to
 `github-review`, bind authorities to their GitHub logins, and use

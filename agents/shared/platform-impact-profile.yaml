@@ -4,7 +4,7 @@ status: draft
 # Applicability is applicable | not-applicable | unknown.
 # An applicable item must cite an authorized definition and evidence obligations.
 # Unknown applicability or undefined semantics blocks G3/G4/G5/G7 as relevant.
-# This template intentionally does not define SQS platform terms.
+# This template intentionally does not define platform terms.
 impact_categories:
   - id: platform-phase
     applicability: unknown

@@ -3,7 +3,7 @@
 
 Implements REQ-SC-GENERIC-0001 rev 2 / ARCH-SC-GENERIC-0001 (G3-approved):
 `agents init` walks a project through RG-A (stack/tooling opinions), RG-B
-(governance/autonomy narrowing), and RG-C (SQS impact-profile guided fill-in)
+(governance/autonomy narrowing), and RG-C (platform impact-profile guided fill-in)
 and writes the resulting overlays through a single, containment-checked write
 chokepoint. It never invents a new config format: every file it writes is
 exactly the same `.agents/shared/<filename>` overlay `agents/shared/src/
@@ -58,15 +58,15 @@ TEAM_PROFILE_FILENAME = "team-profile.yaml"
 TECHNOLOGY_STANDARDS_FILENAME = "technology-standards.md"
 LIBRARY_STANDARDS_FILENAME = "library-standards.yaml"
 GUARDRAILS_FILENAME = "cloud-guardrails.md"
-SQS_FILENAME = "sqs-impact-profile.yaml"
+PLATFORM_FILENAME = "platform-impact-profile.yaml"
 
-# Per agents/shared/sqs-impact-profile.yaml's own header comment: the only
+# Per agents/shared/platform-impact-profile.yaml's own header comment: the only
 # three recognized applicability values (C-002/finding-3). Exported so the
 # interactive collector presents this as a closed choice rather than free
 # text, mirroring the autonomy allowlist pattern.
-SQS_APPLICABILITY_VALUES = ("applicable", "not-applicable", "unknown")
+PLATFORM_APPLICABILITY_VALUES = ("applicable", "not-applicable", "unknown")
 
-ALL_SECTIONS = ("rg-a-stack", "rg-b-governance", "rg-c-sqs")
+ALL_SECTIONS = ("rg-a-stack", "rg-b-governance", "rg-c-platform")
 
 # Requirement B-004 / THREAT-MODEL-HARDENING-2: a heuristic safety net, not a
 # complete solution. Case-insensitive substring match against phrasing that
@@ -262,7 +262,7 @@ def validate_overlay_content(filename: str, content: str) -> Any:
 
 # --------------------------------------------------------------------------
 # Structured (YAML) overlay content builders — RG-A team-profile.yaml /
-# library-standards.yaml, RG-C sqs-impact-profile.yaml.
+# library-standards.yaml, RG-C platform-impact-profile.yaml.
 # --------------------------------------------------------------------------
 
 
@@ -547,46 +547,46 @@ def validate_autonomy_overlay_content(
 
 
 # --------------------------------------------------------------------------
-# RG-C sqs-impact-profile.yaml — C-002 applicable-requires-citation, C-004
+# RG-C platform-impact-profile.yaml — C-002 applicable-requires-citation, C-004
 # template immutability (only per-key overrides on existing entries; the
 # category/BOM list itself is never touched here).
 # --------------------------------------------------------------------------
 
 
-def validate_sqs_fragment(fragment: dict[str, Any]) -> None:
+def validate_platform_fragment(fragment: dict[str, Any]) -> None:
     for section in ("impact_categories", "specialized_boms"):
         entries = fragment.get(section)
         if not entries:
             continue
         for key, entry in entries.items():
             if not isinstance(entry, dict):
-                raise InitError(f"sqs-impact-profile.yaml {section}.{key} override must be a mapping")
+                raise InitError(f"platform-impact-profile.yaml {section}.{key} override must be a mapping")
             applicability = entry.get("applicability")
-            if applicability is not None and applicability not in SQS_APPLICABILITY_VALUES:
+            if applicability is not None and applicability not in PLATFORM_APPLICABILITY_VALUES:
                 raise InitError(
-                    f"sqs-impact-profile.yaml {section}.{key}: applicability must be one of "
-                    f"{SQS_APPLICABILITY_VALUES}, got {applicability!r} (C-002)"
+                    f"platform-impact-profile.yaml {section}.{key}: applicability must be one of "
+                    f"{PLATFORM_APPLICABILITY_VALUES}, got {applicability!r} (C-002)"
                 )
             if entry.get("applicability") == "applicable":
                 if not entry.get("definition_reference"):
                     raise InitError(
-                        f"sqs-impact-profile.yaml {section}.{key}: applicability=applicable requires "
+                        f"platform-impact-profile.yaml {section}.{key}: applicability=applicable requires "
                         "a definition_reference (C-002)"
                     )
                 if not entry.get("owner"):
                     raise InitError(
-                        f"sqs-impact-profile.yaml {section}.{key}: applicability=applicable requires "
+                        f"platform-impact-profile.yaml {section}.{key}: applicability=applicable requires "
                         "an owner (C-002)"
                     )
 
 
-def build_sqs_overlay(target_root: Path, fragment: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:
-    validate_sqs_fragment(fragment)
-    existing_text = _read_existing_overlay_text(target_root, SQS_FILENAME)
+def build_platform_overlay(target_root: Path, fragment: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:
+    validate_platform_fragment(fragment)
+    existing_text = _read_existing_overlay_text(target_root, PLATFORM_FILENAME)
     existing: dict[str, Any] = _require_yaml().safe_load(existing_text) or {} if existing_text else {}
     if not fragment and existing_text is None:
         return None
-    base = _load_structured(SHARED_DEFAULTS_DIR / SQS_FILENAME)
+    base = _load_structured(SHARED_DEFAULTS_DIR / PLATFORM_FILENAME)
     merged: dict[str, Any] = dict(existing)
     for section in ("impact_categories", "specialized_boms"):
         overrides = fragment.get(section) or {}
@@ -601,7 +601,7 @@ def build_sqs_overlay(target_root: Path, fragment: dict[str, Any]) -> tuple[str,
         base_ids = [entry[id_key] for entry in base.get(section, [])]
         for entry_id, entry_fragment in overrides.items():
             if entry_id not in base_ids:
-                raise InitError(f"sqs-impact-profile.yaml {section} has no entry {entry_id!r} to override")
+                raise InitError(f"platform-impact-profile.yaml {section} has no entry {entry_id!r} to override")
             current = existing_by_id.get(entry_id, {id_key: entry_id})
             existing_by_id[entry_id] = deep_merge(current, entry_fragment)
         if existing_by_id:
@@ -841,7 +841,7 @@ def _redact_answers_for_echo(answers: dict[str, Any], result: InitResult) -> dic
       addenda are free-text bullets, not dotted leaf paths against a schema,
       so a `field_decisions` entry describing a guardrails-addendum decision
       is gated by its declared `category` alone.
-    - Every other top-level key (including `rg_a_*`, `rg_c_sqs`) is echoed
+    - Every other top-level key (including `rg_a_*`, `rg_c_platform`) is echoed
       verbatim: those fields are not free-text secret-shaped input and
       aren't in scope for this redaction.
 
@@ -1048,19 +1048,19 @@ def plan_writes(
             except Exception as error:  # noqa: BLE001
                 errors.append(f"{GUARDRAILS_FILENAME}: {error}")
 
-    if "rg-c-sqs" in sections:
-        sqs_fragment = answers.get("rg_c_sqs") or {}
+    if "rg-c-platform" in sections:
+        platform_fragment = answers.get("rg_c_platform") or {}
         for section in ("impact_categories", "specialized_boms"):
-            for entry_id in (sqs_fragment.get(section) or {}):
-                touched.append((f"rg_c_sqs.{section}.{entry_id}", "stack"))
+            for entry_id in (platform_fragment.get(section) or {}):
+                touched.append((f"rg_c_platform.{section}.{entry_id}", "stack"))
         try:
-            built = build_sqs_overlay(target_root, sqs_fragment)
+            built = build_platform_overlay(target_root, platform_fragment)
             if built is not None:
                 content, _merged = built
-                validate_overlay_content(SQS_FILENAME, content)
-                result.planned.append(PlannedWrite(SQS_FILENAME, "rg-c-sqs", "stack", content))
+                validate_overlay_content(PLATFORM_FILENAME, content)
+                result.planned.append(PlannedWrite(PLATFORM_FILENAME, "rg-c-platform", "stack", content))
         except Exception as error:  # noqa: BLE001
-            errors.append(f"{SQS_FILENAME}: {error}")
+            errors.append(f"{PLATFORM_FILENAME}: {error}")
 
     try:
         require_field_decisions_cover(touched, decisions)
@@ -1091,7 +1091,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--sections",
         default=",".join(ALL_SECTIONS),
-        help="Comma-separated subset of rg-a-stack,rg-b-governance,rg-c-sqs (default: all)",
+        help="Comma-separated subset of rg-a-stack,rg-b-governance,rg-c-platform (default: all)",
     )
     parser.add_argument("--dry-run", action="store_true", help="Preview only (default unless --force)")
     parser.add_argument("--force", action="store_true", help="Required to actually write")

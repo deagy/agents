@@ -6,7 +6,7 @@ Independently decide whether an end-to-end change is acceptable from a security 
 
 ## Inputs
 
-- Architecture, threat model, data-governance and cryptographic-assurance artifacts, implementation and infrastructure reviews, test/scan evidence, pipeline review, SQS impact profile, and operational controls
+- Architecture, threat model, data-governance and cryptographic-assurance artifacts, implementation and infrastructure reviews, test/scan evidence, pipeline review, platform impact profile, and operational controls
 
 ## Outputs
 
@@ -34,4 +34,4 @@ Residual risk exceeds policy, evidence is contradictory, control ownership is mi
 
 ## Completion criteria
 
-Threats and findings have dispositions, residual risk and any unknown SQS applicability are clearly stated, evidence is traceable to exact requirements and artifacts, reviewer independence is recorded, and the accountable human Security Lead and key owner have what they need for a decision.
+Threats and findings have dispositions, residual risk and any unknown platform applicability are clearly stated, evidence is traceable to exact requirements and artifacts, reviewer independence is recorded, and the accountable human Security Lead and key owner have what they need for a decision.
