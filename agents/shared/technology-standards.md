@@ -2,11 +2,11 @@
 
 These standards specialize `team-profile.yaml`. Where a value remains `not_yet_selected`, agents must present alternatives or request a decision rather than silently choosing an organization-wide standard.
 
-## Proxmox and Terraform
+## Proxmox and OpenTofu
 
-- Treat Terraform as the desired-state source for Proxmox infrastructure and supporting resources within its managed scope.
+- Treat OpenTofu (Terraform-protocol-compatible; chosen over Terraform CLI to avoid BUSL license terms, see `team-profile.yaml`'s `infrastructure_as_code_note`) as the desired-state source for Proxmox infrastructure and supporting resources within its managed scope.
 - Keep reusable modules versioned and separate cluster-wide primitives from workload-specific resources.
-- Do not make undocumented console changes, edit Terraform state manually, or import/adopt resources without explicit approval and a recovery plan.
+- Do not make undocumented console changes, edit OpenTofu/Terraform state manually, or import/adopt resources without explicit approval and a recovery plan.
 - Bind plans to an exact source revision, state snapshot, workspace, variables, provider versions, and Proxmox target.
 - Highlight VM replacement, disk/storage changes, network changes, node placement, privilege changes, and lifecycle exceptions.
 
@@ -48,7 +48,7 @@ These standards specialize `team-profile.yaml`. Where a value remains `not_yet_s
 - Keep schema migrations versioned, ordered, reviewable, reversible where practical, and compatible with the deployment/rollback strategy.
 - Use parameterized queries, least-privilege database roles, TLS where applicable, bounded connection pools, context deadlines, transaction boundaries, and observable slow-query behavior.
 - Design backup, restore, point-in-time recovery, high availability, capacity, maintenance, and schema ownership before production use.
-- Never place database credentials in source, frontend bundles, Helm values, Terraform output, CI logs, or generated documentation.
+- Never place database credentials in source, frontend bundles, Helm values, OpenTofu/Terraform output, CI logs, or generated documentation.
 - For PostgreSQL 18+ containerized disposable stacks, mount persistent database storage at `/var/lib/postgresql` rather than `/var/lib/postgresql/data` unless the image documentation for that exact tag says otherwise. Treat old named volumes with the prior layout as disposable reset candidates only after confirming the environment is local/demo.
 
 ## Disposable local container stacks

@@ -18,7 +18,7 @@ Resolve Python 3.10+ as documented in the runbook. From each internal-tool compo
 
 After changing `agents/catalog.yaml`, `agents/`, or `.agents/skills/`, regenerate `plugins/secure-cloud-agents/` with `agents generate-plugin` and re-run `agents/orchestration/test/test_repository_health.py`, which fails on drift. Run lifecycle integration tests against the pinned standalone Agentic SDLC executable.
 
-For Go services, use `gofmt`, `go tool goimports`, `go vet ./...`, `go test ./...`, `go test -race ./...`, and `go tool golangci-lint run ./...`. For React frontends, use the project-pinned package manager for install, test, typecheck, and build commands. Podman, PostgreSQL migrations, Helm, and Terraform remain disposable or validation-only unless a project has explicit production approval; follow the component README and never target a persistent environment without approval.
+For Go services, use `gofmt`, `go tool goimports`, `go vet ./...`, `go test ./...`, `go test -race ./...`, and `go tool golangci-lint run ./...`. For React frontends, use the project-pinned package manager for install, test, typecheck, and build commands. Podman, PostgreSQL migrations, Helm, and OpenTofu remain disposable or validation-only unless a project has explicit production approval; follow the component README and never target a persistent environment without approval.
 
 ## Coding Style & Naming Conventions
 
