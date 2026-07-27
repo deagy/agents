@@ -1,7 +1,7 @@
 {
   "name": "agents",
   "displayName": "Secure Cloud Agents",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "System-wide access to this repository's secure cloud agent suite: 39 specialist roles, orchestration skills, and the shared knowledge store, reachable from any project once installed at global scope.",
   "author": {
     "name": "Agents maintainers",
