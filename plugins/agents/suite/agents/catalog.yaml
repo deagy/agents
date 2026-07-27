@@ -61,6 +61,12 @@ agents:
     capability: document_author
     model: opus
     codex_model: gpt-5
+  api-contract-engineer:
+    definition: architecture/api-contract-engineer/AGENT.md
+    phase: design
+    capability: document_author
+    model: opus
+    codex_model: gpt-5
   application-engineer:
     definition: engineering/application-engineer/AGENT.md
     phase: build
@@ -157,6 +163,12 @@ agents:
     capability: document_author
     model: sonnet
     codex_model: gpt-5-codex
+  finops-engineer:
+    definition: operations/finops-engineer/AGENT.md
+    phase: operations
+    capability: environment_operator
+    model: sonnet
+    codex_model: gpt-5-codex
   secrets-identity-engineer:
     definition: security/secrets-identity-engineer/AGENT.md
     phase: security
@@ -183,6 +195,12 @@ agents:
     codex_model: gpt-5-codex
   code-reviewer:
     definition: review/code-reviewer/AGENT.md
+    phase: review
+    capability: read_only
+    model: sonnet
+    codex_model: gpt-5-codex
+  accessibility-reviewer:
+    definition: review/accessibility-reviewer/AGENT.md
     phase: review
     capability: read_only
     model: sonnet

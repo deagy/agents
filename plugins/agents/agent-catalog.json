@@ -1,6 +1,23 @@
 {
   "schema_version": 1,
   "agents": {
+    "accessibility-reviewer": {
+      "phase": "review",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "suite/agents/review/accessibility-reviewer/AGENT.md"
+    },
+    "api-contract-engineer": {
+      "phase": "design",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/agents/architecture/api-contract-engineer/AGENT.md"
+    },
     "application-engineer": {
       "phase": "build",
       "kind": "author",
@@ -142,6 +159,15 @@
         "dispatch"
       ],
       "definition": "suite/agents/documentation/evidence-curator/AGENT.md"
+    },
+    "finops-engineer": {
+      "phase": "operations",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/agents/operations/finops-engineer/AGENT.md"
     },
     "frontend-engineer": {
       "phase": "build",

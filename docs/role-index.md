@@ -1,6 +1,6 @@
 # Role index
 
-This index is a human-readable view of the 36 roles in
+This index is a human-readable view of the 39 roles in
 [`agents/catalog.yaml`](../agents/catalog.yaml). The catalog and each linked
 `AGENT.md` remain authoritative.
 
@@ -27,12 +27,14 @@ as authoritative for sequencing; the directory is only a filing convenience.
 | --- | --- | --- | --- |
 | cloud-architect | design | Design secure, resilient, operable, cost-aware architecture. | [AGENT.md](../agents/architecture/cloud-architect/AGENT.md) |
 | threat-modeler | design | Identify credible threats and translate them into testable requirements. | [AGENT.md](../agents/architecture/threat-modeler/AGENT.md) |
+| api-contract-engineer | design | Own cross-service API/schema contract design, versioning, and compatibility. | [AGENT.md](../agents/architecture/api-contract-engineer/AGENT.md) |
 | data-governance-engineer | design | Define classification, ownership, lineage, residency, retention, and deletion requirements. | [AGENT.md](../agents/data/data-governance-engineer/AGENT.md) |
 | cryptographic-assurance-engineer | security | Assess cryptographic inventory, algorithms, keys, certificates, and agility. | [AGENT.md](../agents/security/cryptographic-assurance-engineer/AGENT.md) |
 | secrets-identity-engineer | security | Review secrets, workload identity, credentials, RBAC, and access boundaries. | [AGENT.md](../agents/security/secrets-identity-engineer/AGENT.md) |
 | policy-as-code-engineer | security | Design machine-enforced guardrails for infrastructure and delivery policy. | [AGENT.md](../agents/security/policy-as-code-engineer/AGENT.md) |
 | database-reliability-engineer | operations | Assess PostgreSQL reliability, migrations, backups, recovery, and performance risk. | [AGENT.md](../agents/data/database-reliability-engineer/AGENT.md) |
 | observability-sre | operations | Design telemetry, SLOs, alerts, dashboards, and day-2 readiness. | [AGENT.md](../agents/operations/observability-sre/AGENT.md) |
+| finops-engineer | operations | Monitor live cost/utilization drift against the approved capacity model. | [AGENT.md](../agents/operations/finops-engineer/AGENT.md) |
 
 ## Engineering and delivery
 
@@ -56,6 +58,7 @@ as authoritative for sequencing; the directory is only a filing convenience.
 | performance-testing-engineer | verify | Validate throughput, latency, and capacity assumptions against a candidate build. | [AGENT.md](../agents/testing/performance-testing-engineer/AGENT.md) |
 | chaos-resilience-engineer | verify | Inject controlled faults in disposable environments to verify RTO/RPO and alerting claims. | [AGENT.md](../agents/testing/chaos-resilience-engineer/AGENT.md) |
 | code-reviewer | review | Independently assess application correctness, security, maintainability, and tests. | [AGENT.md](../agents/review/code-reviewer/AGENT.md) |
+| accessibility-reviewer | review | Independently verify browser-facing changes against the accessibility target. | [AGENT.md](../agents/review/accessibility-reviewer/AGENT.md) |
 | infrastructure-reviewer | review | Independently assess infrastructure security, correctness, resilience, and impact. | [AGENT.md](../agents/review/infrastructure-reviewer/AGENT.md) |
 | pipeline-security-reviewer | review | Independently review CI/CD trust boundaries, identities, runners, artifacts, and deployment controls. | [AGENT.md](../agents/review/pipeline-security-reviewer/AGENT.md) |
 | supply-chain-security-reviewer | review | Review dependency, build, package, SBOM, provenance, signing, and image risks. | [AGENT.md](../agents/review/supply-chain-security-reviewer/AGENT.md) |

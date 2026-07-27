@@ -57,7 +57,7 @@ class RepositoryHealthTests(unittest.TestCase):
                 key, value = line.strip().split(":", 1)
                 metadata[current_agent][key] = value.strip()
 
-        self.assertEqual(36, len(metadata))
+        self.assertEqual(39, len(metadata))
         allowed = {"read_only", "document_author", "code_author", "test_author", "environment_operator"}
         for agent_id, values in metadata.items():
             with self.subTest(agent=agent_id):
@@ -309,7 +309,7 @@ class RepositoryHealthTests(unittest.TestCase):
         catalog_count = len(
             json.loads((plugin_root / "agent-catalog.json").read_text(encoding="utf-8"))["agents"]
         )
-        self.assertEqual(36, catalog_count)
+        self.assertEqual(39, catalog_count)
         for manifest in (
             plugin_root / ".codex-plugin" / "plugin.json",
             plugin_root / ".claude-plugin" / "plugin.json",
@@ -348,7 +348,7 @@ class RepositoryHealthTests(unittest.TestCase):
                 / "profile.json"
             ).read_text(encoding="utf-8")
         )
-        self.assertEqual(16, len(secure_cloud["agents"]))
+        self.assertEqual(19, len(secure_cloud["agents"]))
         catalog = json.loads(
             (
                 REPOSITORY_ROOT
@@ -357,7 +357,7 @@ class RepositoryHealthTests(unittest.TestCase):
                 / "agent-catalog.json"
             ).read_text(encoding="utf-8")
         )
-        self.assertEqual(36, len(catalog["agents"]))
+        self.assertEqual(39, len(catalog["agents"]))
 
     def test_packaged_plugin_manifests_declare_a_matching_semver_version(self) -> None:
         sys.path.insert(0, str(ROOT / "orchestration" / "src"))

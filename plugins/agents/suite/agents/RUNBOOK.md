@@ -37,6 +37,7 @@ Choose agents by the capability the task needs. The examples in this runbook sta
 | Define classification, lineage, residency, non-egress, and retention requirements | Data governance engineer | Compliance and security reviewers |
 | Define cryptographic posture, agility, key lifecycle, and downgrade requirements | Cryptographic assurance engineer | Security reviewer and human Security Lead |
 | Design a platform or workload system | Cloud architect | Threat modeler |
+| Design cross-service API/schema contracts | API contract engineer | Code reviewer |
 | Analyze threats | Threat modeler | Application or infrastructure engineer |
 | Build a browser application in the current stack | Frontend engineer | Test engineer, then code reviewer |
 | Build a service or data-access component in the current stack | Backend engineer | Test engineer, then code reviewer |
@@ -54,10 +55,12 @@ Choose agents by the capability the task needs. The examples in this runbook sta
 | Command a major incident | Incident commander | Escalation manager, then accountable human owner |
 | Define SLOs, alerts, and telemetry | Observability SRE | Support triage agent or release engineer |
 | Plan capacity, quotas, or cost tradeoffs | Cost & capacity planner | Infrastructure reviewer |
+| Monitor live cost/utilization drift against the capacity model | FinOps engineer | Cost & capacity planner |
 | Design secrets, identity, or RBAC | Secrets & identity engineer | Security/compliance reviewer |
 | Write or review policy-as-code guardrails | Policy-as-code engineer | Infrastructure/security reviewer |
 | Review datastore reliability and recovery in the current stack | Database reliability engineer | Backend or infrastructure reviewer |
 | Review source code | Code reviewer | Security reviewer when risk warrants |
+| Review accessibility conformance | Accessibility reviewer | Frontend engineer for remediation |
 | Review IaC and plans | Infrastructure reviewer | Security/compliance reviewer |
 | Review CI/CD trust | Pipeline security reviewer | Security reviewer |
 | Review dependencies, SBOMs, provenance, and images | Supply chain security reviewer | Security reviewer, release engineer |
@@ -601,7 +604,7 @@ See `https://github.com/deagy/agentic-sdlc` for lifecycle command and upgrade do
 
 ## 17. Make this repository's own suite available system-wide
 
-Most projects want §16's `agents sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 36 roles, 6 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
+Most projects want §16's `agents sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 39 roles, 6 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
 
 ```sh
 codex plugin marketplace add .

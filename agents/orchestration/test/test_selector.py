@@ -587,6 +587,45 @@ class SelectorTests(unittest.TestCase):
         self.assertIn("cost-capacity-planner", result["agents"]["primary"])
         self.assertIn("observability-sre", result["agents"]["support"])
 
+    def test_selects_finops_engineer_for_cost_drift(self) -> None:
+        result = plan(
+            task="Investigate a spend anomaly and quota exhaustion drift observed in production",
+            changed_files=["reports/anomaly-2026-07.txt"],
+        )
+        self.assertIn("finops-engineer", result["agents"]["primary"])
+        self.assertIn("observability-sre", result["agents"]["support"])
+        # The cost-capacity route's bare "quota" keyword also matches this task
+        # text, so cost-capacity-planner co-selects as primary alongside
+        # finops-engineer. This is deliberate (the two roles hand off to each
+        # other per their AGENT.md), so assert it explicitly rather than
+        # leaving the overlap unverified.
+        self.assertIn("cost-capacity-planner", result["agents"]["primary"])
+
+    def test_selects_api_contract_engineer_for_openapi_changes(self) -> None:
+        result = plan(
+            task="Add a versioned breaking change to the checkout API contract",
+            changed_files=["contracts/checkout/openapi.yaml"],
+        )
+        self.assertIn("api-contract-engineer", result["agents"]["primary"])
+        self.assertIn("cloud-architect", result["agents"]["support"])
+        self.assertIn("frontend-engineer", result["agents"]["support"])
+        self.assertIn("code-reviewer", result["agents"]["reviewers"])
+        # The pre-existing backend route's bare "api" keyword also matches any
+        # task text mentioning "API", so backend-engineer co-selects as
+        # primary here too. Assert it explicitly (rather than leaving it
+        # unverified) since a contract change realistically does need backend
+        # implementation awareness; a contracts/** path with no "api" wording
+        # in the task text would not pull backend-engineer in.
+        self.assertIn("backend-engineer", result["agents"]["primary"])
+
+    def test_frontend_route_includes_accessibility_reviewer(self) -> None:
+        result = plan(
+            task="Update the React navigation for keyboard accessibility",
+            changed_files=["frontend/src/Nav.tsx"],
+        )
+        self.assertIn("frontend-engineer", result["agents"]["primary"])
+        self.assertIn("accessibility-reviewer", result["agents"]["reviewers"])
+
     def test_selects_engineering_and_review_for_orchestration_config_only(self) -> None:
         result = plan(
             task="Adjust configuration behavior",

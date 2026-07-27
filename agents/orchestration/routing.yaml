@@ -78,7 +78,7 @@
       "paths": ["frontend/**", "web/**", "ui/**", "**/*.tsx", "**/*.jsx", "**/*.ts", "**/*.css", "**/*.scss"],
       "keywords": ["frontend", "browser", "accessibility", "user interface", "client application", "react", "typescript", "javascript"],
       "primary": ["frontend-engineer"],
-      "reviewers": ["test-engineer", "code-reviewer"],
+      "reviewers": ["test-engineer", "code-reviewer", "accessibility-reviewer"],
       "quality_gates": ["G3", "G5", "G6", "G7"]
     },
     {
@@ -215,6 +215,23 @@
       "primary": ["cost-capacity-planner"],
       "reviewers": ["infrastructure-reviewer"],
       "support": ["observability-sre"]
+    },
+    {
+      "id": "cost-operations",
+      "paths": [],
+      "keywords": ["cost drift", "cost anomaly", "spend anomaly", "budget alert", "quota exhaustion", "cost overrun", "usage drift"],
+      "primary": ["finops-engineer"],
+      "reviewers": ["infrastructure-reviewer"],
+      "support": ["cost-capacity-planner", "observability-sre"]
+    },
+    {
+      "id": "api-contract",
+      "paths": ["contracts/**", "**/openapi.yaml", "**/openapi.yml", "**/*.proto", "**/schema.graphql"],
+      "keywords": ["api contract", "schema contract", "api versioning", "breaking change", "contract compatibility", "openapi", "graphql schema", "proto schema"],
+      "primary": ["api-contract-engineer"],
+      "reviewers": ["code-reviewer"],
+      "support": ["cloud-architect", "backend-engineer", "frontend-engineer"],
+      "quality_gates": ["G3"]
     },
     {
       "id": "documentation",
@@ -370,6 +387,7 @@
   ],
   "knowledge_focus": {
     "cloud-architect": "prior architecture decisions, constraints, alternatives, failure domains, and recovery objectives",
+    "api-contract-engineer": "prior contract decisions, versioning history, breaking-change migrations, and consumer compatibility constraints",
     "threat-modeler": "prior threats, incidents, mitigations, trust boundaries, and residual risks",
     "application-engineer": "cross-stack contracts, integration decisions, shared behavior, and implementation patterns",
     "frontend-engineer": "frontend implementation patterns, UX decisions, accessibility behavior, API contracts, browser security, and approved React or TypeScript conventions",
@@ -387,11 +405,13 @@
     "incident-commander": "incident timelines, severity decisions, mitigation history, communication cadence, owner chains, postmortems, and unresolved blockers",
     "observability-sre": "SLOs, alerts, dashboards, telemetry decisions, incident signals, operational runbooks, capacity signals, and reliability gaps",
     "cost-capacity-planner": "capacity models, resource limits, storage growth, runner utilization, cost tradeoffs, quotas, and sizing assumptions",
+    "finops-engineer": "observed cost/utilization drift, budget anomalies, quota-exhaustion history, and prior sizing-model revisions",
     "secrets-identity-engineer": "identity flows, workload identity decisions, RBAC, secret rotation, credential exposure, access reviews, and break-glass ownership",
     "policy-as-code-engineer": "policy rules, enforcement decisions, exception history, guardrail tests, admission controls, and compliance mappings",
     "database-reliability-engineer": "PostgreSQL reliability decisions, migration history, backup and restore evidence, PITR, indexes, locks, schema lifecycle, and data retention",
     "release-engineer": "release history, rollback, incidents, dependencies, and verification thresholds",
     "code-reviewer": "prior defects, coding conventions, exceptions, and relevant findings",
+    "accessibility-reviewer": "prior accessibility findings, conformance target decisions, affected journeys, and assistive-technology constraints",
     "infrastructure-reviewer": "prior infrastructure findings, drift, incidents, and approved guardrails",
     "pipeline-security-reviewer": "runner, token, dependency, artifact, and pipeline findings",
     "supply-chain-security-reviewer": "dependency approvals, SBOMs, provenance, signing, vulnerabilities, licenses, base images, OpenTofu providers, Helm dependencies, and artifact integrity",
