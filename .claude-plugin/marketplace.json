@@ -5,8 +5,8 @@
   },
   "plugins": [
     {
-      "name": "secure-cloud-agents",
-      "source": "./plugins/secure-cloud-agents"
+      "name": "agents",
+      "source": "./plugins/agents"
     }
   ]
 }

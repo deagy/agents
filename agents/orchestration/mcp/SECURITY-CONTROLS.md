@@ -1,4 +1,4 @@
-# Security controls: secure-cloud-agents MCP dispatch server
+# Security controls: agents MCP dispatch server
 
 This document enumerates every control in `dispatch_core.py` /
 `dispatch_server.py` that maps to a threat-model expectation or an
@@ -89,7 +89,7 @@ This is risk-reduction against accidental or blindly-automated escalation,
 not risk-elimination against an adversary who fully controls the local git
 history (e.g. a compromised or malicious session with ordinary `git commit`
 access and no external review gate). Global (`~/.codex/agents/`) and plugin
-(`plugins/secure-cloud-agents/codex-agents/`) tiers are intentionally out of
+(`plugins/agents/codex-agents/`) tiers are intentionally out of
 scope for this check: the global tier is only populated through the
 provenance-marker-gated `sync_codex_agents.py` sync, and the plugin tier
 ships with the package -- neither is writable by an ordinary caller through

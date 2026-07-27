@@ -16,7 +16,7 @@ For each new or changed agent:
 3. Update `agents/orchestration/routing.yaml` with path/keyword rules and `knowledge_focus` text.
 4. Update or add workflow/runbook examples when the role changes dispatch behavior.
 5. Add selector tests in `agents/orchestration/test/test_selector.py` for at least one representative path or keyword.
-6. Run `agents generate-plugin` to regenerate the self-contained `plugins/secure-cloud-agents/` package for the new or changed role, and commit the result.
+6. Run `agents generate-plugin` to regenerate the self-contained `plugins/agents/` package for the new or changed role, and commit the result.
 7. Run the orchestration test suite and confirm catalog definition paths exist.
 
 ## Guardrails

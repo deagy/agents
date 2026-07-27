@@ -579,7 +579,7 @@ The initializer detects candidate technologies, commands, and a project profile,
 
 If the target project uses this repository's cloud stack, use
 `--profile secure-cloud`. The `agents sdlc` launcher explicitly supplies
-`plugins/secure-cloud-agents/provider.json`, and generated project wrappers are
+`plugins/agents/provider.json`, and generated project wrappers are
 static copies bound to that provider version.
 
 For a first task, generate a deterministic dispatch plan with the bundled `plan` command, or drive full lifecycle orchestration with the standalone kernel's LangGraph engine — see `https://github.com/deagy/agentic-sdlc` for its CLI and service. Keep lifecycle `required_quality_gates` separate from mutation-oriented `human_gates`, and store task state in the target repository rather than the plugin installation.
@@ -603,15 +603,15 @@ Most projects want §16's `agents sdlc init --profile secure-cloud` instead of t
 
 ```sh
 codex plugin marketplace add .
-codex plugin add secure-cloud-agents@agents-team
+codex plugin add agents@agents-team
 ```
 
 ```text
 /plugin marketplace add .
-/plugin install secure-cloud-agents@agents-team
+/plugin install agents@agents-team
 ```
 
-Codex has no plugin-bundled-subagent mechanism, so its 36 namespaced `secure-cloud-agents-<role>.toml` wrappers are staged under `plugins/secure-cloud-agents/codex-agents/` rather than loaded from the plugin directly. The bootstrap step installs only those namespaced files and refuses unowned collisions; it leaves legacy bare global files untouched. Project-local bare role overrides remain preferred. See `../plugins/secure-cloud-agents/README.md`; legacy bare global files can be removed manually after confirming they are unused. Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
+Codex has no plugin-bundled-subagent mechanism, so its 36 namespaced `agents-<role>.toml` wrappers are staged under `plugins/agents/codex-agents/` rather than loaded from the plugin directly. The bootstrap step installs only those namespaced files and refuses unowned collisions; it leaves legacy bare global files untouched. Project-local bare role overrides remain preferred. See `../plugins/agents/README.md`; legacy bare global files can be removed manually after confirming they are unused. Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
 
 The plugin is self-contained: generated wrappers embed role and shared-policy
 instructions, while skills and runtime files are packaged under `skills/` and

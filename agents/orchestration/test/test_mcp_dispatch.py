@@ -55,7 +55,7 @@ def _write_wrapper(
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
         "# GENERATED FILE: canonical source is agents/engineering/application-engineer/AGENT.md",
-        'name = "secure-cloud-agents-application-engineer"',
+        'name = "agents-application-engineer"',
         'description = "Test role."',
     ]
     if sandbox_mode is not None:
@@ -108,10 +108,10 @@ class TempLayout:
         return self.project_root / ".codex" / "agents" / f"{role_id}.toml"
 
     def global_file(self, role_id: str) -> Path:
-        return self.global_root / f"secure-cloud-agents-{role_id}.toml"
+        return self.global_root / f"agents-{role_id}.toml"
 
     def plugin_file(self, role_id: str) -> Path:
-        return self.plugin_root / f"secure-cloud-agents-{role_id}.toml"
+        return self.plugin_root / f"agents-{role_id}.toml"
 
     def git_init(self) -> None:
         _run_git(["init", "-q"], self.project_root)

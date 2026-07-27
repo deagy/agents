@@ -15,7 +15,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 ├── .agents/plugins/          # Codex CLI repository/team marketplace metadata
 ├── .claude/skills/           # Thin pointers to .agents/skills/* for Claude Code discovery
 ├── .claude-plugin/           # Claude Code repository/team marketplace metadata
-├── plugins/secure-cloud-agents/ # Self-contained suite and Agentic SDLC provider
+├── plugins/agents/ # Self-contained suite and Agentic SDLC provider
 ├── .github/workflows/        # Validate-only GitHub Actions pipeline (tests, bin/agents smoke test, secret scan)
 ├── docs/                     # Audience-oriented guides and human-readable role index
 ├── IDENTITY.md               # Informational suite identity; never an authority source
@@ -47,7 +47,7 @@ Key areas:
 - [agents/testing/](agents/testing/) and [agents/support/](agents/support/) define black-box testing, end-user testing, support triage, and escalation roles.
 - [.agents/skills/](.agents/skills/) contains this repository's skills, packaged for Codex CLI directly and pointed to from `.claude/skills/` for Claude Code.
 - [deagy/agentic-sdlc](https://github.com/deagy/agentic-sdlc) owns the portable lifecycle kernel, initializer, validator, and lifecycle skills.
-- [plugins/secure-cloud-agents/](plugins/secure-cloud-agents/) packages this suite, its 36 roles, and the external `secure-cloud` provider profile.
+- [plugins/agents/](plugins/agents/) packages this suite, its 36 roles, and the external `secure-cloud` provider profile.
 
 The boundary is intentional: Agentic SDLC owns lifecycle state, schemas, gate
 transitions, approval-source policy, and portable commands. This repository
@@ -167,18 +167,18 @@ unconditionally, via the same global/user-scope plugin install mechanism:
 
 ```sh
 codex plugin marketplace add .
-codex plugin add secure-cloud-agents@agents-team
+codex plugin add agents@agents-team
 ```
 
 ```text
 /plugin marketplace add .
-/plugin install secure-cloud-agents@agents-team
+/plugin install agents@agents-team
 ```
 
 The first `run-agent-orchestration` or `knowledge-ingestion` invocation with no
 knowledge-store config anywhere asks whether to create an isolated project-local
 one or use this shared global one — it does not create the global one silently.
-See [plugins/secure-cloud-agents/README.md](plugins/secure-cloud-agents/README.md)
+See [plugins/agents/README.md](plugins/agents/README.md)
 for how namespaced Codex subagent wrappers get into `~/.codex/agents/` without
 overwriting bare project/global roles or unowned namespaced files (Codex has no
 plugin-bundled-agent mechanism) and for how to regenerate after adding a role.
@@ -262,8 +262,8 @@ Start here:
 
 Git tags follow `vMAJOR.MINOR.PATCH` and always match the packaged plugin's
 own version, declared independently in
-`plugins/secure-cloud-agents/.claude-plugin/plugin.json` and
-`plugins/secure-cloud-agents/.codex-plugin/plugin.json` (`agents
+`plugins/agents/.claude-plugin/plugin.json` and
+`plugins/agents/.codex-plugin/plugin.json` (`agents
 generate-plugin` never touches this field, so a release is always a
 deliberate, reviewed action). Tags before `v0.3.0` predate this scheme and
 are a plain incrementing counter; they are left as-is.

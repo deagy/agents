@@ -20,7 +20,7 @@ Use this index to choose the shortest useful path.
 ## Source of truth
 
 Canonical role definitions, policies, routing, workflows, and orchestration
-contracts live under `agents/`. The `plugins/secure-cloud-agents/` directory is
+contracts live under `agents/`. The `plugins/agents/` directory is
 a self-contained distribution and may contain generated copies. Edit canonical
 source files, then regenerate the package when the change requires it.
 

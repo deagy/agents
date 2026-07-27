@@ -5,10 +5,10 @@
   },
   "plugins": [
     {
-      "name": "secure-cloud-agents",
+      "name": "agents",
       "source": {
         "source": "local",
-        "path": "./plugins/secure-cloud-agents"
+        "path": "./plugins/agents"
       },
       "policy": {
         "installation": "AVAILABLE",

@@ -175,7 +175,7 @@ class RepositoryHealthTests(unittest.TestCase):
 
     def test_secure_cloud_agents_plugin_is_generated_and_in_sync(self) -> None:
         generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_global_plugin.py"
-        with tempfile.TemporaryDirectory(prefix="secure-cloud-agents-health-") as temporary_directory:
+        with tempfile.TemporaryDirectory(prefix="agents-health-") as temporary_directory:
             output = Path(temporary_directory) / "plugin"
             generated = subprocess.run(
                 ["python3", str(generator), "--output", str(output)],
@@ -201,7 +201,7 @@ class RepositoryHealthTests(unittest.TestCase):
         packaged_path = (
             REPOSITORY_ROOT
             / "plugins"
-            / "secure-cloud-agents"
+            / "agents"
             / "suite"
             / "agents"
             / "orchestration"
@@ -212,7 +212,7 @@ class RepositoryHealthTests(unittest.TestCase):
         self.assertFalse(packaged_path.exists(), str(packaged_path))
 
     def test_packaged_runtime_has_no_removed_lifecycle_paths(self) -> None:
-        plugin_root = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents"
+        plugin_root = REPOSITORY_ROOT / "plugins" / "agents"
         offenders: list[str] = []
         for path in plugin_root.rglob("*"):
             if not path.is_file():
@@ -242,11 +242,11 @@ class RepositoryHealthTests(unittest.TestCase):
                 current_agent = line.strip()[:-1]
                 catalog_agents[current_agent] = ""
 
-        plugin_root = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents"
+        plugin_root = REPOSITORY_ROOT / "plugins" / "agents"
         for agent_id in catalog_agents:
             with self.subTest(agent=agent_id):
                 md_path = plugin_root / "agents" / f"{agent_id}.md"
-                codex_id = f"secure-cloud-agents-{agent_id}"
+                codex_id = f"agents-{agent_id}"
                 toml_path = plugin_root / "codex-agents" / f"{codex_id}.toml"
                 self.assertTrue(md_path.is_file(), str(md_path))
                 self.assertTrue(toml_path.is_file(), str(toml_path))
@@ -269,7 +269,7 @@ class RepositoryHealthTests(unittest.TestCase):
                 current_agent = line.strip()[:-1]
                 catalog_agents[current_agent] = ""
 
-        export_path = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents" / "agent-catalog.json"
+        export_path = REPOSITORY_ROOT / "plugins" / "agents" / "agent-catalog.json"
         export = json.loads(export_path.read_text(encoding="utf-8"))["agents"]
         self.assertEqual(set(catalog_agents), set(export))
         for agent_id, metadata in export.items():
@@ -280,7 +280,7 @@ class RepositoryHealthTests(unittest.TestCase):
 
     def test_generated_wrappers_enforce_catalog_capabilities_and_provenance(self) -> None:
         generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_global_plugin.py"
-        with tempfile.TemporaryDirectory(prefix="secure-cloud-agents-capabilities-") as temporary_directory:
+        with tempfile.TemporaryDirectory(prefix="agents-capabilities-") as temporary_directory:
             plugin_root = Path(temporary_directory) / "plugin"
             result = subprocess.run(
                 ["python3", str(generator), "--output", str(plugin_root)],
@@ -293,7 +293,7 @@ class RepositoryHealthTests(unittest.TestCase):
             self.assertEqual(0, result.returncode)
             for agent_id in ("code-reviewer", "security-reviewer", "test-engineer"):
                 markdown = (plugin_root / "agents" / f"{agent_id}.md").read_text(encoding="utf-8")
-                toml = (plugin_root / "codex-agents" / f"secure-cloud-agents-{agent_id}.toml").read_text(encoding="utf-8")
+                toml = (plugin_root / "codex-agents" / f"agents-{agent_id}.toml").read_text(encoding="utf-8")
                 self.assertIn("tools: Read, Grep, Glob", markdown)
                 self.assertNotIn("tools: Read, Grep, Glob, Bash", markdown)
                 self.assertIn('sandbox_mode = "read-only"', toml)
@@ -302,10 +302,10 @@ class RepositoryHealthTests(unittest.TestCase):
                 self.assertIn("# GENERATED FILE:", toml)
             author = (plugin_root / "agents" / "application-engineer.md").read_text(encoding="utf-8")
             self.assertIn("tools: Read, Grep, Glob, Bash, Edit, Write", author)
-            self.assertIn('sandbox_mode = "workspace-write"', (plugin_root / "codex-agents" / "secure-cloud-agents-application-engineer.toml").read_text(encoding="utf-8"))
+            self.assertIn('sandbox_mode = "workspace-write"', (plugin_root / "codex-agents" / "agents-application-engineer.toml").read_text(encoding="utf-8"))
 
     def test_plugin_advertised_role_count_matches_generated_catalog(self) -> None:
-        plugin_root = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents"
+        plugin_root = REPOSITORY_ROOT / "plugins" / "agents"
         catalog_count = len(
             json.loads((plugin_root / "agent-catalog.json").read_text(encoding="utf-8"))["agents"]
         )
@@ -319,7 +319,7 @@ class RepositoryHealthTests(unittest.TestCase):
             self.assertEqual({catalog_count}, advertised, str(manifest))
         self.assertEqual(
             catalog_count,
-            len(list((plugin_root / "codex-agents").glob("secure-cloud-agents-*.toml"))),
+            len(list((plugin_root / "codex-agents").glob("agents-*.toml"))),
         )
 
     def test_repository_profile_and_local_override_policy_stay_current(self) -> None:
@@ -342,7 +342,7 @@ class RepositoryHealthTests(unittest.TestCase):
             (
                 REPOSITORY_ROOT
                 / "plugins"
-                / "secure-cloud-agents"
+                / "agents"
                 / "profiles"
                 / "secure-cloud"
                 / "profile.json"
@@ -353,7 +353,7 @@ class RepositoryHealthTests(unittest.TestCase):
             (
                 REPOSITORY_ROOT
                 / "plugins"
-                / "secure-cloud-agents"
+                / "agents"
                 / "agent-catalog.json"
             ).read_text(encoding="utf-8")
         )
@@ -419,9 +419,9 @@ class RepositoryHealthTests(unittest.TestCase):
             target.mkdir(parents=True)
             generated = (
                 "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
-                'name = "secure-cloud-agents-code-reviewer"\n'
+                'name = "agents-code-reviewer"\n'
             )
-            (source / "secure-cloud-agents-code-reviewer.toml").write_text(generated, encoding="utf-8")
+            (source / "agents-code-reviewer.toml").write_text(generated, encoding="utf-8")
             bare = target / "code-reviewer.toml"
             bare.write_text("user-owned bare wrapper\n", encoding="utf-8")
 
@@ -432,7 +432,7 @@ class RepositoryHealthTests(unittest.TestCase):
             self.assertIn("Installed 1", installed.stdout)
             self.assertEqual("user-owned bare wrapper\n", bare.read_text(encoding="utf-8"))
 
-            namespaced = target / "secure-cloud-agents-code-reviewer.toml"
+            namespaced = target / "agents-code-reviewer.toml"
             namespaced.write_text("", encoding="utf-8")
             empty_rejected = subprocess.run(
                 [sys.executable, str(script), "--source", str(source), "--target", str(target)],
@@ -462,11 +462,11 @@ class RepositoryHealthTests(unittest.TestCase):
             target.mkdir(parents=True)
             generated = (
                 "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
-                'name = "secure-cloud-agents-code-reviewer"\n'
+                'name = "agents-code-reviewer"\n'
             )
             real_source = source / "real.toml"
             real_source.write_text(generated, encoding="utf-8")
-            symlinked_source = source / "secure-cloud-agents-code-reviewer.toml"
+            symlinked_source = source / "agents-code-reviewer.toml"
             os.symlink(real_source, symlinked_source)
 
             source_rejected = subprocess.run(
@@ -482,10 +482,10 @@ class RepositoryHealthTests(unittest.TestCase):
             target = temporary / "home" / ".codex" / "agents"
             source.mkdir()
             target.mkdir(parents=True)
-            (source / "secure-cloud-agents-code-reviewer.toml").write_text(generated, encoding="utf-8")
+            (source / "agents-code-reviewer.toml").write_text(generated, encoding="utf-8")
             real_destination = target / "real-destination.toml"
             real_destination.write_text("user-owned destination\n", encoding="utf-8")
-            os.symlink(real_destination, target / "secure-cloud-agents-code-reviewer.toml")
+            os.symlink(real_destination, target / "agents-code-reviewer.toml")
 
             destination_rejected = subprocess.run(
                 [sys.executable, str(script), "--source", str(source), "--target", str(target)],
@@ -503,15 +503,15 @@ class RepositoryHealthTests(unittest.TestCase):
             target = temporary / "home" / ".codex" / "agents"
             source.mkdir()
             target.mkdir(parents=True)
-            (source / "secure-cloud-agents-code-reviewer.toml").write_text(
+            (source / "agents-code-reviewer.toml").write_text(
                 "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
-                'name = "secure-cloud-agents-code-reviewer"\n'
+                'name = "agents-code-reviewer"\n'
                 'model = "gpt-5-mini"\n',
                 encoding="utf-8",
             )
-            (source / "secure-cloud-agents-test-engineer.toml").write_text(
+            (source / "agents-test-engineer.toml").write_text(
                 "# GENERATED FILE: canonical source is agents/review/test-engineer/AGENT.md\n"
-                'name = "secure-cloud-agents-test-engineer"\n',
+                'name = "agents-test-engineer"\n',
                 encoding="utf-8",
             )
 
@@ -521,18 +521,18 @@ class RepositoryHealthTests(unittest.TestCase):
             )
             self.assertIn("Index installed", result.stdout)
 
-            index_path = target / "secure-cloud-agents-index.json"
+            index_path = target / "agents-index.json"
             index = json.loads(index_path.read_text(encoding="utf-8"))
             self.assertEqual(1, index["schema_version"])
             self.assertEqual("# GENERATED FILE: canonical source is agents/", index["generated_marker"])
             self.assertEqual(
                 {
                     "code-reviewer": {
-                        "path": str((target / "secure-cloud-agents-code-reviewer.toml").resolve()),
+                        "path": str((target / "agents-code-reviewer.toml").resolve()),
                         "model": "gpt-5-mini",
                     },
                     "test-engineer": {
-                        "path": str((target / "secure-cloud-agents-test-engineer.toml").resolve()),
+                        "path": str((target / "agents-test-engineer.toml").resolve()),
                         "model": None,
                     },
                 },
@@ -547,13 +547,13 @@ class RepositoryHealthTests(unittest.TestCase):
             target = temporary / "home" / ".codex" / "agents"
             source.mkdir()
             target.mkdir(parents=True)
-            (source / "secure-cloud-agents-code-reviewer.toml").write_text(
+            (source / "agents-code-reviewer.toml").write_text(
                 "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
-                'name = "secure-cloud-agents-code-reviewer"\n'
+                'name = "agents-code-reviewer"\n'
                 'model = "gpt-5-mini"\n',
                 encoding="utf-8",
             )
-            index_path = target / "secure-cloud-agents-index.json"
+            index_path = target / "agents-index.json"
 
             first = subprocess.run(
                 [sys.executable, str(script), "--source", str(source), "--target", str(target)],
@@ -577,14 +577,14 @@ class RepositoryHealthTests(unittest.TestCase):
             target = temporary / "home" / ".codex" / "agents"
             source.mkdir()
             target.mkdir(parents=True)
-            wrapper_source = source / "secure-cloud-agents-code-reviewer.toml"
+            wrapper_source = source / "agents-code-reviewer.toml"
             wrapper_source.write_text(
                 "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
-                'name = "secure-cloud-agents-code-reviewer"\n'
+                'name = "agents-code-reviewer"\n'
                 'model = "gpt-5-mini"\n',
                 encoding="utf-8",
             )
-            index_path = target / "secure-cloud-agents-index.json"
+            index_path = target / "agents-index.json"
 
             subprocess.run(
                 [sys.executable, str(script), "--source", str(source), "--target", str(target)],
@@ -594,7 +594,7 @@ class RepositoryHealthTests(unittest.TestCase):
 
             wrapper_source.write_text(
                 "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
-                'name = "secure-cloud-agents-code-reviewer"\n'
+                'name = "agents-code-reviewer"\n'
                 'model = "gpt-5"\n',
                 encoding="utf-8",
             )
@@ -613,12 +613,12 @@ class RepositoryHealthTests(unittest.TestCase):
             target = temporary / "home" / ".codex" / "agents"
             source.mkdir()
             target.mkdir(parents=True)
-            (source / "secure-cloud-agents-code-reviewer.toml").write_text(
+            (source / "agents-code-reviewer.toml").write_text(
                 "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
-                'name = "secure-cloud-agents-code-reviewer"\n',
+                'name = "agents-code-reviewer"\n',
                 encoding="utf-8",
             )
-            index_path = target / "secure-cloud-agents-index.json"
+            index_path = target / "agents-index.json"
             index_path.write_text('{"unowned": true}', encoding="utf-8")
 
             rejected = subprocess.run(
@@ -638,14 +638,14 @@ class RepositoryHealthTests(unittest.TestCase):
             target = temporary / "home" / ".codex" / "agents"
             source.mkdir()
             target.mkdir(parents=True)
-            (source / "secure-cloud-agents-code-reviewer.toml").write_text(
+            (source / "agents-code-reviewer.toml").write_text(
                 "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
-                'name = "secure-cloud-agents-code-reviewer"\n',
+                'name = "agents-code-reviewer"\n',
                 encoding="utf-8",
             )
             real_destination = target / "real-index.json"
             real_destination.write_text("user-owned index\n", encoding="utf-8")
-            os.symlink(real_destination, target / "secure-cloud-agents-index.json")
+            os.symlink(real_destination, target / "agents-index.json")
 
             rejected = subprocess.run(
                 [sys.executable, str(script), "--source", str(source), "--target", str(target)],
@@ -665,17 +665,17 @@ class RepositoryHealthTests(unittest.TestCase):
             target.mkdir(parents=True)
             # "code-reviewer" sorts before "test-engineer", so the loop writes
             # it successfully before reaching the collision below.
-            (source / "secure-cloud-agents-code-reviewer.toml").write_text(
+            (source / "agents-code-reviewer.toml").write_text(
                 "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
-                'name = "secure-cloud-agents-code-reviewer"\n',
+                'name = "agents-code-reviewer"\n',
                 encoding="utf-8",
             )
-            (source / "secure-cloud-agents-test-engineer.toml").write_text(
+            (source / "agents-test-engineer.toml").write_text(
                 "# GENERATED FILE: canonical source is agents/review/test-engineer/AGENT.md\n"
-                'name = "secure-cloud-agents-test-engineer"\n',
+                'name = "agents-test-engineer"\n',
                 encoding="utf-8",
             )
-            index_path = target / "secure-cloud-agents-index.json"
+            index_path = target / "agents-index.json"
 
             # First run: no collision yet, establishes an installed index.
             first = subprocess.run(
@@ -688,7 +688,7 @@ class RepositoryHealthTests(unittest.TestCase):
             # Corrupt one of the already-installed namespaced wrappers so the
             # next run fails partway through the per-wrapper loop, before the
             # index would be rebuilt.
-            (target / "secure-cloud-agents-test-engineer.toml").write_text(
+            (target / "agents-test-engineer.toml").write_text(
                 "user-owned collision\n", encoding="utf-8",
             )
             failing = subprocess.run(
@@ -698,7 +698,7 @@ class RepositoryHealthTests(unittest.TestCase):
             self.assertNotEqual(0, failing.returncode)
             self.assertIn("Refusing to overwrite unowned", failing.stderr)
             self.assertTrue(
-                (target / "secure-cloud-agents-code-reviewer.toml").read_text(encoding="utf-8").startswith(
+                (target / "agents-code-reviewer.toml").read_text(encoding="utf-8").startswith(
                     "# GENERATED FILE:"
                 ),
                 "the wrapper preceding the collision should still have been written",
@@ -717,18 +717,18 @@ class RepositoryHealthTests(unittest.TestCase):
             target = temporary / "home" / ".codex" / "agents"
             source.mkdir()
             target.mkdir(parents=True)
-            code_reviewer_source = source / "secure-cloud-agents-code-reviewer.toml"
+            code_reviewer_source = source / "agents-code-reviewer.toml"
             code_reviewer_source.write_text(
                 "# GENERATED FILE: canonical source is agents/review/code-reviewer/AGENT.md\n"
-                'name = "secure-cloud-agents-code-reviewer"\n',
+                'name = "agents-code-reviewer"\n',
                 encoding="utf-8",
             )
-            (source / "secure-cloud-agents-test-engineer.toml").write_text(
+            (source / "agents-test-engineer.toml").write_text(
                 "# GENERATED FILE: canonical source is agents/review/test-engineer/AGENT.md\n"
-                'name = "secure-cloud-agents-test-engineer"\n',
+                'name = "agents-test-engineer"\n',
                 encoding="utf-8",
             )
-            index_path = target / "secure-cloud-agents-index.json"
+            index_path = target / "agents-index.json"
 
             subprocess.run(
                 [sys.executable, str(script), "--source", str(source), "--target", str(target)],
@@ -760,14 +760,14 @@ class RepositoryHealthTests(unittest.TestCase):
             temporary = Path(temporary_directory)
             source_target = temporary / "source-target.toml"
             source_target.write_text("source content\n", encoding="utf-8")
-            source_link = temporary / "secure-cloud-agents-source.toml"
+            source_link = temporary / "agents-source.toml"
             os.symlink(source_target, source_link)
             with self.assertRaises(OSError):
                 module._read_regular_file(source_link)
 
             destination_target = temporary / "destination-target.toml"
             destination_target.write_text("destination content\n", encoding="utf-8")
-            destination_link = temporary / "secure-cloud-agents-destination.toml"
+            destination_link = temporary / "agents-destination.toml"
             os.symlink(destination_target, destination_link)
             with mock.patch.object(Path, "is_symlink", return_value=False):
                 with self.assertRaises(OSError):
@@ -776,7 +776,7 @@ class RepositoryHealthTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform != "win32", "packaged wrapper is a POSIX sh script")
     def test_packaged_selector_targets_callers_git_repository(self) -> None:
-        wrapper = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents" / "bin" / "agents"
+        wrapper = REPOSITORY_ROOT / "plugins" / "agents" / "bin" / "agents"
         with tempfile.TemporaryDirectory() as temporary_directory:
             target = Path(temporary_directory) / "unrelated"
             target.mkdir()
@@ -811,7 +811,7 @@ class RepositoryHealthTests(unittest.TestCase):
 
     def test_generated_package_has_no_source_paths_or_unsafe_relative_documentation_paths(self) -> None:
         generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_global_plugin.py"
-        with tempfile.TemporaryDirectory(prefix="secure-cloud-agents-packaging-") as temporary_directory:
+        with tempfile.TemporaryDirectory(prefix="agents-packaging-") as temporary_directory:
             plugin_root = Path(temporary_directory) / "plugin"
             subprocess.run(
                 ["python3", str(generator), "--output", str(plugin_root)],
@@ -834,9 +834,9 @@ class RepositoryHealthTests(unittest.TestCase):
                     self.assertTrue(target.is_file() or target.is_dir(), f"{path}: {relative}")
 
     def test_secure_cloud_agents_plugin_is_self_contained(self) -> None:
-        plugin_root = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents"
+        plugin_root = REPOSITORY_ROOT / "plugins" / "agents"
         provider = json.loads((plugin_root / "provider.json").read_text(encoding="utf-8"))
-        self.assertEqual("secure-cloud-agents", provider["id"])
+        self.assertEqual("agents", provider["id"])
         self.assertEqual("0.3.0", provider["version"])
         self.assertTrue((plugin_root / "suite" / "agents" / "catalog.yaml").is_file())
         offenders = []
@@ -875,7 +875,7 @@ class RepositoryHealthTests(unittest.TestCase):
     def test_secure_cloud_agents_provider_kernel_compatibility_covers_live_sdlc_version(self) -> None:
         self._require_agentic_sdlc()
         provider = json.loads(
-            (REPOSITORY_ROOT / "plugins" / "secure-cloud-agents" / "provider.json").read_text(encoding="utf-8")
+            (REPOSITORY_ROOT / "plugins" / "agents" / "provider.json").read_text(encoding="utf-8")
         )
         minimum = provider["kernel_compatibility"]["minimum"]
         maximum_exclusive = provider["kernel_compatibility"]["maximum_exclusive"]
@@ -990,7 +990,7 @@ class RepositoryHealthTests(unittest.TestCase):
 
     def test_secure_cloud_agents_plugin_bin_wrapper_matches_direct_invocation(self) -> None:
         self._require_agentic_sdlc()
-        wrapper = REPOSITORY_ROOT / "plugins" / "secure-cloud-agents" / "bin" / "agents"
+        wrapper = REPOSITORY_ROOT / "plugins" / "agents" / "bin" / "agents"
         self.assertTrue(wrapper.is_file(), str(wrapper))
         self.assertTrue(os.access(wrapper, os.X_OK), f"{wrapper} is not executable")
         selector = ROOT / "orchestration" / "src" / "select_agents.py"
