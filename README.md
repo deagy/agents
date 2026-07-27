@@ -15,7 +15,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 ├── .agents/plugins/          # Codex CLI repository/team marketplace metadata
 ├── .claude/skills/           # Thin pointers to .agents/skills/* for Claude Code discovery
 ├── .claude-plugin/           # Claude Code repository/team marketplace metadata
-├── plugins/agents/ # Self-contained suite and Agentic SDLC provider
+├── plugins/agents/           # Self-contained suite and Agentic SDLC provider
 ├── .github/workflows/        # Validate-only GitHub Actions pipeline (tests, bin/agents smoke test, secret scan)
 ├── docs/                     # Audience-oriented guides and human-readable role index
 ├── IDENTITY.md               # Informational suite identity; never an authority source
