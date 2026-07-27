@@ -394,7 +394,7 @@
     "code-reviewer": "prior defects, coding conventions, exceptions, and relevant findings",
     "infrastructure-reviewer": "prior infrastructure findings, drift, incidents, and approved guardrails",
     "pipeline-security-reviewer": "runner, token, dependency, artifact, and pipeline findings",
-    "supply-chain-security-reviewer": "dependency approvals, SBOMs, provenance, signing, vulnerabilities, licenses, base images, Terraform providers, Helm dependencies, and artifact integrity",
+    "supply-chain-security-reviewer": "dependency approvals, SBOMs, provenance, signing, vulnerabilities, licenses, base images, OpenTofu providers, Helm dependencies, and artifact integrity",
     "security-reviewer": "threats, findings, exceptions, incidents, and compensating controls",
     "compliance-reviewer": "control interpretations, mappings, evidence, exceptions, and retention",
     "technical-writer": "approved decisions, current operations, terminology, and audience conventions",

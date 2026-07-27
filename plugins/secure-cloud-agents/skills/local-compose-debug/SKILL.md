@@ -20,7 +20,7 @@ Use this skill for disposable local stacks only. Do not apply production infrast
    - PostgreSQL 18 image error: mount the volume at `/var/lib/postgresql`, not `/var/lib/postgresql/data`.
    - Rootless object volume permissions: avoid chmod/chown on provider-managed mounts; use service-owned paths or relaxed local-only permissions explicitly.
    - Vite cache error: ensure writable `node_modules`/Vite temp/cache paths are available inside the container.
-5. Keep fixes environment-scoped and absent from production-shaped Helm/Terraform contracts.
+5. Keep fixes environment-scoped and absent from production-shaped Helm/OpenTofu contracts.
 6. Re-run the smallest useful startup/health check and record any unavailable tooling.
 
 ## Safety

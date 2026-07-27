@@ -6,7 +6,7 @@ This directory defines the Secure Cloud provider's agent team for designing,
 building, observing, operating, black-box testing, end-user testing,
 supporting, escalating, reviewing, documenting, and releasing approved
 platform and application changes. The current provider is specialized for the
-team's self-hosted Proxmox, Talos, Kubernetes, Terraform, Helm, Go/Python/
+team's self-hosted Proxmox, Talos, Kubernetes, OpenTofu, Helm, Go/Python/
 PostgreSQL backends, React/TypeScript frontends, Gherkin tests, and GitLab
 delivery platform, but the role identities themselves are organized around work
 domains rather than individual tools.

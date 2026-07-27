@@ -8,7 +8,7 @@ description: Review GitLab CI/CD changes for secure pipeline design, runner trus
 
 # GitLab Pipeline Review
 
-Use this skill for review or bounded repository edits to GitLab CI/CD artifacts. It does not authorize deploy jobs, registry pushes, Terraform plan/apply, Helm install, production environments, or secret creation.
+Use this skill for review or bounded repository edits to GitLab CI/CD artifacts. It does not authorize deploy jobs, registry pushes, OpenTofu plan/apply, Helm install, production environments, or secret creation.
 
 ## Review steps
 
@@ -16,7 +16,7 @@ Use this skill for review or bounded repository edits to GitLab CI/CD artifacts.
 2. Identify all stages, jobs, images, services, variables, caches, artifacts, rules, dependencies, and protected-environment assumptions.
 3. Verify untrusted merge requests and forks cannot read secrets, mint credentials, modify deployment targets, poison caches, or package unreviewed artifacts.
 4. Check images/tools are pinned, runners are appropriate for trust level, artifacts have checksums/SBOMs when required, and failures are fail-closed.
-5. Confirm package-only/demo pipelines contain no deploy, environment, migration-apply, registry-push, signing, promotion, Terraform-plan/apply, or Helm-install behavior unless explicitly approved.
+5. Confirm package-only/demo pipelines contain no deploy, environment, migration-apply, registry-push, signing, promotion, OpenTofu-plan/apply, or Helm-install behavior unless explicitly approved.
 6. Route findings to `pipeline-security-reviewer`, `supply-chain-security-reviewer`, and `release-engineer` when applicable.
 
 ## Output

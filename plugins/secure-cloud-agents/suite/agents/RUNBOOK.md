@@ -193,7 +193,7 @@ processing workers, object storage, database, identities, network boundaries,
 telemetry, backup, and disaster recovery.
 Data: Confidential customer documents. Retain for 30 days.
 Targets: RTO 4 hours; RPO 15 minutes.
-Constraints: Terraform-managed Proxmox resources; declarative Talos and
+Constraints: OpenTofu-managed Proxmox resources; declarative Talos and
 Kubernetes configuration; Helm-packaged workloads; private workers and data
 services; workload identity where supported; no long-lived deployment keys.
 Output: Architecture proposal, data flows, trust boundaries, ADRs,
@@ -266,7 +266,7 @@ Follow `workflows/infrastructure-change.md`.
 
 ```text
 Objective: Provision worker capacity and private storage connectivity for the current platform profile.
-Scope: Terraform Proxmox modules, Talos configuration, Kubernetes resources,
+Scope: OpenTofu Proxmox modules, Talos configuration, Kubernetes resources,
 and Helm values in a disposable test environment first.
 Target: Proxmox cluster <ID>, Talos/Kubernetes cluster <ID>, namespace <NAME>.
 Acceptance criteria:
@@ -305,7 +305,7 @@ Requirements:
 - Untrusted merge-request or fork pipelines receive no secrets or deployment permissions.
 - Short-lived workload identities with separate build and deploy roles.
 - Pinned third-party actions and build images.
-- The current stack examples include Go/Python checks, Gherkin integration/regression tests, Terraform validation
+- The current stack examples include Go/Python checks, Gherkin integration/regression tests, OpenTofu validation
   and plans, Helm render/validation, Talos/Kubernetes validation, secret scan,
   SAST, dependency scan, container scan, SBOM,
   signed provenance, immutable artifact promotion, and rollback.
@@ -544,12 +544,12 @@ Use `workflows/production-release.md`. Invoke `workflows/rollback.md` or inciden
 
 ## 15. Current team profile and remaining decisions
 
-The active provider profile currently centers on self-hosted Proxmox, Terraform, Talos, Kubernetes, Helm, Go/Python/PostgreSQL backends, React/TypeScript frontends, Gherkin integration/regression behavior, and GitLab for VCS and CI/CD. Those stack choices specialize this Secure Cloud provider; they do not change that agent selection and review boundaries stay capability-first. Preferred Go dependencies are Gorilla Mux, Viper, pgx, cenkalti/backoff, Godog, Mockery with Testify mocks, and Testify `require`/`assert`; the exact paths and constraints are in `shared/library-standards.yaml`. The default autonomy policy permits scoped repository edits and local validation, but requires explicit authorization for shared-system reads and human approval for persistent environment mutations.
+The active provider profile currently centers on self-hosted Proxmox, OpenTofu, Talos, Kubernetes, Helm, Go/Python/PostgreSQL backends, React/TypeScript frontends, Gherkin integration/regression behavior, and GitLab for VCS and CI/CD. Those stack choices specialize this Secure Cloud provider; they do not change that agent selection and review boundaries stay capability-first. Preferred Go dependencies are Gorilla Mux, Viper, pgx, cenkalti/backoff, Godog, Mockery with Testify mocks, and Testify `require`/`assert`; the exact paths and constraints are in `shared/library-standards.yaml`. The default autonomy policy permits scoped repository edits and local validation, but requires explicit authorization for shared-system reads and human approval for persistent environment mutations.
 
-Before operational use, decide and record:
+As of 2026-07-26, `shared/team-profile.yaml` records resolved decisions for all of the below except supported tool and language versions (policy resolved; exact pins deferred to a future version manifest) and compliance frameworks/evidence retention (explicitly out of scope for now) — see that file's `resolved_standards_2026_07_26` and `out_of_scope_standards` blocks for the authoritative, current record rather than duplicating it here:
 
 - Supported tool and language versions.
-- Proxmox Terraform provider, state backend, and recovery process.
+- Proxmox OpenTofu provider, state backend, and recovery process.
 - GitLab runner placement, isolation, trust tiers, registry, and signing implementation.
 - Kubernetes policy-as-code, secrets management, and observability platforms.
 - Compliance frameworks, control owners, and evidence retention rules.

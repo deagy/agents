@@ -83,12 +83,13 @@ platform:
   package_deployment: helm
 
 infrastructure:
-  infrastructure_as_code: terraform
+  infrastructure_as_code: opentofu
+  infrastructure_as_code_note: OpenTofu chosen over Terraform CLI to avoid BUSL license terms; bpg/proxmox provider is drop-in compatible
   desired_state_required: true
   manual_configuration: exception_only
-  terraform_provider: not_yet_selected
-  state_backend: not_yet_selected
-  policy_as_code: not_yet_selected
+  terraform_provider: bpg/proxmox, pinned ~> 0.66
+  state_backend: self-hosted MinIO, Terraform/OpenTofu s3 backend with native state locking, versioned bucket + scheduled replication/snapshot backup
+  policy_as_code: kyverno
 
 engineering:
   primary_language: golang
@@ -104,19 +105,25 @@ frontend:
   secondary_language: javascript
   javascript_usage: when_typescript_is_impractical
   build_runtime: nodejs
-  react_framework: not_yet_selected
-  package_manager: not_yet_selected
-  build_tool: not_yet_selected
-  styling_and_component_system: not_yet_selected
-  unit_component_test_stack: not_yet_selected
-  browser_end_to_end_test_stack: not_yet_selected
+  react_framework: vite + react-router v7 (library mode)
+  node_version: "22 (LTS)"
+  package_manager: pnpm
+  build_tool: vite
+  styling_and_component_system: css-modules + headless component primitives (e.g. radix primitives)
+  unit_component_test_stack: vitest + react-testing-library
+  browser_end_to_end_test_stack: playwright
+  supported_browsers: latest 2 stable versions of Chrome, Firefox, Safari, Edge (evergreen)
+  accessibility_conformance_target: "WCAG 2.1 AA"
 
 backend:
   primary_language: golang
   secondary_language: python
   database: postgresql
+  postgresql_version: "17"
+  postgresql_topology: single-primary + streaming replicas via CloudNativePG operator, 3-node minimum across distinct failure domains
+  postgresql_backup: pgBackRest or CNPG Barman Cloud plugin to S3-compatible object storage, continuous WAL archiving; target RPO <= 5 min, RTO <= 30 min (failover) / <= 4 hr (full restore)
   golang_database_driver: github.com/jackc/pgx/v5
-  migration_tool: not_yet_selected
+  migration_tool: golang-migrate (forward-only preferred, reviewed paired up/down migrations, tested up->down->up in CI against disposable instance)
   api_protocols: project_defined
 
 knowledge_store:
@@ -132,8 +139,8 @@ testing:
   integration_specification: gherkin
   regression_specification: gherkin
   gherkin_step_implementation: project_defined
-  load_generation_tool: not_yet_selected
-  chaos_engineering_tool: not_yet_selected
+  load_generation_tool: k6 (dedicated disposable per-run Kubernetes namespace, never shared with staging/production traffic)
+  chaos_engineering_tool: chaos mesh (namespace-scoped, explicit opt-in labels, time-boxed via experiment CRD duration)
 
 source_control:
   platform: github
@@ -142,28 +149,108 @@ source_control:
 
 cicd:
   platform: gitlab_ci
-  runner_hosting: not_yet_selected
-  runner_trust_model: not_yet_selected
+  runner_hosting: kubernetes executor on the existing self-hosted Talos/Kubernetes cluster
+  runner_trust_model: three tiers (untrusted lint/test, isolated build/package, protected deploy), separated by namespace/node-pool and GitLab protected-runner/protected-environment controls
   protected_production_environment: required
+  container_registry: gitlab container registry
+  artifact_signing: cosign keyless (Sigstore OIDC), sign once at build tier, verify before every promotion
 
-unresolved_standards:
-  - supported tool and language versions
-  - Proxmox Terraform provider and version policy
-  - Terraform state backend and recovery process
-  - Kubernetes policy-as-code engine
-  - GitLab runner placement, isolation, and trust tiers
-  - container registry and artifact-signing implementation
-  - observability platform
-  - secrets-management platform
-  - compliance frameworks and evidence retention
-  - React framework or application architecture
-  - Node.js version, package manager, and frontend build tool
-  - frontend styling, component, unit, and browser test stacks
-  - supported browsers and accessibility conformance target
-  - PostgreSQL version, topology, high availability, backup, and recovery design
-  - database migration tool and schema change policy
-  - load/performance-testing tool and target environment ownership
-  - chaos-engineering tool and blast-radius isolation guarantees for fault-injection exercises
+observability:
+  platform: prometheus + grafana + loki + tempo, opentelemetry for instrumentation
+  rollout: phased (metrics/alerting first, then logs, then traces)
+
+secrets_management:
+  platform: openbao (Vault-API-compatible, MPL-licensed), Kubernetes auth + JWT/OIDC auth for GitLab CI, External Secrets Operator for workload sync/rotation
+  bootstrap_only: sops + age for pre-bootstrap/break-glass material
+
+version_policy:
+  approved: 2026-07-26
+  policy: >
+    Track N-1 minor for platform/operator components (Kubernetes, Talos, Helm,
+    CNPG, Kyverno, Chaos Mesh) to allow ecosystem compatibility catch-up; always
+    take the latest patch within the pinned minor. Exact versions are pinned in
+    a single machine-readable version manifest (e.g. versions.yaml/.tool-versions),
+    kept current via automated dependency updates (e.g. Renovate) with human
+    review, and re-verified quarterly. Kubernetes/Talos/CNPG/Kyverno must be
+    validated together as one compatibility set, not upgraded independently.
+  note: >
+    Specific version numbers are deliberately not hardcoded here: they go stale
+    quickly and any number recorded by an LLM-based recommendation reflects its
+    training data, not a live check of what's current or CVE-affected. The
+    Engineering Lead must resolve exact pinned versions for the components below
+    into the version manifest at adoption time, verifying current-stable status
+    and known CVEs before pinning.
+  components_needing_pins:
+    - go (primary backend language; team-profile.yaml does not yet state a version)
+    - python (secondary language)
+    - opentofu (CLI version, distinct from the bpg/proxmox provider version already pinned)
+    - kubernetes
+    - talos (selects the compatible kubernetes version; upgrade talos first)
+    - helm (stay on 3.x; defer helm 4 until chart/plugin ecosystem is validated)
+    - golangci-lint
+    - kyverno
+    - cloudnativepg
+    - golang-migrate
+    - cosign
+    - k6
+    - chaos-mesh
+    - typescript, pnpm, vite, vitest, playwright (frontend toolchain, matched to node 22 lts)
+
+out_of_scope_standards:
+  - description: compliance frameworks and evidence retention
+    decision: no compliance framework currently applies to this internal tooling; explicitly declared out of scope by Product Owner (2026-07-26) rather than resolved
+    owner: Product Owner (Daniel Eagy)
+    review_by: 2027-01-26
+    scope_note: >
+      This exception covers named regulatory/accreditation frameworks only
+      (e.g. SOC 2, ISO 27001, GDPR-specific evidence-retention obligations).
+      It does not exempt secrets_management, observability, or cicd.artifact_signing
+      above from baseline secret-hygiene and telemetry-scrubbing practice: no
+      secret values in logs/traces, least-privilege credential issuance, and
+      short-lived credentials remain expected regardless of framework applicability.
+    compensating_control: >
+      OpenBao issues only short-lived, scoped credentials (no long-lived static
+      secrets in CI variables or Kubernetes manifests); observability collectors
+      must not be configured to capture request/response bodies or credential
+      material by default.
+    revisit_when: a consuming project or accreditation requirement makes this material; owner re-evaluates at review_by regardless
+
+resolved_standards_2026_07_26:
+  note: >
+    Resolved via REQ-SC-PLAT-0001 (RG-2) G3 architecture recommendations, approved by
+    Product Owner. See infrastructure, frontend, backend, testing, and cicd/observability/
+    secrets_management sections above for the recorded decisions. Sizing, node-pool/taint
+    detail, HA topology depth, retention windows, and trust-root choices remain open
+    follow-up decisions for the Engineering Lead during implementation.
+  gate_rigor_note: >
+    An independent compliance review of this resolution noted that agents/orchestration/
+    routing.yaml's own routing rules (governance-planning, compliance, sensitive-data,
+    secrets-identity, supply-chain) would ordinarily route decisions touching compliance
+    scope, secrets platforms, and artifact signing/registry through independent
+    compliance-reviewer/security-reviewer sign-off and a G4/G5/G7 gate record, separate
+    from G1-G3 intent/requirements/architecture approval. Product Owner explicitly
+    accepted G1-G3 approval alone as sufficient for this internal-tooling technology-
+    standards baseline (2026-07-26) rather than retroactively simulating G4/G5/G7. This
+    is a conscious, recorded scope decision, not an oversight; a future decision with
+    real regulatory, customer-data, or production-security stakes should not treat this
+    as precedent for skipping those gates.
+  items:
+    - Proxmox Terraform provider and version policy
+    - Terraform state backend and recovery process
+    - Kubernetes policy-as-code engine
+    - GitLab runner placement, isolation, and trust tiers
+    - container registry and artifact-signing implementation
+    - observability platform
+    - secrets-management platform
+    - React framework or application architecture
+    - Node.js version, package manager, and frontend build tool
+    - frontend styling, component, unit, and browser test stacks
+    - supported browsers and accessibility conformance target
+    - PostgreSQL version, topology, high availability, backup, and recovery design
+    - database migration tool and schema change policy
+    - load/performance-testing tool and target environment ownership
+    - chaos-engineering tool and blast-radius isolation guarantees for fault-injection exercises
+    - supported tool and language versions (policy resolved; exact pins deferred to version manifest, see version_policy above)
 
 # Shared policy: agents/shared/technology-standards.md
 
@@ -171,11 +258,11 @@ unresolved_standards:
 
 These standards specialize `team-profile.yaml`. Where a value remains `not_yet_selected`, agents must present alternatives or request a decision rather than silently choosing an organization-wide standard.
 
-## Proxmox and Terraform
+## Proxmox and OpenTofu
 
-- Treat Terraform as the desired-state source for Proxmox infrastructure and supporting resources within its managed scope.
+- Treat OpenTofu (Terraform-protocol-compatible; chosen over Terraform CLI to avoid BUSL license terms, see `team-profile.yaml`'s `infrastructure_as_code_note`) as the desired-state source for Proxmox infrastructure and supporting resources within its managed scope.
 - Keep reusable modules versioned and separate cluster-wide primitives from workload-specific resources.
-- Do not make undocumented console changes, edit Terraform state manually, or import/adopt resources without explicit approval and a recovery plan.
+- Do not make undocumented console changes, edit OpenTofu/Terraform state manually, or import/adopt resources without explicit approval and a recovery plan.
 - Bind plans to an exact source revision, state snapshot, workspace, variables, provider versions, and Proxmox target.
 - Highlight VM replacement, disk/storage changes, network changes, node placement, privilege changes, and lifecycle exceptions.
 
@@ -217,7 +304,7 @@ These standards specialize `team-profile.yaml`. Where a value remains `not_yet_s
 - Keep schema migrations versioned, ordered, reviewable, reversible where practical, and compatible with the deployment/rollback strategy.
 - Use parameterized queries, least-privilege database roles, TLS where applicable, bounded connection pools, context deadlines, transaction boundaries, and observable slow-query behavior.
 - Design backup, restore, point-in-time recovery, high availability, capacity, maintenance, and schema ownership before production use.
-- Never place database credentials in source, frontend bundles, Helm values, Terraform output, CI logs, or generated documentation.
+- Never place database credentials in source, frontend bundles, Helm values, OpenTofu/Terraform output, CI logs, or generated documentation.
 - For PostgreSQL 18+ containerized disposable stacks, mount persistent database storage at `/var/lib/postgresql` rather than `/var/lib/postgresql/data` unless the image documentation for that exact tag says otherwise. Treat old named volumes with the prior layout as disposable reset candidates only after confirming the environment is local/demo.
 
 ## Disposable local container stacks
@@ -372,6 +459,19 @@ golang:
           - verify_generation_is_clean_in_gitlab_ci
           - review_major_version_and_template_changes_before_upgrade
 
+    migrations:
+      - name: golang_migrate
+        status: preferred
+        module: github.com/golang-migrate/migrate/v4
+        import_path: github.com/golang-migrate/migrate/v4
+        version_policy: pin_project_approved_version
+        usage: PostgreSQL schema migrations (team-profile.yaml backend.migration_tool)
+        constraints:
+          - forward_only_migrations_preferred
+          - review_paired_up_and_down_migration_files
+          - test_up_then_down_then_up_in_ci_against_a_disposable_instance
+          - no_manual_production_schema_edits
+
     assertions:
       - name: testify_require
         status: preferred
@@ -438,8 +538,8 @@ local_validation:
   golang_tests: allowed
   python_tests: allowed
   gherkin_tests: allowed
-  terraform_format_validate_lint_and_security_scan: allowed
-  terraform_plan: allowed_with_explicit_read_only_credentials
+  opentofu_format_validate_lint_and_security_scan: allowed
+  opentofu_plan: allowed_with_explicit_read_only_credentials
   helm_lint_template_and_schema_validation: allowed
   talos_configuration_validation: allowed
   kubernetes_client_side_dry_run: allowed
@@ -467,8 +567,8 @@ mutations:
   proxmox_cluster_storage_network_or_access: human_approval
   talos_machine_or_cluster_operation: human_approval
   kubernetes_or_helm_persistent_environment: human_approval
-  terraform_apply: human_approval_except_authorized_disposable_test
-  terraform_state_operation: human_approval
+  opentofu_apply: human_approval_except_authorized_disposable_test
+  opentofu_state_operation: human_approval
   gitlab_protection_runner_variable_or_credential: human_approval
   destructive_action: human_approval
 

@@ -9,7 +9,7 @@ Own capacity and cost planning for Secure Cloud workloads. Estimate resource dem
 ## Inputs
 
 - Approved intent, architecture, workload estimates, and recovery objectives
-- Terraform/Helm values, resource limits, storage policies, retention requirements, runner usage, and telemetry
+- OpenTofu/Helm values, resource limits, storage policies, retention requirements, runner usage, and telemetry
 
 ## Outputs
 

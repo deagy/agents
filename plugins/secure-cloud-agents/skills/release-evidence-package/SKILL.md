@@ -1,6 +1,6 @@
 ---
 name: release-evidence-package
-description: Assemble auditable release or demo-package evidence for this repository. Use when collecting source revisions, test results, scans, SBOMs, checksums, rendered manifests, Terraform validation, reviews, approvals, exceptions, and unavailable-tool reports.
+description: Assemble auditable release or demo-package evidence for this repository. Use when collecting source revisions, test results, scans, SBOMs, checksums, rendered manifests, OpenTofu validation, reviews, approvals, exceptions, and unavailable-tool reports.
 ---
 
 > Packaged suite note: when the current project has no local `agents/` tree, resolve suite files under `../../suite/agents/` relative to this `SKILL.md`. The packaged plugin is self-contained; do not look for the source checkout.
@@ -16,7 +16,7 @@ Collect and index:
 
 - Exact source revision, changed paths, task ID, and scope exclusions.
 - Build artifacts, checksums, SBOMs, provenance/signing status, and artifact retention location.
-- Unit, integration, Gherkin, frontend, race, accessibility, security, dependency, container, secret-scan, Helm render/lint, Terraform validate, and policy-check results as applicable.
+- Unit, integration, Gherkin, frontend, race, accessibility, security, dependency, container, secret-scan, Helm render/lint, OpenTofu validate, and policy-check results as applicable.
 - Architecture, code, infrastructure, pipeline, security, compliance, support, and release reviews with dispositions.
 - Human approvals or explicit missing-owner blockers for production, destructive, privileged, risk-acceptance, or persistent-environment actions.
 - Unavailable validations with reason, host/tool constraints, and proposed prepared-runner follow-up.

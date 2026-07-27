@@ -64,7 +64,7 @@ role_query_focus:
   frontend-engineer: React patterns, UX decisions, accessibility, API contracts, and browser security
   backend-engineer: Go patterns, PostgreSQL decisions, schemas, migrations, APIs, and operational lessons
   application-engineer: cross-stack contracts, integration decisions, shared behavior, and prior implementation patterns
-  infrastructure-provisioner: Proxmox, Terraform, Talos, Kubernetes, Helm, storage, and networking patterns
+  infrastructure-provisioner: Proxmox, OpenTofu, Talos, Kubernetes, Helm, storage, and networking patterns
   cicd-engineer: GitLab pipelines, runners, artifacts, signing, deployments, and rollback
   test-engineer: Gherkin scenarios, regressions, failure cases, and quality history
   code-reviewer: prior defects, conventions, exceptions, and relevant findings

@@ -26,7 +26,7 @@ return a blocking question in its result instead of prompting directly.**
    - **changed paths / base revision**: omit `--files` to use Git status (staged, unstaged, untracked), or use `--base <ref>` when the prompt clearly scopes to committed changes. Only ask when neither resolves to a sensible scope.
    - **acceptance criteria / exclusions**: whatever the prompt states; otherwise proceed without inventing them and note the gap in the final report rather than blocking on it.
 4. Default to `planning-review-only` when execution mode is absent. In that mode, inspect and report without editing application or infrastructure artifacts.
-5. Do not infer approval for persistent infrastructure changes, production actions, Terraform apply/state changes, Talos or Kubernetes mutations, database migrations, merge/push, destructive actions, risk acceptance, or policy exceptions. When a `human_gate` or mutation-oriented stop applies, ask the human directly instead of guessing; batch every question raised this round (by the selector or by dispatched agents) into one turn.
+5. Do not infer approval for persistent infrastructure changes, production actions, OpenTofu apply/state changes, Talos or Kubernetes mutations, database migrations, merge/push, destructive actions, risk acceptance, or policy exceptions. When a `human_gate` or mutation-oriented stop applies, ask the human directly instead of guessing; batch every question raised this round (by the selector or by dispatched agents) into one turn.
 
 ## Bootstrap Local Setup
 
@@ -86,9 +86,30 @@ Adapt waves to the selector plan, required quality gates, and workflow dependenc
 
 Wait for each dispatched agent's final response. Check its scope, evidence, disposition, unresolved risks, and receiver. Save run artifacts only when repository edits are authorized, using `agents/orchestration/runs/<task-id>/` unless the user specifies another location.
 
+For every `team_recipes` entry actually dispatched this run, perform an
+explicit **Reconcile Team Findings** pass before folding its members' results
+into the summary below:
+
+- State which `communication_mode` actually executed for that team — `peer`
+  or its `orchestrator-relayed` fallback (see
+  [references/runner-adapters.md](references/runner-adapters.md)'s "Team
+  communication contract"). Team composition and expected deliverables are
+  runner-independent and identical either way; only the communication
+  mechanism differs.
+- When `orchestrator-relayed` ran, read every member's output yourself and
+  explicitly surface points of disagreement between them — list agreements
+  and unresolved disagreements as separate items rather than silently
+  merging everything into one narrative.
+- Never describe team members as having "discussed," "debated," or
+  "challenged" each other's findings unless `peer` mode actually ran. Under
+  `orchestrator-relayed`, describe the reconciliation as this orchestrating
+  session's own synthesis of independently produced outputs.
+
 Return an outcome-first summary containing:
 
-- task and execution mode;
+- task and execution mode, including each dispatched team's id and the
+  `communication_mode` that actually executed for it (`peer` or
+  `orchestrator-relayed`);
 - agents dispatched, completed, blocked, and deferred;
 - knowledge retrieval status and citations used;
 - findings and conflicting recommendations by severity;

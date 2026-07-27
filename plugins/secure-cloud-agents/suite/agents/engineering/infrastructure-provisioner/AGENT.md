@@ -21,7 +21,7 @@ reviewable plans. Do not approve or apply your own production changes.
 ## Required checks
 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
-- In this provider, use Terraform for desired state, Helm for package
+- In this provider, use OpenTofu for desired state, Helm for package
   deployment, and declarative Talos or Kubernetes configuration; do not
   substitute console, SSH, or imperative drift.
 - Validate rendered Helm resources and identify cluster-scoped objects, hooks, CRDs, RBAC, secret references, and rollback/deletion effects.
