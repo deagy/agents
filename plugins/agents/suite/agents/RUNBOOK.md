@@ -616,7 +616,9 @@ codex plugin add agents@agents-team
 /plugin install agents@agents-team
 ```
 
-Codex has no plugin-bundled-subagent mechanism, so its 36 namespaced `agents-<role>.toml` wrappers are staged under `plugins/agents/codex-agents/` rather than loaded from the plugin directly. The bootstrap step installs only those namespaced files and refuses unowned collisions; it leaves legacy bare global files untouched. Project-local bare role overrides remain preferred. See `../README.md`; legacy bare global files can be removed manually after confirming they are unused. Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
+Codex has no plugin-bundled-subagent mechanism, so its 39 namespaced `agents-<role>.toml` wrappers are staged under `plugins/agents/codex-agents/` rather than loaded from the plugin directly. The bootstrap step installs only those namespaced files and refuses unowned collisions; it leaves legacy bare global files untouched. Project-local bare role overrides remain preferred. See `../README.md`; legacy bare global files can be removed manually after confirming they are unused. Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
+
+A namespaced `.toml` wrapper alone only lets a human or a project-local override name the role directly; it does not fix how a running Codex *session* dispatches one of these roles as a subagent mid-task. That dispatch mechanic — and the MCP server that makes it work correctly — is documented in `.agents/skills/run-agent-orchestration/references/runner-adapters.md`'s "Codex CLI" section; see that file's "Register the MCP dispatch server" step before relying on Codex-hosted subagent dispatch.
 
 The plugin is self-contained: generated wrappers embed role and shared-policy
 instructions, while skills and runtime files are packaged under `skills/` and
