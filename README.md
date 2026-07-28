@@ -17,6 +17,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 ├── .claude-plugin/           # Claude Code repository/team marketplace metadata
 ├── .clinerules/              # Pointer to AGENTS.md/RUNBOOK.md for Cline CLI discovery
 ├── plugins/agents/           # Self-contained suite and Agentic SDLC provider
+├── plugins/cline/            # Hand-authored Cline CLI plugin source (TypeScript; not generated — see below)
 ├── .github/workflows/        # Validate-only GitHub Actions pipeline (tests, bin/agents smoke test, secret scan)
 ├── docs/                     # Audience-oriented guides and human-readable role index
 ├── IDENTITY.md               # Informational suite identity; never an authority source
@@ -64,7 +65,7 @@ over any other project's gates.
 
 ## Supported runners
 
-Every role definition and orchestration tool is runner-neutral text and data. Codex CLI and Claude Code wrappers are generated into the self-contained Secure Cloud plugin. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc). [Cline](https://docs.cline.bot) is also recognized: it [reads `AGENTS.md` natively](https://docs.cline.bot/customization/cline-rules) as a cross-tool standard, and this repository additionally provides `.clinerules/agents-repository.md`, which points at the same canonical `AGENTS.md` and `agents/RUNBOOK.md` sources.
+Every role definition and orchestration tool is runner-neutral text and data. Codex CLI and Claude Code wrappers are generated into the self-contained Secure Cloud plugin. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc). [Cline](https://docs.cline.bot) is also recognized, in two complementary ways: it [reads `AGENTS.md` natively](https://docs.cline.bot/customization/cline-rules) as a cross-tool standard, and this repository additionally provides `.clinerules/agents-repository.md`, which points at the same canonical `AGENTS.md` and `agents/RUNBOOK.md` sources — this works for any Cline session with this repository as its working directory, no install required. Separately, [plugins/cline/](plugins/cline/) is a real, installable Cline CLI plugin (`cline plugin install ./plugins/cline`, or a git URL) exposing an `agents_select` tool that wraps `agents select` and returns its plan directly in conversation. Unlike `plugins/agents/`, `plugins/cline/` is hand-authored TypeScript source under version control, not generated output from `agents generate-plugin`. This plugin system currently applies to the Cline CLI, SDK, and Kanban only — not the VSCode/JetBrains extension. **Known limitation**: as of `cline` CLI `3.0.46` (the latest published version at the time this was built), invoking any locally-installed plugin's tool fails with `JSON.stringify cannot serialize cyclic structures` — this was confirmed to be an upstream Cline bug, not specific to this plugin, by reproducing the identical failure with `cline/cline`'s own unmodified example plugin. The plugin installs and uninstalls cleanly; tool invocation should start working once Cline ships a fix.
 
 ## Quick start
 

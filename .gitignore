@@ -47,3 +47,8 @@ evidence/
 
 # Local Claude Code settings (not portable across contributors).
 .claude/settings.local.json
+
+# Node/TypeScript build artifacts for plugins/cline/ (this repo's Cline CLI plugin).
+node_modules/
+plugins/cline/dist/
+plugins/cline/*.tsbuildinfo
