@@ -162,13 +162,27 @@ rather than naming the BOM/category jargon. Record `applicable` or
 
 If the target project also wants this suite's own `.agents/shared/*`
 policy overlays (team profile, library/technology standards, cloud
-guardrails, autonomy policy), separately ask if they want that, then run
-`./bin/agents init --root <path> --interactive` (or `--answers <file>` if
-you construct the answers file yourself from the conversation) —
-translating any `field_decisions` prompts it raises into plain
-questions too. This is a distinct, optional step from `agentic-sdlc init`;
-do not conflate the two internally, but you don't need to explain the
-distinction to the human unless they ask.
+guardrails, autonomy policy), separately ask if they want that. This
+subcommand takes `--target <path>` (not `--root`), and always previews by
+default — it only writes when `--force` is also passed:
+
+```sh
+./bin/agents init --target <path> --answers <file> --force
+```
+
+`--interactive` (prompt-flow mode) exists as an alternative to `--answers`,
+but it drives a live terminal prompt loop meant for a human typing
+directly at it — you cannot reliably drive it as an agent through
+non-interactive command execution. Instead, build the `--answers` file
+yourself from the conversation (see `agents init --help` and
+`agents/shared/src/init_project.py` for the answer-file's `schema_version:
+1` shape and required `field_decisions` entries per touched field),
+translating whatever it validates against into plain questions for the
+human rather than showing them the file. Run once with `--dry-run` (which
+is the default without `--force`) to preview, then re-run with `--force`
+to actually write. This is a distinct, optional step from `agentic-sdlc
+init`; do not conflate the two internally, but you don't need to explain
+the distinction to the human unless they ask.
 
 ## Step 9 — Validate and loop
 

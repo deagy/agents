@@ -847,9 +847,9 @@ class RepositoryHealthTests(unittest.TestCase):
 
     @staticmethod
     def _semver_tuple(value: str) -> tuple[int, int, int]:
-        # Verbatim copy of `semver_tuple` from
-        # /home/deagy/sdk/agentic-sdlc/plugins/agentic-sdlc/scripts/agentic_sdlc.py
-        # (lines 84-88). Reimplemented locally rather than imported because
+        # Verbatim copy of `semver_tuple` from `agentic-sdlc`'s
+        # plugins/agentic-sdlc/scripts/agentic_sdlc.py (lines 84-88), in a
+        # `deagy/agentic-sdlc` checkout. Reimplemented locally rather than imported because
         # `AGENTIC_SDLC_BIN`/`PATH` resolution does not guarantee an importable
         # layout for the standalone kernel script.
         match = re.fullmatch(r"([0-9]+)\.([0-9]+)\.([0-9]+)", value)
