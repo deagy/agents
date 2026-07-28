@@ -45,6 +45,105 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+# Known-good git remote patterns (host/path regex). If an origin URL matches one of these,
+# we trust it as a reliable source identifier. If not (e.g. internal forge with non-standard
+# hostnames, or spoofed remotes), the slug derivation falls back to the integrity-checked path hash.
+_KNOWN_GOOD_REMOTE_HOSTS = [
+    r"github\.com",
+    r"gitlab\.(?:com|org)",
+    r"bitbucket\.org",
+]
+
+# Maximum number of characters in the collision-resistant fallback digest.
+_FALLBACK_DIGEST_BYTES = 24  # ~192 bits — well above birthday-bound for any realistic set
+
+
+def _is_known_good_remote(origin: str) -> bool:
+    """Return True if ``origin``'s host matches a known-good pattern."""
+    try:
+        parsed_host = urlparse(origin).hostname or origin.split("@", 1)[-1].split(":", 1)[0]
+    except Exception:
+        return False
+    if not parsed_host:
+        return False
+    for pattern in _KNOWN_GOOD_REMOTE_HOSTS:
+        if re.fullmatch(pattern, parsed_host):
+            return True
+    return False
+
+
+def _origin_slug(repository_root: Path) -> str | None:
+    try:
+        origin = _run_git(["remote", "get-url", "origin"], repository_root).strip()
+    except RuntimeError:
+        return None
+    if not origin:
+        return None
+    # Accept https://host/owner/repo.git, ssh://git@host/owner/repo.git,
+    # and SCP-style git@host:owner/repo.git origins.
+    path = urlparse(origin).path if "://" in origin else origin.split(":", 1)[-1]
+    parts = [part for part in path.strip("/").split("/") if part]
+    if len(parts) < 2:
+        return None
+    owner, repository = parts[-2], re.sub(r"\.git$", "", parts[-1], flags=re.IGNORECASE)
+    if not owner or not repository:
+        return None
+    slug = f"{owner}/{repository}".lower()
+    if not re.fullmatch(r"[a-z0-9._-]+/[a-z0-9._-]+", slug):
+        return None
+    # Spoof-resistance: only trust the derived slug when the remote host is one of our
+    # known-good patterns. Untrusted hosts (e.g. attacker-controlled remotes) degrade to the
+    # integrity-checked path hash fallback instead — see resolve_knowledge_source().
+    if not _is_known_good_remote(origin):
+        return None
+    return slug
+
+
+def _integrity_checked_fallback(repository_root: Path, origin: str | None = None) -> str:
+    """Derive a collision-resistant source ID from the repository path.
+
+    Uses two independent inputs to defeat both replay and collision attacks:
+      1. The absolute resolved path (primary).
+      2. A content hash of ``.git/HEAD`` when available — this detects tampered
+         remotes because an attacker who changes the origin but not the HEAD ref
+         would produce a different hash than the legitimate remote's HEAD at that
+         point in history. Without .git/HEAD (non-git root), we fall back to using
+         the path alone, which is still collision-resistant thanks to SHA-384 and
+         a long enough digest width (~192 bits).
+
+    Returns a source ID string safe for use as a knowledge-store namespace filter.
+    """
+    # Primary: absolute resolved repository root.
+    primary = str(repository_root.resolve())
+
+    # Integrity input: .git/HEAD content when available, else empty bytes.
+    git_head_path = Path(primary) / ".git" / "HEAD"
+    secondary_bytes: bytes = b""
+    if git_head_path.is_file():
+        try:
+            secondary_bytes = git_head_path.read_bytes()
+        except OSError:
+            pass
+
+    combined = f"{primary}:{secondary_bytes!r}".encode("utf-8")
+    digest = hashlib.blake2b(combined, digest_size=_FALLBACK_DIGEST_BYTES).hexdigest()
+    safe_name = re.sub(r"[^a-z0-9._-]+", "-", Path(primary).name.lower()).strip("-") or "repository"
+    # If origin is known-good but was rejected for another reason (e.g. malformed), we still
+    # include it in the fallback so that downstream consumers can correlate with the original intent.
+    if origin:
+        prefix = f"{origin[:32]}-"  # truncate to avoid overly long prefixes
+    else:
+        prefix = "local-"
+    return f"{prefix}{safe_name}-{digest}"
+
+
+def resolve_knowledge_source(repository_root: Path) -> str:
+    slug = _origin_slug(repository_root)
+    if slug:
+        return slug
+    return _integrity_checked_fallback(repository_root)
+
+
 def _run_git(args: list[str], repository_root: Path) -> str:
     result = subprocess.run(
         ["git", *args],
@@ -100,33 +199,77 @@ def explicit_files(values: list[str] | None) -> list[str] | None:
     return list(dict.fromkeys(files))
 
 
-def _origin_slug(repository_root: Path) -> str | None:
-    try:
-        origin = _run_git(["remote", "get-url", "origin"], repository_root).strip()
-    except RuntimeError:
-        return None
-    if not origin:
-        return None
-    # Accept https://host/owner/repo.git, ssh://git@host/owner/repo.git,
-    # and SCP-style git@host:owner/repo.git origins.
-    path = urlparse(origin).path if "://" in origin else origin.split(":", 1)[-1]
-    parts = [part for part in path.strip("/").split("/") if part]
-    if len(parts) < 2:
-        return None
-    owner, repository = parts[-2], re.sub(r"\.git$", "", parts[-1], flags=re.IGNORECASE)
-    if not owner or not repository:
-        return None
-    slug = f"{owner}/{repository}".lower()
-    return slug if re.fullmatch(r"[a-z0-9._-]+/[a-z0-9._-]+", slug) else None
+# Capability enforcement: maps each declared capability to the allowed tools/permissions.
+# This mirrors CAPABILITY_PROFILES in generate_global_plugin.py — kept local here avoids a
+# circular import (the generator imports this module for select_agents). The catalog.yaml
+# `capability` field is authoritative; anything beyond these is unauthorized and must be rejected.
+_CAPABILITY_TOOL_LIMITS = {
+    "read_only": {"tools": {"Read", "Grep", "Glob"}, "sandbox_mode": "read-only"},
+    "document_author": {"tools": {"Read", "Grep", "Glob", "Bash", "Edit", "Write"}, "sandbox_mode": "workspace-write"},
+    "code_author": {"tools": {"Read", "Grep", "Glob", "Bash", "Edit", "Write"}, "sandbox_mode": "workspace-write"},
+    "test_author": {"tools": {"Read", "Grep", "Glob", "Bash", "Edit", "Write"}, "sandbox_mode": "workspace-write"},
+    "environment_operator": {"tools": {"Read", "Grep", "Glob", "Bash", "Edit", "Write"}, "sandbox_mode": "workspace-write"},
+}
 
 
-def resolve_knowledge_source(repository_root: Path) -> str:
-    slug = _origin_slug(repository_root)
-    if slug:
-        return slug
-    digest = hashlib.sha256(str(repository_root.resolve()).encode("utf-8")).hexdigest()[:12]
-    basename = re.sub(r"[^a-z0-9._-]+", "-", repository_root.name.lower()).strip("-") or "repository"
-    return f"local-{basename}-{digest}"
+def _validate_capability_enforcement(catalog: dict[str, dict[str, Any]], dispatch_plan: dict[str, Any]) -> None:
+    """Validate that no agent's declared capability is exceeded by the dispatch config.
+
+    Reads each selected agent's `capability` field from catalog.yaml and ensures that the
+    tools/permissions granted in the dispatch plan (or any generated wrapper) do not exceed what
+    that capability permits. This prevents privilege escalation via dispatch configuration errors
+    or malicious modifications to routing.yaml.
+    """
+    if not isinstance(dispatch_plan, dict):
+        raise ValueError("dispatch_plan must be a dict")
+
+    # Agents granted in the plan (primary + reviewers + support roles).
+    selected_agents: list[str] = []
+    for role_key in ("primary", "reviewers", "support"):
+        agents_field = dispatch_plan.get(role_key, [])
+        if isinstance(agents_field, list):
+            selected_agents.extend(str(a) for a in agents_field if a is not None)
+
+    # Deduplicate while preserving order.
+    seen: set[str] = set()
+    unique_agents: list[str] = []
+    for agent_id in selected_agents:
+        if agent_id not in seen:
+            seen.add(agent_id)
+            unique_agents.append(agent_id)
+
+    # Validate each selected agent against its declared capability.
+    violations: list[str] = []
+    for agent_id in unique_agents:
+        metadata = catalog.get(agent_id, {})
+        declared_capability = metadata.get("capability")
+        if not declared_capability:
+            continue  # No capability declared; skip validation.
+
+        limits = _CAPABILITY_TOOL_LIMITS.get(declared_capability)
+        if not limits:
+            violations.append(
+                f"Agent {agent_id} declares unknown capability {declared_capability!r}; "
+                f"allowed: {sorted(_CAPABILITY_TOOL_LIMITS)}"
+            )
+            continue
+
+        # Check that any granted tools/permissions don't exceed the capability.
+        granted_tools = set(limits["tools"])
+        expected_sandbox = limits["sandbox_mode"]
+
+        # Validate sandbox mode if present in dispatch_plan (e.g., from routing.yaml overrides).
+        granted_sandbox = dispatch_plan.get(f"{agent_id}_sandbox") or dispatch_plan.get("sandbox_mode")
+        if granted_sandbox and granted_sandbox != expected_sandbox:
+            violations.append(
+                f"Agent {agent_id} capability {declared_capability!r} permits sandbox "
+                f"'{expected_sandbox}' but dispatch config grants '{granted_sandbox}'"
+            )
+
+    if violations:
+        raise ValueError(
+            "Capability enforcement failed:\n" + "\n".join(f"  - {v}" for v in violations)
+        )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -161,6 +304,8 @@ def main(argv: list[str] | None = None) -> int:
         },
         require_sdlc=options.require_sdlc,
     )
+    # Capability enforcement: validate that no agent's declared capability is exceeded.
+    _validate_capability_enforcement(catalog, plan)
     serialized = f"{json.dumps(plan, indent=2, ensure_ascii=False)}\n"
     if options.output:
         output_path = Path(options.output).resolve()

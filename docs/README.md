@@ -17,6 +17,7 @@ Use this index to choose the shortest useful path.
 | Find a specialist role | [Role index](role-index.md) |
 | Contribute to this GitHub repository | [Contributing](../CONTRIBUTING.md) |
 | Follow the complete operating model | [Runbook](../agents/RUNBOOK.md) |
+| See worked-example workflows | [workflows directory](../agents/workflows/) (see `RUNBOOK.md` for which one applies to your task) |
 
 ## Source of truth
 

@@ -779,11 +779,21 @@ class SelectorTests(unittest.TestCase):
     def test_repository_source_falls_back_to_canonical_path_hash(self) -> None:
         with tempfile.TemporaryDirectory(prefix="Source Repo ") as temporary_directory:
             root = Path(temporary_directory).resolve()
-            expected_hash = hashlib.sha256(str(root).encode("utf-8")).hexdigest()[:12]
+            # New implementation uses blake2b with 24-byte digest for collision resistance.
+            primary = str(root)
+            git_head_path = root / ".git" / "HEAD"
+            secondary_bytes = b""
+            if git_head_path.is_file():
+                try:
+                    secondary_bytes = git_head_path.read_bytes()
+                except OSError:
+                    pass
+            combined = f"{primary}:{secondary_bytes!r}".encode("utf-8")
+            expected_digest = hashlib.blake2b(combined, digest_size=24).hexdigest()
             expected_name = re.sub(r"[^a-z0-9._-]+", "-", root.name.lower()).strip("-")
             with patch("select_agents._run_git", side_effect=RuntimeError("no origin")):
                 self.assertEqual(
-                    f"local-{expected_name}-{expected_hash}",
+                    f"local-{expected_name}-{expected_digest}",
                     resolve_knowledge_source(root),
                 )
 
@@ -1120,6 +1130,71 @@ class SelectorTests(unittest.TestCase):
             self.assertRaisesRegex(RuntimeError, "timed out"),
         ):
             agentic_sdlc_contracts.try_lifecycle_contract()
+
+    def test_capability_enforcement_allows_valid_dispatch_plan(self) -> None:
+        catalog = {
+            "application-engineer": {"capability": "code_author"},
+            "test-engineer": {"capability": "read_only"},
+        }
+        dispatch_plan = {
+            "primary": ["application-engineer"],
+            "reviewers": ["test-engineer"],
+            "support": [],
+        }
+        from select_agents import _validate_capability_enforcement  # noqa: E402
+        # No sandbox override → no violations, function returns None.
+        result = _validate_capability_enforcement(catalog, dispatch_plan)
+        self.assertIsNone(result)
+
+    def test_capability_enforcement_blocks_unauthorized_sandbox_grant(self) -> None:
+        catalog = {
+            "test-engineer": {"capability": "read_only"},
+        }
+        # read_only declares sandbox_mode='read-only'; overriding with 'workspace-write' is unauthorized.
+        dispatch_plan = {
+            "reviewers": ["test-engineer"],
+            "primary": [],
+            "support": [],
+            "test-engineer_sandbox": "workspace-write",
+        }
+        from select_agents import _validate_capability_enforcement  # noqa: E402
+        with self.assertRaises(ValueError) as context:
+            _validate_capability_enforcement(catalog, dispatch_plan)
+        self.assertIn("read_only", str(context.exception))
+        self.assertIn("test-engineer", str(context.exception))
+
+    def test_capability_enforcement_handles_empty_catalog_gracefully(self) -> None:
+        catalog: dict[str, object] = {}
+        dispatch_plan = {
+            "primary": ["orphan-agent"],
+            "reviewers": [],
+            "support": [],
+        }
+        from select_agents import _validate_capability_enforcement  # noqa: E402
+        # Agent has no declared capability → validation is skipped (per source).
+        result = _validate_capability_enforcement(catalog, dispatch_plan)
+        self.assertIsNone(result)
+
+    def test_capability_enforcement_rejects_unknown_capability(self) -> None:
+        catalog = {
+            "rogue-agent": {"capability": "super_admin"},
+        }
+        dispatch_plan = {
+            "primary": ["rogue-agent"],
+            "reviewers": [],
+            "support": [],
+        }
+        from select_agents import _validate_capability_enforcement  # noqa: E402
+        with self.assertRaises(ValueError) as context:
+            _validate_capability_enforcement(catalog, dispatch_plan)
+        self.assertIn("unknown capability", str(context.exception))
+        self.assertIn("super_admin", str(context.exception))
+
+    def test_capability_enforcement_rejects_non_dict_dispatch_plan(self) -> None:
+        from select_agents import _validate_capability_enforcement  # noqa: E402
+        with self.assertRaises(ValueError) as context:
+            _validate_capability_enforcement({}, "not-a-dict")
+        self.assertIn("must be a dict", str(context.exception))
 
 
 if __name__ == "__main__":

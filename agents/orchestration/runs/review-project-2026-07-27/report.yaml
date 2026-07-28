@@ -1,0 +1,132 @@
+task_id: review-project-2026-07-27
+mode: planning-review-only (standalone — no Agentic SDLC)
+generated_at: 2026-07-28T04:45:00Z
+selection_status: ready
+execution_mode_note: "Defaulted to planning-review-only per SKILL.md. No production, destructive, or persistent-environment authorization granted."
+
+agents:
+  dispatched:
+    - id: cloud-architect
+      role_path: agents/architecture/cloud-architect/AGENT.md
+      phase: design
+      capability: document_author
+      model: opus
+      status: completed
+      dispatch_type: ordinary_subagent (Claude Code)
+    - id: threat-modeler
+      role_path: agents/architecture/threat-modeler/AGENT.md
+      phase: design
+      capability: document_author
+      model: opus
+      status: completed
+      dispatch_type: ordinary_subagent (Claude Code)
+    - id: technical-writer
+      role_path: agents/documentation/technical-writer/AGENT.md
+      phase: document
+      capability: document_author
+      model: sonnet
+      status: completed
+      dispatch_type: ordinary_subagent (Claude Code)
+  completed: [cloud-architect, threat-modeler, technical-writer]
+  blocked: []
+  deferred: []
+
+teams: []
+# No team_recipes entries were dispatched this run; the selector emitted teams: [].
+# Per handoff-contracts.md, communication_mode_used is N/A.
+
+knowledge:
+  status_by_agent:
+    cloud-architect:
+      query_id: fecc2623bda8928d
+      retrieval_at: 2026-07-28T04:44:00.370Z
+      classification: internal
+      source_filter: degay/agents
+      results_count: 0
+    threat-modeler:
+      query_id: ecd4140b2cad7a37
+      retrieval_at: 2026-07-28T04:44:05.520Z
+      classification: internal
+      source_filter: degay/agents
+      results_count: 0
+    technical-writer:
+      query_id: 6fede5ee4a48b4c3
+      retrieval_at: 2026-07-28T04:44:05.515Z
+      classification: internal
+      source_filter: degay/agents
+      results_count: 0
+  overall_status: completed (empty)
+  citations_used: none — knowledge store had no prior ingested data for this source filter
+
+findings_by_severity:
+  high:
+    - agent: threat-modeler
+      finding: "Knowledge-store retrieval passes untrusted content with only a heuristic flag; injection patterns are detected but not neutralized or quarantined"
+      evidence: agents/knowledge-store/src/content.py:17-22 (INJECTION_PATTERNS); agents/knowledge-store/src/service.py:95
+    - agent: threat-modeler
+      finding: "Plugin bundling (agents generate-plugin) produces no tamper evidence; team-profile.yaml declares cosign keyless artifact signing as policy"
+      evidence: .github/workflows/release.yml:38-43 vs agents/shared/team-profile.yaml:cicd.artifact_signing (cosign_keyless_sigstore_oidc)
+  medium:
+    - agent: threat-modeler
+      finding: "Catalog.yaml and AGENT.md treated as authoritative source at dispatch time — no validation that role definitions don't contain override instructions"
+      evidence: agents/orchestration/src/generate_global_plugin.py:126-144 (catalog_as_source)
+    - agent: threat-modeler
+      finding: "Knowledge-store source ID derivation trusts git remote URL; could be spoofed if origin is modified or falls back to path hash that may collide"
+      evidence: agents/orchestration/src/select_agents.py:103-129 (_origin_slug)
+    - agent: threat-modeler
+      finding: "No capability enforcement at dispatch time — catalog.yaml declares capability but orchestrator could pass extra tools beyond role definition"
+      evidence: agents/orchestration/src/generate_global_plugin.py:95-116 (capability field read but not enforced in generated wrapper)
+    - agent: technical-writer
+      finding: "CLAUDE.md directory-map paragraph lists lifecycle phase names that do not match actual agents/catalog.yaml values — 7 of 12 items differ"
+      evidence: CLAUDE.md line 57 vs agents/catalog.yaml phase field values
+  low:
+    - agent: threat-modeler
+      finding: "Agent isolation relies on soft guidelines rather than hard sandbox boundaries — operating-principles.md principle exists but is not code-enforced"
+      evidence: agents/shared/operating-principles.md line 8-9
+    - agent: technical-writer
+      finding: "External GitHub URL to agentic-sdlc/tree/main/plugins/agentic-sdlc referenced twice in README.md 'Agentic SDLC quick start' section is unverified from read-only scope"
+      evidence: README.md lines 105, 135
+    - agent: technical-writer
+      finding: "Workflow files (agents/workflows/*.md) not surfaced from docs/README.md or README 'Choose your path' table — only reachable via RUNBOOK.md"
+      evidence: docs/README.md; README.md
+
+conflicting_recommendations:
+  note: "No direct contradictions between agents. One shared observation across architecture and documentation reviews:"
+  items:
+    - agent_pair: cloud-architect + technical-writer
+      shared_observation: "team-profile.yaml declares GitLab CI as the platform, but this repository uses GitHub Actions for its own delivery — acknowledged in AGENTS.md but not resolved as a documented exception"
+
+human_gates_reached: []
+# Standalone mode; planning-review-only. No human gates emitted by selector or agents.
+
+required_quality_gates:
+  - id: G3
+    status: required_by_routing (architecture-change route)
+    note: "Gate detail omitted because Agentic SDLC is unavailable — standalone mode. Gate state not tracked in .agentic-sdlc/ record."
+
+artifacts: []
+# No files were edited, created, or generated during this run except this report.
+
+validation_performed:
+  - "Knowledge-store retrieval attempted for all three agents — completed but empty (no prior data)"
+  - "Agent role selection validated against agents/catalog.yaml — all selected roles exist"
+  - "Dispatch contract requirements satisfied per dispatch-contract.md section on required input per agent"
+  - "Catalog.yaml phase values verified against CLAUDE.md directory-map paragraph by technical-writer (7 of 12 items differ)"
+
+disposition: request-changes
+# Two HIGH-severity security findings require resolution before architecture handoff.
+# One MEDIUM documentation accuracy finding requires correction.
+
+next_safe_action: |
+  1. Address threat-modeler's HIGH findings:
+     a. Harden knowledge-store injection detection to neutralize (not merely flag) untrusted instructions
+     b. Implement cosign artifact signing in plugin bundling per team-profile.yaml policy
+  2. Correct technical-writer's MEDIUM finding:
+     a. Update CLAUDE.md line 57 phase-name list to match actual catalog.yaml values or link to docs/role-index.md
+  3. Verify README.md external GitHub URLs resolve; update if needed
+  4. Consider surfacing agents/workflows/*.md from docs/README.md for discoverability
+
+dispatch_fingerprint: sha256:d9441c85f8fee07a97c0cecc8caead60d34f0e173f20ebe75325e1100c57ecc7
+lifecycle_tracking:
+  status: standalone
+  reason: "Agentic SDLC executable not found; team dispatch is unaffected."

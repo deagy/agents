@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS messages (
   conversation_title TEXT, source_message_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL,
   content_hash TEXT NOT NULL, created_at TEXT, classification TEXT NOT NULL,
   injection_risk INTEGER NOT NULL DEFAULT 0, redactions_json TEXT NOT NULL,
-  metadata_json TEXT NOT NULL, ingested_at TEXT NOT NULL,
+  neutralization_json TEXT NOT NULL, metadata_json TEXT NOT NULL, ingested_at TEXT NOT NULL,
   UNIQUE(source, conversation_id, source_message_id)
 );
 CREATE TABLE IF NOT EXISTS chunks (
@@ -85,24 +85,27 @@ def fail_run(db: sqlite3.Connection, run_id: str, error: Exception) -> None:
 
 def save_message(db: sqlite3.Connection, message: dict[str, Any], protected: dict[str, Any], chunks: list[str], vectors: list[list[float]], embedding: dict[str, Any]) -> None:
     message_id = _hash(f"{message['source']}|{message['conversation_id']}|{message['message_id']}")
+    neutralization_json = json.dumps(protected.get("neutralization_metadata"), separators=(",", ":"), ensure_ascii=False)
     with (nullcontext() if db.in_transaction else db):
         db.execute("""
           INSERT INTO messages (id, source, source_uri, conversation_id, conversation_title,
             source_message_id, role, content, content_hash, created_at, classification,
-            injection_risk, redactions_json, metadata_json, ingested_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            injection_risk, redactions_json, neutralization_json, metadata_json, ingested_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(source, conversation_id, source_message_id) DO UPDATE SET
             source_uri=excluded.source_uri, conversation_title=excluded.conversation_title,
             role=excluded.role, content=excluded.content, content_hash=excluded.content_hash,
             created_at=excluded.created_at, classification=excluded.classification,
             injection_risk=excluded.injection_risk, redactions_json=excluded.redactions_json,
-            metadata_json=excluded.metadata_json, ingested_at=excluded.ingested_at
+            neutralization_json=excluded.neutralization_json, metadata_json=excluded.metadata_json,
+            ingested_at=excluded.ingested_at
         """, (
             message_id, message["source"], message["source_uri"], message["conversation_id"],
             message["conversation_title"], message["message_id"], message["role"], protected["content"],
             _hash(protected["content"]), message["created_at"], message["classification"],
             1 if protected["injection_risk"] else 0,
             json.dumps(protected["redactions"], separators=(",", ":"), ensure_ascii=False),
+            neutralization_json,
             json.dumps(message["metadata"], separators=(",", ":"), ensure_ascii=False), _now(),
         ))
         db.execute("DELETE FROM chunks WHERE message_id = ?", (message_id,))
@@ -131,7 +134,8 @@ def load_chunks(db: sqlite3.Connection, embedding: dict[str, Any], filters: dict
     values.append(filters["classification"])
     return db.execute(f"""SELECT c.id AS chunk_id, c.ordinal, c.content, c.content_hash,
       c.embedding_json, m.source, m.source_uri, m.conversation_id, m.conversation_title,
-      m.source_message_id AS message_id, m.role, m.created_at, m.classification, m.injection_risk
+      m.source_message_id AS message_id, m.role, m.created_at, m.classification, m.injection_risk,
+      m.neutralization_json
       FROM chunks c JOIN messages m ON m.id = c.message_id
       WHERE {' AND '.join(clauses)}""", values).fetchall()
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import math
 from datetime import datetime, timezone
 from typing import Any
@@ -14,8 +15,35 @@ from embeddings import cosine_similarity, embed_texts
 from normalize import normalize_file
 
 
+log = logging.getLogger(__name__)
+
+
 CLASSIFICATIONS = {"public", "internal", "confidential", "restricted"}
 MAXIMUM_TOP = 20
+
+
+def _parse_neutralization_json(raw: str | None) -> list[str] | None:
+    """Parse the neutralization_metadata JSON blob stored on disk.
+
+    Returns ``None`` when no categories were neutralized (the ingestion path
+    serializes ``None`` as the literal string ``"null"``). An empty list means a
+    message was ingested but no injection patterns matched — still useful for
+    downstream consumers that want to distinguish "never scanned" from "scanned,
+    clean".
+    """
+    if raw is None:
+        return None
+    if raw == "null":
+        return None
+    try:
+        parsed = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        # Defensive: a corrupted row should never poison retrieval.
+        log.warning("Failed to parse neutralization_metadata JSON; returning empty list")
+        return []
+    if isinstance(parsed, list):
+        return parsed
+    return [parsed] if parsed else []
 
 
 def top_limit(value: Any = None) -> int:
@@ -93,6 +121,7 @@ def search_store(db: Any, config: dict[str, Any], query: str, options: dict[str,
             "role": row["role"],
             "content": row["content"],
             "untrusted_instruction_risk": bool(row["injection_risk"]),
+            "neutralization_metadata": _parse_neutralization_json(row["neutralization_json"]),
         })
     results.sort(key=lambda item: (-item["score"], item["citation"]["chunk_id"]))
     return results[:limit]
