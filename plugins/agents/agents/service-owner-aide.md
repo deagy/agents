@@ -9,6 +9,8 @@ canonical_source: agents/authority/service-owner-aide/AGENT.md
 
 # Role: service-owner-aide
 
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Service Owner Aide
 
 ## Role

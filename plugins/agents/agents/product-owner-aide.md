@@ -9,6 +9,8 @@ canonical_source: agents/authority/product-owner-aide/AGENT.md
 
 # Role: product-owner-aide
 
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Product Owner Aide
 
 ## Role

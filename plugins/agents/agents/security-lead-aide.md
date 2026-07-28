@@ -9,6 +9,8 @@ canonical_source: agents/authority/security-lead-aide/AGENT.md
 
 # Role: security-lead-aide
 
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Security Lead Aide
 
 ## Role

@@ -107,6 +107,36 @@ def load_routing(file_path: Path) -> dict[str, Any]:
     return config
 
 
+def parse_keyed_entries(content: str, fields: tuple[str, ...]) -> dict[str, dict[str, str]]:
+    """Parse a `  <id>:\\n    <field>: <value>` block list into id -> metadata.
+
+    The shared low-level primitive behind this repo's line-oriented
+    (non-PyYAML) config tables: catalog.yaml's `agents:` block, via
+    parse_catalog_entries() below, and aides.yaml's `aides:` block, via
+    generate_authority_aides.py. One parser for the shape means a fix to it
+    (e.g. field-order handling) benefits every table built on it instead of
+    only the one it was written for. `fields` restricts which `key:` lines
+    under an id are captured, so unrelated fields present in the file are
+    ignored rather than misparsed. Raises on a duplicate id rather than
+    silently keeping the last occurrence.
+    """
+    entries: dict[str, dict[str, str]] = {}
+    current: str | None = None
+    field_prefixes = tuple(f"{field}:" for field in fields)
+    for line_number, line in enumerate(content.splitlines(), start=1):
+        match = re.match(r"^  ([a-z0-9-]+):\s*$", line)
+        if match:
+            current = match.group(1)
+            if current in entries:
+                raise ValueError(f"line {line_number}: duplicate id {current!r}")
+            entries[current] = {}
+            continue
+        if current and line.strip().startswith(field_prefixes):
+            key, value = line.strip().split(":", 1)
+            entries[current][key] = value.strip()
+    return entries
+
+
 def parse_catalog_entries(content: str) -> dict[str, dict[str, str]]:
     """Parse catalog.yaml's line-oriented agent blocks into id -> metadata.
 
@@ -114,18 +144,7 @@ def parse_catalog_entries(content: str) -> dict[str, dict[str, str]]:
     generate_global_plugin.py (which needs the full per-agent metadata) so
     the two never silently diverge on catalog.yaml's format.
     """
-    agents: dict[str, dict[str, str]] = {}
-    current: str | None = None
-    for line in content.splitlines():
-        match = re.match(r"^  ([a-z0-9-]+):\s*$", line)
-        if match:
-            current = match.group(1)
-            agents[current] = {}
-            continue
-        if current and line.strip().startswith(("definition:", "phase:", "capability:", "model:", "codex_model:")):
-            key, value = line.strip().split(":", 1)
-            agents[current][key] = value.strip()
-    return agents
+    return parse_keyed_entries(content, ("definition", "phase", "capability", "model", "codex_model"))
 
 
 def load_catalog(file_path: Path) -> list[str]:
