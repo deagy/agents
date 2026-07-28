@@ -18,7 +18,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 ├── .clinerules/              # Pointer to AGENTS.md/RUNBOOK.md for Cline CLI discovery
 ├── plugins/cadre/            # Self-contained suite and Agentic SDLC provider
 ├── plugins/cline/            # Hand-authored Cline CLI plugin source (TypeScript; not generated — see below)
-├── .github/workflows/        # Validate-only GitHub Actions pipeline (tests, bin/cadre smoke test, secret scan)
+├── .github/workflows/        # GitHub Actions: validate.yml (tests, bin/cadre smoke test, secret scan) + release.yml (tags/publishes only after a reviewed version-bump merge)
 ├── docs/                     # Audience-oriented guides and human-readable role index
 ├── IDENTITY.md               # Informational suite identity; never an authority source
 ├── CONTRIBUTING.md           # GitHub contribution and review workflow
@@ -179,7 +179,7 @@ Most projects want the per-project `--profile secure-cloud` path above instead
 of this section — it avoids forcing this repository's cloud-specific roles
 onto projects with a different stack, and each project's generated wrappers
 are static files it owns, not a live link back to this checkout. This section
-is for the narrower case of genuinely wanting all 47 roles, the 6 skills, and
+is for the narrower case of genuinely wanting all 47 roles, the 7 skills, and
 the knowledge store reachable from *every* project on the machine
 unconditionally, via the same global/user-scope plugin install mechanism:
 

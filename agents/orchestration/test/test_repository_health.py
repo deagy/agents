@@ -101,6 +101,22 @@ class RepositoryHealthTests(unittest.TestCase):
             )
             self.assertNotEqual(ignored.returncode, 0, f"{skill_dir} is ignored")
 
+    def test_hand_maintained_skill_count_matches_agents_skills(self) -> None:
+        """Pins the hand-typed "N skills" prose in README.md/RUNBOOK.md to the
+        actual `.agents/skills/` count, so a skill add/remove can't silently
+        leave stale prose behind (as happened when it drifted to "6 skills"
+        with 7 actually present).
+        """
+        skills_root = REPOSITORY_ROOT / ".agents" / "skills"
+        actual_count = len(list(skills_root.glob("*/SKILL.md")))
+        for doc_path in (REPOSITORY_ROOT / "README.md", REPOSITORY_ROOT / "agents" / "RUNBOOK.md"):
+            text = doc_path.read_text(encoding="utf-8")
+            self.assertIn(
+                f"{actual_count} skills",
+                text,
+                f"{doc_path} does not say '{actual_count} skills' (actual count under {skills_root})",
+            )
+
     def test_claude_skill_pointers_match_the_canonical_codex_skill(self) -> None:
         skills_root = REPOSITORY_ROOT / ".agents" / "skills"
         claude_skills_root = REPOSITORY_ROOT / ".claude" / "skills"
@@ -235,6 +251,27 @@ class RepositoryHealthTests(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual(0, checked.returncode, checked.stderr)
+
+    def test_committed_plugin_matches_generator_output(self) -> None:
+        """Guards against drift between catalog/agents/.agents/skills and the
+        committed `plugins/cadre/` distribution. The sibling
+        `test_secure_cloud_agents_plugin_is_generated_and_in_sync` only checks
+        the generator against its own isolated `--output`, so it stays green
+        even when the committed package has drifted; this test is the one
+        that actually exercises the default (no `--output`) target, matching
+        what `AGENTS.md`/`CLAUDE.md` document and what CI's
+        `./bin/cadre generate-plugin --check` runs.
+        """
+        generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_global_plugin.py"
+        checked = subprocess.run(
+            ["python3", str(generator), "--check"],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        self.assertEqual(0, checked.returncode, checked.stderr)
 
     def test_removed_lifecycle_migration_utility_cannot_ship(self) -> None:
         source_path = ROOT / "orchestration" / "src" / "migrate_execution_summary.py"
@@ -1091,6 +1128,28 @@ class RepositoryHealthTests(unittest.TestCase):
             self.assertIn("cadre.py", source, "shims must hand off to the shared dispatcher")
             for _name, script, _description in rows:
                 self.assertNotIn(script, source, "subcommand table must not also be hardcoded in the shim")
+
+    def test_packaged_wrapper_covers_every_non_excluded_subcommand_table_entry(self) -> None:
+        """Extends the `select`-only parity check above to every packaged
+        subcommand: a bin/subcommands.tsv script-path change must show up in
+        the packaged plugins/cadre/bin/cadre wrapper, not just for `select`.
+        """
+        sys.path.insert(0, str(ROOT / "orchestration" / "src"))
+        try:
+            import generate_global_plugin
+        finally:
+            sys.path.pop(0)
+
+        rows = generate_global_plugin.packaged_subcommands(REPOSITORY_ROOT)
+        self.assertTrue(rows)
+        wrapper_source = (REPOSITORY_ROOT / "plugins" / "cadre" / "bin" / "cadre").read_text(encoding="utf-8")
+        for name, script in rows:
+            with self.subTest(subcommand=name):
+                self.assertIn(name, wrapper_source)
+                self.assertIn(script, wrapper_source)
+        for excluded in generate_global_plugin.PACKAGED_SUBCOMMAND_EXCLUSIONS:
+            with self.subTest(excluded=excluded):
+                self.assertNotIn(f"{excluded})", wrapper_source)
 
     def _powershell_interpreter(self) -> str | None:
         return shutil.which("pwsh") or shutil.which("powershell")

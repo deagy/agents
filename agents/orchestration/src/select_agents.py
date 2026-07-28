@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -46,13 +47,20 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _run_git(args: list[str], repository_root: Path) -> str:
+    # --root is caller-controlled and may point at an untrusted checkout;
+    # neutralize the config-driven RCE surface (fsmonitor hook, system-wide
+    # config, interactive credential prompts) before reading its .git state.
+    env = dict(os.environ)
+    env["GIT_CONFIG_NOSYSTEM"] = "1"
+    env["GIT_TERMINAL_PROMPT"] = "0"
     result = subprocess.run(
-        ["git", *args],
+        ["git", "-c", "core.fsmonitor=false", "--no-optional-locks", *args],
         cwd=repository_root,
         check=False,
         capture_output=True,
         text=True,
         encoding="utf-8",
+        env=env,
     )
     if result.returncode != 0:
         raise RuntimeError(result.stderr.strip() or f"git {' '.join(args)} failed")

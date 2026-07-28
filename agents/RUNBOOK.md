@@ -585,7 +585,7 @@ launcher:
 cadre sdlc init --root /path/to/target
 ```
 
-The initializer detects candidate technologies, commands, and a project profile, defaulting to the low-ceremony `quick` profile and generating subagent wrappers for both runners (`init --runner {codex,claude,both}`). It writes state to the target project you point `--root` at. Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking. This provider repository also runs its own `.agentic-sdlc/` overlay for its own catalog/plugin roadmap (kernel-only, `--profile generic`, no runner wrappers — see `docs/lifecycle-and-plugin-operations.md`); that overlay carries no authority over any other project's gates.
+The initializer detects candidate technologies, commands, and a project profile, defaulting to the low-ceremony `quick` profile and generating subagent wrappers for both runners (`init --runner {codex,claude,both}`). It writes state to the target project you point `--root` at. Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking. This provider repository does not run its own `.agentic-sdlc/` overlay (see `docs/lifecycle-and-plugin-operations.md`); it has no lifecycle records of its own and carries no authority over any other project's gates.
 
 If the target project uses this repository's cloud stack, use
 `--profile secure-cloud`. The `cadre sdlc` launcher explicitly supplies
@@ -625,7 +625,7 @@ This plugin system currently applies to the Cline CLI, SDK, and Kanban only, not
 
 ## 17. Make this repository's own suite available system-wide
 
-Most projects want §16's `cadre sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 47 roles, 6 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
+Most projects want §16's `cadre sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 47 roles, 7 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
 
 ```sh
 codex plugin marketplace add .

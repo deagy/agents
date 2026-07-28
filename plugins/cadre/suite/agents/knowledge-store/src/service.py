@@ -47,6 +47,10 @@ def ingest_file(db: Any, config: dict[str, Any], options: dict[str, Any]) -> dic
         db.execute("BEGIN")
         for message in messages:
             protected = protect_content(message["content"], config["ingestion"]["redact_secrets"])
+            protected_title = protect_content(message.get("conversation_title") or "", config["ingestion"]["redact_secrets"])
+            message = {**message, "conversation_title": protected_title["content"]}
+            protected["redactions"] = [*protected["redactions"], *protected_title["redactions"]]
+            protected["injection_risk"] = protected["injection_risk"] or protected_title["injection_risk"]
             chunks = chunk_text(protected["content"], config["chunking"])
             vectors = embed_texts(chunks, config["embedding"])
             save_message(db, message, protected, chunks, vectors, config["embedding"])

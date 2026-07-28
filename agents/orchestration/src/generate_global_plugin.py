@@ -306,8 +306,55 @@ def generate_agent_catalog_export(catalog: dict[str, dict[str, Any]], plugin_roo
     return target
 
 
+# Subcommands from bin/subcommands.tsv that manage this source repository
+# itself (regenerating/inspecting the packaged plugin) and therefore have no
+# meaning once shipped inside the plugin they regenerate.
+PACKAGED_SUBCOMMAND_EXCLUSIONS = {"generate-plugin", "generate-authority-aides", "version"}
+
+# Extra argv this packaged wrapper must inject ahead of the caller's own
+# "$@" for a subcommand whose packaged invocation needs plugin-relative
+# context bin/subcommands.tsv has no column for (bootstrap-codex's wrapper
+# source lives under the packaged plugin, not this source repository).
+PACKAGED_SUBCOMMAND_EXTRA_ARGS = {
+    "bootstrap-codex": '--source "$PLUGIN_ROOT/codex-agents"',
+}
+
+
+def load_subcommand_table(repository_root: Path) -> list[tuple[str, str, str]]:
+    table = repository_root / "bin" / "subcommands.tsv"
+    rows = []
+    for line in table.read_text(encoding="utf-8").splitlines():
+        if not line:
+            continue
+        name, script, description = line.split("\t")
+        rows.append((name, script, description))
+    return rows
+
+
+def packaged_subcommands(repository_root: Path) -> list[tuple[str, str]]:
+    """The single derivation point for which bin/subcommands.tsv entries
+    ship in the packaged plugin's own `bin/cadre` and which script path each
+    maps to, so a script rename or new subcommand only needs to change
+    bin/subcommands.tsv -- not this generator's shell text too."""
+    return [
+        (name, script)
+        for name, script, _description in load_subcommand_table(repository_root)
+        if name not in PACKAGED_SUBCOMMAND_EXCLUSIONS
+    ]
+
+
 def generate_bin_wrapper(plugin_root: Path) -> Path:
     target = plugin_root / "bin" / "cadre"
+    rows = packaged_subcommands(REPOSITORY_ROOT)
+    case_lines = [
+        '  {name}) exec "$AGENT_PYTHON" "$SUITE_ROOT/{script}" {extra}"$@" ;;'.format(
+            name=name,
+            script=script,
+            extra=(PACKAGED_SUBCOMMAND_EXTRA_ARGS[name] + " ") if name in PACKAGED_SUBCOMMAND_EXTRA_ARGS else "",
+        )
+        for name, script in rows
+    ]
+    usage = "|".join([*(name for name, _script in rows), "sdlc"])
     body = "\n".join(
         [
             "#!/bin/sh",
@@ -330,13 +377,8 @@ def generate_bin_wrapper(plugin_root: Path) -> Path:
             "done",
             '[ -n "$AGENT_PYTHON" ] || { echo "cadre: Python 3.10+ is required" >&2; exit 1; }',
             'case "$command_name" in',
-            '  select) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/select_agents.py" "$@" ;;',
-            '  bootstrap-codex) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/sync_codex_agents.py" --source "$PLUGIN_ROOT/codex-agents" "$@" ;;',
-            '  knowledge) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/knowledge-store/src/cli.py" "$@" ;;',
-            '  resolve-shared) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/shared/src/resolve.py" "$@" ;;',
-            '  init) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/shared/src/init_project.py" "$@" ;;',
-            '  mcp-dispatch-server) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/mcp/dispatch_server.py" "$@" ;;',
-            '  help|-h|--help) echo "Usage: cadre {select|knowledge|bootstrap-codex|resolve-shared|init|mcp-dispatch-server|sdlc} [args...]" ;;',
+            *case_lines,
+            f'  help|-h|--help) echo "Usage: cadre {{{usage}}} [args...]" ;;',
             '  *) echo "cadre: unknown subcommand $command_name" >&2; exit 1 ;;',
             "esac",
             "",
