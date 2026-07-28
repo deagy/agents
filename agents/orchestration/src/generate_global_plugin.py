@@ -90,7 +90,7 @@ SHARED_OVERRIDE_NOTE = (
 )
 
 ALLOWED_MODELS = {"haiku", "sonnet", "opus"}
-ALLOWED_CODEX_MODELS = {"gpt-5", "gpt-5-codex", "gpt-5-mini"}
+ALLOWED_CODEX_MODELS = {"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
 
 CAPABILITY_PROFILES: dict[str, dict[str, Any]] = {
     "read_only": {
