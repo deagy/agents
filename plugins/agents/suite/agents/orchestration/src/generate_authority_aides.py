@@ -54,9 +54,16 @@ def _parse_gates(path: Path, aide_id: str, raw: str) -> list[int]:
     if not raw_items:
         raise ValueError(f"{path}: aide {aide_id!r} has an empty gates list")
     try:
-        return [int(part) for part in raw_items]
+        gates = [int(part) for part in raw_items]
     except ValueError as error:
         raise ValueError(f"{path}: aide {aide_id!r} has a non-integer gate in {value!r}") from error
+    duplicates = sorted({gate for gate in gates if gates.count(gate) > 1})
+    if duplicates:
+        raise ValueError(
+            f"{path}: aide {aide_id!r} has duplicate gate(s) in {value!r}: "
+            + ", ".join(str(gate) for gate in duplicates)
+        )
+    return gates
 
 
 def load_aides(path: Path) -> list[dict[str, object]]:
@@ -100,11 +107,16 @@ def gate_list(gates: list[int]) -> str:
 def render(template: str, aide: dict[str, object]) -> str:
     gates = aide["gates"]
     assert isinstance(gates, list)
-    body = template.format(
-        title=aide["title"],
-        gate_phrase=gate_phrase(gates),
-        gate_list=gate_list(gates),
-    )
+    try:
+        body = template.format(
+            title=aide["title"],
+            gate_phrase=gate_phrase(gates),
+            gate_list=gate_list(gates),
+        )
+    except (KeyError, IndexError) as error:
+        raise ValueError(
+            f"{TEMPLATE_PATH}: failed to render aide {aide['id']!r}: {error}"
+        ) from error
     return f"{GENERATED_MARKER}\n\n{body}"
 
 
@@ -116,7 +128,7 @@ def generate(aides: list[dict[str, object]], template: str) -> dict[Path, str]:
 
 
 def existing_generated_files() -> set[Path]:
-    return set(AUTHORITY_ROOT.glob("*-aide/AGENT.md"))
+    return set(AUTHORITY_ROOT.glob("*/AGENT.md"))
 
 
 def main() -> int:
@@ -146,8 +158,8 @@ def main() -> int:
         path.unlink()
         try:
             path.parent.rmdir()
-        except OSError:
-            pass
+        except OSError as error:
+            print(f"agents: could not remove {path.parent}: {error}", file=sys.stderr)
     for path, content in rendered.items():
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")

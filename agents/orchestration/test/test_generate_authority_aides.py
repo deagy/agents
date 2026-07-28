@@ -131,6 +131,55 @@ class LoadAidesTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "non-integer gate"):
                 gaa.load_aides(path)
 
+    def test_duplicate_gate_raises(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(
+                Path(directory),
+                "aides:\n  engineering-lead-aide:\n    title: Engineering Lead\n    gates: [2, 2]\n",
+            )
+            with self.assertRaisesRegex(ValueError, "duplicate gate"):
+                gaa.load_aides(path)
+
+    def test_non_ascii_title_round_trips(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = self._write(
+                Path(directory),
+                "aides:\n  ops-lead-aide:\n    title: Ops Léad\n    gates: [3]\n",
+            )
+            aides = gaa.load_aides(path)
+            self.assertEqual("Ops Léad", aides[0]["title"])
+            rendered = gaa.render("# {title}\n\n{gate_phrase}\n{gate_list}\n", aides[0])
+            self.assertIn("Ops Léad", rendered)
+
+
+class GatePhraseAndListTests(unittest.TestCase):
+    def test_gate_phrase_single_gate(self) -> None:
+        self.assertEqual("gate G5", gaa.gate_phrase([5]))
+
+    def test_gate_phrase_two_gates(self) -> None:
+        self.assertEqual("gates G2 and G6", gaa.gate_phrase([2, 6]))
+
+    def test_gate_phrase_three_or_more_gates_uses_oxford_comma(self) -> None:
+        self.assertEqual("gates G1, G2, and G6", gaa.gate_phrase([1, 2, 6]))
+
+    def test_gate_list_single_gate(self) -> None:
+        self.assertEqual("G5", gaa.gate_list([5]))
+
+    def test_gate_list_two_gates(self) -> None:
+        self.assertEqual("G2, G6", gaa.gate_list([2, 6]))
+
+    def test_gate_list_three_or_more_gates(self) -> None:
+        self.assertEqual("G1, G2, G6", gaa.gate_list([1, 2, 6]))
+
+
+class RenderTests(unittest.TestCase):
+    def test_unbound_placeholder_raises_attributed_value_error(self) -> None:
+        aide = {"id": "engineering-lead-aide", "title": "Engineering Lead", "gates": [2, 6]}
+        with self.assertRaisesRegex(
+            ValueError, r"failed to render aide 'engineering-lead-aide'"
+        ):
+            gaa.render("# {title}\n\n{unknown_field}\n", aide)
+
 
 class MainWritePathTests(unittest.TestCase):
     def _isolated_authority_root(self, directory: Path) -> None:
@@ -171,6 +220,24 @@ class MainWritePathTests(unittest.TestCase):
             ):
                 self.assertEqual(0, gaa.main())
             self.assertFalse(orphan.parent.exists())
+
+    def test_plain_generate_does_not_crash_when_orphan_directory_has_extra_files(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._isolated_authority_root(root)
+            orphan = root / "retired-role-aide" / "AGENT.md"
+            orphan.parent.mkdir(parents=True)
+            orphan.write_text("stale", encoding="utf-8")
+            (orphan.parent / "extra.txt").write_text("leftover", encoding="utf-8")
+            with mock.patch.object(gaa, "AUTHORITY_ROOT", root), mock.patch.object(
+                gaa, "DATA_PATH", root / "aides.yaml"
+            ), mock.patch.object(gaa, "TEMPLATE_PATH", root / "_template.md.tmpl"), mock.patch.object(
+                sys, "argv", ["generate_authority_aides.py"]
+            ):
+                self.assertEqual(0, gaa.main())
+            self.assertTrue(orphan.parent.exists(), "non-empty orphan directory should be left in place")
+            self.assertTrue((orphan.parent / "extra.txt").is_file())
+            self.assertFalse(orphan.exists(), "the stale AGENT.md itself should still be removed")
 
     def test_check_reports_orphaned_role_directory_as_stale(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
