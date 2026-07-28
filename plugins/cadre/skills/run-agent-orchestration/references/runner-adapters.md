@@ -128,6 +128,37 @@ wave — see [team-recipes.md](team-recipes.md) for when that's warranted.
     (rather than the MCP server), so it isn't mistaken for a properly closed
     dispatch — the "agent doesn't close on completion" symptom above applies
     to this fallback, not to the MCP path.
+  - **Field-confirmed: a ChatGPT-authenticated Codex session can reject the
+    `model` override outright, independent of which identifier is used.** A
+    Codex session using this fallback reported `spawn_agent` rejecting *both*
+    `gpt-5-codex` (sonnet-tier `codex_model`) and `gpt-5` (opus-tier) with
+    "not supported," for two different roles in the same session. Wrapper
+    resolution and `developer_instructions` injection both worked correctly
+    up to that point; the rejection was specifically at spawn time on the
+    explicit `model` argument. Two different tier identifiers failing
+    identically in one session is more consistent with the account's
+    authentication mode restricting *any* explicit model override (ChatGPT
+    subscription auth ties a session to whatever model that plan already
+    selected, as distinct from API-key auth, which does not) than with
+    `catalog.yaml`'s `codex_model` values themselves being wrong — but this
+    repo has no live `codex` binary and no way to confirm that distinction
+    from inside this sandbox, so treat it as the leading hypothesis, not a
+    verified root cause. If `spawn_agent` rejects the `model` argument as
+    unsupported: retry the same call **without** the `model` argument at
+    all, letting the session fall back to its own authenticated default
+    model, and say so explicitly in the final summary (the role's
+    instructions still ran correctly; only its catalog-specified model tier
+    was not honored) — don't hard-fail the whole dispatch over a rejected
+    model override when the role's instructions can still run under the
+    session's default model. This exposure is not unique to this fallback:
+    `dispatch_secure_cloud_role` (the preferred MCP path above) currently
+    always passes the wrapper's `model` value to `codex exec` as an explicit
+    `--model` flag with no fallback if the account rejects it
+    (`agents/orchestration/mcp/dispatch_core.py`'s `build_child_argv`), so a
+    ChatGPT-authenticated session hitting this would fail identically
+    through the MCP path too — a code-level opt-out for that path is tracked
+    as follow-up work, not yet implemented, since there is no confirmed exact
+    `codex exec` failure signature to detect it against without guessing.
   - **A2A was evaluated as a fix for this exact limitation and rejected.** A2A
     is transport between separately-hosted agent processes; it cannot add a
     parameter to a running Codex session's `spawn_agent` tool surface, so it

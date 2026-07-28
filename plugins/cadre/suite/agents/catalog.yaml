@@ -17,7 +17,15 @@ version: 1
 #   opus -> gpt-5          sonnet -> gpt-5-codex          haiku -> gpt-5-mini
 # Re-verify these identifiers against current Codex CLI docs before relying
 # on them in automation; OpenAI model names change over time and this repo
-# has no live check against Codex's accepted model list.
+# has no live check against Codex's accepted model list. Field-confirmed:
+# a ChatGPT-authenticated (not API-key) Codex session has rejected both
+# gpt-5-codex and gpt-5 as "not supported" when passed as an explicit
+# `--model`/spawn_agent override — two different tiers failing identically
+# points more at that auth mode restricting any explicit model override
+# than at these specific identifiers being wrong, but this repo cannot
+# confirm that distinction without a live codex binary. See the "Codex CLI"
+# section of .agents/skills/run-agent-orchestration/references/runner-adapters.md
+# for the current dispatch-time workaround.
 agents:
   product-intent-agent:
     definition: planning/product-intent-agent/AGENT.md
