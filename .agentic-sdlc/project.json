@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "project_id": "agents",
+  "classification": "internal",
+  "profile": "generic",
+  "profile_digest": "sha256:e6001bc40435e7f3ca0f8ba8a9e1cd672d117e285af829e55446db0e30eade4a",
+  "extensions": [],
+  "providers": [
+    "agents"
+  ],
+  "approval_sources": {
+    "human_gate_default": "manual",
+    "allow_manual_fallback": true
+  },
+  "detected": {
+    "root": ".",
+    "detected_stacks": [],
+    "directories": [],
+    "proposed_profile": "quick",
+    "command_candidates": {},
+    "warnings": [
+      "Detection never assigns human authority or compliance applicability."
+    ]
+  },
+  "environments": [
+    {
+      "name": "local",
+      "persistence": "disposable",
+      "production": "non-production"
+    }
+  ]
+}

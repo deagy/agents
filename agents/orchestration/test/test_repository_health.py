@@ -24,10 +24,6 @@ class RepositoryHealthTests(unittest.TestCase):
             return
         raise unittest.SkipTest("Agentic SDLC executable is not configured")
 
-    def test_provider_repository_has_no_project_lifecycle_overlay(self) -> None:
-        overlay = REPOSITORY_ROOT / ".agentic-sdlc"
-        self.assertFalse(overlay.exists(), str(overlay))
-
     def test_catalog_definitions_and_agent_files_stay_in_sync(self) -> None:
         catalog_agents: dict[str, str] = {}
         current_agent: str | None = None
@@ -228,7 +224,6 @@ class RepositoryHealthTests(unittest.TestCase):
             ROOT / "orchestration" / "run-record.schema.json",
             ROOT / "orchestration" / "src" / "validate_run_record.py",
             ROOT / "orchestration" / "agentic-sdlc-artifact-contract.md",
-            REPOSITORY_ROOT / ".agentic-sdlc",
         ]
         for path in forbidden:
             with self.subTest(path=path):
@@ -916,6 +911,21 @@ class RepositoryHealthTests(unittest.TestCase):
             env=os.environ.copy(),
         )
         self.assertEqual("0.3.0", result.stdout.strip())
+
+    def test_bin_agents_sdlc_validate_reports_this_repositorys_overlay_as_valid_and_ready(self) -> None:
+        self._require_agentic_sdlc()
+        result = subprocess.run(
+            [str(REPOSITORY_ROOT / "bin" / "agents"), "sdlc", "validate", "--root", str(REPOSITORY_ROOT)],
+            cwd=REPOSITORY_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=os.environ.copy(),
+        )
+        payload = json.loads(result.stdout)
+        self.assertTrue(payload["valid"], payload)
+        self.assertTrue(payload["ready"], payload)
 
     @unittest.skipUnless(sys.platform != "win32", "bin/agents is a POSIX sh script")
     def test_bin_agents_wrapper_dispatches_select_matching_direct_invocation(self) -> None:

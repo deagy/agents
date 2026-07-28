@@ -30,7 +30,8 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 | Understand the suite | [IDENTITY.md](IDENTITY.md), then [documentation index](docs/README.md) |
 | Use the suite from a checkout | [Getting started](docs/getting-started.md) |
 | Select and coordinate agents | [Orchestration guide](docs/orchestration.md) |
-| Set up lifecycle gates in a target project | [Lifecycle and plugin operations](docs/lifecycle-and-plugin-operations.md) |
+| Set up lifecycle gates conversationally (non-engineers) | `lifecycle-onboarding` skill — ask an agent to run it |
+| Set up lifecycle gates in a target project (direct CLI) | [Lifecycle and plugin operations](docs/lifecycle-and-plugin-operations.md) |
 | Find the right specialist | [Role index](docs/role-index.md) |
 | Contribute here | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Operate the full system | [agents/RUNBOOK.md](agents/RUNBOOK.md) |
@@ -52,10 +53,13 @@ Key areas:
 The boundary is intentional: Agentic SDLC owns lifecycle state, schemas, gate
 transitions, approval-source policy, and portable commands. This repository
 owns the Secure Cloud role catalog, role policies, workflows, knowledge store,
-and the `secure-cloud` provider. This repository is lifecycle-exempt and has no
-project-owned overlay or run record. A consuming target project records its own
-decisions and run state under `.agentic-sdlc/`; installing or upgrading a
-plugin does not grant approval or rewrite those records.
+and the `secure-cloud` provider. That schema/validator/gate-authority ownership
+never moves into this repository, for any project. A consuming target project
+records its own decisions and run state under `.agentic-sdlc/`; installing or
+upgrading a plugin does not grant approval or rewrite those records. This
+repository also runs its own `.agentic-sdlc/` overlay, as an ordinary consumer,
+to track its own catalog/plugin roadmap — that overlay carries no authority
+over any other project's gates.
 
 ## Supported runners
 
@@ -135,8 +139,8 @@ mechanism and deferred (not in progress), pending a confirmed second consumer
 that isn't Codex CLI and pending A2A protocol conformance/auth maturity. If
 this suite ever adopts A2A, it will be a standalone, standards-compliant layer
 owned by this repo — not built on Agentic SDLC's SDLC-task-bound A2A
-implementation — and it will carry no lifecycle authority into this repo, per
-the lifecycle-exempt boundary described in [AGENTS.md](AGENTS.md). The
+implementation — and it will carry no lifecycle authority over any other
+project's gates, per the boundary described in [AGENTS.md](AGENTS.md). The
 identified fix path for the underlying Codex-dispatch limitation is a Python
 MCP server, owned by this repo, currently in development.
 
