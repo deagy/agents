@@ -154,6 +154,119 @@ wave — see [team-recipes.md](team-recipes.md) for when that's warranted.
   orchestrating session reviews all N results and reconciles disagreements
   itself," since Codex has no way to let the roles do that directly.
 
+## Cline
+
+`plugins/cline/` (this repo's hand-authored, non-generated Cline CLI plugin —
+see `AGENTS.md`'s project-structure note) registers exactly one tool,
+`agents_select`, which shells out to `./bin/agents select` and returns the
+JSON dispatch plan. It is explicitly documented as "Plan only: never invokes
+agents" and must stay that way (see `plugins/cline/index.ts`'s tool
+description). **There is currently no
+plugin-registered tool in this repo, and no supported one to add, that
+actually dispatches a named role on Cline** — this is a confirmed gap, not an
+oversight to route around silently:
+
+- **Why a plugin can't dispatch.** A Cline plugin's `setup(api, ctx)` only
+  receives `AgentExtensionApi`, whose surface is `registerTool`,
+  `registerCommand`, `registerRule`, `registerMessageBuilder`,
+  `registerProvider`, `registerAutomationEventType`, and `registerMcpServer`
+  (verified against the installed `@cline/sdk`/`@cline/core` `0.0.65` type
+  declarations under `plugins/cline/node_modules/@cline/core/dist/`, and
+  against `docs.cline.bot/sdk/guides/writing-plugins`). None of those let a
+  plugin spawn a sub-agent or teammate in the *current* session. The actual
+  multi-agent primitives — `createSpawnAgentTool`, `AgentTeamsRuntime`,
+  `createConfiguredAgentTools`, `bootstrapAgentTeams`, and the
+  `team_spawn_teammate`/`team_run_task`/... tool family — live in
+  `@cline/core` and are session-bootstrap primitives the **host** (the `cline`
+  CLI itself, or an SDK app calling `ClineCore.create()`) uses to assemble a
+  session's tool list before it starts; `@cline/agents`' own README says so
+  directly ("For multi-agent workflows, use `@cline/core`" — plugins are not
+  in that path). This is also consistent with the plugin sandbox
+  architecture: a loaded plugin's `setup`/tool `execute` runs in an isolated
+  subprocess that talks to the host only over the same
+  `registerTool`/`executeTool` RPC calls (confirmed by reading the
+  `@cline/core` bundle), so even a plugin tool's `execute()` body has no
+  in-process handle to the running session's `AgentTeamsRuntime`.
+- **Ordinary single-role dispatch today: manual injection, same shape as
+  Codex's fallback below.** There is no Cline-native generated wrapper for
+  this repo's roles yet — `.clinerules/` here holds one general pointer file
+  to `AGENTS.md`/`agents/RUNBOOK.md`, not per-role definitions (see
+  `AGENTS.md`'s project-structure note), and this repo does not generate
+  `.cline/agents/*.yml` profiles (see "Cline's own native persona mechanism"
+  below for why not, yet). Until that changes, an orchestrating Cline session
+  must read the target role's definition itself — its plugin-generated Codex
+  wrapper (`.codex/agents/<role-id>.toml`'s `developer_instructions`, or the
+  global synced copy `~/.codex/agents/agents-<role-id>.toml`) is the most
+  convenient already-flattened source, or `agents/<phase>/<role>/AGENT.md`
+  directly for the canonical text — and inject that content as the task/system
+  framing for a fresh chat turn or a spawned sub-agent
+  (`use_subagents`/`enableSpawnAgent`, if the host session has that enabled).
+  Report in the final summary that manual injection was used, exactly as the
+  Codex section below asks, so it isn't mistaken for a mechanism that named
+  the role directly.
+- **Cline's own native persona mechanism exists but is not yet usable as a
+  clean fix.** Cline has an in-progress "agent profiles" feature:
+  `.cline/agents/*.yml` (workspace) or `~/.cline/agents/` (global) files with
+  `name`/`description` frontmatter (plus, once the stack below lands,
+  `tools`/`skills`/`providerId`/`modelId`/`plugins`) and a body used as the
+  persona/system prompt. The installed `@cline/core@0.0.65` already contains
+  the runtime pieces (`ConfiguredAgentConfig`, `loadConfiguredAgentConfigs`,
+  `createConfiguredAgentTools`/`buildConfiguredAgentToolName`, confirmed by
+  reading the bundled `.d.ts` files and finding a literal `"subagent_"`
+  prefix in the compiled bundle) that expose each profile as a named
+  `subagent_<name>` tool on the *main* agent's own toolset — but this is
+  wired up by the host's session/runtime builder, not by a plugin, and as of
+  this check (2026-07-28, verified via `gh pr view <n> -R cline/cline
+  --json number,title,state,url`, not inferred) the CLI-facing completion of
+  this feature (selecting a profile for the main agent and having its
+  `tools`/`skills`/`providerId`/`modelId` actually take effect, not just its
+  persona text) is tracked upstream as an open, unmerged PR stack —
+  `cline/cline#11435` ("feat(sdk,cli): complete agent profiles support") →
+  `#11448` ("feat(cli,sdk): agent profile plugin restrictions and cline agent
+  install") → `#11505` ("feat(cli): wire up agent profile tools, skills,
+  provider, and model for the main agent"), all `OPEN` at verification time —
+  and there is no `docs.cline.bot` page for "agent profiles" yet (checked
+  `/llms.txt`'s full index, not independently re-verified here). Re-check PR
+  state before relying on this in production; it will go stale. Do not treat
+  `.cline/agents/*.yml` as a reliable per-role dispatch
+  path today; this is a documented future option once that stack merges and
+  is verified live, not a current substitute for manual injection above.
+  This repo does not generate these files (no `plugins/agents/cline-agents/`
+  equivalent to `plugins/agents/codex-agents/*.toml` exists) — adding that
+  generator is out of scope for this fix and would need its own design/review
+  since it changes `agents generate-plugin`'s output surface.
+- **`/team` (interactive) and `cline --team-name <name> "<mission>"` (CLI) are
+  coordinator-prompt-driven, not persona-addressable.** Per
+  `docs.cline.bot/cli/agent-teams` and `docs.cline.bot/sdk/guides/multi-agent-teams`,
+  enabling team mode gives the coordinator agent additional tools
+  (`team_spawn_teammate`, `team_delegate_task`/`team_run_task`,
+  `team_check_status`/`team_status`, `team_get_result`) and the *coordinator's
+  own model* decides which teammates to create, with what system prompt, and
+  how to split the work — there is no CLI flag, `/team` argument, or SDK
+  parameter that names a specific `agents:<role-id>` persona as a teammate.
+  Team state (task board, mailbox, mission log) persists under
+  `~/.cline/data/teams/[team-name]/` across sessions. For this skill's
+  "Dispatch in Waves" / team-recipe cases (see
+  [team-recipes.md](team-recipes.md)) on Cline:
+  1. Start (or resume) the team with a mission prompt that explicitly lists
+     the recipe's roles by name and pastes (or points at) each role's
+     `AGENT.md` persona text/scope, since the coordinator has no other way to
+     learn what `agents:security-reviewer` (for example) means on this repo.
+  2. Verify after the fact — from `team_status`/the mission log, or the
+     persisted `~/.cline/data/teams/[team-name]/mission-log.json` — that the
+     coordinator actually spawned one teammate per requested role rather than
+     collapsing the work into fewer generic teammates; nothing enforces the
+     mapping.
+  3. Treat `communication_mode: "peer"` as best-effort on Cline, not
+     guaranteed the way it is on Claude Code's Agent Teams — the coordinator
+     decides teammate-to-teammate messaging, not this skill or the plan.
+- **No verified open Cline issue specifically requests a plugin-facing
+  spawn/team-dispatch API.** Searched `cline/cline` issues/PRs for
+  plugin+spawn/team-tool combinations; nothing on point beyond the agent
+  profiles stack above was found — omitting a specific issue number here
+  rather than inventing one, per this suite's policy on unverifiable
+  citations.
+
 ## Team communication contract
 
 `agents select` deterministically emits a `teams` array in its plan (see

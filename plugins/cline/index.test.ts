@@ -41,6 +41,12 @@ describe("secure-cloud-agents plugin", () => {
     expect(tools.map((t) => t.name)).toEqual(["agents_select"]);
     expect(tools[0].description).toMatch(/plan only/i);
     expect(tools[0].description).toMatch(/never invokes agents/i);
+    // The Cline plugin API has no spawn/team primitive available to a
+    // registered tool's execute() (see runner-adapters.md's "## Cline"
+    // section); the description must say so rather than imply this tool
+    // dispatches anything.
+    expect(tools[0].description).toMatch(/cannot.*dispatch/i);
+    expect(tools[0].description).toMatch(/runner-adapters\.md/);
   });
 
   it("agents_select returns a real dispatch plan for this repository", async () => {

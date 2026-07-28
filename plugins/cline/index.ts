@@ -63,7 +63,13 @@ const setup = (api: SetupApi, ctx: SetupContext) => {
         "Get a deterministic, reviewable agent dispatch plan from this repository's Secure Cloud Agents catalog " +
         "(routes, primary/reviewer/support roles, quality gates). Plan only: never invokes agents, retrieves " +
         "knowledge, merges, deploys, or mutates infrastructure or approvals. Requires the current workspace to " +
-        "be a checkout of the deagy/agents repository (or a project with its own catalog.yaml).",
+        "be a checkout of the deagy/agents repository (or a project with its own catalog.yaml). This plugin " +
+        "does not (and, with the Cline plugin API as currently published, cannot) dispatch the selected " +
+        "role(s) itself — a Cline plugin's setup(api, ctx) only exposes registerTool/registerCommand/etc., " +
+        "not the session's spawn-agent or team primitives. After calling this tool, the orchestrating Cline " +
+        "session must dispatch manually: see the \"## Cline\" section of " +
+        ".agents/skills/run-agent-orchestration/references/runner-adapters.md for the current manual-" +
+        "injection workaround and /team limitations.",
       inputSchema: AgentsSelectInputSchema,
       execute: async (input: AgentsSelectInput): Promise<Record<string, unknown> | AgentsSelectError> => {
         if (!rootPath) {
