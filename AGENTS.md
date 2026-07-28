@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-Agent roles, policies, workflows, orchestration, testing, support/escalation, and the knowledge store live under `agents/`; publishable repository skills live under `.agents/skills/`, with thin pointer files under `.claude/skills/` (Claude Code) and `.clinerules/` (Cline CLI). `plugins/agents/` packages this suite and its Agentic SDLC provider as a self-contained distribution generated from `agents/catalog.yaml`, `agents/`, and `.agents/skills/`. The portable lifecycle kernel is maintained separately at `github.com/deagy/agentic-sdlc`.
+Agent roles, policies, workflows, orchestration, testing, support/escalation, and the knowledge store live under `agents/`; publishable repository skills live under `.agents/skills/`, with thin per-skill pointer files under `.claude/skills/` (Claude Code). A single general pointer file under `.clinerules/` (Cline CLI) references `AGENTS.md`/`agents/RUNBOOK.md` directly — it is unrelated to the per-skill pointer mechanism. `plugins/agents/` packages this suite and its Agentic SDLC provider as a self-contained distribution generated from `agents/catalog.yaml`, `agents/`, and `.agents/skills/`. The portable lifecycle kernel is maintained separately at `github.com/deagy/agentic-sdlc`.
 
 Read `agents/RUNBOOK.md` for orchestration and any project-local `AGENTS.md` before product changes. Keep role definitions and `agents/catalog.yaml` synchronized.
 
