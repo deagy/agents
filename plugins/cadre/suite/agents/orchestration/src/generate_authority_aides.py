@@ -27,6 +27,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from agentic_sdlc_contracts import try_lifecycle_contract  # noqa: E402
 from generate_global_plugin import GENERATED_MARKER  # noqa: E402
 from routing import parse_keyed_entries  # noqa: E402
 
@@ -91,6 +92,33 @@ def load_aides(path: Path) -> list[dict[str, object]]:
     return aides
 
 
+def validate_gates_against_kernel_contract(aides: list[dict[str, object]]) -> None:
+    """aides.yaml hardcodes each aide's gate number(s) independently of the
+    Agentic SDLC kernel that owns gate numbering permanently. When the
+    kernel is reachable, cross-check every gate here against its live
+    lifecycle-gates contract, so a kernel-side gate renumber or removal is
+    caught at generation time instead of silently shipping an authority
+    aide for a gate that no longer exists. No-ops in standalone mode
+    (kernel not installed/configured), matching every other lifecycle-aware
+    code path in this suite -- see build_dispatch_plan.py's
+    _lifecycle_gates(), which degrades the same way.
+    """
+    contract = try_lifecycle_contract()
+    if contract is None:
+        return
+    known_gate_ids = {gate["id"] for gate in contract["gates"]}
+    for aide in aides:
+        gates = aide["gates"]
+        assert isinstance(gates, list)
+        for gate in gates:
+            gate_id = f"G{gate}"
+            if gate_id not in known_gate_ids:
+                raise ValueError(
+                    f"{DATA_PATH}: aide {aide['id']!r} references {gate_id}, which is not in "
+                    f"the Agentic SDLC kernel's live lifecycle-gates contract ({sorted(known_gate_ids)})"
+                )
+
+
 def gate_phrase(gates: list[int]) -> str:
     labels = [f"G{gate}" for gate in gates]
     if len(labels) == 1:
@@ -133,6 +161,7 @@ def existing_generated_files() -> set[Path]:
 
 def main() -> int:
     aides = load_aides(DATA_PATH)
+    validate_gates_against_kernel_contract(aides)
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
     rendered = generate(aides, template)
     orphaned = existing_generated_files() - set(rendered)

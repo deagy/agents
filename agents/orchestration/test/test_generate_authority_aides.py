@@ -172,6 +172,28 @@ class GatePhraseAndListTests(unittest.TestCase):
         self.assertEqual("G1, G2, G6", gaa.gate_list([1, 2, 6]))
 
 
+class ValidateGatesAgainstKernelContractTests(unittest.TestCase):
+    _AIDES = [
+        {"id": "engineering-lead-aide", "title": "Engineering Lead", "gates": [2, 6]},
+        {"id": "release-authority-aide", "title": "Release Authority", "gates": [9]},
+    ]
+
+    def test_standalone_mode_skips_validation(self) -> None:
+        with mock.patch.object(gaa, "try_lifecycle_contract", return_value=None):
+            gaa.validate_gates_against_kernel_contract(self._AIDES)  # must not raise
+
+    def test_passes_when_every_gate_is_in_the_live_contract(self) -> None:
+        contract = {"gates": [{"id": f"G{n}"} for n in range(1, 11)]}
+        with mock.patch.object(gaa, "try_lifecycle_contract", return_value=contract):
+            gaa.validate_gates_against_kernel_contract(self._AIDES)  # must not raise
+
+    def test_raises_when_an_aide_references_a_gate_missing_from_the_live_contract(self) -> None:
+        contract = {"gates": [{"id": "G1"}, {"id": "G2"}]}
+        with mock.patch.object(gaa, "try_lifecycle_contract", return_value=contract):
+            with self.assertRaisesRegex(ValueError, r"engineering-lead-aide.*G6"):
+                gaa.validate_gates_against_kernel_contract(self._AIDES)
+
+
 class RenderTests(unittest.TestCase):
     def test_unbound_placeholder_raises_attributed_value_error(self) -> None:
         aide = {"id": "engineering-lead-aide", "title": "Engineering Lead", "gates": [2, 6]}

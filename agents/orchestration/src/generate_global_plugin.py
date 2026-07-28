@@ -409,6 +409,20 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
     if (REPOSITORY_ROOT / bootstrap_helper).is_file():
         tracked.add(bootstrap_helper)
     role_paths = {f"agents/{metadata['definition']}" for metadata in catalog.values()}
+    # `catalog` was parsed straight off the worktree copy of catalog.yaml, but
+    # `tracked` only reflects git's index -- an uncommitted new role's
+    # AGENT.md would otherwise pass this function silently, then still get a
+    # wrapper and an agent-catalog.json entry from generate_agent_wrappers()/
+    # generate_agent_catalog_export() (which read `catalog` directly, not
+    # `tracked`), producing a package that references a suite file that was
+    # never copied. Fail loudly here instead.
+    untracked_role_paths = role_paths - tracked
+    if untracked_role_paths:
+        raise ValueError(
+            "agents/catalog.yaml references role definition file(s) not tracked in git; "
+            "commit them (git add) before regenerating the plugin: "
+            + ", ".join(sorted(untracked_role_paths))
+        )
     documentation_paths = {
         "AGENTS.md",
         "CONTRIBUTING.md",
