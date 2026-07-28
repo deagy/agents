@@ -266,6 +266,38 @@ class SelectorTests(unittest.TestCase):
             set(crypto["agents"]["primary"]).isdisjoint(crypto["agents"]["reviewers"])
         )
 
+    def test_selects_authority_aides_narrowly_per_role(self) -> None:
+        # `routing.yaml`'s declared quality_gates per route (standalone mode:
+        # Agentic SDLC unavailable, gates pass through as declared). When
+        # AGENTIC_SDLC_BIN/agentic-sdlc *is* available (integrated mode, as in
+        # CI's python-contracts job), the kernel enriches required_quality_gates
+        # to the full cumulative G1..max(declared) sequence, since reaching a
+        # later gate implies every earlier one was also required — see
+        # test_emits_schema_v2_quality_gates_separately_from_human_gates above
+        # for the same cumulative pattern on an unrelated route.
+        cases = [
+            ("product owner decision package", "product-owner-aide", ["G1", "G2", "G6"]),
+            ("engineering lead decision package", "engineering-lead-aide", ["G2", "G6"]),
+            ("system architect decision package", "system-architect-aide", ["G3"]),
+            ("governance lead decision package", "governance-lead-aide", ["G4"]),
+            ("security lead decision package", "security-lead-aide", ["G5"]),
+            ("release owner decision package", "release-owner-aide", ["G7", "G8"]),
+            ("release authority decision package", "release-authority-aide", ["G9"]),
+            ("service owner decision package", "service-owner-aide", ["G10"]),
+        ]
+        for task, expected_agent, declared_gates in cases:
+            with self.subTest(agent=expected_agent):
+                result = plan(task=task, changed_files=[])
+                self.assertEqual(result["agents"]["primary"], [expected_agent])
+                if AGENTIC_SDLC_AVAILABLE:
+                    max_gate = max(int(gate[1:]) for gate in declared_gates)
+                    expected_gates = [f"G{n}" for n in range(1, max_gate + 1)]
+                else:
+                    expected_gates = declared_gates
+                self.assertEqual(self.quality_gate_ids(result), expected_gates)
+                # Aides are read-only preparers, never reviewers or approvers.
+                self.assertNotIn(expected_agent, result["agents"]["reviewers"])
+
     @unittest.skipUnless(AGENTIC_SDLC_AVAILABLE, "Agentic SDLC executable is required")
     def test_selects_runtime_assurance_without_production_release(self) -> None:
         result = plan(task="Observe production runtime for deployed behavior conformance", changed_files=[])

@@ -1,6 +1,6 @@
 # Secure Cloud Agents plugin
 
-This self-contained plugin packages the repository's 39 specialist roles, six
+This self-contained plugin packages the repository's 47 specialist roles, six
 suite skills, orchestration runtime, knowledge-store runtime, and its external
 Agentic SDLC provider (`provider.json` is the versioned source of truth — see
 `version` and `kernel_compatibility` there rather than this prose). It does

@@ -142,6 +142,15 @@
       ],
       "definition": "suite/agents/testing/end-user-tester/AGENT.md"
     },
+    "engineering-lead-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/agents/authority/engineering-lead-aide/AGENT.md"
+    },
     "escalation-manager": {
       "phase": "support",
       "kind": "specialist",
@@ -177,6 +186,15 @@
         "dispatch"
       ],
       "definition": "suite/agents/engineering/frontend-engineer/AGENT.md"
+    },
+    "governance-lead-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/agents/authority/governance-lead-aide/AGENT.md"
     },
     "governance-planner": {
       "phase": "design",
@@ -266,6 +284,24 @@
       ],
       "definition": "suite/agents/planning/product-intent-agent/AGENT.md"
     },
+    "product-owner-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/agents/authority/product-owner-aide/AGENT.md"
+    },
+    "release-authority-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/agents/authority/release-authority-aide/AGENT.md"
+    },
     "release-engineer": {
       "phase": "release",
       "kind": "author",
@@ -274,6 +310,15 @@
         "dispatch"
       ],
       "definition": "suite/agents/engineering/release-engineer/AGENT.md"
+    },
+    "release-owner-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/agents/authority/release-owner-aide/AGENT.md"
     },
     "requirements-agent": {
       "phase": "planning",
@@ -293,6 +338,15 @@
       ],
       "definition": "suite/agents/security/secrets-identity-engineer/AGENT.md"
     },
+    "security-lead-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/agents/authority/security-lead-aide/AGENT.md"
+    },
     "security-reviewer": {
       "phase": "review",
       "kind": "reviewer",
@@ -300,6 +354,15 @@
         "reviewer"
       ],
       "definition": "suite/agents/review/security-reviewer/AGENT.md"
+    },
+    "service-owner-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/agents/authority/service-owner-aide/AGENT.md"
     },
     "supply-chain-security-reviewer": {
       "phase": "review",
@@ -317,6 +380,15 @@
         "dispatch"
       ],
       "definition": "suite/agents/support/support-triage-agent/AGENT.md"
+    },
+    "system-architect-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/agents/authority/system-architect-aide/AGENT.md"
     },
     "technical-writer": {
       "phase": "document",

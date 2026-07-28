@@ -253,3 +253,57 @@ agents:
     capability: environment_operator
     model: haiku
     codex_model: gpt-5-mini
+  # `phase: authority` roles below prepare the decision package a human
+  # lifecycle authority needs for their assigned gate(s); they never approve,
+  # recommend a disposition, or hold delegated authority themselves (see
+  # docs/proposals/human-authority-role-agents.md). All read_only/opus per the
+  # design doc's rationale: these support high-blast-radius, hard-to-reverse
+  # human judgment calls even though the aide itself only assembles evidence.
+  product-owner-aide:
+    definition: authority/product-owner-aide/AGENT.md
+    phase: authority
+    capability: read_only
+    model: opus
+    codex_model: gpt-5
+  engineering-lead-aide:
+    definition: authority/engineering-lead-aide/AGENT.md
+    phase: authority
+    capability: read_only
+    model: opus
+    codex_model: gpt-5
+  system-architect-aide:
+    definition: authority/system-architect-aide/AGENT.md
+    phase: authority
+    capability: read_only
+    model: opus
+    codex_model: gpt-5
+  governance-lead-aide:
+    definition: authority/governance-lead-aide/AGENT.md
+    phase: authority
+    capability: read_only
+    model: opus
+    codex_model: gpt-5
+  security-lead-aide:
+    definition: authority/security-lead-aide/AGENT.md
+    phase: authority
+    capability: read_only
+    model: opus
+    codex_model: gpt-5
+  release-owner-aide:
+    definition: authority/release-owner-aide/AGENT.md
+    phase: authority
+    capability: read_only
+    model: opus
+    codex_model: gpt-5
+  release-authority-aide:
+    definition: authority/release-authority-aide/AGENT.md
+    phase: authority
+    capability: read_only
+    model: opus
+    codex_model: gpt-5
+  service-owner-aide:
+    definition: authority/service-owner-aide/AGENT.md
+    phase: authority
+    capability: read_only
+    model: opus
+    codex_model: gpt-5
