@@ -32,7 +32,6 @@ jobs:
       - run: python -B -m unittest discover -s agents/orchestration/test -p "test_*.py"
       - run: python -B -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
       - run: python -B -m unittest discover -s agents/shared/test -p "test_*.py"
-      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc validate --root .
       - run: ./bin/cadre help
       - run: ./bin/cadre select --task "CI wrapper smoke test" --files README.md --classification internal --task-id CI-SMOKE-1 >/dev/null
       - run: ./bin/cadre generate-plugin --check

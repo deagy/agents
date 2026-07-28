@@ -62,7 +62,7 @@ peer-vs-orchestrator-relayed communication contract each team carries.
 3. Retrieve authorized, role-specific knowledge context and record its status and query identifiers.
 4. Give each participating agent its `AGENT.md`, task context, knowledge bundle, and only the access it needs.
 5. Exchange findings using `shared/output-schemas/finding.schema.json` and bind agent handoffs through `orchestration/handoff-contracts.md`.
-6. In a consuming target project, ask the standalone Agentic SDLC kernel to validate lifecycle decisions and record gate state in that project's `.agentic-sdlc/` directory. This provider repository also runs its own `.agentic-sdlc/` overlay to track its own catalog/plugin roadmap, but that overlay carries no authority over any other project's gates or run records.
+6. In a consuming target project, ask the standalone Agentic SDLC kernel to validate lifecycle decisions and record gate state in that project's `.agentic-sdlc/` directory. This provider repository does not run its own `.agentic-sdlc/` overlay.
 7. Require a human decision wherever an agent reaches an escalation condition or human-only gate.
 8. Route runtime nonconformance through observability, support, incident, security, compliance, and debugging roles into traced remediation or backlog work.
 9. Permit authorized retrieval and its operational audit/SQLite writes, but route content and lifecycle mutations through the knowledge-store steward.
@@ -83,7 +83,7 @@ Initialize a consuming target project from the repository checkout with:
 cadre sdlc init --root /path/to/target
 ```
 
-The portable initializer proposes detectable values and leaves consequential unknowns unresolved. Human authority, compliance applicability, environment persistence/production status, risk acceptance, and platform applicability must be assigned or decided by accountable humans. It writes lifecycle state into the target project's own `.agentic-sdlc/` directory — separate from and carrying no authority over any other project's overlay, including this provider checkout's own `.agentic-sdlc/` (see `docs/lifecycle-and-plugin-operations.md`). See `https://github.com/deagy/agentic-sdlc` for installation and upgrades.
+The portable initializer proposes detectable values and leaves consequential unknowns unresolved. Human authority, compliance applicability, environment persistence/production status, risk acceptance, and platform applicability must be assigned or decided by accountable humans. It writes lifecycle state into the target project's own `.agentic-sdlc/` directory — separate from and carrying no authority over any other project's overlay. This provider checkout does not run its own `.agentic-sdlc/` overlay (see `docs/lifecycle-and-plugin-operations.md`). See `https://github.com/deagy/agentic-sdlc` for installation and upgrades.
 
 For GitHub-backed human gates, set `approval_sources.human_gate_default` to
 `github-review`, bind authorities to their GitHub logins, and use

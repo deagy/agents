@@ -956,21 +956,6 @@ class RepositoryHealthTests(unittest.TestCase):
         )
         self.assertEqual("0.3.0", result.stdout.strip())
 
-    def test_bin_agents_sdlc_validate_reports_this_repositorys_overlay_as_valid_and_ready(self) -> None:
-        self._require_agentic_sdlc()
-        result = subprocess.run(
-            [str(REPOSITORY_ROOT / "bin" / "cadre"), "sdlc", "validate", "--root", str(REPOSITORY_ROOT)],
-            cwd=REPOSITORY_ROOT,
-            check=True,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            env=os.environ.copy(),
-        )
-        payload = json.loads(result.stdout)
-        self.assertTrue(payload["valid"], payload)
-        self.assertTrue(payload["ready"], payload)
-
     @unittest.skipUnless(sys.platform != "win32", "bin/cadre is a POSIX sh script")
     def test_bin_agents_wrapper_dispatches_select_matching_direct_invocation(self) -> None:
         self._require_agentic_sdlc()

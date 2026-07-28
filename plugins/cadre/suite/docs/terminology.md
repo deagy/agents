@@ -7,7 +7,7 @@
 | Agent definition | The canonical `AGENT.md` describing one role's purpose, inputs, authority, escalation conditions, and completion criteria. |
 | Catalog | `agents/catalog.yaml`, the machine-readable inventory of role IDs, definition paths, and phases. |
 | Provider | A package that supplies roles, profiles, and extensions to the portable Agentic SDLC kernel. |
-| Provider repository | A distribution project that supplies provider resources and dispatch inputs to other consuming projects. Being a provider is orthogonal to being a lifecycle consumer: a provider repository may (this one does) also run its own `.agentic-sdlc/` overlay and run records to track its own roadmap, without that overlay carrying any authority over another project's gates. |
+| Provider repository | A distribution project that supplies provider resources and dispatch inputs to other consuming projects. Being a provider is orthogonal to being a lifecycle consumer: a provider repository may optionally also run its own `.agentic-sdlc/` overlay and run records to track its own roadmap (this one does not), without that overlay carrying any authority over another project's gates. |
 | Profile | A selectable lifecycle configuration that combines a kernel baseline with project-relevant roles and defaults. |
 | Workflow | A documented sequence for a class of work, such as a new service, debugging, release, or incident. |
 | Dispatch plan | A reviewable selector output identifying roles, reviewers, workflow, gates, evidence, and handoffs. |
@@ -33,8 +33,7 @@ Secure Cloud provider
 
 The kernel owns lifecycle state and gate transitions, permanently — no
 provider ever takes over schema, validator, or gate-authority ownership. This
-repository owns the Secure Cloud provider content, and also runs its own
-`.agentic-sdlc/` overlay as an ordinary consumer for its own roadmap. Every
-consuming target project, including this one, owns only its own overlay and
-run records; none carries authority over another's. A provider or agent
-cannot grant itself human authority.
+repository owns the Secure Cloud provider content but does not run its own
+`.agentic-sdlc/` overlay. Every consuming target project owns only its own
+overlay and run records; none carries authority over another's. A provider or
+agent cannot grant itself human authority.

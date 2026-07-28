@@ -59,9 +59,7 @@ and the `secure-cloud` provider. That schema/validator/gate-authority ownership
 never moves into this repository, for any project. A consuming target project
 records its own decisions and run state under `.agentic-sdlc/`; installing or
 upgrading a plugin does not grant approval or rewrite those records. This
-repository also runs its own `.agentic-sdlc/` overlay, as an ordinary consumer,
-to track its own catalog/plugin roadmap — that overlay carries no authority
-over any other project's gates.
+repository does not run its own `.agentic-sdlc/` overlay.
 
 ## Supported runners
 

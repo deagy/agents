@@ -46,22 +46,10 @@ Never commit secrets, raw chat exports, real documents, local environment files,
 This repository is a provider/plugin distribution — it supplies provider
 resources and dispatch inputs to *other* consuming projects, which own their
 own `.agentic-sdlc/` overlays, run records, gate approvals, and lifecycle
-decisions. This repository also runs its own `.agentic-sdlc/` overlay (see the
-managed section below) to track its own catalog/plugin roadmap — that is a
-distinct, ordinary-consumer use of the kernel and does not change the rule
-that follows.
+decisions. This repository does not run its own `.agentic-sdlc/` overlay.
 
 Do not copy lifecycle schemas, run-record validators, gate authorities, or
 kernel authority into this repository. Never infer gate approval,
 production/destructive authority, risk acceptance, or compliance applicability
 for another project. Artifact authors must remain separate from independent
 reviewers and human approvers.
-
-<!-- agentic-sdlc:start -->
-## Agentic SDLC
-
-This repository uses the portable Agentic SDLC project overlay in `.agentic-sdlc/`.
-Use its orchestration skill or CLI for multi-role delivery work. Run records are authoritative.
-Never infer gate approval, production/destructive authority, risk acceptance, or compliance applicability.
-Artifact authors must remain separate from independent reviewers and human approvers.
-<!-- agentic-sdlc:end -->

@@ -451,7 +451,8 @@ Grounds:
 2. `CLAUDE.md` (both this repo's and the workspace root's): kernel ownership of
    gate-authority semantics is stated as **permanent**.
 3. `docs/lifecycle-and-plugin-operations.md`: the same, with the explicit note
-   that this repo running its own overlay does not change it.
+   that this repo does not run its own overlay and never gains authority
+   through one.
 4. Mechanically: the validation that would have to understand a delegation
    (`can_mark_gate_approved`, `has_all_required_human_approvals`,
    `human_requirement_for_gate`, `validate_repository`) is all kernel code.
