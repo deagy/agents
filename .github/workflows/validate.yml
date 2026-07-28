@@ -74,31 +74,63 @@ jobs:
       # binary transiently disappearing immediately afterward (an orphaned `npm
       # update cline` process shows up in job cleanup logs), breaking the very
       # next `cline` invocation with "command not found" -- an upstream
-      # packaging/self-repair race, not a regression in this repository. Retry
-      # each invocation and reinstall on demand if the binary goes missing,
-      # rather than failing CI on an external race outside this repo's control.
+      # packaging/self-repair race, not a regression in this repository.
+      # Reinstalling immediately on top of that in-flight background process
+      # only trades one race for another (`npm error ENOTEMPTY ... rename
+      # .../node_modules/cline -> .../node_modules/.cline-*`, two npm
+      # processes fighting over the same directory) -- so wait for the
+      # binary to reappear on its own first, and only reinstall, patiently
+      # retrying through any such collision, if it genuinely doesn't.
       - name: cline plugin install (self-healing retry)
         run: |
           set -eu
+          wait_for_cline() {
+            for i in 1 2 3 4 5 6; do
+              command -v cline >/dev/null 2>&1 && return 0
+              sleep 5
+            done
+            return 1
+          }
+          reinstall_cline() {
+            for i in 1 2 3; do
+              npm install -g cline@3.0.46 && return 0
+              echo "reinstall attempt $i failed, likely racing cline's own background self-repair; waiting" >&2
+              sleep 10
+            done
+            return 1
+          }
           for attempt in 1 2 3; do
-            if command -v cline >/dev/null 2>&1 && cline plugin install --json "$GITHUB_WORKSPACE/plugins/cline"; then
+            if wait_for_cline && cline plugin install --json "$GITHUB_WORKSPACE/plugins/cline"; then
               exit 0
             fi
-            echo "attempt $attempt: cline missing or plugin install failed; reinstalling and retrying" >&2
-            npm install -g cline@3.0.46
-            sleep 5
+            echo "attempt $attempt: cline plugin install failed; attempting reinstall" >&2
+            reinstall_cline || true
           done
           exit 1
       - name: cline plugin uninstall (self-healing retry)
         run: |
           set -eu
+          wait_for_cline() {
+            for i in 1 2 3 4 5 6; do
+              command -v cline >/dev/null 2>&1 && return 0
+              sleep 5
+            done
+            return 1
+          }
+          reinstall_cline() {
+            for i in 1 2 3; do
+              npm install -g cline@3.0.46 && return 0
+              echo "reinstall attempt $i failed, likely racing cline's own background self-repair; waiting" >&2
+              sleep 10
+            done
+            return 1
+          }
           for attempt in 1 2 3; do
-            if command -v cline >/dev/null 2>&1 && cline plugin uninstall @deagy/cadre-cline-plugin --json; then
+            if wait_for_cline && cline plugin uninstall @deagy/cadre-cline-plugin --json; then
               exit 0
             fi
-            echo "attempt $attempt: cline missing or plugin uninstall failed; reinstalling and retrying" >&2
-            npm install -g cline@3.0.46
-            sleep 5
+            echo "attempt $attempt: cline plugin uninstall failed; attempting reinstall" >&2
+            reinstall_cline || true
           done
           exit 1
 
