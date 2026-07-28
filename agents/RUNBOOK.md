@@ -563,6 +563,12 @@ Keep organization-wide requirements under `shared/`; keep role authority in each
 
 ## 16. Use the portable plugin in another project
 
+Non-engineers, or anyone who would rather not touch a CLI directly, should use
+the `lifecycle-onboarding` skill (`.agents/skills/lifecycle-onboarding/`)
+instead of the steps below — ask an agent to run it and it drives the whole
+flow conversationally, in plain language, on your behalf. The rest of this
+section is the direct CLI reference for engineers who prefer it.
+
 The standalone [`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc)
 distribution separates the reusable lifecycle kernel from target-project state:
 
@@ -578,7 +584,7 @@ launcher:
 agents sdlc init --root /path/to/target
 ```
 
-The initializer detects candidate technologies, commands, and a project profile, defaulting to the low-ceremony `quick` profile and generating subagent wrappers for both runners (`init --runner {codex,claude,both}`). It writes state only to the consuming target project. Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking. This provider repository is lifecycle-exempt and must not be initialized.
+The initializer detects candidate technologies, commands, and a project profile, defaulting to the low-ceremony `quick` profile and generating subagent wrappers for both runners (`init --runner {codex,claude,both}`). It writes state to the target project you point `--root` at. Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking. This provider repository also runs its own `.agentic-sdlc/` overlay for its own catalog/plugin roadmap (kernel-only, `--profile generic`, no runner wrappers — see `docs/lifecycle-and-plugin-operations.md`); that overlay carries no authority over any other project's gates.
 
 If the target project uses this repository's cloud stack, use
 `--profile secure-cloud`. The `agents sdlc` launcher explicitly supplies

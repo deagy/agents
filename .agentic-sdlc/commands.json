@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "commands": {
+    "test_knowledge_store": "python3 -m unittest discover -s agents/knowledge-store/test -p \"test_*.py\"",
+    "test_orchestration": "python3 -m unittest discover -s agents/orchestration/test -p \"test_*.py\"",
+    "test_shared": "python3 -m unittest discover -s agents/shared/test -p \"test_*.py\"",
+    "generate_plugin_check": "./bin/agents generate-plugin --check"
+  },
+  "confirmed": true
+}

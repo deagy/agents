@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lifecycle Onboarding"
+  short_description: "Set up gate tracking conversationally, no CLI needed."
+  default_prompt: "Use $lifecycle-onboarding to set up Agentic SDLC feature/gate tracking for this project."

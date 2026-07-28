@@ -18,6 +18,11 @@ Keep role definitions and `agents/catalog.yaml` synchronized. Preserve the
 separation between authors, independent reviewers, human approvers, evidence
 curators, and release operators.
 
+This repository's own catalog/plugin feature and roadmap work is tracked
+through its `.agentic-sdlc/` run records (`./bin/agents sdlc status --task-id
+...`), alongside GitHub Issues/PRs for discussion and triage — the run record
+is the gate-tracking surface, GitHub Issues remain the discussion surface.
+
 ## Typical change flow
 
 ```text

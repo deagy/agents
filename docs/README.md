@@ -12,7 +12,8 @@ Use this index to choose the shortest useful path.
 | Understand the suite | [Identity](../IDENTITY.md), then [Terminology](terminology.md) |
 | Make a first local selection | [Getting started](getting-started.md) |
 | Select and coordinate roles | [Orchestration guide](orchestration.md) |
-| Work with lifecycle gates or plugins | [Lifecycle and plugin operations](lifecycle-and-plugin-operations.md) |
+| Set up lifecycle gates without touching a CLI | `lifecycle-onboarding` skill — ask an agent to run it |
+| Work with lifecycle gates or plugins (direct CLI) | [Lifecycle and plugin operations](lifecycle-and-plugin-operations.md) |
 | Find a specialist role | [Role index](role-index.md) |
 | Contribute to this GitHub repository | [Contributing](../CONTRIBUTING.md) |
 | Follow the complete operating model | [Runbook](../agents/RUNBOOK.md) |
