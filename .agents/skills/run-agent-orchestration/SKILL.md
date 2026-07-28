@@ -44,7 +44,7 @@ contains `agents/catalog.yaml`; otherwise use the self-contained suite under
 
 ## Select Agents
 
-The internal tools require Python 3.10 or newer; this is not an organization-wide Python standard. `bin/agents` resolves and probes the interpreter.
+The internal tools require Python 3.10 or newer; this is not an organization-wide Python standard. `bin/cadre` resolves and probes the interpreter.
 
 ```sh
 agents select --root "<target-repository>" --task "<objective>" --task-id "<id>" --classification "<level>" --files "<comma-separated paths>"

@@ -1,0 +1,14 @@
+{
+  "name": "cadre",
+  "displayName": "Cadre",
+  "version": "0.8.0",
+  "description": "System-wide access to this repository's secure cloud agent suite: 47 specialist roles, orchestration skills, and the shared knowledge store, reachable from any project once installed at global scope.",
+  "author": {
+    "name": "Cadre maintainers",
+    "url": "https://github.com/deagy/cadre"
+  },
+  "homepage": "https://github.com/deagy/cadre",
+  "repository": "https://github.com/deagy/cadre",
+  "keywords": ["cadre", "orchestration", "system-wide", "knowledge-store"],
+  "skills": "./skills/"
+}

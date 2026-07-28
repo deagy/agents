@@ -1,5 +1,5 @@
 {
-  "name": "@deagy/secure-cloud-agents-cline-plugin",
+  "name": "@deagy/cadre-cline-plugin",
   "version": "0.1.0",
   "private": true,
   "type": "module",

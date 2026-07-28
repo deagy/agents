@@ -6,7 +6,7 @@ description: Conversationally set up Agentic SDLC lifecycle tracking (G1-G10 gat
 # Lifecycle onboarding
 
 Use this skill to drive `agentic-sdlc init` (and, optionally, this suite's
-`agents init` policy overlay) end to end through a plain-language
+`cadre init` policy overlay) end to end through a plain-language
 conversation. The human you are talking to may have no CLI, YAML, or JSON
 literacy at all — you run every command and edit every file on their behalf.
 Never show them raw flags, JSON, or YAML unless they explicitly ask to see
@@ -34,9 +34,9 @@ terms that a one-time install step is needed, offer to do it (clone the
 repo, or `pipx install` per its README), and proceed once it is available.
 
 Prefer running through this suite's compatibility launcher,
-`./bin/agents sdlc <subcommand>`, rather than the bare `agentic-sdlc`
+`./bin/cadre sdlc <subcommand>`, rather than the bare `agentic-sdlc`
 binary — it automatically wires in this repository's own provider profile
-(`plugins/agents/provider.json`) so `secure-cloud`-derived profiles resolve.
+(`plugins/cadre/provider.json`) so `secure-cloud`-derived profiles resolve.
 
 ## Step 1 — Resolve the profile
 
@@ -65,7 +65,7 @@ ambiguous rather than guessing.
 ## Step 3 — Run init
 
 ```sh
-./bin/agents sdlc init --root <path> --profile <resolved> \
+./bin/cadre sdlc init --root <path> --profile <resolved> \
   --project-id <slug> --classification <resolved> [--runner <resolved>]
 ```
 
@@ -164,14 +164,14 @@ subcommand takes `--target <path>` (not `--root`), and always previews by
 default — it only writes when `--force` is also passed:
 
 ```sh
-./bin/agents init --target <path> --answers <file> --force
+./bin/cadre init --target <path> --answers <file> --force
 ```
 
 `--interactive` (prompt-flow mode) exists as an alternative to `--answers`,
 but it drives a live terminal prompt loop meant for a human typing
 directly at it — you cannot reliably drive it as an agent through
 non-interactive command execution. Instead, build the `--answers` file
-yourself from the conversation (see `agents init --help` and
+yourself from the conversation (see `cadre init --help` and
 `agents/shared/src/init_project.py` for the answer-file's `schema_version:
 1` shape and required `field_decisions` entries per touched field),
 translating whatever it validates against into plain questions for the
@@ -186,7 +186,7 @@ the distinction to the human unless they ask.
 Run:
 
 ```sh
-./bin/agents sdlc validate --root <path>
+./bin/cadre sdlc validate --root <path>
 ```
 
 Parse the `errors`/`blockers` JSON yourself. For each blocker, translate it

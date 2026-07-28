@@ -241,7 +241,7 @@ class RepositoryHealthTests(unittest.TestCase):
         packaged_path = (
             REPOSITORY_ROOT
             / "plugins"
-            / "agents"
+            / "cadre"
             / "suite"
             / "agents"
             / "orchestration"
@@ -252,7 +252,7 @@ class RepositoryHealthTests(unittest.TestCase):
         self.assertFalse(packaged_path.exists(), str(packaged_path))
 
     def test_packaged_runtime_has_no_removed_lifecycle_paths(self) -> None:
-        plugin_root = REPOSITORY_ROOT / "plugins" / "agents"
+        plugin_root = REPOSITORY_ROOT / "plugins" / "cadre"
         offenders: list[str] = []
         for path in plugin_root.rglob("*"):
             if not path.is_file():
@@ -281,7 +281,7 @@ class RepositoryHealthTests(unittest.TestCase):
                 current_agent = line.strip()[:-1]
                 catalog_agents[current_agent] = ""
 
-        plugin_root = REPOSITORY_ROOT / "plugins" / "agents"
+        plugin_root = REPOSITORY_ROOT / "plugins" / "cadre"
         for agent_id in catalog_agents:
             with self.subTest(agent=agent_id):
                 md_path = plugin_root / "agents" / f"{agent_id}.md"
@@ -308,7 +308,7 @@ class RepositoryHealthTests(unittest.TestCase):
                 current_agent = line.strip()[:-1]
                 catalog_agents[current_agent] = ""
 
-        export_path = REPOSITORY_ROOT / "plugins" / "agents" / "agent-catalog.json"
+        export_path = REPOSITORY_ROOT / "plugins" / "cadre" / "agent-catalog.json"
         export = json.loads(export_path.read_text(encoding="utf-8"))["agents"]
         self.assertEqual(set(catalog_agents), set(export))
         for agent_id, metadata in export.items():
@@ -344,7 +344,7 @@ class RepositoryHealthTests(unittest.TestCase):
             self.assertIn('sandbox_mode = "workspace-write"', (plugin_root / "codex-agents" / "agents-application-engineer.toml").read_text(encoding="utf-8"))
 
     def test_plugin_advertised_role_count_matches_generated_catalog(self) -> None:
-        plugin_root = REPOSITORY_ROOT / "plugins" / "agents"
+        plugin_root = REPOSITORY_ROOT / "plugins" / "cadre"
         catalog_count = len(
             json.loads((plugin_root / "agent-catalog.json").read_text(encoding="utf-8"))["agents"]
         )
@@ -381,7 +381,7 @@ class RepositoryHealthTests(unittest.TestCase):
             (
                 REPOSITORY_ROOT
                 / "plugins"
-                / "agents"
+                / "cadre"
                 / "profiles"
                 / "secure-cloud"
                 / "profile.json"
@@ -392,7 +392,7 @@ class RepositoryHealthTests(unittest.TestCase):
             (
                 REPOSITORY_ROOT
                 / "plugins"
-                / "agents"
+                / "cadre"
                 / "agent-catalog.json"
             ).read_text(encoding="utf-8")
         )
@@ -815,7 +815,7 @@ class RepositoryHealthTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform != "win32", "packaged wrapper is a POSIX sh script")
     def test_packaged_selector_targets_callers_git_repository(self) -> None:
-        wrapper = REPOSITORY_ROOT / "plugins" / "agents" / "bin" / "agents"
+        wrapper = REPOSITORY_ROOT / "plugins" / "cadre" / "bin" / "cadre"
         with tempfile.TemporaryDirectory() as temporary_directory:
             target = Path(temporary_directory) / "unrelated"
             target.mkdir()
@@ -873,9 +873,9 @@ class RepositoryHealthTests(unittest.TestCase):
                     self.assertTrue(target.is_file() or target.is_dir(), f"{path}: {relative}")
 
     def test_secure_cloud_agents_plugin_is_self_contained(self) -> None:
-        plugin_root = REPOSITORY_ROOT / "plugins" / "agents"
+        plugin_root = REPOSITORY_ROOT / "plugins" / "cadre"
         provider = json.loads((plugin_root / "provider.json").read_text(encoding="utf-8"))
-        self.assertEqual("agents", provider["id"])
+        self.assertEqual("cadre", provider["id"])
         self.assertEqual("0.3.0", provider["version"])
         self.assertTrue((plugin_root / "suite" / "agents" / "catalog.yaml").is_file())
         offenders = []
@@ -914,7 +914,7 @@ class RepositoryHealthTests(unittest.TestCase):
     def test_secure_cloud_agents_provider_kernel_compatibility_covers_live_sdlc_version(self) -> None:
         self._require_agentic_sdlc()
         provider = json.loads(
-            (REPOSITORY_ROOT / "plugins" / "agents" / "provider.json").read_text(encoding="utf-8")
+            (REPOSITORY_ROOT / "plugins" / "cadre" / "provider.json").read_text(encoding="utf-8")
         )
         minimum = provider["kernel_compatibility"]["minimum"]
         maximum_exclusive = provider["kernel_compatibility"]["maximum_exclusive"]
@@ -922,7 +922,7 @@ class RepositoryHealthTests(unittest.TestCase):
         self.assertRegex(maximum_exclusive, r"^\d+\.\d+\.\d+$")
 
         result = subprocess.run(
-            [str(REPOSITORY_ROOT / "bin" / "agents"), "sdlc", "--version"],
+            [str(REPOSITORY_ROOT / "bin" / "cadre"), "sdlc", "--version"],
             cwd=REPOSITORY_ROOT,
             check=True,
             capture_output=True,
@@ -939,14 +939,14 @@ class RepositoryHealthTests(unittest.TestCase):
         )
 
     def test_bin_agents_wrapper_is_executable(self) -> None:
-        wrapper = REPOSITORY_ROOT / "bin" / "agents"
+        wrapper = REPOSITORY_ROOT / "bin" / "cadre"
         self.assertTrue(wrapper.is_file(), str(wrapper))
         self.assertTrue(os.access(wrapper, os.X_OK), f"{wrapper} is not executable")
 
     def test_bin_agents_delegates_sdlc_to_standalone_kernel(self) -> None:
         self._require_agentic_sdlc()
         result = subprocess.run(
-            [str(REPOSITORY_ROOT / "bin" / "agents"), "sdlc", "--version"],
+            [str(REPOSITORY_ROOT / "bin" / "cadre"), "sdlc", "--version"],
             cwd=REPOSITORY_ROOT,
             check=True,
             capture_output=True,
@@ -959,7 +959,7 @@ class RepositoryHealthTests(unittest.TestCase):
     def test_bin_agents_sdlc_validate_reports_this_repositorys_overlay_as_valid_and_ready(self) -> None:
         self._require_agentic_sdlc()
         result = subprocess.run(
-            [str(REPOSITORY_ROOT / "bin" / "agents"), "sdlc", "validate", "--root", str(REPOSITORY_ROOT)],
+            [str(REPOSITORY_ROOT / "bin" / "cadre"), "sdlc", "validate", "--root", str(REPOSITORY_ROOT)],
             cwd=REPOSITORY_ROOT,
             check=True,
             capture_output=True,
@@ -971,10 +971,10 @@ class RepositoryHealthTests(unittest.TestCase):
         self.assertTrue(payload["valid"], payload)
         self.assertTrue(payload["ready"], payload)
 
-    @unittest.skipUnless(sys.platform != "win32", "bin/agents is a POSIX sh script")
+    @unittest.skipUnless(sys.platform != "win32", "bin/cadre is a POSIX sh script")
     def test_bin_agents_wrapper_dispatches_select_matching_direct_invocation(self) -> None:
         self._require_agentic_sdlc()
-        wrapper = REPOSITORY_ROOT / "bin" / "agents"
+        wrapper = REPOSITORY_ROOT / "bin" / "cadre"
         selector = ROOT / "orchestration" / "src" / "select_agents.py"
         arguments = [
             "--task", "Update the React navigation",
@@ -1004,10 +1004,10 @@ class RepositoryHealthTests(unittest.TestCase):
         wrapper_payload.pop("generated_at", None)
         self.assertEqual(direct_payload, wrapper_payload)
 
-    @unittest.skipUnless(sys.platform != "win32", "bin/agents is a POSIX sh script")
+    @unittest.skipUnless(sys.platform != "win32", "bin/cadre is a POSIX sh script")
     def test_bin_agents_wrapper_resolves_correctly_through_a_symlink(self) -> None:
         self._require_agentic_sdlc()
-        wrapper = REPOSITORY_ROOT / "bin" / "agents"
+        wrapper = REPOSITORY_ROOT / "bin" / "cadre"
         with tempfile.TemporaryDirectory() as temporary_directory:
             link = Path(temporary_directory) / "agents"
             link.symlink_to(wrapper)
@@ -1028,9 +1028,9 @@ class RepositoryHealthTests(unittest.TestCase):
             )
             self.assertEqual("ready", json.loads(result.stdout)["status"])
 
-    @unittest.skipUnless(sys.platform != "win32", "bin/agents is a POSIX sh script")
+    @unittest.skipUnless(sys.platform != "win32", "bin/cadre is a POSIX sh script")
     def test_bin_agents_wrapper_rejects_unknown_subcommand(self) -> None:
-        wrapper = REPOSITORY_ROOT / "bin" / "agents"
+        wrapper = REPOSITORY_ROOT / "bin" / "cadre"
         result = subprocess.run(
             [str(wrapper), "not-a-real-subcommand"],
             cwd=REPOSITORY_ROOT,
@@ -1044,7 +1044,7 @@ class RepositoryHealthTests(unittest.TestCase):
 
     def test_secure_cloud_agents_plugin_bin_wrapper_matches_direct_invocation(self) -> None:
         self._require_agentic_sdlc()
-        wrapper = REPOSITORY_ROOT / "plugins" / "agents" / "bin" / "agents"
+        wrapper = REPOSITORY_ROOT / "plugins" / "cadre" / "bin" / "cadre"
         self.assertTrue(wrapper.is_file(), str(wrapper))
         self.assertTrue(os.access(wrapper, os.X_OK), f"{wrapper} is not executable")
         selector = ROOT / "orchestration" / "src" / "select_agents.py"
@@ -1092,18 +1092,18 @@ class RepositoryHealthTests(unittest.TestCase):
                 self.assertTrue((REPOSITORY_ROOT / script).is_file(), script)
                 self.assertTrue(description)
 
-        # bin/agents.py owns table parsing, sdlc delegation, usage text, and
-        # dispatch; the per-platform shims (bin/agents, bin/agents.ps1) only
+        # bin/cadre.py owns table parsing, sdlc delegation, usage text, and
+        # dispatch; the per-platform shims (bin/cadre, bin/cadre.ps1) only
         # find a Python interpreter and hand off to it, so this logic exists
         # exactly once instead of being duplicated per shell language.
-        dispatcher_source = (REPOSITORY_ROOT / "bin" / "agents.py").read_text(encoding="utf-8")
+        dispatcher_source = (REPOSITORY_ROOT / "bin" / "cadre.py").read_text(encoding="utf-8")
         self.assertIn("subcommands.tsv", dispatcher_source)
 
-        sh_source = (REPOSITORY_ROOT / "bin" / "agents").read_text(encoding="utf-8")
-        ps1_source = (REPOSITORY_ROOT / "bin" / "agents.ps1").read_text(encoding="utf-8")
+        sh_source = (REPOSITORY_ROOT / "bin" / "cadre").read_text(encoding="utf-8")
+        ps1_source = (REPOSITORY_ROOT / "bin" / "cadre.ps1").read_text(encoding="utf-8")
         for source in (sh_source, ps1_source):
             self.assertNotIn("subcommands.tsv", source, "shims must not also parse the subcommand table")
-            self.assertIn("agents.py", source, "shims must hand off to the shared dispatcher")
+            self.assertIn("cadre.py", source, "shims must hand off to the shared dispatcher")
             for _name, script, _description in rows:
                 self.assertNotIn(script, source, "subcommand table must not also be hardcoded in the shim")
 
@@ -1114,7 +1114,7 @@ class RepositoryHealthTests(unittest.TestCase):
         interpreter = self._powershell_interpreter()
         if interpreter is None:
             self.skipTest("no PowerShell interpreter (pwsh/powershell) available")
-        wrapper = REPOSITORY_ROOT / "bin" / "agents.ps1"
+        wrapper = REPOSITORY_ROOT / "bin" / "cadre.ps1"
         selector = ROOT / "orchestration" / "src" / "select_agents.py"
         arguments = [
             "--task", "Update the React navigation",
@@ -1148,7 +1148,7 @@ class RepositoryHealthTests(unittest.TestCase):
         interpreter = self._powershell_interpreter()
         if interpreter is None:
             self.skipTest("no PowerShell interpreter (pwsh/powershell) available")
-        wrapper = REPOSITORY_ROOT / "bin" / "agents.ps1"
+        wrapper = REPOSITORY_ROOT / "bin" / "cadre.ps1"
         result = subprocess.run(
             [interpreter, "-File", str(wrapper), "not-a-real-subcommand"],
             cwd=REPOSITORY_ROOT,

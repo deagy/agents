@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the self-contained Secure Cloud Agents plugin.
+"""Regenerate the self-contained Cadre plugin.
 
 The generated package carries full skill content, embedded role instructions,
 the tracked runtime suite, and a package-relative Agentic SDLC provider catalog.
@@ -10,20 +10,20 @@ Agent-role wrappers are NOT symmetric, because the two runners differ here:
   plugin's default agents/ directory (do NOT also declare an "agents" field in
   plugin.json for this — that field expects individual file paths, not a
   directory, and a bare directory string fails manifest validation), so the
-  role wrappers go under plugins/agents/agents/*.md and become
+  role wrappers go under plugins/cadre/agents/*.md and become
   global automatically when the plugin is installed at user scope.
 - Codex CLI has no such mechanism — custom agents are only discovered from
   .codex/agents/ (project) or ~/.codex/agents/ (global) on disk, never from a
   plugin manifest. The *.toml wrappers are generated to the repo-tracked
-  staging directory plugins/agents/codex-agents/ instead. The
-  separate `agents bootstrap-codex` command safely installs their namespaced
+  staging directory plugins/cadre/codex-agents/ instead. The
+  separate `cadre bootstrap-codex` command safely installs their namespaced
   IDs under ~/.codex/agents/ without overwriting bare roles or unowned files;
   this generator itself never writes outside the repository.
 
-A generated bin/agents wrapper is included too: Claude Code auto-discovers a
+A generated bin/cadre wrapper is included too: Claude Code auto-discovers a
 plugin's bin/ directory onto the Bash tool's PATH for the duration of a session
 (convention-based, no plugin.json field required), so an orchestrating Claude
-Code agent gets `agents <subcommand>` for free once this plugin is installed,
+Code agent gets `cadre <subcommand>` for free once this plugin is installed,
 without the human's own shell PATH being touched (that part stays manual — see
 README.md "System-wide install"; no plugin can modify a user's shell profile).
 Codex CLI has no equivalent bin/ auto-discovery, so this is a Claude-Code-only
@@ -35,17 +35,17 @@ kernel through provider.json.
 Regenerate after adding/removing a role in agents/catalog.yaml or a skill under
 .agents/skills/:
 
-    agents generate-plugin
+    cadre generate-plugin
 
 Validate deterministically without changing the working tree:
 
-    agents generate-plugin --check
+    cadre generate-plugin --check
 
 Use ``--output <directory>`` to render or check an isolated package, which is
 useful for tests and packaging review.
 
-(bin/agents at the repository root; or `python3 agents/orchestration/src/generate_global_plugin.py`
-directly if bin/agents isn't set up yet).
+(bin/cadre at the repository root; or `python3 agents/orchestration/src/generate_global_plugin.py`
+directly if bin/cadre isn't set up yet).
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ from routing import parse_catalog_entries  # noqa: E402
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 AGENTS_ROOT = REPOSITORY_ROOT / "agents"
 SKILLS_ROOT = REPOSITORY_ROOT / ".agents" / "skills"
-PLUGIN_ROOT = REPOSITORY_ROOT / "plugins" / "agents"
+PLUGIN_ROOT = REPOSITORY_ROOT / "plugins" / "cadre"
 SHARED_POLICIES = [
     "agents/shared/operating-principles.md",
     "agents/shared/team-profile.yaml",
@@ -83,7 +83,7 @@ ASK_HUMAN_RULE = (
 SHARED_OVERRIDE_NOTE = (
     "The shared policy content above is this package's global defaults, "
     "embedded at packaging time. The project you are dispatched into may "
-    "extend or override them under its own `.agents/shared/`; run `agents "
+    "extend or override them under its own `.agents/shared/`; run `cadre "
     "resolve-shared <filename>` from that project's directory for each "
     "shared file's effective content instead of trusting the embedded text "
     "alone (see agents/shared/README.md in the source suite)."
@@ -169,7 +169,7 @@ def reset_generated_content(plugin_root: Path) -> None:
         path = plugin_root / name
         if path.exists():
             shutil.rmtree(path)
-    for path in (plugin_root / "agent-catalog.json", plugin_root / "bin" / "agents"):
+    for path in (plugin_root / "agent-catalog.json", plugin_root / "bin" / "cadre"):
         if path.exists():
             path.unlink()
 
@@ -307,7 +307,7 @@ def generate_agent_catalog_export(catalog: dict[str, dict[str, Any]], plugin_roo
 
 
 def generate_bin_wrapper(plugin_root: Path) -> Path:
-    target = plugin_root / "bin" / "agents"
+    target = plugin_root / "bin" / "cadre"
     body = "\n".join(
         [
             "#!/bin/sh",
@@ -320,7 +320,7 @@ def generate_bin_wrapper(plugin_root: Path) -> Path:
             'if [ "$command_name" = "sdlc" ]; then',
             '  sdlc_bin="${AGENTIC_SDLC_BIN:-}"',
             '  if [ -z "$sdlc_bin" ]; then sdlc_bin=$(command -v agentic-sdlc || true); fi',
-            '  [ -n "$sdlc_bin" ] || { echo "agents: install Agentic SDLC v0.3.x from https://github.com/deagy/agentic-sdlc" >&2; exit 1; }',
+            '  [ -n "$sdlc_bin" ] || { echo "cadre: install Agentic SDLC v0.3.x from https://github.com/deagy/agentic-sdlc" >&2; exit 1; }',
             '  exec "$sdlc_bin" --provider "$PLUGIN_ROOT/provider.json" "$@"',
             "fi",
             "AGENT_PYTHON=",
@@ -328,7 +328,7 @@ def generate_bin_wrapper(plugin_root: Path) -> Path:
             '  command -v "$candidate" >/dev/null 2>&1 || continue',
             '  if "$candidate" -c \'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)\' 2>/dev/null; then AGENT_PYTHON="$candidate"; break; fi',
             "done",
-            '[ -n "$AGENT_PYTHON" ] || { echo "agents: Python 3.10+ is required" >&2; exit 1; }',
+            '[ -n "$AGENT_PYTHON" ] || { echo "cadre: Python 3.10+ is required" >&2; exit 1; }',
             'case "$command_name" in',
             '  select) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/select_agents.py" "$@" ;;',
             '  bootstrap-codex) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/sync_codex_agents.py" --source "$PLUGIN_ROOT/codex-agents" "$@" ;;',
@@ -336,8 +336,8 @@ def generate_bin_wrapper(plugin_root: Path) -> Path:
             '  resolve-shared) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/shared/src/resolve.py" "$@" ;;',
             '  init) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/shared/src/init_project.py" "$@" ;;',
             '  mcp-dispatch-server) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/mcp/dispatch_server.py" "$@" ;;',
-            '  help|-h|--help) echo "Usage: agents {select|knowledge|bootstrap-codex|resolve-shared|init|mcp-dispatch-server|sdlc} [args...]" ;;',
-            '  *) echo "agents: unknown subcommand $command_name" >&2; exit 1 ;;',
+            '  help|-h|--help) echo "Usage: cadre {select|knowledge|bootstrap-codex|resolve-shared|init|mcp-dispatch-server|sdlc} [args...]" ;;',
+            '  *) echo "cadre: unknown subcommand $command_name" >&2; exit 1 ;;',
             "esac",
             "",
         ]
@@ -418,11 +418,11 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
         target.parent.mkdir(parents=True, exist_ok=True)
         if target.suffix.lower() == ".md":
             content = source.read_text(encoding="utf-8")
-            content = content.replace("../bin/agents", "../../bin/agents")
+            content = content.replace("../bin/cadre", "../../bin/cadre")
             content = content.replace("../README.md", "README.md")
             content = content.replace("`../README.md`", "`README.md`")
-            content = content.replace("../plugins/agents/README.md", "../README.md")
-            content = content.replace("../plugins/agents/", "./")
+            content = content.replace("../plugins/cadre/README.md", "../README.md")
+            content = content.replace("../plugins/cadre/", "./")
             content = f"{GENERATED_MARKER}\n\n{content}"
             write(target, content)
         else:
@@ -472,11 +472,11 @@ def main() -> int:
         if any(output_root.iterdir()) and not marker.is_file():
             raise SystemExit("--output must be a new directory or an existing generated plugin")
     if "--check" in arguments:
-        with tempfile.TemporaryDirectory(prefix="agents-plugin-") as temporary_directory:
-            candidate = Path(temporary_directory) / "agents"
+        with tempfile.TemporaryDirectory(prefix="cadre-plugin-") as temporary_directory:
+            candidate = Path(temporary_directory) / "cadre"
             generate_package(catalog, candidate)
             if not output_root.exists() or not files_equal(candidate, output_root):
-                print("Generated plugin is stale or non-deterministic; run agents generate-plugin", file=sys.stderr)
+                print("Generated plugin is stale or non-deterministic; run cadre generate-plugin", file=sys.stderr)
                 return 1
         kernel = os.environ.get("AGENTIC_SDLC_BIN") or shutil.which("agentic-sdlc")
         if kernel:

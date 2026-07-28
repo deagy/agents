@@ -80,7 +80,7 @@ class SelectorTests(unittest.TestCase):
         result = plan(
             task="Package the Secure Cloud Agentic SDLC provider",
             changed_files=[
-                "plugins/agents/provider.json",
+                "plugins/cadre/provider.json",
                 ".agents/plugins/marketplace.json",
             ],
             classification="internal",

@@ -1,4 +1,4 @@
-# Secure Cloud Agents Identity
+# Cadre Identity
 
 Status: active
 Audience: maintainers, contributors, operators, and users of the agent suite
@@ -6,7 +6,7 @@ Authority: informational only
 
 ## Purpose
 
-Secure Cloud Agents is a governed suite of specialized assistants for secure
+Cadre is a governed suite of specialized assistants for secure
 cloud application and infrastructure work. The suite helps humans select,
 coordinate, implement, test, review, document, support, and release work with
 traceable evidence and explicit escalation.

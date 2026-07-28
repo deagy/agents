@@ -1,4 +1,4 @@
-# Secure Cloud Agent Suite
+# Cadre Agent Suite
 
 This directory defines the Secure Cloud provider's agent team for designing,
 building, observing, operating, black-box testing, end-user testing,
@@ -26,9 +26,9 @@ Useful entry points:
 - [Contributing](../CONTRIBUTING.md) for changes to this GitHub repository.
 
 The Python selector component requires Python 3.10 or newer, without
-establishing an organization-wide Python version. `bin/agents` (repository
-root) resolves an interpreter for you — run `agents select --task "..."` from
-anywhere it's on `PATH`, or `../bin/agents select --task "..."`
+establishing an organization-wide Python version. `bin/cadre` (repository
+root) resolves an interpreter for you — run `cadre select --task "..."` from
+anywhere it's on `PATH`, or `../bin/cadre select --task "..."`
 (`..\bin\agents.ps1` in PowerShell) from this directory. See `RUNBOOK.md` for
 the wrapper's interpreter-probe details. The schema version 2 selector
 evaluates task text and Git changes, validates roles against `catalog.yaml`,
@@ -36,7 +36,7 @@ and emits a reviewable plan with provider lifecycle applicability kept
 separate from mutation-oriented human gates; it does not execute agents,
 approve gates, or retrieve knowledge.
 
-`agents select` works standalone by default — team dispatch (`agents.primary/
+`cadre select` works standalone by default — team dispatch (`agents.primary/
 reviewers/support`) needs only this suite's own `catalog.yaml` and
 `routing.yaml`, useful on its own for a single small project. When the
 standalone Agentic SDLC executable is also available (`AGENTIC_SDLC_BIN` or
@@ -75,24 +75,24 @@ Technology preferences live in `shared/team-profile.yaml`, `shared/technology-st
 
 ## Portable adoption
 
-This repository is the source implementation for the Secure Cloud agent suite. The lifecycle kernel, schemas, command interface, gate transitions, approvals, and lifecycle skills are maintained separately at `github.com/deagy/agentic-sdlc`. This suite contributes its catalog, `secure-cloud` profile, routing, and provider extensions through `plugins/agents/provider.json`.
+This repository is the source implementation for the Cadre agent suite. The lifecycle kernel, schemas, command interface, gate transitions, approvals, and lifecycle skills are maintained separately at `github.com/deagy/agentic-sdlc`. This suite contributes its catalog, `secure-cloud` profile, routing, and provider extensions through `plugins/cadre/provider.json`.
 
 Initialize a consuming target project from the repository checkout with:
 
 ```sh
-agents sdlc init --root /path/to/target
+cadre sdlc init --root /path/to/target
 ```
 
 The portable initializer proposes detectable values and leaves consequential unknowns unresolved. Human authority, compliance applicability, environment persistence/production status, risk acceptance, and platform applicability must be assigned or decided by accountable humans. It writes lifecycle state into the target project's own `.agentic-sdlc/` directory — separate from and carrying no authority over any other project's overlay, including this provider checkout's own `.agentic-sdlc/` (see `docs/lifecycle-and-plugin-operations.md`). See `https://github.com/deagy/agentic-sdlc` for installation and upgrades.
 
 For GitHub-backed human gates, set `approval_sources.human_gate_default` to
 `github-review`, bind authorities to their GitHub logins, and use
-`agents sdlc approve-from-github-pr` to fetch an approved review. The command
+`cadre sdlc approve-from-github-pr` to fetch an approved review. The command
 requires authenticated `gh` access and an exact repository, pull request, gate,
 authority role, and reviewed commit when revision binding is required. Run
-`agents sdlc validate` after recording the approval; the lifecycle kernel will
+`cadre sdlc validate` after recording the approval; the lifecycle kernel will
 advance the run record only when all gate criteria and authority checks pass.
 
 ## System-wide adoption
 
-Unlike the portable kernel above, `../plugins/agents/` does not get copied into other repositories — it makes *this* suite (roles, skills, knowledge store) reachable from any project directory on the machine once installed at global/user scope, since none of it is discoverable from outside this checkout by default. See `../plugins/agents/README.md` and `RUNBOOK.md` section 17.
+Unlike the portable kernel above, `../plugins/cadre/` does not get copied into other repositories — it makes *this* suite (roles, skills, knowledge store) reachable from any project directory on the machine once installed at global/user scope, since none of it is discoverable from outside this checkout by default. See `../plugins/cadre/README.md` and `RUNBOOK.md` section 17.

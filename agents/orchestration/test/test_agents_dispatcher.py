@@ -1,6 +1,6 @@
-"""Direct unit coverage for bin/agents.py's subcommand dispatcher.
+"""Direct unit coverage for bin/cadre.py's subcommand dispatcher.
 
-bin/agents (sh) and bin/agents.ps1 exercise this only indirectly, through
+bin/cadre (sh) and bin/cadre.ps1 exercise this only indirectly, through
 slow subprocess-based wrapper tests (see test_repository_health.py); this
 module tests load_subcommands/usage/main/dispatch_sdlc directly instead.
 Loaded via importlib rather than a sys.path + `import agents`, since a bare
@@ -23,7 +23,7 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 REPOSITORY_ROOT = ROOT.parent
-DISPATCHER_PATH = REPOSITORY_ROOT / "bin" / "agents.py"
+DISPATCHER_PATH = REPOSITORY_ROOT / "bin" / "cadre.py"
 
 _spec = importlib.util.spec_from_file_location("agents_cli_dispatcher", DISPATCHER_PATH)
 agents_cli = importlib.util.module_from_spec(_spec)
@@ -63,7 +63,7 @@ class LoadSubcommandsTests(unittest.TestCase):
 class UsageTests(unittest.TestCase):
     def test_renders_subcommands_sdlc_and_help_footer(self) -> None:
         text = agents_cli.usage([("select", "path/to/select.py", "Pick an agent")])
-        self.assertIn("Usage: agents <subcommand> [args...]", text)
+        self.assertIn("Usage: cadre <subcommand> [args...]", text)
         self.assertIn("select", text)
         self.assertIn("Pick an agent", text)
         self.assertIn("sdlc", text)
@@ -76,20 +76,20 @@ class MainTests(unittest.TestCase):
     def test_no_arguments_defaults_to_help(self) -> None:
         code, out, _err = _run_capturing(agents_cli.main, [])
         self.assertEqual(code, 0)
-        self.assertIn("Usage: agents <subcommand> [args...]", out)
+        self.assertIn("Usage: cadre <subcommand> [args...]", out)
 
     def test_help_flag_variants(self) -> None:
         for flag in ("help", "-h", "--help"):
             with self.subTest(flag=flag):
                 code, out, _err = _run_capturing(agents_cli.main, [flag])
                 self.assertEqual(code, 0)
-                self.assertIn("Usage: agents <subcommand> [args...]", out)
+                self.assertIn("Usage: cadre <subcommand> [args...]", out)
 
     def test_unknown_subcommand_fails_closed(self) -> None:
         code, _out, err = _run_capturing(agents_cli.main, ["not-a-real-subcommand"])
         self.assertEqual(code, 1)
-        self.assertIn("agents: unknown subcommand 'not-a-real-subcommand'", err)
-        self.assertIn("Usage: agents <subcommand> [args...]", err)
+        self.assertIn("cadre: unknown subcommand 'not-a-real-subcommand'", err)
+        self.assertIn("Usage: cadre <subcommand> [args...]", err)
 
     def test_dispatches_to_the_matching_script_and_relays_its_exit_code(self) -> None:
         # main()'s dispatch path shells out via subprocess.run, which writes

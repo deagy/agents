@@ -1,12 +1,12 @@
 {
-  "name": "agents-team",
+  "name": "cadre-team",
   "owner": {
-    "name": "Agents maintainers"
+    "name": "Cadre maintainers"
   },
   "plugins": [
     {
-      "name": "agents",
-      "source": "./plugins/agents"
+      "name": "cadre",
+      "source": "./plugins/cadre"
     }
   ]
 }

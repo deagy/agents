@@ -1,4 +1,4 @@
-# Secure Cloud Agents
+# Cadre
 
 This repository contains a secure cloud agent suite. It is intended for teams building self-hosted infrastructure and applications with Proxmox, Talos, Kubernetes, Helm, OpenTofu, GitLab CI/CD, Go, PostgreSQL, React, TypeScript, Python where useful, and Gherkin-based integration/regression testing.
 
@@ -9,16 +9,16 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 ```text
 .
 ├── AGENTS.md                 # Repository-wide contributor and safety rules
-├── bin/agents                # CLI dispatcher for every Python tool below (bin/agents.ps1 for PowerShell)
+├── bin/cadre                 # CLI dispatcher for every Python tool below (bin/cadre.ps1 for PowerShell)
 ├── agents/                   # Agent roles, policies, workflows, orchestration, support, tests
 ├── .agents/skills/           # Publishable skills for this repository (Codex CLI; pointed to from .claude/skills/)
 ├── .agents/plugins/          # Codex CLI repository/team marketplace metadata
 ├── .claude/skills/           # Thin pointers to .agents/skills/* for Claude Code discovery
 ├── .claude-plugin/           # Claude Code repository/team marketplace metadata
 ├── .clinerules/              # Pointer to AGENTS.md/RUNBOOK.md for Cline CLI discovery
-├── plugins/agents/           # Self-contained suite and Agentic SDLC provider
+├── plugins/cadre/            # Self-contained suite and Agentic SDLC provider
 ├── plugins/cline/            # Hand-authored Cline CLI plugin source (TypeScript; not generated — see below)
-├── .github/workflows/        # Validate-only GitHub Actions pipeline (tests, bin/agents smoke test, secret scan)
+├── .github/workflows/        # Validate-only GitHub Actions pipeline (tests, bin/cadre smoke test, secret scan)
 ├── docs/                     # Audience-oriented guides and human-readable role index
 ├── IDENTITY.md               # Informational suite identity; never an authority source
 ├── CONTRIBUTING.md           # GitHub contribution and review workflow
@@ -40,7 +40,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 
 Key areas:
 
-- [bin/agents](bin/agents) dispatches the suite tools (`agents select`, `agents knowledge`, `agents sdlc`, `agents generate-plugin`, `agents bootstrap-codex`, `agents version`, `agents resolve-shared`, and `agents init`). `agents select` works standalone, deterministically dispatching roles from this suite's own catalog and routing rules; it automatically enriches its plan with lifecycle-gate tracking when the standalone `agentic-sdlc` CLI is also available (or fails fast with `--require-sdlc` if that's required), and lifecycle *validation* itself is always provided by that separate `agentic-sdlc` CLI, never by this suite.
+- [bin/cadre](bin/cadre) dispatches the suite tools (`cadre select`, `cadre knowledge`, `cadre sdlc`, `cadre generate-plugin`, `cadre bootstrap-codex`, `cadre version`, `cadre resolve-shared`, and `cadre init`). `cadre select` works standalone, deterministically dispatching roles from this suite's own catalog and routing rules; it automatically enriches its plan with lifecycle-gate tracking when the standalone `agentic-sdlc` CLI is also available (or fails fast with `--require-sdlc` if that's required), and lifecycle *validation* itself is always provided by that separate `agentic-sdlc` CLI, never by this suite.
 - [agents/catalog.yaml](agents/catalog.yaml) is the machine-readable role inventory.
 - [agents/RUNBOOK.md](agents/RUNBOOK.md) explains how to select, dispatch, review, and escalate agent work.
 - [agents/orchestration/](agents/orchestration/) contains routing rules, lifecycle applicability mappings, handoff contracts, escalation policy, selectors, and tests.
@@ -50,7 +50,7 @@ Key areas:
 - [agents/testing/](agents/testing/) and [agents/support/](agents/support/) define black-box testing, end-user testing, support triage, and escalation roles.
 - [.agents/skills/](.agents/skills/) contains this repository's skills, packaged for Codex CLI directly and pointed to from `.claude/skills/` for Claude Code.
 - [deagy/agentic-sdlc](https://github.com/deagy/agentic-sdlc) owns the portable lifecycle kernel, initializer, validator, and lifecycle skills.
-- [plugins/agents/](plugins/agents/) packages this suite, its 47 roles, and the external `secure-cloud` provider profile.
+- [plugins/cadre/](plugins/cadre/) packages this suite, its 47 roles, and the external `secure-cloud` provider profile.
 
 The boundary is intentional: Agentic SDLC owns lifecycle state, schemas, gate
 transitions, approval-source policy, and portable commands. This repository
@@ -65,11 +65,11 @@ over any other project's gates.
 
 ## Supported runners
 
-Every role definition and orchestration tool is runner-neutral text and data. Codex CLI and Claude Code wrappers are generated into the self-contained Secure Cloud plugin. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc). [Cline](https://docs.cline.bot) is also recognized, in two complementary ways: it [reads `AGENTS.md` natively](https://docs.cline.bot/customization/cline-rules) as a cross-tool standard, and this repository additionally provides `.clinerules/agents-repository.md`, which points at the same canonical `AGENTS.md` and `agents/RUNBOOK.md` sources — this works for any Cline session with this repository as its working directory, no install required. Separately, [plugins/cline/](plugins/cline/) is a real, installable Cline CLI plugin (`cline plugin install ./plugins/cline`, or a git URL) exposing an `agents_select` tool that wraps `agents select` and returns its plan directly in conversation. Unlike `plugins/agents/`, `plugins/cline/` is hand-authored TypeScript source under version control, not generated output from `agents generate-plugin`. This plugin system currently applies to the Cline CLI, SDK, and Kanban only — not the VSCode/JetBrains extension. **Known limitation**: as of `cline` CLI `3.0.46` (the latest published version at the time this was built), invoking any locally-installed plugin's tool fails with `JSON.stringify cannot serialize cyclic structures` — this was confirmed to be an upstream Cline bug, not specific to this plugin, by reproducing the identical failure with `cline/cline`'s own unmodified example plugin. The plugin installs and uninstalls cleanly; tool invocation should start working once Cline ships a fix.
+Every role definition and orchestration tool is runner-neutral text and data. Codex CLI and Claude Code wrappers are generated into the self-contained Cadre plugin. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc). [Cline](https://docs.cline.bot) is also recognized, in two complementary ways: it [reads `AGENTS.md` natively](https://docs.cline.bot/customization/cline-rules) as a cross-tool standard, and this repository additionally provides `.clinerules/agents-repository.md`, which points at the same canonical `AGENTS.md` and `agents/RUNBOOK.md` sources — this works for any Cline session with this repository as its working directory, no install required. Separately, [plugins/cline/](plugins/cline/) is a real, installable Cline CLI plugin (`cline plugin install ./plugins/cline`, or a git URL) exposing an `agents_select` tool that wraps `cadre select` and returns its plan directly in conversation. Unlike `plugins/cadre/`, `plugins/cline/` is hand-authored TypeScript source under version control, not generated output from `cadre generate-plugin`. This plugin system currently applies to the Cline CLI, SDK, and Kanban only — not the VSCode/JetBrains extension. **Known limitation**: as of `cline` CLI `3.0.46` (the latest published version at the time this was built), invoking any locally-installed plugin's tool fails with `JSON.stringify cannot serialize cyclic structures` — this was confirmed to be an upstream Cline bug, not specific to this plugin, by reproducing the identical failure with `cline/cline`'s own unmodified example plugin. The plugin installs and uninstalls cleanly; tool invocation should start working once Cline ships a fix.
 
 ## Quick start
 
-Read [AGENTS.md](AGENTS.md) first, then use the [getting-started guide](docs/getting-started.md). `bin/agents` resolves a Python 3.10+ interpreter for you (checks `python3`/`python`; `.\bin\agents.ps1` also checks `py -3` in PowerShell) — see "Put `agents` on `PATH`" to put it on `PATH`, or run it as `./bin/agents` (`.\bin\agents.ps1` in PowerShell) from the repository root. Then validate the suite-only component and the orchestration tools (most of these run standalone; a handful of lifecycle-contract-specific tests only run when the standalone lifecycle executable is also available):
+Read [AGENTS.md](AGENTS.md) first, then use the [getting-started guide](docs/getting-started.md). `bin/cadre` resolves a Python 3.10+ interpreter for you (checks `python3`/`python`; `.\bin\cadre.ps1` also checks `py -3` in PowerShell) — see "Put `cadre` on `PATH`" to put it on `PATH`, or run it as `./bin/cadre` (`.\bin\cadre.ps1` in PowerShell) from the repository root. Then validate the suite-only component and the orchestration tools (most of these run standalone; a handful of lifecycle-contract-specific tests only run when the standalone lifecycle executable is also available):
 
 ```sh
 python3 -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
@@ -81,7 +81,7 @@ python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"
 Generate a reviewable dispatch plan:
 
 ```sh
-agents select \
+cadre select \
   --task "Review a React and Go upload feature" \
   --files frontend/src/App.tsx,services/internal/api/api.go \
   --classification internal \
@@ -93,7 +93,7 @@ The selector emits a plan only. It does not run agents, retrieve knowledge, depl
 ## Agentic SDLC quick start
 
 Install the reusable G1-G10 lifecycle from its standalone repository, then use
-this suite's compatibility command to inject the Secure Cloud provider. Pin
+this suite's compatibility command to inject the Cadre provider. Pin
 to a reviewed release in automation; `main` is useful for exploration but is
 not an immutable dependency — check
 [the repository's releases](https://github.com/deagy/agentic-sdlc/releases)
@@ -118,14 +118,14 @@ Put `agentic-sdlc/bin/agentic-sdlc` on `PATH`, or set
 `AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc`.
 
 Either way, once `agentic-sdlc` resolves on `PATH` (or via `AGENTIC_SDLC_BIN`),
-run `agents sdlc init --root /path/to/target`.
+run `cadre sdlc init --root /path/to/target`.
 
 This defaults to the low-ceremony `quick` profile and generates subagent wrappers for both runners (`init --runner {codex,claude,both}`).
 
 If the target project actually uses this repository's own cloud stack (Proxmox, Talos, Kubernetes, Helm, OpenTofu, GitLab CI, PostgreSQL), use `--profile secure-cloud` instead of the default. This is the **recommended** way to get this repository's 47 roles into a project — scoped to that one project, generated once as static files the project owns from that point on (no live link back to this checkout, so a later role edit here doesn't silently change that project's behavior):
 
 ```sh
-agents sdlc init --root /path/to/target --profile secure-cloud
+cadre sdlc init --root /path/to/target --profile secure-cloud
 ```
 
 A project with a different stack should stay on `quick`/`generic`/`web-service` — `secure-cloud` extends `generic` with 16 roles opinionated toward this repository's own infrastructure, and installing it onto an unrelated stack forces subagents shaped around infrastructure that project doesn't have.
@@ -164,7 +164,7 @@ Record supplied review metadata with `approve-from-github`, or let the CLI
 fetch the latest matching `APPROVED` review with `approve-from-github-pr`:
 
 ```sh
-agents sdlc approve-from-github-pr \
+cadre sdlc approve-from-github-pr \
   --root /path/to/target --task-id TASK-42 --gate G2 \
   --role product_owner --repo OWNER/REPO --pr 42 --commit-sha "$GITHUB_SHA"
 ```
@@ -187,41 +187,41 @@ unconditionally, via the same global/user-scope plugin install mechanism:
 
 ```sh
 codex plugin marketplace add .
-codex plugin add agents@agents-team
+codex plugin add cadre@cadre-team
 ```
 
 ```text
 /plugin marketplace add .
-/plugin install agents@agents-team
+/plugin install cadre@cadre-team
 ```
 
 The first `run-agent-orchestration` or `knowledge-ingestion` invocation with no
 knowledge-store config anywhere asks whether to create an isolated project-local
 one or use this shared global one — it does not create the global one silently.
-See [plugins/agents/README.md](plugins/agents/README.md)
+See [plugins/cadre/README.md](plugins/cadre/README.md)
 for how namespaced Codex subagent wrappers get into `~/.codex/agents/` without
 overwriting bare project/global roles or unowned namespaced files (Codex has no
 plugin-bundled-agent mechanism) and for how to regenerate after adding a role.
 
-## Put `agents` on `PATH`
+## Put `cadre` on `PATH`
 
-Optional, and useful regardless of which path above you took: put `bin/agents`
-on `PATH` so the `agents` command in this README and `agents/RUNBOOK.md` works
+Optional, and useful regardless of which path above you took: put `bin/cadre`
+on `PATH` so the `cadre` command in this README and `agents/RUNBOOK.md` works
 from any directory, not just this checkout (an orchestrating Claude Code agent
-doesn't need this — the installed plugins already put `bin/agents` on the Bash
+doesn't need this — the installed plugins already put `bin/cadre` on the Bash
 tool's PATH for it). Symlink it (a copy would break its reach-back into this
 repository) into a directory already on `PATH`, e.g.:
 
 ```sh
 mkdir -p ~/.local/bin
-ln -s "$(pwd)/bin/agents" ~/.local/bin/agents   # ensure ~/.local/bin is on PATH
+ln -s "$(pwd)/bin/cadre" ~/.local/bin/cadre   # ensure ~/.local/bin is on PATH
 ```
 
-PowerShell has no bare-name script execution by default; wrap `bin/agents.ps1`
+PowerShell has no bare-name script execution by default; wrap `bin/cadre.ps1`
 in a `$PROFILE` function instead:
 
 ```powershell
-function agents { & "C:\path\to\this\checkout\bin\agents.ps1" @args }
+function cadre { & "C:\path\to\this\checkout\bin\cadre.ps1" @args }
 ```
 
 ## Agent orchestration
@@ -282,17 +282,17 @@ Start here:
 
 Git tags follow `vMAJOR.MINOR.PATCH` and always match the packaged plugin's
 own version, declared independently in
-`plugins/agents/.claude-plugin/plugin.json` and
-`plugins/agents/.codex-plugin/plugin.json` (`agents
+`plugins/cadre/.claude-plugin/plugin.json` and
+`plugins/cadre/.codex-plugin/plugin.json` (`cadre
 generate-plugin` never touches this field, so a release is always a
 deliberate, reviewed action). Tags before `v0.3.0` predate this scheme and
 are a plain incrementing counter; they are left as-is.
 
 To cut a release:
 
-1. `agents version --set X.Y.Z` to bump both manifests together (or edit
-   them by hand — either way, `agents version --check` must pass).
-2. `agents generate-plugin` to regenerate the packaged plugin.
+1. `cadre version --set X.Y.Z` to bump both manifests together (or edit
+   them by hand — either way, `cadre version --check` must pass).
+2. `cadre generate-plugin` to regenerate the packaged plugin.
 3. Open a pull request describing the release; merge it once reviewed.
 
 Once the version bump lands on `main`, [`.github/workflows/release.yml`](.github/workflows/release.yml)

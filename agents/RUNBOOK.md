@@ -1,4 +1,4 @@
-# Secure Cloud Agent Runbook
+# Cadre Agent Runbook
 
 This runbook explains how to operate the agent suite. The definitions are runner-agnostic: use them with an agent platform, separate model sessions, or structured human-assisted reviews.
 
@@ -70,16 +70,16 @@ Choose agents by the capability the task needs. The examples in this runbook sta
 | Import or retrieve historical knowledge | Knowledge store steward | Security/compliance reviewer |
 | Prepare a decision package for a human lifecycle-gate authority | Matching `<authority>-aide` (e.g. product-owner-aide for G1/G2/G6, release-authority-aide for G9) | The named human authority itself |
 
-Use `catalog.yaml` when an orchestrator needs a machine-readable role inventory. Each role optionally declares a `model` tier (`haiku`/`sonnet`/`opus`), assigned by the fixed heuristic documented in the file's header comment: `opus` for design/architecture/governance/crypto-assurance roles making high-blast-radius judgment calls, `sonnet` as the default for build/review/test/operations/support roles, `haiku` for narrow single-purpose roles (evidence cataloging, knowledge-store stewardship, triage/escalation routing). `generate_global_plugin.py` propagates it into both the generated Claude Code subagent wrapper's `model:` frontmatter and the Codex `.toml` wrapper's `model` key — regenerate with `agents generate-plugin` after changing it.
+Use `catalog.yaml` when an orchestrator needs a machine-readable role inventory. Each role optionally declares a `model` tier (`haiku`/`sonnet`/`opus`), assigned by the fixed heuristic documented in the file's header comment: `opus` for design/architecture/governance/crypto-assurance roles making high-blast-radius judgment calls, `sonnet` as the default for build/review/test/operations/support roles, `haiku` for narrow single-purpose roles (evidence cataloging, knowledge-store stewardship, triage/escalation routing). `generate_global_plugin.py` propagates it into both the generated Claude Code subagent wrapper's `model:` frontmatter and the Codex `.toml` wrapper's `model` key — regenerate with `cadre generate-plugin` after changing it.
 Use `workflows/debugging.md` when reproducing defects, analyzing runtime failures, or tuning agent definitions/routing.
 
 ### Select agents locally
 
-The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. Schema version 2 plans include provider lifecycle applicability in `required_quality_gates` separately from mutation-oriented `human_gates`; gate semantics and state are owned by the standalone Agentic SDLC kernel. The selector creates a dispatch plan but does not retrieve knowledge, invoke agents, approve gates, merge, deploy, or mutate infrastructure. Run it through `bin/agents` (repository root), which resolves a Python 3.10+ interpreter for you across `python3`/`python`/`py -3`; this does not establish an organization-wide Python version. It works standalone by default (`lifecycle_tracking.status: "standalone"` in the emitted plan); when `AGENTIC_SDLC_BIN` or `agentic-sdlc` is also on `PATH`, the plan is automatically enriched with lifecycle-contract-derived `gate_dispatch` (`status: "integrated"`) — pass `--require-sdlc` to fail instead of silently falling back when that integration is required. Put `bin/agents` on `PATH` first (see `../README.md` "Put `agents` on `PATH`") or invoke it as `../bin/agents` / `..\bin\agents.ps1` from this directory.
+The local selector uses deterministic path, keyword, and risk rules from `orchestration/routing.yaml`. Schema version 2 plans include provider lifecycle applicability in `required_quality_gates` separately from mutation-oriented `human_gates`; gate semantics and state are owned by the standalone Agentic SDLC kernel. The selector creates a dispatch plan but does not retrieve knowledge, invoke agents, approve gates, merge, deploy, or mutate infrastructure. Run it through `bin/cadre` (repository root), which resolves a Python 3.10+ interpreter for you across `python3`/`python`/`py -3`; this does not establish an organization-wide Python version. It works standalone by default (`lifecycle_tracking.status: "standalone"` in the emitted plan); when `AGENTIC_SDLC_BIN` or `agentic-sdlc` is also on `PATH`, the plan is automatically enriched with lifecycle-contract-derived `gate_dispatch` (`status: "integrated"`) — pass `--require-sdlc` to fail instead of silently falling back when that integration is required. Put `bin/cadre` on `PATH` first (see `../README.md` "Put `cadre` on `PATH`") or invoke it as `../bin/cadre` / `..\bin\cadre.ps1` from this directory.
 
 ```sh
 python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"
-agents select \
+cadre select \
   --task "Add a React upload form backed by a PostgreSQL API" \
   --files frontend/src/Upload.tsx,services/upload/main.go \
   --task-id APP-42 \
@@ -90,7 +90,7 @@ Use `--root /path/to/target` when the target is not the caller's working directo
 
 The plan also emits a `teams` array — deterministic team composition from `orchestration/routing.yaml`'s `team_recipes`, evaluated against the same matched routes/risks (never pulling in an agent that wasn't already selected). See the `run-agent-orchestration` skill's `references/team-recipes.md` for what each named team means and its `references/runner-adapters.md` for the `communication_mode`/`fallback` contract: `peer` messaging is only honored on Claude Code with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`; every other case (Codex always, or Claude Code without that flag) uses `fallback: "orchestrator-relayed"` — an ordinary parallel wave where the orchestrating session does all reconciliation itself, since Codex has no agent-to-agent messaging mechanism at all. `teams` is `[]` whenever no recipe matches; most tasks don't.
 
-Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the Python selector parses its JSON-compatible content with the standard library; the standalone Agentic SDLC executable supplies lifecycle gate contracts separately. A planned knowledge invocation contains a host-neutral Python 3.10+ `launcher` contract and an argv array beginning with the knowledge-store CLI's absolute path (`src/cli.py`), runnable without changing directory — that also means `Path.cwd()` inside `cli.py` reflects wherever the caller actually is, which is what lets its project-local-vs-global config resolution work. `bin/agents knowledge ...` runs the same script; the plan itself embeds the interpreter-agnostic launcher contract for callers that substitute their own probed interpreter path instead. The plan always carries an explicit `--source`. A caller-supplied value wins; otherwise it uses the target repository's lowercase `owner/repository` origin slug, falling back to `local-<basename>-<12-character canonical-path hash>`. Existing `secure-cloud-agents` records are not migrated automatically: pass that source explicitly for temporary retrieval, then re-ingest under the new repository key through the steward workflow. Selection rejects `--top` outside 1–20; required knowledge-store configuration must fail closed.
+Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the Python selector parses its JSON-compatible content with the standard library; the standalone Agentic SDLC executable supplies lifecycle gate contracts separately. A planned knowledge invocation contains a host-neutral Python 3.10+ `launcher` contract and an argv array beginning with the knowledge-store CLI's absolute path (`src/cli.py`), runnable without changing directory — that also means `Path.cwd()` inside `cli.py` reflects wherever the caller actually is, which is what lets its project-local-vs-global config resolution work. `bin/cadre knowledge ...` runs the same script; the plan itself embeds the interpreter-agnostic launcher contract for callers that substitute their own probed interpreter path instead. The plan always carries an explicit `--source`. A caller-supplied value wins; otherwise it uses the target repository's lowercase `owner/repository` origin slug, falling back to `local-<basename>-<12-character canonical-path hash>`. Existing `secure-cloud-agents` records are not migrated automatically: pass that source explicitly for temporary retrieval, then re-ingest under the new repository key through the steward workflow. Selection rejects `--top` outside 1–20; required knowledge-store configuration must fail closed.
 
 ### Dispatch with one prompt
 
@@ -476,19 +476,19 @@ Follow `workflows/knowledge-ingestion.md` and read `knowledge-store/SECURITY.md`
 
 ### Prepare and test
 
-`bin/agents` resolves the Python 3.10+ interpreter for you. One-time global setup, from anywhere `agents` is on `PATH` (see "System-wide install" in `../README.md`):
+`bin/cadre` resolves the Python 3.10+ interpreter for you. One-time global setup, from anywhere `cadre` is on `PATH` (see "System-wide install" in `../README.md`):
 
 ```sh
 mkdir -p ~/.agents/knowledge-store
 cp agents/knowledge-store/config.example.json ~/.agents/knowledge-store/config.json
 python3 -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
-agents knowledge init
+cadre knowledge init
 ```
 
 ### Ingest an authorized export
 
 ```sh
-agents knowledge ingest \
+cadre knowledge ingest \
   --input /staging/authorized-chat-export.json \
   --source legacy-model-export \
   --classification confidential
@@ -499,7 +499,7 @@ Before broad ingestion, use a small sanitized sample to verify field mapping, me
 ### Retrieve with citations
 
 ```sh
-agents knowledge context \
+cadre knowledge context \
   --agent cloud-architect \
   --task-id ARCH-42 \
   --query "Why was private service connectivity selected?" \
@@ -582,14 +582,14 @@ Install it with `pipx` (puts `agentic-sdlc` directly on `PATH` — see the stand
 launcher:
 
 ```sh
-agents sdlc init --root /path/to/target
+cadre sdlc init --root /path/to/target
 ```
 
 The initializer detects candidate technologies, commands, and a project profile, defaulting to the low-ceremony `quick` profile and generating subagent wrappers for both runners (`init --runner {codex,claude,both}`). It writes state to the target project you point `--root` at. Review its output and assign human authorities before expecting gates to pass. It must not infer compliance, risk acceptance, production status, disposability, or approval authority. Unknown applicable items remain blocking. This provider repository also runs its own `.agentic-sdlc/` overlay for its own catalog/plugin roadmap (kernel-only, `--profile generic`, no runner wrappers — see `docs/lifecycle-and-plugin-operations.md`); that overlay carries no authority over any other project's gates.
 
 If the target project uses this repository's cloud stack, use
-`--profile secure-cloud`. The `agents sdlc` launcher explicitly supplies
-`plugins/agents/provider.json`, and generated project wrappers are
+`--profile secure-cloud`. The `cadre sdlc` launcher explicitly supplies
+`plugins/cadre/provider.json`, and generated project wrappers are
 static copies bound to that provider version.
 
 For a first task, generate a deterministic dispatch plan with the bundled `plan` command, or drive full lifecycle orchestration with the standalone kernel's LangGraph engine — see `https://github.com/deagy/agentic-sdlc` for its CLI and service. Keep lifecycle `required_quality_gates` separate from mutation-oriented `human_gates`, and store task state in the target repository rather than the plugin installation.
@@ -609,49 +609,49 @@ See `https://github.com/deagy/agentic-sdlc` for lifecycle command and upgrade do
 
 ## 16a. Use the installable Cline CLI plugin
 
-`plugins/cline/` is a separate, hand-authored TypeScript source tree (not generated by `agents generate-plugin`) implementing a real, installable Cline CLI plugin — distinct from the ambient `.clinerules/agents-repository.md` recognition described in the README's "Supported runners" section, which works for any Cline session with this repository as its working directory and needs no install step.
+`plugins/cline/` is a separate, hand-authored TypeScript source tree (not generated by `cadre generate-plugin`) implementing a real, installable Cline CLI plugin — distinct from the ambient `.clinerules/agents-repository.md` recognition described in the README's "Supported runners" section, which works for any Cline session with this repository as its working directory and needs no install step.
 
 Install it with:
 
 ```sh
 cline plugin install ./plugins/cline
 # or, from anywhere, against a git checkout:
-cline plugin install https://github.com/deagy/agents.git
+cline plugin install https://github.com/deagy/cadre.git
 ```
 
-It registers one tool, `agents_select`, wrapping `agents select` (see §"Select Agents" above) — a Cline conversation can call it directly to get the same deterministic, plan-only dispatch plan a human would get from the CLI, without shelling out manually. It carries the same invariants as the CLI it wraps: plan-only, never invokes agents, retrieves knowledge, merges, deploys, or mutates infrastructure or approvals.
+It registers one tool, `agents_select`, wrapping `cadre select` (see §"Select Agents" above) — a Cline conversation can call it directly to get the same deterministic, plan-only dispatch plan a human would get from the CLI, without shelling out manually. It carries the same invariants as the CLI it wraps: plan-only, never invokes agents, retrieves knowledge, merges, deploys, or mutates infrastructure or approvals.
 
 This plugin system currently applies to the Cline CLI, SDK, and Kanban only, not the VSCode/JetBrains extension. **Known limitation**, confirmed at implementation time: as of `cline` CLI `3.0.46` (the latest published version), invoking any locally-installed plugin's tool — including `cline/cline`'s own unmodified example plugin, used as a control — fails with `JSON.stringify cannot serialize cyclic structures`. This is an upstream Cline bug, not specific to this plugin; install/uninstall work cleanly, and tool invocation is expected to start working once Cline ships a fix.
 
 ## 17. Make this repository's own suite available system-wide
 
-Most projects want §16's `agents sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 47 roles, 6 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
+Most projects want §16's `cadre sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 47 roles, 6 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
 
 ```sh
 codex plugin marketplace add .
-codex plugin add agents@agents-team
+codex plugin add cadre@cadre-team
 ```
 
 ```text
 /plugin marketplace add .
-/plugin install agents@agents-team
+/plugin install cadre@cadre-team
 ```
 
-Codex has no plugin-bundled-subagent mechanism, so its 47 namespaced `agents-<role>.toml` wrappers are staged under `plugins/agents/codex-agents/` rather than loaded from the plugin directly. The bootstrap step installs only those namespaced files and refuses unowned collisions; it leaves legacy bare global files untouched. Project-local bare role overrides remain preferred. See `../plugins/agents/README.md`; legacy bare global files can be removed manually after confirming they are unused. Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
+Codex has no plugin-bundled-subagent mechanism, so its 47 namespaced `agents-<role>.toml` wrappers are staged under `plugins/cadre/codex-agents/` rather than loaded from the plugin directly. The bootstrap step installs only those namespaced files and refuses unowned collisions; it leaves legacy bare global files untouched. Project-local bare role overrides remain preferred. See `../plugins/cadre/README.md`; legacy bare global files can be removed manually after confirming they are unused. Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
 
 A namespaced `.toml` wrapper alone only lets a human or a project-local override name the role directly; it does not fix how a running Codex *session* dispatches one of these roles as a subagent mid-task. That dispatch mechanic — and the MCP server that makes it work correctly — is documented in `.agents/skills/run-agent-orchestration/references/runner-adapters.md`'s "Codex CLI" section; see that file's "Register the MCP dispatch server" step before relying on Codex-hosted subagent dispatch.
 
 The plugin is self-contained: generated wrappers embed role and shared-policy
 instructions, while skills and runtime files are packaged under `skills/` and
-`suite/`. Regenerate with `agents generate-plugin` after role, policy,
+`suite/`. Regenerate with `cadre generate-plugin` after role, policy,
 workflow, runtime, or skill changes. Repository health tests fail on drift.
 
 Editing `agents/authority/aides.yaml` or `agents/authority/_template.md.tmpl`
-requires an extra step first: run `agents generate-authority-aides` to
+requires an extra step first: run `cadre generate-authority-aides` to
 regenerate the 8 `agents/authority/*-aide/AGENT.md` files, *then* `agents
 generate-plugin` so the packaged plugin picks up the regenerated files.
-`agents generate-authority-aides --check` is the CI drift-guard equivalent
-for this table, parallel to `agents generate-plugin --check` for the plugin
+`cadre generate-authority-aides --check` is the CI drift-guard equivalent
+for this table, parallel to `cadre generate-plugin --check` for the plugin
 as a whole.
 
 ## 18. Record a GitHub-backed human gate approval
@@ -663,19 +663,19 @@ through the authenticated GitHub CLI:
 
 ```sh
 # Record supplied immutable review metadata.
-agents sdlc approve-from-github \
+cadre sdlc approve-from-github \
   --root /path/to/target --task-id TASK-42 --gate G2 \
   --role product_owner --repo OWNER/REPO --pr 42 \
   --review-id 314159 --reviewer-login approver --commit-sha "$GITHUB_SHA"
 
 # Fetch the latest matching APPROVED review from GitHub.
-agents sdlc approve-from-github-pr \
+cadre sdlc approve-from-github-pr \
   --root /path/to/target --task-id TASK-42 --gate G2 \
   --role product_owner --repo OWNER/REPO --pr 42 \
   --commit-sha "$GITHUB_SHA"
 
-agents sdlc validate --root /path/to/target
-agents sdlc status --root /path/to/target --task-id TASK-42
+cadre sdlc validate --root /path/to/target
+cadre sdlc status --root /path/to/target --task-id TASK-42
 ```
 
 Before using either command, configure the project with

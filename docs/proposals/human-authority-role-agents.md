@@ -3,7 +3,7 @@
 Status: **Part A APPROVED (scoped) — Part B BACKBURNERED, not approved.**
 Task ID: `human-role-agents-2026-07-28`
 Classification: internal
-Author role: governance-planner (Secure Cloud Agents suite)
+Author role: governance-planner (Cadre suite)
 Requested by: repository owner / declared Product Owner (`agents/shared/team-profile.yaml`)
 Required approver: Product Owner, explicitly and in writing, plus the
 `deagy/agentic-sdlc` kernel maintainer for anything in Part B.

@@ -9,7 +9,7 @@ does not grant authority or replace accountable humans.
 Run the selector through the repository launcher:
 
 ```sh
-agents select \
+cadre select \
   --task "Review a database migration and backup change" \
   --files services/db/migrations,docs/backup.md \
   --classification internal \

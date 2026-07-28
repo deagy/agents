@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Read, check, or set the packaged plugin's release version.
 
-The packaged plugin at ``plugins/agents/`` declares its own
+The packaged plugin at ``plugins/cadre/`` declares its own
 version independently in two manifests: ``.claude-plugin/plugin.json`` (Claude
 Code) and ``.codex-plugin/plugin.json`` (Codex CLI). Both must always agree,
 and should track this repository's release tags (``vMAJOR.MINOR.PATCH``) one
-for one. Neither `agents generate-plugin` nor any other regeneration step
+for one. Neither `cadre generate-plugin` nor any other regeneration step
 writes this field — it is intentionally hand-set only through this tool, so a
 release is always a deliberate, reviewed action.
 
-    agents version                    # print the current, verified version
-    agents version --check            # exit non-zero if unset/mismatched/invalid
-    agents version --set 0.3.0        # write a new version into both manifests
+    cadre version                    # print the current, verified version
+    cadre version --check            # exit non-zero if unset/mismatched/invalid
+    cadre version --set 0.3.0        # write a new version into both manifests
 
 This does not create a git tag or push anything; see the "Releasing" section
 of README.md for the full release flow. `.github/workflows/release.yml` tags
@@ -29,7 +29,7 @@ from pathlib import Path
 ORCHESTRATION_ROOT = Path(__file__).resolve().parent.parent
 AGENTS_ROOT = ORCHESTRATION_ROOT.parent
 REPOSITORY_ROOT = AGENTS_ROOT.parent
-PLUGIN_ROOT = REPOSITORY_ROOT / "plugins" / "agents"
+PLUGIN_ROOT = REPOSITORY_ROOT / "plugins" / "cadre"
 
 MANIFESTS = {
     "claude": PLUGIN_ROOT / ".claude-plugin" / "plugin.json",
@@ -47,10 +47,10 @@ def read_versions() -> dict[str, str]:
     versions: dict[str, str] = {}
     for name, path in MANIFESTS.items():
         if not path.is_file():
-            raise SystemExit(f"agents version: missing manifest {path}")
+            raise SystemExit(f"cadre version: missing manifest {path}")
         manifest = json.loads(path.read_text(encoding="utf-8"))
         if "version" not in manifest:
-            raise SystemExit(f"agents version: {path} has no \"version\" field")
+            raise SystemExit(f"cadre version: {path} has no \"version\" field")
         versions[name] = manifest["version"]
     return versions
 
@@ -78,7 +78,7 @@ VERSION_LINE_PATTERN = re.compile(r'^(\s*"version"\s*:\s*")[^"]*(",?\s*)$', re.M
 
 def set_version(version: str) -> None:
     if not is_semver(version):
-        raise SystemExit(f"agents version: {version!r} is not MAJOR.MINOR.PATCH semver")
+        raise SystemExit(f"cadre version: {version!r} is not MAJOR.MINOR.PATCH semver")
 
     # Build and validate every manifest's new content before writing any of
     # them, so a problem with one manifest can never leave a different one
@@ -88,10 +88,10 @@ def set_version(version: str) -> None:
         original = path.read_text(encoding="utf-8")
         updated, count = VERSION_LINE_PATTERN.subn(rf"\g<1>{version}\g<2>", original, count=1)
         if count != 1:
-            raise SystemExit(f"agents version: could not locate a \"version\" line in {path}")
+            raise SystemExit(f"cadre version: could not locate a \"version\" line in {path}")
         # Re-parse to confirm the substitution kept the file valid JSON with the intended value.
         if json.loads(updated).get("version") != version:
-            raise SystemExit(f"agents version: substitution produced unexpected JSON in {path}")
+            raise SystemExit(f"cadre version: substitution produced unexpected JSON in {path}")
         updates[path] = updated
 
     for path, updated in updates.items():
@@ -102,7 +102,7 @@ def _print_current_version_or_fail() -> int:
     problems = check_versions()
     if problems:
         for problem in problems:
-            print(f"agents version: {problem}", file=sys.stderr)
+            print(f"cadre version: {problem}", file=sys.stderr)
         return 1
     versions = read_versions()
     print(next(iter(versions.values())))
@@ -118,7 +118,7 @@ def main() -> int:
 
     if arguments.set is not None:
         set_version(arguments.set)
-        print(f"agents version: set to {arguments.set}")
+        print(f"cadre version: set to {arguments.set}")
         return 0
 
     # Bare invocation and --check are deliberately the same: read-and-verify,

@@ -32,22 +32,22 @@ jobs:
       - run: python -B -m unittest discover -s agents/orchestration/test -p "test_*.py"
       - run: python -B -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
       - run: python -B -m unittest discover -s agents/shared/test -p "test_*.py"
-      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc validate --root .
-      - run: ./bin/agents help
-      - run: ./bin/agents select --task "CI wrapper smoke test" --files README.md --classification internal --task-id CI-SMOKE-1 >/dev/null
-      - run: ./bin/agents generate-plugin --check
-      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc --version
-      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc provider list
-      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc profile list
-      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc extension list
+      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc validate --root .
+      - run: ./bin/cadre help
+      - run: ./bin/cadre select --task "CI wrapper smoke test" --files README.md --classification internal --task-id CI-SMOKE-1 >/dev/null
+      - run: ./bin/cadre generate-plugin --check
+      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc --version
+      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc provider list
+      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc profile list
+      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc extension list
       - run: |
-          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract provider.schema >/dev/null
-          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract profile.schema >/dev/null
-          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract extension.schema >/dev/null
-          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract selection.schema >/dev/null
-          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract agent-catalog.schema >/dev/null
-          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract artifact.schema >/dev/null
-          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract dispatch-bindings.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract provider.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract profile.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract extension.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract selection.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract agent-catalog.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract artifact.schema >/dev/null
+          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract dispatch-bindings.schema >/dev/null
 
   cline-plugin:
     runs-on: ubuntu-latest
@@ -69,7 +69,7 @@ jobs:
       # Real install/uninstall smoke test against the packaged plugin source,
       # catching manifest/packaging regressions rather than relying on doc-trust.
       - run: cline plugin install --json "$GITHUB_WORKSPACE/plugins/cline"
-      - run: cline plugin uninstall @deagy/secure-cloud-agents-cline-plugin --json
+      - run: cline plugin uninstall @deagy/cadre-cline-plugin --json
 
   secret-scan:
     runs-on: ubuntu-latest

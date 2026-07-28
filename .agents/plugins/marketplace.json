@@ -1,14 +1,14 @@
 {
-  "name": "agents-team",
+  "name": "cadre-team",
   "interface": {
-    "displayName": "Agents Team"
+    "displayName": "Cadre Team"
   },
   "plugins": [
     {
-      "name": "agents",
+      "name": "cadre",
       "source": {
         "source": "local",
-        "path": "./plugins/agents"
+        "path": "./plugins/cadre"
       },
       "policy": {
         "installation": "AVAILABLE",

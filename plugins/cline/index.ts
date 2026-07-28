@@ -60,10 +60,10 @@ const setup = (api: SetupApi, ctx: SetupContext) => {
     createTool({
       name: "agents_select",
       description:
-        "Get a deterministic, reviewable agent dispatch plan from this repository's Secure Cloud Agents catalog " +
+        "Get a deterministic, reviewable agent dispatch plan from this repository's Cadre catalog " +
         "(routes, primary/reviewer/support roles, quality gates). Plan only: never invokes agents, retrieves " +
         "knowledge, merges, deploys, or mutates infrastructure or approvals. Requires the current workspace to " +
-        "be a checkout of the deagy/agents repository (or a project with its own catalog.yaml). This plugin " +
+        "be a checkout of the deagy/cadre repository (or a project with its own catalog.yaml). This plugin " +
         "does not (and, with the Cline plugin API as currently published, cannot) dispatch the selected " +
         "role(s) itself — a Cline plugin's setup(api, ctx) only exposes registerTool/registerCommand/etc., " +
         "not the session's spawn-agent or team primitives. After calling this tool, the orchestrating Cline " +
@@ -82,7 +82,7 @@ const setup = (api: SetupApi, ctx: SetupContext) => {
 
         try {
           const { stdout } = await execFileAsync(
-            "./bin/agents",
+            "./bin/cadre",
             buildSelectArgs(input, rootPath),
             { cwd: rootPath },
           );
@@ -100,7 +100,7 @@ const setup = (api: SetupApi, ctx: SetupContext) => {
 };
 
 const plugin: AgentPlugin = {
-  name: "secure-cloud-agents",
+  name: "cadre",
   manifest: { capabilities: ["tools"] },
   setup,
 };

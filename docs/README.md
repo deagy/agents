@@ -1,6 +1,6 @@
 # Documentation guide
 
-Owner: Secure Cloud Agents maintainers
+Owner: Cadre maintainers
 Status: active
 Reviewed: 2026-07-24
 Source of truth: repository implementation, policies, catalog, and generated manifests
@@ -21,7 +21,7 @@ Use this index to choose the shortest useful path.
 ## Source of truth
 
 Canonical role definitions, policies, routing, workflows, and orchestration
-contracts live under `agents/`. The `plugins/agents/` directory is
+contracts live under `agents/`. The `plugins/cadre/` directory is
 a self-contained distribution and may contain generated copies. Edit canonical
 source files, then regenerate the package when the change requires it.
 

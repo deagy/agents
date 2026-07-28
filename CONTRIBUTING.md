@@ -19,7 +19,7 @@ separation between authors, independent reviewers, human approvers, evidence
 curators, and release operators.
 
 This repository's own catalog/plugin feature and roadmap work is tracked
-through its `.agentic-sdlc/` run records (`./bin/agents sdlc status --task-id
+through its `.agentic-sdlc/` run records (`./bin/cadre sdlc status --task-id
 ...`), alongside GitHub Issues/PRs for discussion and triage — the run record
 is the gate-tracking surface, GitHub Issues remain the discussion surface.
 
@@ -48,7 +48,7 @@ For documentation-only work:
 - check local Markdown links and command names before opening the PR.
 
 Edit canonical role and policy documentation under `agents/`. Files under
-`plugins/agents/` may be generated artifacts. When a source change
+`plugins/cadre/` may be generated artifacts. When a source change
 requires regeneration, follow the repository command in `AGENTS.md`, inspect
 the generated diff, and include the reason in the pull request.
 

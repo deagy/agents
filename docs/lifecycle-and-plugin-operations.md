@@ -44,7 +44,7 @@ data-subject records or key material of its own, has no separate
 user-acceptance-testing environment, and is not itself a deployed,
 runtime-implicated service. Authority `assignee` values use the kernel's
 `github.com/<login>`-prefixed identity format rather than a name or email
-address, since this repository is public. Run `./bin/agents sdlc validate
+address, since this repository is public. Run `./bin/cadre sdlc validate
 --root .` to confirm the overlay stays clean; CI runs the same check.
 
 `.agentic-sdlc/project.json`'s `detected.root` is intentionally hand-set to
@@ -66,7 +66,7 @@ Install the reviewed standalone release and make its executable available as
 git clone https://github.com/deagy/agentic-sdlc.git
 git -C agentic-sdlc checkout v0.3.0
 export AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc
-agents sdlc init --root /path/to/target --profile secure-cloud
+cadre sdlc init --root /path/to/target --profile secure-cloud
 ```
 
 The target project owns its `.agentic-sdlc/` records and consequential
@@ -80,7 +80,7 @@ appropriate generic profile rather than importing Secure Cloud-specific roles.
 ## Install the suite globally
 
 The self-contained plugin makes this repository's roles and skills available
-from other projects. Follow the [plugin README](../plugins/agents/README.md)
+from other projects. Follow the [plugin README](../plugins/cadre/README.md)
 for runner-specific installation and regeneration details. Prefer a
 project-local lifecycle profile when only one project needs the Secure Cloud
 roles.
@@ -91,7 +91,7 @@ When configured by the target project, an approved GitHub pull-request review
 can be the authoritative source for a human gate decision:
 
 ```sh
-agents sdlc approve-from-github-pr \
+cadre sdlc approve-from-github-pr \
   --root /path/to/target --task-id TASK-42 --gate G2 \
   --role product_owner --repo OWNER/REPO --pr 42 \
   --commit-sha "$GITHUB_SHA"

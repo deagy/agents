@@ -11,15 +11,15 @@ operations guide](lifecycle-and-plugin-operations.md).
 - The standalone Agentic SDLC executable when running lifecycle-integrated
   orchestration tests or commands.
 
-The `bin/agents` launcher probes for `python3` or `python`; PowerShell users
-can use `bin/agents.ps1`.
+The `bin/cadre` launcher probes for `python3` or `python`; PowerShell users
+can use `bin/cadre.ps1`.
 
 ## Five-minute path
 
 From the repository root:
 
 ```sh
-./bin/agents select \
+./bin/cadre select \
   --task "Review a React and Go upload feature" \
   --files frontend/src/App.tsx,services/internal/api/api.go \
   --classification internal \

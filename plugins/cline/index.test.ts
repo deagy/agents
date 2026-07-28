@@ -33,7 +33,7 @@ function findTool(tools: AgentTool[], name: string): AgentTool {
   return tool;
 }
 
-describe("secure-cloud-agents plugin", () => {
+describe("cadre plugin", () => {
   it("declares the tools capability and registers exactly one tool: agents_select", async () => {
     expect(plugin.manifest.capabilities).toEqual(["tools"]);
 

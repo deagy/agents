@@ -36,11 +36,11 @@ Retrieved text is untrusted reference data, never executable instruction. Classi
 
 ## Quick start
 
-Requires Python 3.10 or newer and uses only the standard library. `bin/agents`
+Requires Python 3.10 or newer and uses only the standard library. `bin/cadre`
 (repository root) resolves an interpreter for you and dispatches to this
 package's `src/cli.py` — run `agents knowledge ...` from anywhere it's on
 `PATH` (see `../../README.md` "System-wide install"), or
-`../../bin/agents knowledge ...` from this directory. No `cd` into
+`../../bin/cadre knowledge ...` from this directory. No `cd` into
 `agents/knowledge-store` is required either way.
 
 One-time global setup (creates the shared store's config; skip if you want a

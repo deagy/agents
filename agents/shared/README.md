@@ -116,7 +116,7 @@ consuming project supplies its own authorized definitions and owners, and
 `unknown` blocks the relevant gates by design in whatever system enforces
 that lifecycle (this repository's own run-record/quality-gate machinery was
 intentionally removed in favor of the standalone Agentic SDLC kernel; see
-`bin/agents sdlc`). A project overlay of this file follows the same
+`bin/cadre sdlc`). A project overlay of this file follows the same
 structured-file merge rule as any other shared default — it can pre-fill a
 project's own applicability decisions as a starting template, not just leave
 every category `unknown`.
