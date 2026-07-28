@@ -34,7 +34,10 @@ REQUIRED_FIELDS = ("id", "title", "gates")
 
 
 def _strip_inline_comment(value: str) -> str:
-    return re.sub(r"\s*#.*$", "", value).strip()
+    # A '#' only starts a comment when preceded by whitespace (or at the start
+    # of the line) so values that legitimately contain '#' (e.g. "C# Lead")
+    # are left intact.
+    return re.sub(r"(?:^|\s)#.*$", "", value).strip()
 
 
 def load_aides(path: Path) -> list[dict[str, object]]:
@@ -85,6 +88,8 @@ def load_aides(path: Path) -> list[dict[str, object]]:
         if aide_id in seen_ids:
             raise ValueError(f"{path}: duplicate aide id {aide_id!r}")
         seen_ids.add(aide_id)
+        if not aide["gates"]:
+            raise ValueError(f"{path}: aide {aide_id!r} has an empty gates list")
     return aides
 
 
