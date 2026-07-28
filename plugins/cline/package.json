@@ -1,0 +1,19 @@
+{
+  "name": "@deagy/secure-cloud-agents-cline-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "dependencies": {
+    "@cline/sdk": "0.0.65",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "vitest": "^3"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  }
+}

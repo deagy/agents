@@ -49,6 +49,28 @@ jobs:
           AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract artifact.schema >/dev/null
           AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/agents sdlc show-contract dispatch-bindings.schema >/dev/null
 
+  cline-plugin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: plugins/cline
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      # Pinned to the version this plugin's known-limitation note (README/RUNBOOK) is
+      # scoped to; bump deliberately, not implicitly via an unpinned `latest` install.
+      - run: npm install -g cline@3.0.46
+      # Real install/uninstall smoke test against the packaged plugin source,
+      # catching manifest/packaging regressions rather than relying on doc-trust.
+      - run: cline plugin install --json "$GITHUB_WORKSPACE/plugins/cline"
+      - run: cline plugin uninstall @deagy/secure-cloud-agents-cline-plugin --json
+
   secret-scan:
     runs-on: ubuntu-latest
     timeout-minutes: 10
