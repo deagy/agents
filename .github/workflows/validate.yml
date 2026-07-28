@@ -67,8 +67,40 @@ jobs:
       - run: npm install -g cline@3.0.46
       # Real install/uninstall smoke test against the packaged plugin source,
       # catching manifest/packaging regressions rather than relying on doc-trust.
-      - run: cline plugin install --json "$GITHUB_WORKSPACE/plugins/cline"
-      - run: cline plugin uninstall @deagy/cadre-cline-plugin --json
+      #
+      # `cline plugin install` logs a non-fatal `mcpSyncFailures` entry when its
+      # own sandboxed MCP-sync subprocess can't find a file under its installed
+      # package tree; that has been observed to coincide with cline's global npm
+      # binary transiently disappearing immediately afterward (an orphaned `npm
+      # update cline` process shows up in job cleanup logs), breaking the very
+      # next `cline` invocation with "command not found" -- an upstream
+      # packaging/self-repair race, not a regression in this repository. Retry
+      # each invocation and reinstall on demand if the binary goes missing,
+      # rather than failing CI on an external race outside this repo's control.
+      - name: cline plugin install (self-healing retry)
+        run: |
+          set -eu
+          for attempt in 1 2 3; do
+            if command -v cline >/dev/null 2>&1 && cline plugin install --json "$GITHUB_WORKSPACE/plugins/cline"; then
+              exit 0
+            fi
+            echo "attempt $attempt: cline missing or plugin install failed; reinstalling and retrying" >&2
+            npm install -g cline@3.0.46
+            sleep 5
+          done
+          exit 1
+      - name: cline plugin uninstall (self-healing retry)
+        run: |
+          set -eu
+          for attempt in 1 2 3; do
+            if command -v cline >/dev/null 2>&1 && cline plugin uninstall @deagy/cadre-cline-plugin --json; then
+              exit 0
+            fi
+            echo "attempt $attempt: cline missing or plugin uninstall failed; reinstalling and retrying" >&2
+            npm install -g cline@3.0.46
+            sleep 5
+          done
+          exit 1
 
   secret-scan:
     runs-on: ubuntu-latest
