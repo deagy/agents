@@ -7,15 +7,25 @@ Author role: governance-planner (Secure Cloud Agents suite)
 Requested by: repository owner / declared Product Owner (`agents/shared/team-profile.yaml`)
 Required approver: Product Owner, explicitly and in writing, plus the
 `deagy/agentic-sdlc` kernel maintainer for anything in Part B.
-Reviewed by: independent code-reviewer pass over the implementation diff
-(task `human-role-agents-2026-07-28`, same date) — reviewed the built
-artifacts against this document's design, not this document's own claims.
+Reviewed by: three independent fresh review passes (code-reviewer,
+security-reviewer, compliance-reviewer) over the implementation diff in
+GitHub PR #42 — reviewed the built artifacts against this document's design,
+not this document's own claims. **The authoritative approval record for this
+change is GitHub PR #42's own review/merge history, not the prose below** —
+this document's "Decision record" section describes what was decided and why,
+but two independent reviewers correctly flagged that this section, on its
+own, is a self-recorded claim (written by the same agent line implementing
+the change) rather than externally verifiable evidence. Treat it as
+context, and treat the PR's actual review approval as the evidence.
 
 ## Decision record (2026-07-28)
 
 The Product Owner reviewed this document's headline recommendation
-conversationally (not as a separate written sign-off artifact — recorded here
-as the audit trail per `agents/shared/operating-principles.md`) and decided:
+conversationally in the same chat session that requested this feature (not as
+a separate written sign-off artifact — recorded here as context per
+`agents/shared/operating-principles.md`, and superseded as authoritative
+evidence by GitHub PR #42's own review record per the note above) and
+decided:
 
 - **Part B (delegated approval authority): backburnered.** Not approved, not
   rejected outright — deferred. Do not implement anything in §4–§7 without a
