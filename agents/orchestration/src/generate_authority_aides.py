@@ -22,6 +22,7 @@ Validate deterministically without changing the working tree:
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -29,26 +30,61 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 AUTHORITY_ROOT = REPOSITORY_ROOT / "agents" / "authority"
 DATA_PATH = AUTHORITY_ROOT / "aides.yaml"
 TEMPLATE_PATH = AUTHORITY_ROOT / "_template.md.tmpl"
+REQUIRED_FIELDS = ("id", "title", "gates")
+
+
+def _strip_inline_comment(value: str) -> str:
+    return re.sub(r"\s*#.*$", "", value).strip()
 
 
 def load_aides(path: Path) -> list[dict[str, object]]:
+    """Parse the flat `- id: ...` / `title: ...` / `gates: [n, ...]` list in
+    aides.yaml. Field order within an entry does not matter; a new entry
+    starts at any `- <key>:` list-item line."""
     aides: list[dict[str, object]] = []
     current: dict[str, object] | None = None
-    for line in path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#") or stripped == "aides:":
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        stripped = _strip_inline_comment(line.strip())
+        if not stripped or stripped == "aides:":
             continue
-        if stripped.startswith("- id:"):
+        is_new_entry = stripped.startswith("- ")
+        if is_new_entry:
             if current is not None:
                 aides.append(current)
-            current = {"id": stripped.split(":", 1)[1].strip()}
-        elif current is not None and stripped.startswith("title:"):
-            current["title"] = stripped.split(":", 1)[1].strip()
-        elif current is not None and stripped.startswith("gates:"):
-            raw = stripped.split(":", 1)[1].strip().strip("[]")
-            current["gates"] = [int(part.strip()) for part in raw.split(",")]
+            current = {}
+            stripped = stripped[2:].strip()
+        if current is None:
+            raise ValueError(f"{path}:{line_number}: field outside of a '- id: ...' entry: {line!r}")
+        if ":" not in stripped:
+            raise ValueError(f"{path}:{line_number}: expected 'key: value', got {line!r}")
+        key, _, value = stripped.partition(":")
+        key = key.strip()
+        value = value.strip()
+        if key == "gates":
+            if not (value.startswith("[") and value.endswith("]")):
+                raise ValueError(
+                    f"{path}:{line_number}: gates must be a flow-style list like '[1, 2]', got {value!r}"
+                )
+            raw_items = [part.strip() for part in value[1:-1].split(",") if part.strip()]
+            try:
+                current[key] = [int(part) for part in raw_items]
+            except ValueError as error:
+                raise ValueError(f"{path}:{line_number}: non-integer gate in {value!r}") from error
+        else:
+            current[key] = value
     if current is not None:
         aides.append(current)
+
+    seen_ids: set[str] = set()
+    for index, aide in enumerate(aides):
+        missing = [field for field in REQUIRED_FIELDS if field not in aide]
+        if missing:
+            label = aide.get("id", f"entry #{index + 1}")
+            raise ValueError(f"{path}: aide {label!r} is missing required field(s): {', '.join(missing)}")
+        aide_id = str(aide["id"])
+        if aide_id in seen_ids:
+            raise ValueError(f"{path}: duplicate aide id {aide_id!r}")
+        seen_ids.add(aide_id)
     return aides
 
 
@@ -82,10 +118,15 @@ def generate(aides: list[dict[str, object]], template: str) -> dict[Path, str]:
     }
 
 
+def existing_generated_files() -> set[Path]:
+    return set(AUTHORITY_ROOT.glob("*-aide/AGENT.md"))
+
+
 def main() -> int:
     aides = load_aides(DATA_PATH)
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
     rendered = generate(aides, template)
+    orphaned = existing_generated_files() - set(rendered)
 
     if "--check" in sys.argv[1:]:
         stale = [
@@ -93,17 +134,25 @@ def main() -> int:
             for path, content in rendered.items()
             if not path.is_file() or path.read_text(encoding="utf-8") != content
         ]
+        stale.extend(str(path.relative_to(REPOSITORY_ROOT)) for path in orphaned)
         if stale:
             print(
                 "Authority-aide AGENT.md files are stale; run "
-                "agents/orchestration/src/generate_authority_aides.py: " + ", ".join(stale),
+                "agents/orchestration/src/generate_authority_aides.py: " + ", ".join(sorted(stale)),
                 file=sys.stderr,
             )
             return 1
         print(f"{len(rendered)} authority-aide AGENT.md files are current")
         return 0
 
+    for path in orphaned:
+        path.unlink()
+        try:
+            path.parent.rmdir()
+        except OSError:
+            pass
     for path, content in rendered.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
     print(f"Generated {len(rendered)} authority-aide AGENT.md files under {AUTHORITY_ROOT}")
     return 0
