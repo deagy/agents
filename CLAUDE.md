@@ -32,11 +32,16 @@ agents generate-plugin
 # ...then re-run this — it fails the build on catalog/plugin drift
 python3 -m unittest agents.orchestration.test.test_repository_health
 
+# Editing agents/authority/aides.yaml or agents/authority/_template.md.tmpl requires
+# this first, to regenerate the 8 agents/authority/*-aide/AGENT.md files, before
+# `agents generate-plugin` above (--check is the CI drift-guard equivalent)
+agents generate-authority-aides
+
 # Produce a deterministic dispatch plan (selection only — no execution, no mutation)
 agents select --task "..." --files a.tsx,b.go --task-id TASK-42 --classification internal
 ```
 
-`bin/agents` dispatches every subcommand: `select`, `knowledge`, `sdlc`, `generate-plugin`, `bootstrap-codex`, `version`, `resolve-shared`, `init`. `subcommands.tsv` in `bin/` is the dispatch table.
+`bin/agents` dispatches every subcommand: `select`, `knowledge`, `sdlc`, `generate-plugin`, `generate-authority-aides`, `bootstrap-codex`, `version`, `resolve-shared`, `mcp-dispatch-server`, `init`. `subcommands.tsv` in `bin/` is the dispatch table.
 
 Go and React components referenced in worked examples (e.g. sample services under agent briefs) belong to *consumer* projects, not this repository — there is no Go module or frontend build here to lint/test.
 

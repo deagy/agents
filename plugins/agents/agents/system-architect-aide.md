@@ -9,6 +9,8 @@ canonical_source: agents/authority/system-architect-aide/AGENT.md
 
 # Role: system-architect-aide
 
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # System Architect Aide
 
 ## Role

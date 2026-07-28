@@ -648,6 +648,14 @@ instructions, while skills and runtime files are packaged under `skills/` and
 `suite/`. Regenerate with `agents generate-plugin` after role, policy,
 workflow, runtime, or skill changes. Repository health tests fail on drift.
 
+Editing `agents/authority/aides.yaml` or `agents/authority/_template.md.tmpl`
+requires an extra step first: run `agents generate-authority-aides` to
+regenerate the 8 `agents/authority/*-aide/AGENT.md` files, *then* `agents
+generate-plugin` so the packaged plugin picks up the regenerated files.
+`agents generate-authority-aides --check` is the CI drift-guard equivalent
+for this table, parallel to `agents generate-plugin --check` for the plugin
+as a whole.
+
 ## 18. Record a GitHub-backed human gate approval
 
 The portable lifecycle kernel supports two GitHub review paths. Use the

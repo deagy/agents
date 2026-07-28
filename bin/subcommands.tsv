@@ -1,6 +1,7 @@
 select	agents/orchestration/src/select_agents.py	Deterministic agent/gate selection (select_agents.py)
 knowledge	agents/knowledge-store/src/cli.py	Vectorized knowledge store CLI (knowledge-store/src/cli.py)
 generate-plugin	agents/orchestration/src/generate_global_plugin.py	Regenerate plugins/agents/ (generate_global_plugin.py)
+generate-authority-aides	agents/orchestration/src/generate_authority_aides.py	Regenerate agents/authority/*-aide AGENT.md files (generate_authority_aides.py)
 bootstrap-codex	agents/orchestration/src/sync_codex_agents.py	Safely install namespaced Codex role wrappers
 version	agents/orchestration/src/plugin_version.py	Read, check, or set the packaged plugin's release version
 resolve-shared	agents/shared/src/resolve.py	Resolve effective shared config for the current project (resolve.py)

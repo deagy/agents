@@ -9,6 +9,8 @@ canonical_source: agents/authority/engineering-lead-aide/AGENT.md
 
 # Role: engineering-lead-aide
 
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Engineering Lead Aide
 
 ## Role

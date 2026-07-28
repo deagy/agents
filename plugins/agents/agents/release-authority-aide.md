@@ -9,6 +9,8 @@ canonical_source: agents/authority/release-authority-aide/AGENT.md
 
 # Role: release-authority-aide
 
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Release Authority Aide
 
 ## Role

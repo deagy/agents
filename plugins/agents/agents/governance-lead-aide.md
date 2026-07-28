@@ -9,6 +9,8 @@ canonical_source: agents/authority/governance-lead-aide/AGENT.md
 
 # Role: governance-lead-aide
 
+<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
+
 # Governance Lead Aide
 
 ## Role
