@@ -343,6 +343,62 @@
       "reviewers": ["security-reviewer"],
       "human_gate": "privileged-identity-change",
       "quality_gates": ["G5"]
+    },
+    {
+      "id": "product-owner-gate-package",
+      "paths": ["governance/gate-decisions/product-owner/**"],
+      "keywords": ["product owner decision package", "product owner gate briefing", "brief the product owner", "prepare gate package for product owner"],
+      "primary": ["product-owner-aide"],
+      "quality_gates": ["G1", "G2", "G6"]
+    },
+    {
+      "id": "engineering-lead-gate-package",
+      "paths": ["governance/gate-decisions/engineering-lead/**"],
+      "keywords": ["engineering lead decision package", "engineering lead gate briefing", "brief the engineering lead", "prepare gate package for engineering lead"],
+      "primary": ["engineering-lead-aide"],
+      "quality_gates": ["G2", "G6"]
+    },
+    {
+      "id": "system-architect-gate-package",
+      "paths": ["governance/gate-decisions/system-architect/**"],
+      "keywords": ["system architect decision package", "system architect gate briefing", "brief the system architect", "prepare gate package for system architect"],
+      "primary": ["system-architect-aide"],
+      "quality_gates": ["G3"]
+    },
+    {
+      "id": "governance-lead-gate-package",
+      "paths": ["governance/gate-decisions/governance-lead/**"],
+      "keywords": ["governance lead decision package", "governance lead gate briefing", "brief the governance lead", "prepare gate package for governance lead"],
+      "primary": ["governance-lead-aide"],
+      "quality_gates": ["G4"]
+    },
+    {
+      "id": "security-lead-gate-package",
+      "paths": ["governance/gate-decisions/security-lead/**"],
+      "keywords": ["security lead decision package", "security lead gate briefing", "brief the security lead", "prepare gate package for security lead"],
+      "primary": ["security-lead-aide"],
+      "quality_gates": ["G5"]
+    },
+    {
+      "id": "release-owner-gate-package",
+      "paths": ["governance/gate-decisions/release-owner/**"],
+      "keywords": ["release owner decision package", "release owner gate briefing", "brief the release owner", "prepare gate package for release owner"],
+      "primary": ["release-owner-aide"],
+      "quality_gates": ["G7", "G8"]
+    },
+    {
+      "id": "release-authority-gate-package",
+      "paths": ["governance/gate-decisions/release-authority/**"],
+      "keywords": ["release authority decision package", "release authority gate briefing", "brief the release authority", "prepare gate package for release authority"],
+      "primary": ["release-authority-aide"],
+      "quality_gates": ["G9"]
+    },
+    {
+      "id": "service-owner-gate-package",
+      "paths": ["governance/gate-decisions/service-owner/**"],
+      "keywords": ["service owner decision package", "service owner gate briefing", "brief the service owner", "prepare gate package for service owner"],
+      "primary": ["service-owner-aide"],
+      "quality_gates": ["G10"]
     }
   ],
   "cross_stack": {
@@ -424,6 +480,14 @@
     "requirements-agent": "approved intent baselines, requirement decompositions, acceptance criteria, dependencies, control mappings, test obligations, and traceability decisions",
     "governance-planner": "governance impacts, jurisdictions, accreditation plans, control interpretations, evidence obligations, and accountable owner decisions",
     "data-governance-engineer": "data classifications, inventories, lineage, residency, non-egress, retention and deletion, derived outputs, and enforcement decisions",
-    "cryptographic-assurance-engineer": "cryptographic inventories, algorithms, key lifecycles, certificates, crypto agility, downgrade risks, PQC, QKMS, QKD, and QRNG applicability"
+    "cryptographic-assurance-engineer": "cryptographic inventories, algorithms, key lifecycles, certificates, crypto agility, downgrade risks, PQC, QKMS, QKD, and QRNG applicability",
+    "product-owner-aide": "prior G1/G2/G6 decisions, product intent history, scope and classification calls, and unresolved product-owner escalations",
+    "engineering-lead-aide": "prior G2/G6 decisions, requirements-baseline sign-offs, engineering-scope calls, and unresolved engineering-lead escalations",
+    "system-architect-aide": "prior G3 architecture decisions, alternatives considered, and unresolved architecture escalations",
+    "governance-lead-aide": "prior G4 governance decisions, applicability calls, control interpretations, and unresolved governance escalations",
+    "security-lead-aide": "prior G5 security sign-off decisions, accepted/rejected risk history, and unresolved security-lead escalations",
+    "release-owner-aide": "prior G7/G8 release-readiness and release-execution decisions, rollback history, and unresolved release-owner escalations",
+    "release-authority-aide": "prior G9 release-authority decisions, independent-check findings, and unresolved release-authority escalations",
+    "service-owner-aide": "prior G10 operational-readiness decisions, evidence-presence history, and unresolved service-owner escalations"
   }
 }

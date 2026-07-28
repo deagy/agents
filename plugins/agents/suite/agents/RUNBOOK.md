@@ -70,6 +70,7 @@ Choose agents by the capability the task needs. The examples in this runbook sta
 | Write system documentation | Technical writer | Technical owner |
 | Curate audit evidence | Evidence curator | Compliance reviewer |
 | Import or retrieve historical knowledge | Knowledge store steward | Security/compliance reviewer |
+| Prepare a decision package for a human lifecycle-gate authority | Matching `<authority>-aide` (e.g. product-owner-aide for G1/G2/G6, release-authority-aide for G9) | The named human authority itself |
 
 Use `catalog.yaml` when an orchestrator needs a machine-readable role inventory. Each role optionally declares a `model` tier (`haiku`/`sonnet`/`opus`), assigned by the fixed heuristic documented in the file's header comment: `opus` for design/architecture/governance/crypto-assurance roles making high-blast-radius judgment calls, `sonnet` as the default for build/review/test/operations/support roles, `haiku` for narrow single-purpose roles (evidence cataloging, knowledge-store stewardship, triage/escalation routing). `generate_global_plugin.py` propagates it into both the generated Claude Code subagent wrapper's `model:` frontmatter and the Codex `.toml` wrapper's `model` key — regenerate with `agents generate-plugin` after changing it.
 Use `workflows/debugging.md` when reproducing defects, analyzing runtime failures, or tuning agent definitions/routing.
@@ -626,7 +627,7 @@ This plugin system currently applies to the Cline CLI, SDK, and Kanban only, not
 
 ## 17. Make this repository's own suite available system-wide
 
-Most projects want §16's `agents sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 39 roles, 6 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
+Most projects want §16's `agents sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 47 roles, 6 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
 
 ```sh
 codex plugin marketplace add .
@@ -638,7 +639,7 @@ codex plugin add agents@agents-team
 /plugin install agents@agents-team
 ```
 
-Codex has no plugin-bundled-subagent mechanism, so its 39 namespaced `agents-<role>.toml` wrappers are staged under `plugins/agents/codex-agents/` rather than loaded from the plugin directly. The bootstrap step installs only those namespaced files and refuses unowned collisions; it leaves legacy bare global files untouched. Project-local bare role overrides remain preferred. See `../README.md`; legacy bare global files can be removed manually after confirming they are unused. Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
+Codex has no plugin-bundled-subagent mechanism, so its 47 namespaced `agents-<role>.toml` wrappers are staged under `plugins/agents/codex-agents/` rather than loaded from the plugin directly. The bootstrap step installs only those namespaced files and refuses unowned collisions; it leaves legacy bare global files untouched. Project-local bare role overrides remain preferred. See `../README.md`; legacy bare global files can be removed manually after confirming they are unused. Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
 
 A namespaced `.toml` wrapper alone only lets a human or a project-local override name the role directly; it does not fix how a running Codex *session* dispatches one of these roles as a subagent mid-task. That dispatch mechanic — and the MCP server that makes it work correctly — is documented in `.agents/skills/run-agent-orchestration/references/runner-adapters.md`'s "Codex CLI" section; see that file's "Register the MCP dispatch server" step before relying on Codex-hosted subagent dispatch.
 

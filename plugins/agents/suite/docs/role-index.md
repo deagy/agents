@@ -2,7 +2,7 @@
 
 # Role index
 
-This index is a human-readable view of the 39 roles in
+This index is a human-readable view of the 47 roles in
 [`agents/catalog.yaml`](../agents/catalog.yaml). The catalog and each linked
 `AGENT.md` remain authoritative.
 
@@ -77,3 +77,24 @@ as authoritative for sequencing; the directory is only a filing convenience.
 | support-triage-agent | support | Classify user reports, protect sensitive data, and route actionable cases. | [AGENT.md](../agents/support/support-triage-agent/AGENT.md) |
 | escalation-manager | support | Coordinate escalations so urgent or high-risk issues stop at the right gate. | [AGENT.md](../agents/support/escalation-manager/AGENT.md) |
 | incident-commander | support | Coordinate major incidents while preserving safety, evidence, and communication. | [AGENT.md](../agents/support/incident-commander/AGENT.md) |
+
+## Human authority aides
+
+Read-only agents that prepare the decision package a named human lifecycle
+authority needs for their assigned gate(s) — never approve, recommend a
+disposition, or hold delegated authority themselves. See
+[`docs/proposals/human-authority-role-agents.md`](proposals/human-authority-role-agents.md)
+for the design rationale, including why they never state a recommended
+disposition and why delegated approval authority was deliberately not built
+here.
+
+| Role | Phase | Purpose | Definition |
+| --- | --- | --- | --- |
+| product-owner-aide | authority | Prepare G1/G2/G6 decision packages for the human Product Owner. | [AGENT.md](../agents/authority/product-owner-aide/AGENT.md) |
+| engineering-lead-aide | authority | Prepare G2/G6 decision packages for the human Engineering Lead. | [AGENT.md](../agents/authority/engineering-lead-aide/AGENT.md) |
+| system-architect-aide | authority | Prepare G3 decision packages for the human System Architect. | [AGENT.md](../agents/authority/system-architect-aide/AGENT.md) |
+| governance-lead-aide | authority | Prepare G4 decision packages for the human Governance Lead. | [AGENT.md](../agents/authority/governance-lead-aide/AGENT.md) |
+| security-lead-aide | authority | Prepare G5 decision packages for the human Security Lead. | [AGENT.md](../agents/authority/security-lead-aide/AGENT.md) |
+| release-owner-aide | authority | Prepare G7/G8 decision packages for the human Release Owner. | [AGENT.md](../agents/authority/release-owner-aide/AGENT.md) |
+| release-authority-aide | authority | Prepare G9 decision packages for the human Release Authority. | [AGENT.md](../agents/authority/release-authority-aide/AGENT.md) |
+| service-owner-aide | authority | Prepare G10 decision packages for the human Service Owner. | [AGENT.md](../agents/authority/service-owner-aide/AGENT.md) |
