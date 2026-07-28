@@ -131,6 +131,31 @@ class RepositoryHealthTests(unittest.TestCase):
                 )
                 self.assertEqual(tracked.returncode, 0, tracked.stderr)
 
+    def test_clinerules_pointer_is_tracked_and_points_at_canonical_sources(self) -> None:
+        pointer_file = REPOSITORY_ROOT / ".clinerules" / "agents-repository.md"
+        self.assertTrue(pointer_file.is_file(), str(pointer_file))
+
+        content = pointer_file.read_text(encoding="utf-8")
+        self.assertIn("AGENTS.md", content)
+        self.assertIn("agents/RUNBOOK.md", content)
+
+        tracked = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", str(pointer_file.relative_to(REPOSITORY_ROOT))],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        self.assertEqual(tracked.returncode, 0, tracked.stderr)
+
+        ignored = subprocess.run(
+            ["git", "check-ignore", "-q", str(pointer_file.parent.relative_to(REPOSITORY_ROOT))],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+        )
+        self.assertNotEqual(ignored.returncode, 0, f"{pointer_file.parent} is ignored")
+
     def test_sample_references_are_limited_to_allowed_archives(self) -> None:
         allowed_prefixes = (
             ".gitignore",
