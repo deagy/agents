@@ -1,0 +1,37 @@
+# Data table for the generated authority-aide AGENT.md files.
+#
+# Each entry is the (role directory, human-authority title, gate numbers) tuple
+# that agents/orchestration/src/generate_authority_aides.py renders through
+# agents/authority/_template.md.tmpl. Regenerate after editing this file:
+#
+#     python3 agents/orchestration/src/generate_authority_aides.py
+#
+# Validate deterministically without changing the working tree:
+#
+#     python3 agents/orchestration/src/generate_authority_aides.py --check
+
+aides:
+  - id: product-owner-aide
+    title: Product Owner
+    gates: [1, 2, 6]
+  - id: engineering-lead-aide
+    title: Engineering Lead
+    gates: [2, 6]
+  - id: system-architect-aide
+    title: System Architect
+    gates: [3]
+  - id: governance-lead-aide
+    title: Governance Lead
+    gates: [4]
+  - id: security-lead-aide
+    title: Security Lead
+    gates: [5]
+  - id: release-owner-aide
+    title: Release Owner
+    gates: [7, 8]
+  - id: release-authority-aide
+    title: Release Authority
+    gates: [9]
+  - id: service-owner-aide
+    title: Service Owner
+    gates: [10]

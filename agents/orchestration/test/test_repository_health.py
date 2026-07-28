@@ -201,6 +201,18 @@ class RepositoryHealthTests(unittest.TestCase):
 
         self.assertEqual(offenders, [])
 
+    def test_authority_aide_agents_are_generated_and_in_sync(self) -> None:
+        generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_authority_aides.py"
+        checked = subprocess.run(
+            ["python3", str(generator), "--check"],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        self.assertEqual(0, checked.returncode, checked.stderr)
+
     def test_secure_cloud_agents_plugin_is_generated_and_in_sync(self) -> None:
         generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_global_plugin.py"
         with tempfile.TemporaryDirectory(prefix="agents-health-") as temporary_directory:
