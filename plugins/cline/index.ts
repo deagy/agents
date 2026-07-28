@@ -49,8 +49,9 @@ function buildSelectArgs(input: AgentsSelectInput, rootPath: string): string[] {
 }
 
 type SetupFn = NonNullable<AgentPlugin["setup"]>;
-type SetupApi = Parameters<SetupFn>[0];
-type SetupContext = Parameters<SetupFn>[1];
+export type SetupApi = Parameters<SetupFn>[0];
+export type SetupContext = Parameters<SetupFn>[1];
+export type { AgentsSelectInput, AgentsSelectError };
 
 const setup = (api: SetupApi, ctx: SetupContext) => {
   const rootPath = ctx.workspaceInfo?.rootPath;

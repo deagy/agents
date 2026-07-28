@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import type { AgentTool } from "@cline/sdk";
-import { plugin } from "./index.ts";
+import { plugin, type SetupApi, type SetupContext } from "./index.ts";
 
 const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(PLUGIN_DIR, "..", "..");
 
 async function registerTools(workspaceRootPath: string | undefined) {
   const tools: AgentTool[] = [];
-  const api = {
+  const api: SetupApi = {
     registerTool: (tool: AgentTool) => {
       tools.push(tool);
     },
@@ -20,10 +20,10 @@ async function registerTools(workspaceRootPath: string | undefined) {
     registerAutomationEventType: () => {},
     registerMcpServer: () => {},
   };
-  const ctx = {
+  const ctx: SetupContext = {
     workspaceInfo: workspaceRootPath ? { rootPath: workspaceRootPath } : undefined,
   };
-  await plugin.setup?.(api as never, ctx as never);
+  await plugin.setup?.(api, ctx);
   return tools;
 }
 
@@ -34,9 +34,13 @@ function findTool(tools: AgentTool[], name: string): AgentTool {
 }
 
 describe("secure-cloud-agents plugin", () => {
-  it("registers exactly one tool: agents_select", async () => {
+  it("declares the tools capability and registers exactly one tool: agents_select", async () => {
+    expect(plugin.manifest.capabilities).toEqual(["tools"]);
+
     const tools = await registerTools(REPO_ROOT);
     expect(tools.map((t) => t.name)).toEqual(["agents_select"]);
+    expect(tools[0].description).toMatch(/plan only/i);
+    expect(tools[0].description).toMatch(/never invokes agents/i);
   });
 
   it("agents_select returns a real dispatch plan for this repository", async () => {
@@ -54,6 +58,24 @@ describe("secure-cloud-agents plugin", () => {
     expect(result).toHaveProperty("matched_routes");
   });
 
+  it("agents_select honors an explicit taskId in the returned plan", async () => {
+    const tools = await registerTools(REPO_ROOT);
+    const tool = findTool(tools, "agents_select");
+
+    const result = (await tool.execute(
+      {
+        task: "Review README changes",
+        files: "README.md",
+        classification: "internal",
+        taskId: "PLUGIN-TEST-TASK-ID",
+      },
+      {} as never,
+    )) as Record<string, unknown>;
+
+    expect(result.error).toBeUndefined();
+    expect(result.task_id).toBe("PLUGIN-TEST-TASK-ID");
+  });
+
   it("agents_select returns needs-triage for a scope with no matching route", async () => {
     const tools = await registerTools(REPO_ROOT);
     const tool = findTool(tools, "agents_select");
@@ -69,6 +91,23 @@ describe("secure-cloud-agents plugin", () => {
 
     expect(result.error).toBeUndefined();
     expect(result.status).toBe("needs-triage");
+  });
+
+  it("agents_select surfaces a real CLI failure as a structured error, not a throw", async () => {
+    const tools = await registerTools(REPO_ROOT);
+    const tool = findTool(tools, "agents_select");
+
+    // select_agents.py rejects --base combined with --files with a non-zero exit;
+    // this exercises the execFile non-zero-exit branch of the shared catch block
+    // (distinct from the JSON.parse-failure branch and the missing-rootPath guard),
+    // and incidentally covers the --base flag, which no other test passes.
+    const result = (await tool.execute(
+      { task: "test", files: "README.md", base: "main" },
+      {} as never,
+    )) as Record<string, unknown>;
+
+    expect(typeof result.error).toBe("string");
+    expect(result.error).toMatch(/--base cannot be combined with --files/);
   });
 
   it("agents_select returns a structured error when the workspace root could not be resolved", async () => {

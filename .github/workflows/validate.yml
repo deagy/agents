@@ -63,7 +63,9 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      - run: npm install -g cline
+      # Pinned to the version this plugin's known-limitation note (README/RUNBOOK) is
+      # scoped to; bump deliberately, not implicitly via an unpinned `latest` install.
+      - run: npm install -g cline@3.0.46
       # Real install/uninstall smoke test against the packaged plugin source,
       # catching manifest/packaging regressions rather than relying on doc-trust.
       - run: cline plugin install --json "$GITHUB_WORKSPACE/plugins/cline"
