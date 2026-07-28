@@ -64,7 +64,7 @@ over any other project's gates.
 
 ## Supported runners
 
-Every role definition and orchestration tool is runner-neutral text and data. Codex CLI and Claude Code wrappers are generated into the self-contained Secure Cloud plugin. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc). [Cline](https://docs.cline.bot) is also recognized: it reads `AGENTS.md` natively as a cross-tool standard, and this repository additionally provides `.clinerules/agents-repository.md`, which points at the same canonical `AGENTS.md` and `agents/RUNBOOK.md` sources.
+Every role definition and orchestration tool is runner-neutral text and data. Codex CLI and Claude Code wrappers are generated into the self-contained Secure Cloud plugin. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc). [Cline](https://docs.cline.bot) is also recognized: it [reads `AGENTS.md` natively](https://docs.cline.bot/customization/cline-rules) as a cross-tool standard, and this repository additionally provides `.clinerules/agents-repository.md`, which points at the same canonical `AGENTS.md` and `agents/RUNBOOK.md` sources.
 
 ## Quick start
 
