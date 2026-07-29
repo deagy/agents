@@ -1,5 +1,8 @@
 [build-system]
-requires = ["hatchling"]
+# Pinned to the exact reviewed version installed/verified in this
+# environment (see supply-chain-security-reviewer finding on PR #48); bump
+# deliberately after review, not implicitly via an unbounded requirement.
+requires = ["hatchling==1.31.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -8,7 +11,11 @@ dynamic = ["version"]
 description = "Pip/pipx-installable distribution of the Cadre secure-cloud subagent suite CLI (select, knowledge, sdlc, init, and related subcommands)."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "Apache-2.0" }
+# PEP 639 SPDX-string form, paired with license-files below so hatchling
+# records the actual LICENSE file as a wheel/sdist License-File (verified
+# against the hatchling version pinned above -- see LICENSE at repo root).
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 dependencies = []
 
 [project.optional-dependencies]
@@ -154,6 +161,7 @@ include = [
     "plugins/cadre/extensions/**",
     "plugins/cadre/codex-agents/**",
     "README.md",
+    "LICENSE",
 ]
 exclude = [
     "agents/*/test/**",

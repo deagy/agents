@@ -269,14 +269,23 @@ and/or write generated content back into this repository's own tree
 `suite/`, `docs/`, etc. for `generate-plugin`/`version`; `agents/authority/*/AGENT.md`
 for `generate-authority-aides`) as part of regenerating this repository's own
 generated artifacts — an operation that only makes sense against a real
-checkout, never against an installed site-packages copy. Every other
-subcommand (`select`, `knowledge`, `generate-role-metadata`,
+checkout, never against an installed site-packages copy. `cadre
+generate-role-metadata` is a partial case: it is **read/check-only from a
+pip/pipx install** — `cadre generate-role-metadata --check` works fully
+(it only verifies the installed package's own bundled
+`agents/catalog.yaml`/`agents/orchestration/routing.yaml` are internally
+current, a legitimate installed-mode use case), but its default (no-flag)
+write mode requires a checkout, for the same reason as `generate-plugin`
+above: from an install it would otherwise silently regenerate the
+installed package's own vendored copy under site-packages rather than a
+real project. Every other subcommand (`select`, `knowledge`,
 `bootstrap-codex`, `resolve-shared`, `mcp-dispatch-server`, `init`, and
 `sdlc`) works fully from the pip/pipx install. Invoking `generate-plugin`,
-`generate-authority-aides`, or `version` from an installed distribution
-fails closed with an explicit error message and a non-zero exit code,
-pointing back at the checkout path, instead of silently writing into
-site-packages or raising a raw traceback.
+`generate-authority-aides`, `version`, or `generate-role-metadata` without
+`--check` from an installed distribution fails closed with an explicit
+error message and a non-zero exit code, pointing back at the checkout
+path, instead of silently writing into site-packages or raising a raw
+traceback.
 
 ## Agent orchestration
 

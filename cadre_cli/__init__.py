@@ -78,7 +78,46 @@ _VENDORED_CADRE_PY = VENDOR_ROOT / "bin" / "cadre.py"
 # (bundled _vendor/) dispatch path only -- the checkout path (`bin/cadre.py`
 # run directly, or via bin/cadre / bin/cadre.ps1) is completely untouched
 # and keeps working exactly as before.
-_CHECKOUT_ONLY_SUBCOMMANDS = frozenset({"generate-plugin", "version", "generate-authority-aides"})
+#
+# `generate-role-metadata` (generate_role_metadata.py) is a partial case:
+# its default (write) mode has the exact same "writes back into this
+# repository's own tree" problem -- from an installed distribution it would
+# silently regenerate the *installed package's own vendored copy* of
+# agents/catalog.yaml / agents/orchestration/routing.yaml under
+# site-packages, never a real user project, which is pointless/misleading
+# even though it doesn't crash. Its `--check` mode is different: it only
+# reads, verifying the installed package's own bundled metadata is
+# internally self-consistent -- a legitimate installed-mode use case. So
+# this subcommand name is listed here too, but the dispatch check below only
+# fails closed for it when `--check` is absent from argv; see
+# _requires_checkout().
+_CHECKOUT_ONLY_SUBCOMMANDS = frozenset(
+    {"generate-plugin", "version", "generate-authority-aides", "generate-role-metadata"}
+)
+
+# Subcommands where only *some* invocations are checkout-only (see
+# `generate-role-metadata` above): map the subcommand name to a predicate
+# over the remaining argv (excluding the subcommand itself) that returns
+# True when this particular invocation requires a full checkout. A
+# subcommand present in _CHECKOUT_ONLY_SUBCOMMANDS but absent from this map
+# is unconditionally checkout-only (e.g. generate-plugin, version,
+# generate-authority-aides).
+_PARTIAL_CHECKOUT_ONLY_PREDICATES = {
+    "generate-role-metadata": lambda rest: "--check" not in rest,
+}
+
+
+def _requires_checkout(command: str, rest_argv: list[str]) -> bool:
+    """True when this specific invocation of `command` must fail closed from
+    a bundled (pip/pipx) install because it would write into the installed
+    package's own site-packages tree instead of a real checkout/project.
+    """
+    if command not in _CHECKOUT_ONLY_SUBCOMMANDS:
+        return False
+    predicate = _PARTIAL_CHECKOUT_ONLY_PREDICATES.get(command)
+    if predicate is None:
+        return True
+    return predicate(rest_argv)
 
 
 def _is_bundled_install() -> bool:
@@ -117,15 +156,28 @@ def main(argv: list[str] | None = None) -> int:
     """
     effective_argv = sys.argv[1:] if argv is None else argv
     command = effective_argv[0] if effective_argv else None
-    if command in _CHECKOUT_ONLY_SUBCOMMANDS and _is_bundled_install():
-        print(
-            f"cadre {command}: requires a full repository checkout "
-            "(this is a maintainer/regeneration tool, not available from a "
-            "pip-installed distribution); clone "
-            "https://github.com/deagy/cadre and run "
-            f"./bin/cadre {command} instead.",
-            file=sys.stderr,
-        )
+    if command is not None and _is_bundled_install() and _requires_checkout(command, effective_argv[1:]):
+        if command == "generate-role-metadata":
+            print(
+                "cadre generate-role-metadata (without --check) requires a "
+                "full repository checkout (it writes regenerated "
+                "agents/catalog.yaml / agents/orchestration/routing.yaml back "
+                "into a real project tree, not this installed package's own "
+                "site-packages copy); use --check from an installed "
+                "distribution to verify the installed metadata is current, "
+                "or clone https://github.com/deagy/cadre and run "
+                "./bin/cadre generate-role-metadata instead.",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                f"cadre {command}: requires a full repository checkout "
+                "(this is a maintainer/regeneration tool, not available from a "
+                "pip-installed distribution); clone "
+                "https://github.com/deagy/cadre and run "
+                f"./bin/cadre {command} instead.",
+                file=sys.stderr,
+            )
         return 1
     cadre_module = _load_vendored_cadre_module()
     return cadre_module.main(effective_argv)
