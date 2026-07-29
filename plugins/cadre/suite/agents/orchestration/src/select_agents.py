@@ -151,8 +151,10 @@ def main(argv: list[str] | None = None) -> int:
         else discover_changed_files(options.base, repository_root)
     )
     source = options.source or resolve_knowledge_source(repository_root)
-    config = load_routing(ORCHESTRATION_ROOT / "routing.yaml")
-    catalog = load_catalog(AGENTS_ROOT / "catalog.yaml")
+    catalog_path = AGENTS_ROOT / "catalog.yaml"
+    routing_path = ORCHESTRATION_ROOT / "routing.yaml"
+    config = load_routing(routing_path)
+    catalog = load_catalog(catalog_path)
     plan = build_dispatch_plan(
         config,
         catalog,
@@ -168,6 +170,8 @@ def main(argv: list[str] | None = None) -> int:
             "top": options.top,
         },
         require_sdlc=options.require_sdlc,
+        catalog_path=catalog_path,
+        routing_path=routing_path,
     )
     serialized = f"{json.dumps(plan, indent=2, ensure_ascii=False)}\n"
     if options.output:
