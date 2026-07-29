@@ -90,37 +90,81 @@ SHARED_OVERRIDE_NOTE = (
     "alone (see agents/shared/README.md in the source suite)."
 )
 
-ALLOWED_MODELS = {"haiku", "sonnet", "opus"}
-ALLOWED_CODEX_MODELS = {"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
+RUNNER_CAPABILITIES_PATH = REPOSITORY_ROOT / "agents" / "runner-capabilities.json"
+
+
+class ManifestError(ValueError):
+    """Raised when `agents/runner-capabilities.json` is missing or does not
+    carry the required structure. Fails closed rather than silently falling
+    back to a stale hardcoded copy -- see idea #8
+    (REQ-CADRE-BACKLOG-8, CM-NFR-5): `CAPABILITY_PROFILES`/`ALLOWED_MODELS`/
+    `ALLOWED_CODEX_MODELS`/`ALLOWED_REASONING_EFFORTS` below are derived
+    directly from this file at import time (stdlib `json` only, no new
+    dependency -- see CM-NFR-4), so there is no separate committed copy that
+    could independently drift from it. `agents/runner-capabilities.schema.json`
+    additionally validates this file's own shape via a jsonschema-guarded
+    standalone check (see `agents/orchestration/test/test_runner_capabilities.py`),
+    matching `agents/catalog.schema.json`'s idea #10 precedent, but that
+    schema is a supplementary shape check, not the mechanism the fields below
+    rely on to stay in sync.
+    """
+
+
+def _load_runner_capabilities(path: Path = RUNNER_CAPABILITIES_PATH) -> dict[str, Any]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError as error:
+        raise ManifestError(f"{path}: runner capability manifest not found") from error
+    try:
+        manifest = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise ManifestError(f"{path}: invalid JSON: {error}") from error
+    if not isinstance(manifest, dict):
+        raise ManifestError(f"{path}: top-level content must be a JSON object")
+    for key in ("capability_tiers", "model_tiers", "allowed_reasoning_efforts"):
+        if key not in manifest:
+            raise ManifestError(f"{path}: missing required top-level key {key!r}")
+    return manifest
+
+
+def _capability_profiles_from_manifest(manifest: dict[str, Any], path: Path) -> dict[str, dict[str, Any]]:
+    profiles: dict[str, dict[str, Any]] = {}
+    for tier, data in manifest["capability_tiers"].items():
+        if not isinstance(data, dict) or "tools" not in data or "sandbox_mode" not in data:
+            raise ManifestError(f"{path}: capability_tiers[{tier!r}] must declare 'tools' and 'sandbox_mode'")
+        profiles[tier] = {"tools": list(data["tools"]), "sandbox_mode": data["sandbox_mode"]}
+    return profiles
+
+
+def _model_tiers_from_manifest(manifest: dict[str, Any], path: Path) -> dict[str, dict[str, str]]:
+    tiers: dict[str, dict[str, str]] = {}
+    for tier, data in manifest["model_tiers"].items():
+        if not isinstance(data, dict) or "codex_model" not in data or "reasoning_effort" not in data:
+            raise ManifestError(f"{path}: model_tiers[{tier!r}] must declare 'codex_model' and 'reasoning_effort'")
+        tiers[tier] = {"codex_model": data["codex_model"], "reasoning_effort": data["reasoning_effort"]}
+    return tiers
+
+
+_RUNNER_CAPABILITIES = _load_runner_capabilities()
+
+# Single source of truth: `agents/runner-capabilities.json` (idea #8,
+# REQ-CADRE-BACKLOG-8). Every constant below is derived from that file at
+# import time, not hand-duplicated -- editing the manifest and re-running is
+# the only edit location (CM-FR-2), and drift between this module and the
+# manifest is structurally impossible (CM-NFR-5) because there is no second
+# copy to fall out of sync.
+CAPABILITY_PROFILES: dict[str, dict[str, Any]] = _capability_profiles_from_manifest(
+    _RUNNER_CAPABILITIES, RUNNER_CAPABILITIES_PATH
+)
+MODEL_TIERS: dict[str, dict[str, str]] = _model_tiers_from_manifest(_RUNNER_CAPABILITIES, RUNNER_CAPABILITIES_PATH)
+ALLOWED_MODELS = set(MODEL_TIERS)
+ALLOWED_CODEX_MODELS = {data["codex_model"] for data in MODEL_TIERS.values()}
 # Shared between both wrappers (Claude Code's `effort:` frontmatter and
 # Codex's `model_reasoning_effort` TOML key) -- restricted to the subset
 # both runners accept, so a single catalog.yaml value is always valid on
 # either side. See catalog.yaml's `reasoning_effort` comment for the source
 # of this list.
-ALLOWED_REASONING_EFFORTS = {"low", "medium", "high", "xhigh"}
-
-CAPABILITY_PROFILES: dict[str, dict[str, Any]] = {
-    "read_only": {
-        "tools": ["Read", "Grep", "Glob"],
-        "sandbox_mode": "read-only",
-    },
-    "document_author": {
-        "tools": ["Read", "Grep", "Glob", "Bash", "Edit", "Write"],
-        "sandbox_mode": "workspace-write",
-    },
-    "code_author": {
-        "tools": ["Read", "Grep", "Glob", "Bash", "Edit", "Write"],
-        "sandbox_mode": "workspace-write",
-    },
-    "test_author": {
-        "tools": ["Read", "Grep", "Glob", "Bash", "Edit", "Write"],
-        "sandbox_mode": "workspace-write",
-    },
-    "environment_operator": {
-        "tools": ["Read", "Grep", "Glob", "Bash", "Edit", "Write"],
-        "sandbox_mode": "workspace-write",
-    },
-}
+ALLOWED_REASONING_EFFORTS = set(_RUNNER_CAPABILITIES["allowed_reasoning_efforts"])
 
 GENERATED_MARKER = "<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->"
 GENERATED_TOP_LEVEL = {"skills", "agents", "codex-agents", "suite", "agent-catalog.json", "bin"}
@@ -466,6 +510,8 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
             "agents/catalog.schema.json",
             "agents/catalog-order.txt",
             "agents/_catalog_header.yaml.tmpl",
+            "agents/runner-capabilities.json",
+            "agents/runner-capabilities.schema.json",
             "agents/authority/aides.yaml",
             "agents/authority/_template.md.tmpl",
             "agents/README.md",

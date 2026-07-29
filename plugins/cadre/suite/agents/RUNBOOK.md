@@ -87,6 +87,17 @@ python3 agents/orchestration/src/schema_validate.py
 ```
 
 Use `--catalog`/`--routing`/`--catalog-schema`/`--routing-schema` to point at alternate files (e.g. a fixture under test). Exits non-zero with findings on stderr when either file is schema-invalid; exits zero with a summary line on stdout when both are clean. Wired into `agents/orchestration/test/test_schema_validation.py` (part of the standard `unittest discover` invocation above) and into CI (`.github/workflows/validate.yml`'s `python-contracts` job).
+
+`agents/runner-capabilities.json` (validated by `agents/runner-capabilities.schema.json`, both JSON Schema Draft 2020-12) is the single declarative source of truth for runner/capability/model-tier data that used to be hand-duplicated across `generate_global_plugin.py`'s `CAPABILITY_PROFILES`/`ALLOWED_MODELS`/`ALLOWED_CODEX_MODELS`/`ALLOWED_REASONING_EFFORTS`, `generate_role_metadata.py`'s `TIER_MAP`, and eight structural facts in `.agents/skills/run-agent-orchestration/references/runner-adapters.md`. It declares, per the 5 capability tiers, their `tools`/`sandbox_mode` grant; per the 3 model tiers, their `codex_model`/`reasoning_effort` mapping; and per runner (`claude-code`, `codex`, `cline`), whether a generated dispatch wrapper exists, `communication_mode: "peer"` support and gating, nested-team support, named-agent-dispatch support and its workaround, and any concurrency-bound config key. It is build-time-only: no dispatch-time or runtime code currently reads it (see `agents/orchestration/runs/cadre-idea-8-capability-manifest-2026-07-29/requirements.md`'s OD-2 disposition for the grounding).
+
+`CAPABILITY_PROFILES`/`ALLOWED_MODELS`/`ALLOWED_CODEX_MODELS`/`ALLOWED_REASONING_EFFORTS` (`generate_global_plugin.py`) and `TIER_MAP` (`generate_role_metadata.py`) are *generated from* this manifest at import time using stdlib `json` only (no new dependency) -- there is no second hand-authored copy of these values to fall out of sync, so drift between the manifest and those Python constants is structurally impossible, not merely detected after the fact. To add a capability tier or change an existing tier's `tools`/`sandbox_mode`, or to change a model tier's `codex_model`/`reasoning_effort`, edit `agents/runner-capabilities.json` only; both generators pick it up automatically on their next run. `agents/catalog.schema.json`'s `capability`/`model`/`codex_model`/`reasoning_effort` enums are checked against the same manifest data in `agents/orchestration/test/test_runner_capabilities.py` rather than hand-copied a fifth time. The manifest's own shape (required keys, closed enum values) is validated by `agents/runner-capabilities.schema.json` via a `jsonschema`-guarded check:
+
+```sh
+python3 agents/orchestration/src/validate_runner_capabilities.py
+```
+
+Exits non-zero with findings on stderr when the manifest is schema-invalid; exits zero with a summary line on stdout when it is clean. `agents/orchestration/test/test_runner_capabilities.py` (part of the standard `unittest discover -s agents/orchestration/test` invocation above) covers generator-constant parity, fail-closed behavior on a malformed/incomplete manifest, the eight `runner-adapters.md` structural facts, and packaging-allowlist parity for the two new files under `generate_global_plugin.py::generate_suite_copy`.
+
 Use `workflows/debugging.md` when reproducing defects, analyzing runtime failures, or tuning agent definitions/routing.
 
 ### Select agents locally
@@ -107,6 +118,32 @@ Use `--root /path/to/target` when the target is not the caller's working directo
 The plan also emits a `teams` array — deterministic team composition from `orchestration/routing.yaml`'s `team_recipes`, evaluated against the same matched routes/risks (never pulling in an agent that wasn't already selected). See the `run-agent-orchestration` skill's `references/team-recipes.md` for what each named team means and its `references/runner-adapters.md` for the `communication_mode`/`fallback` contract: `peer` messaging is only honored on Claude Code with `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`; every other case (Codex always, or Claude Code without that flag) uses `fallback: "orchestrator-relayed"` — an ordinary parallel wave where the orchestrating session does all reconciliation itself, since Codex has no agent-to-agent messaging mechanism at all. `teams` is `[]` whenever no recipe matches; most tasks don't.
 
 Edit `orchestration/routing.yaml` to add repository-specific path conventions. Although its extension is YAML, the Python selector parses its JSON-compatible content with the standard library; the standalone Agentic SDLC executable supplies lifecycle gate contracts separately. A planned knowledge invocation contains a host-neutral Python 3.10+ `launcher` contract and an argv array beginning with the knowledge-store CLI's absolute path (`src/cli.py`), runnable without changing directory — that also means `Path.cwd()` inside `cli.py` reflects wherever the caller actually is, which is what lets its project-local-vs-global config resolution work. `bin/cadre knowledge ...` runs the same script; the plan itself embeds the interpreter-agnostic launcher contract for callers that substitute their own probed interpreter path instead. The plan always carries an explicit `--source`. A caller-supplied value wins; otherwise it uses the target repository's lowercase `owner/repository` origin slug, falling back to `local-<basename>-<12-character canonical-path hash>`. Existing `secure-cloud-agents` records are not migrated automatically: pass that source explicitly for temporary retrieval, then re-ingest under the new repository key through the steward workflow. Selection rejects `--top` outside 1–20; required knowledge-store configuration must fail closed.
+
+### Customize routing.yaml with a project-local overlay
+
+A consuming project that wants an additional route, a widened risk-rule keyword, or an extra team recipe does not need to fork `orchestration/routing.yaml` and hand-maintain the fork. `agents/orchestration/src/routing_overlay.py` resolves a project-local overlay at `.agents/orchestration/routing-overlay.json` (a plain JSON file, not YAML — `routing.yaml` is itself JSON-shaped despite its filename, so this avoids a PyYAML dependency), discovered by walking up from the current directory to the nearest `.git` boundary — the exact same convention `agents/shared/src/resolve.py::find_project_overlay` and `agents/knowledge-store/src/config.py` already use for `.agents/shared/<filename>` and project-local `config.json` (both now share one implementation, `resolve.find_file_at_project_root`, rather than three separate walk-up implementations). With no overlay present, the effective configuration is `routing.yaml`'s own bytes, unchanged — a project that hasn't opted in sees no behavior change.
+
+Unlike `.agents/shared/`'s single deep-merge/narrowing-only rule, the overlay uses a different merge rule per `routing.yaml` construct, because most of its sections carry gating or review-separation semantics `.agents/shared/`'s policy-preference files do not:
+
+- **`routes[]` / `risk_rules[]`**: an overlay may add a new `id`-keyed entry (rejected if the `id` collides with any existing `routes`/`risk_rules`/`team_recipes` id), and may widen an *existing* base entry's `keywords`/`keyword_groups`/`paths` by supplying a value that is a superset of the base value — every element already present in the base entry must still be present in the overlay's value, or resolution fails closed. Any other field on that same patch entry (`primary`, `reviewers`, `support`, `quality_gates`, `human_gate`) must equal the base value exactly. This widen-only rule applies to every base entry, not only ones that currently declare a `human_gate` — narrowing a base entry's matching conditions is treated as functionally equivalent to weakening its `human_gate`/`reviewers`, even when those fields are never directly touched.
+- **`team_recipes[]`**: purely additive. A new, non-colliding `id` may be added; an existing base entry is fully immutable, with no widen exception.
+- **`change_intake`**: `keywords`/`agents`/`quality_gates` are additive-only.
+- **`cross_stack`**: `route_ids`/`support` are additive-only; `minimum_matches` may only decrease from the base value, never increase.
+- **`knowledge_focus`**: ordinary deep-merge, overlay wins per key — no narrowing restriction, since it is descriptive text with no gating/dispatch semantics.
+- **`ignored_gates`**: may only shrink (remove an already-present entry), never grow.
+- **`version`**: fixed; an overlay may repeat the base value as a no-op but cannot change it.
+
+```sh
+# Materialize the effective configuration for a target project (defaults to
+# discovering the overlay from the current directory):
+python3 agents/orchestration/src/routing_overlay.py --out /tmp/effective-routing.json
+
+# Validate discovery + merge only, --check-style (matches
+# generate_role_metadata.py --check / generate_authority_aides.py --check):
+python3 agents/orchestration/src/routing_overlay.py --check
+```
+
+The materialized file is a plain JSON file in `routing.yaml`'s own shape, so `routing_health.py --routing <path>` and `schema_validate.py --routing <path>` can validate the *effective* (merged) configuration a project actually dispatches against — not just the unmodified base file — using their existing, unmodified `--routing` argument; no code changes to either checker were needed. See `agents/orchestration/test/test_routing_overlay.py` for the full merge-rule test coverage, including the narrowing-bypass rejection case (an overlay that omits an existing keyword from a `human_gate`-bearing risk rule's matching conditions, without ever touching `human_gate` itself, still fails closed).
 
 ### Dispatch with one prompt
 
