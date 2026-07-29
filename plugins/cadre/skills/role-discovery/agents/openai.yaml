@@ -1,0 +1,4 @@
+interface:
+  display_name: "Role Discovery"
+  short_description: "Conversationally find the right specialist role."
+  default_prompt: "Use $role-discovery to help me figure out which repository role fits my task."
