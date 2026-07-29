@@ -231,6 +231,42 @@
           "not": { "anyOf": [{ "required": ["reason"] }, { "required": ["classification"] }, { "required": ["source_filter"] }] }
         }
       ]
+    },
+    "provenance": {
+      "description": "Optional, additive suite-input provenance binding (idea #7). Distinct from and complementary to dispatch_fingerprint: dispatch_fingerprint is a self-consistency checksum over this plan's own emitted content (excludes generated_at and provenance itself); provenance binds the plan to the exact catalog.yaml/routing-configuration content, and best-effort git commit identity, that produced it, independently verifiable without trusting the generating process. Absent entirely on plans built without a matching on-disk catalog/routing file (e.g. in-process fixtures/tests) -- not required at the top level, so plans generated before this field existed remain valid.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalog_content_hash", "routing_content_hash"],
+      "properties": {
+        "catalog_content_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "routing_content_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "git_commit_sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "git_dirty_paths": { "$ref": "#/$defs/stringArray" },
+        "overlay_applied": {
+          "description": "Reserved for idea #6 (project-local routing overlay). Currently dormant: select_agents.py's dispatch-plan call path never resolves an overlay, so this and the sibling overlay_* fields are always absent, never fabricated.",
+          "const": true
+        },
+        "overlay_content_hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "overlay_path": { "$ref": "#/$defs/nonempty" },
+        "runner_capabilities_content_hash": {
+          "description": "Reserved for a possible future dispatch-time read of agents/runner-capabilities.json (idea #8). Not populated by this schema version: the manifest is build/generator-time only today and is already transitively covered by catalog_content_hash, so populating this without an actual causal read path would misrepresent what produced the plan.",
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "agentic_sdlc_contract_version": {
+          "description": "The lifecycle-gates contract's own version integer, recorded only when lifecycle_tracking.status is \"integrated\". Records which already-consumed, already-version-checked external contract shape Cadre's own code used -- not an assertion about the agentic-sdlc kernel's own repository/commit identity, gate-approval state, or run-record validity (see the two-repo boundary in AGENTS.md/CLAUDE.md).",
+          "type": "integer"
+        }
+      },
+      "if": {
+        "not": {
+          "properties": { "overlay_applied": { "const": true } },
+          "required": ["overlay_applied"]
+        }
+      },
+      "then": {
+        "not": { "anyOf": [{ "required": ["overlay_content_hash"] }, { "required": ["overlay_path"] }] }
+      }
     }
   },
   "$defs": {
