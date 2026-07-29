@@ -13,7 +13,7 @@ git tags (`vMAJOR.MINOR.PATCH`) to a deliberate, reviewed version bump of
 `plugins/cadre/.claude-plugin/plugin.json` /
 `plugins/cadre/.codex-plugin/plugin.json`, checked with `cadre version
 --check`/`--set`. The latest tagged release at the time of writing is
-**v0.10.0**; the entries below have landed since then and have not yet been
+**v0.11.0**; the entries below have landed since then and have not yet been
 bundled into a version-bumped, tagged release. They are grouped under
 `[Unreleased]` rather than assigned invented version numbers.
 
@@ -93,6 +93,32 @@ bundled into a version-bumped, tagged release. They are grouped under
   `cadre select` and `cadre sdlc`, works fully from the installed
   distribution. Optional `[yaml]`/`[mcp]` extras keep a bare `pip install
   cadre` dependency-light.
+
+- **`dispatch_disposition` field on dispatch plans** (fixes #45): every
+  `cadre select` plan now carries `dispatch_disposition: {status, reason}`,
+  where `status` is `staffed` (a primary and/or reviewer role was selected),
+  `advisory-only` (only `agents.support` was populated — e.g. via
+  `routing.yaml`'s generic `change_intake` keywords or a default gate review
+  agent — with no primary or reviewer matched), or `no-agents-selected`
+  (nothing matched; `needs-triage`). Matters to consumers because a
+  support-only selection used to be indistinguishable in the plan from a
+  fully-staffed one, so an orchestrator had no structured signal before
+  silently performing a destructive or persistent-environment action itself
+  instead of dispatching or reporting why nothing was dispatched. The
+  `run-agent-orchestration` skill now requires checking this field before
+  dispatch and reporting its status in every final summary. **Additive and
+  non-breaking**: a new required field in `selection.schema.json`, but every
+  plan already always populated `agents.primary`/`reviewers`/`support`, so
+  the field is deterministically derivable and always present.
+
+### Fixed
+
+- **pip wheel was missing `agents/runner-capabilities.json`**: `cadre
+  generate-role-metadata --check` (an installed-must-work subcommand)
+  crashed with a raw traceback from a pip/pipx install, because
+  `pyproject.toml`'s wheel `force-include` list never vendored this
+  manifest (only the sdist's `agents/**` wildcard covered it). Every other
+  pip-installed subcommand was unaffected.
 
 ### Changed
 
