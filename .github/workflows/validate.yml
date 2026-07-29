@@ -35,6 +35,7 @@ jobs:
       - run: ./bin/cadre help
       - run: ./bin/cadre select --task "CI wrapper smoke test" --files README.md --classification internal --task-id CI-SMOKE-1 >/dev/null
       - run: ./bin/cadre generate-plugin --check
+      - run: python agents/orchestration/src/schema_validate.py
       - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc --version
       - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc provider list
       - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc profile list
