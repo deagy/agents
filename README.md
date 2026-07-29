@@ -34,7 +34,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 | Select and coordinate agents | [Orchestration guide](docs/orchestration.md) |
 | Set up lifecycle gates conversationally (non-engineers) | `lifecycle-onboarding` skill — ask an agent to run it |
 | Set up lifecycle gates in a target project (direct CLI) | [Lifecycle and plugin operations](docs/lifecycle-and-plugin-operations.md) |
-| Find the right specialist | [Role index](docs/role-index.md) |
+| Find the right specialist | [Role index](docs/role-index.md), or ask an agent to run the `role-discovery` skill for a guided conversation |
 | Contribute here | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Operate the full system | [agents/RUNBOOK.md](agents/RUNBOOK.md) |
 
@@ -179,7 +179,7 @@ Most projects want the per-project `--profile secure-cloud` path above instead
 of this section — it avoids forcing this repository's cloud-specific roles
 onto projects with a different stack, and each project's generated wrappers
 are static files it owns, not a live link back to this checkout. This section
-is for the narrower case of genuinely wanting all 47 roles, the 7 skills, and
+is for the narrower case of genuinely wanting all 47 roles, the 8 skills, and
 the knowledge store reachable from *every* project on the machine
 unconditionally, via the same global/user-scope plugin install mechanism:
 
