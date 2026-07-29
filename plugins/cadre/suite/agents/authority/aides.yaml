@@ -1,0 +1,51 @@
+# Data table for the generated authority-aide AGENT.md files.
+#
+# Same 2-space-id / 4-space-field shape as catalog.yaml's `agents:` block, so
+# both are read by the single parse_keyed_entries() primitive in routing.py
+# instead of two independently hand-rolled parsers. Each id maps to the
+# human-authority title, gate numbers, and role-metadata knowledge_focus text
+# that agents/orchestration/src/generate_authority_aides.py renders through
+# agents/authority/_template.md.tmpl (the shared phase/capability/model/
+# codex_model/reasoning_effort values are identical across all eight aides
+# and are hardcoded in the template itself, not repeated here). Regenerate
+# after editing this file:
+#
+#     python3 agents/orchestration/src/generate_authority_aides.py
+#
+# Validate deterministically without changing the working tree:
+#
+#     python3 agents/orchestration/src/generate_authority_aides.py --check
+
+aides:
+  product-owner-aide:
+    title: Product Owner
+    gates: [1, 2, 6]
+    knowledge_focus: prior G1/G2/G6 decisions, product intent history, scope and classification calls, and unresolved product-owner escalations
+  engineering-lead-aide:
+    title: Engineering Lead
+    gates: [2, 6]
+    knowledge_focus: prior G2/G6 decisions, requirements-baseline sign-offs, engineering-scope calls, and unresolved engineering-lead escalations
+  system-architect-aide:
+    title: System Architect
+    gates: [3]
+    knowledge_focus: prior G3 architecture decisions, alternatives considered, and unresolved architecture escalations
+  governance-lead-aide:
+    title: Governance Lead
+    gates: [4]
+    knowledge_focus: prior G4 governance decisions, applicability calls, control interpretations, and unresolved governance escalations
+  security-lead-aide:
+    title: Security Lead
+    gates: [5]
+    knowledge_focus: prior G5 security sign-off decisions, accepted/rejected risk history, and unresolved security-lead escalations
+  release-owner-aide:
+    title: Release Owner
+    gates: [7, 8]
+    knowledge_focus: prior G7/G8 release-readiness and release-execution decisions, rollback history, and unresolved release-owner escalations
+  release-authority-aide:
+    title: Release Authority
+    gates: [9]
+    knowledge_focus: prior G9 release-authority decisions, independent-check findings, and unresolved release-authority escalations
+  service-owner-aide:
+    title: Service Owner
+    gates: [10]
+    knowledge_focus: prior G10 operational-readiness decisions, evidence-presence history, and unresolved service-owner escalations

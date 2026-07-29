@@ -461,7 +461,15 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
     for relative in sorted(tracked):
         if relative in documentation_paths:
             selected.append(relative)
-        elif relative in role_paths or relative in {"agents/catalog.yaml", "agents/README.md", "agents/RUNBOOK.md"}:
+        elif relative in role_paths or relative in {
+            "agents/catalog.yaml",
+            "agents/catalog-order.txt",
+            "agents/_catalog_header.yaml.tmpl",
+            "agents/authority/aides.yaml",
+            "agents/authority/_template.md.tmpl",
+            "agents/README.md",
+            "agents/RUNBOOK.md",
+        }:
             selected.append(relative)
         elif relative.startswith(("agents/shared/", "agents/workflows/")):
             selected.append(relative)
@@ -473,6 +481,14 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
             and not relative.endswith("generate_global_plugin.py")
             and not relative.endswith("migrate_execution_summary.py")
             and not relative.endswith("plugin_version.py")
+            # These two scripts import generate_global_plugin.py (excluded
+            # above) and their subcommands are already excluded from the
+            # packaged bin/cadre wrapper via PACKAGED_SUBCOMMAND_EXCLUSIONS
+            # -- packaging them anyway would ship a non-functional entry
+            # point (ModuleNotFoundError on generate_global_plugin) that
+            # looks runnable but isn't.
+            and not relative.endswith("generate_role_metadata.py")
+            and not relative.endswith("generate_authority_aides.py")
         ):
             selected.append(relative)
         elif relative.startswith("agents/knowledge-store/src/") or relative in {
