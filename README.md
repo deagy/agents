@@ -222,6 +222,71 @@ in a `$PROFILE` function instead:
 function cadre { & "C:\path\to\this\checkout\bin\cadre.ps1" @args }
 ```
 
+## pip / pipx install (additional distribution channel)
+
+This is a second, independent way to run the `cadre` CLI, alongside the
+checkout path above (`./bin/cadre` / `bin/cadre.py` / `bin/cadre.ps1`) — it
+does not replace it, and the checkout path keeps working completely
+unmodified whether or not you ever build or install this package.
+`pyproject.toml` at the repository root packages the CLI (subcommand table,
+dispatch logic, and every resource each subcommand reads: `agents/`,
+`.agents/skills/`, and the parts of `plugins/cadre/` needed for `cadre sdlc`)
+as an installable `cadre` distribution, so it can run from any directory on
+a machine that has never cloned this repository, no checkout required at
+runtime.
+
+Build and install a local wheel:
+
+```sh
+python3 -m pip install --upgrade build
+python3 -m build                      # produces dist/cadre-*.whl (and an sdist)
+pipx install dist/cadre-*.whl         # or: pip install dist/cadre-*.whl
+```
+
+This puts a `cadre` console script directly on `PATH`. It is not published to
+PyPI and there is no publish automation for it — install only from a local
+build or a built artifact you trust.
+
+`cadre resolve-shared` / `cadre init` can optionally parse YAML shared-config
+overlays (JSON-only overlays work without this), and `cadre
+mcp-dispatch-server` requires the official MCP SDK — both are optional
+extras so a bare `pip install cadre` stays dependency-light:
+
+```sh
+pipx install "dist/cadre-*.whl[yaml]"        # or [mcp], or [yaml,mcp]
+```
+
+`cadre sdlc` still shells out to a separately installed `agentic-sdlc`
+binary (`AGENTIC_SDLC_BIN` or `PATH`) exactly as the checkout CLI does — this
+package never vendors or bundles the Agentic SDLC kernel; see "Agentic SDLC
+quick start" above for installing it.
+
+**Known limitation**: `cadre generate-plugin`, `cadre generate-authority-aides`,
+and `cadre version` are maintainer-only tools that require a full git
+checkout; they are not available from a pip/pipx install. All three read
+and/or write generated content back into this repository's own tree
+(`plugins/cadre/`'s full tree — `.claude-plugin/`, `.codex-plugin/`,
+`suite/`, `docs/`, etc. for `generate-plugin`/`version`; `agents/authority/*/AGENT.md`
+for `generate-authority-aides`) as part of regenerating this repository's own
+generated artifacts — an operation that only makes sense against a real
+checkout, never against an installed site-packages copy. `cadre
+generate-role-metadata` is a partial case: it is **read/check-only from a
+pip/pipx install** — `cadre generate-role-metadata --check` works fully
+(it only verifies the installed package's own bundled
+`agents/catalog.yaml`/`agents/orchestration/routing.yaml` are internally
+current, a legitimate installed-mode use case), but its default (no-flag)
+write mode requires a checkout, for the same reason as `generate-plugin`
+above: from an install it would otherwise silently regenerate the
+installed package's own vendored copy under site-packages rather than a
+real project. Every other subcommand (`select`, `knowledge`,
+`bootstrap-codex`, `resolve-shared`, `mcp-dispatch-server`, `init`, and
+`sdlc`) works fully from the pip/pipx install. Invoking `generate-plugin`,
+`generate-authority-aides`, `version`, or `generate-role-metadata` without
+`--check` from an installed distribution fails closed with an explicit
+error message and a non-zero exit code, pointing back at the checkout
+path, instead of silently writing into site-packages or raising a raw
+traceback.
+
 ## Agent orchestration
 
 Use [agents/RUNBOOK.md](agents/RUNBOOK.md) for the full operating model. A typical secure delivery sequence is:
