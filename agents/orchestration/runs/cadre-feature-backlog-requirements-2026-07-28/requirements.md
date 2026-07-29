@@ -114,7 +114,7 @@ This matches the order you originally listed (routing linter, golden-corpus, age
 13. Risk-rule keyword-group conjunction test — partial keyword-group match doesn't trigger a multi-group risk rule.
 14. Human-gate description completeness — every `human_gate` ID has a real description, not a generic fallback.
 15. Origin-slug fallback determinism — stable `local-<basename>-<hash>` across repeated runs with no git remote.
-16. Sample-reference leakage guard extension — generalizes the SAMPLE-001-specific scan to future sample artifacts.
+16. Sample-reference leakage guard extension — generalizes today's single-named-sample-specific scan to future sample artifacts.
 17. Workflow-value/schema/file triangulation — extends the existing schema/file test to also confirm every workflow doc is reachable by at least one route/risk-rule (same "defined but unreachable" gap class as item A, for workflow docs).
 
 **Caveat (requirements-agent's own flag):** items 1–17 above were grounded independently in the actual codebase rather than transcribed from the original 20-item ideation list (items 4–20 in the priority table above), since the two dispatches ran in parallel without shared context. Treat the priority table (idea 1–20, from product-intent-agent) as the authoritative backlog identity/naming, and this list as a secondary, code-grounded set of *additional* small-scope acceptance-criteria candidates uncovered during grounding — not a restatement of items 4–20.
