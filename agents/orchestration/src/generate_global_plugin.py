@@ -476,6 +476,13 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
     bootstrap_helper = "agents/orchestration/src/sync_codex_agents.py"
     if (REPOSITORY_ROOT / bootstrap_helper).is_file():
         tracked.add(bootstrap_helper)
+    # select_agents.py (already packaged) imports this module directly, and
+    # it is also its own packaged subcommand (selection-telemetry, see
+    # bin/subcommands.tsv) -- it must ship even on a worktree where it is
+    # still untracked/uncommitted, same carve-out as the two helpers above.
+    telemetry_helper = "agents/orchestration/src/selection_telemetry.py"
+    if (REPOSITORY_ROOT / telemetry_helper).is_file():
+        tracked.add(telemetry_helper)
     role_paths = {f"agents/{metadata['definition']}" for metadata in catalog.values()}
     # `catalog` was parsed straight off the worktree copy of catalog.yaml, but
     # `tracked` only reflects git's index -- an uncommitted new role's

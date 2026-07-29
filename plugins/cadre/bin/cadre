@@ -19,12 +19,13 @@ done
 [ -n "$AGENT_PYTHON" ] || { echo "cadre: Python 3.10+ is required" >&2; exit 1; }
 case "$command_name" in
   select) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/select_agents.py" "$@" ;;
+  selection-telemetry) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/selection_telemetry.py" "$@" ;;
   knowledge) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/knowledge-store/src/cli.py" "$@" ;;
   bootstrap-codex) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/sync_codex_agents.py" --source "$PLUGIN_ROOT/codex-agents" "$@" ;;
   resolve-shared) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/shared/src/resolve.py" "$@" ;;
   mcp-dispatch-server) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/mcp/dispatch_server.py" "$@" ;;
   init) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/shared/src/init_project.py" "$@" ;;
   profile) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/profile_diff.py" "$@" ;;
-  help|-h|--help) echo "Usage: cadre {select|knowledge|bootstrap-codex|resolve-shared|mcp-dispatch-server|init|profile|sdlc} [args...]" ;;
+  help|-h|--help) echo "Usage: cadre {select|selection-telemetry|knowledge|bootstrap-codex|resolve-shared|mcp-dispatch-server|init|profile|sdlc} [args...]" ;;
   *) echo "cadre: unknown subcommand $command_name" >&2; exit 1 ;;
 esac

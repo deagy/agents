@@ -1,4 +1,5 @@
 select	agents/orchestration/src/select_agents.py	Deterministic agent/gate selection (select_agents.py)
+selection-telemetry	agents/orchestration/src/selection_telemetry.py	Summarize opt-in, local cadre select telemetry (selection_telemetry.py)
 knowledge	agents/knowledge-store/src/cli.py	Vectorized knowledge store CLI (knowledge-store/src/cli.py)
 generate-plugin	agents/orchestration/src/generate_global_plugin.py	Regenerate plugins/cadre/ (generate_global_plugin.py)
 generate-authority-aides	agents/orchestration/src/generate_authority_aides.py	Regenerate agents/authority/*-aide AGENT.md files (generate_authority_aides.py)

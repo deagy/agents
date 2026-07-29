@@ -169,6 +169,23 @@ python3 agents/orchestration/src/routing_overlay.py --check
 
 The materialized file is a plain JSON file in `routing.yaml`'s own shape, so `routing_health.py --routing <path>` and `schema_validate.py --routing <path>` can validate the *effective* (merged) configuration a project actually dispatches against — not just the unmodified base file — using their existing, unmodified `--routing` argument; no code changes to either checker were needed. See `agents/orchestration/test/test_routing_overlay.py` for the full merge-rule test coverage, including the narrowing-bypass rejection case (an overlay that omits an existing keyword from a `human_gate`-bearing risk rule's matching conditions, without ever touching `human_gate` itself, still fails closed).
 
+### Selection outcome telemetry (opt-in, local)
+
+`cadre select` can optionally append one JSON-lines record per invocation to a local file, so a suite maintainer running their own instance over time can see whether real usage is drifting toward `needs-triage`, which routes fire most, and how match rates trend. This is entirely off by default, entirely local, and never a product analytics feature — see `agents/orchestration/src/selection_telemetry.py`'s module docstring for the full design rationale, which mirrors `agents/knowledge-store/SECURITY.md`'s classification/data-handling posture.
+
+- **Off unless you explicitly opt in.** With neither `--record-telemetry` nor `CADRE_SELECTION_TELEMETRY=1` set, `cadre select` writes zero telemetry bytes anywhere and its JSON output is unchanged — telemetry recording is a pure side effect at the CLI entry point, never a plan field, and the plan continues to validate against `agents/orchestration/selection.schema.json` unmodified.
+- **Local file only, never a network call.** `selection_telemetry.py` contains no `socket`/`urllib`/`requests`/`http.client` (or similar) import; `agents/orchestration/test/test_selection_telemetry.py` enforces this with a source-grep boundary test alongside behavioral coverage of the off/on/append/summarize paths.
+- **Records are structural facts about the outcome, not raw content.** By design, a record captures `matched_routes`, `matched_risks`, `status`, `workflow`, `teams`, `classification`, `source_filter`, `lifecycle_tracking_status`, and per-group agent counts — never the raw task text or changed-file paths, since either can carry sensitive project content that has no business sitting in a plaintext log a maintainer might forget about. A maintainer who deliberately wants raw task capture for their own local debugging can opt into that *additionally and separately* via `--record-telemetry-include-task` (or `CADRE_SELECTION_TELEMETRY_INCLUDE_TASK=1`) — this stays off even when ordinary telemetry recording is on.
+- **Default location and override.** Records append to `.agents/orchestration/selection-telemetry.jsonl` under the target repository root (the same root `--root` resolves against), overridable with `--telemetry-path` or `CADRE_SELECTION_TELEMETRY_PATH`.
+
+```sh
+# Enable recording for one invocation (env var works the same way):
+cadre select --task "Add a React upload form" --files frontend/src/Upload.tsx --record-telemetry
+
+# Summarize accumulated records (route-firing frequency, needs-triage rate, workflow/team frequency):
+cadre selection-telemetry --summarize .agents/orchestration/selection-telemetry.jsonl
+```
+
 ### Dispatch with one prompt
 
 Invoke the `run-agent-orchestration` skill (`$run-agent-orchestration ...` in Codex CLI or `/run-agent-orchestration ...` in Claude Code) to select agents, retrieve authorized knowledge context, run independent subagents in dependency-aware waves, enforce human gates, and consolidate their results. A bare objective is enough — task ID, classification, and scope are derived automatically, and you're asked directly only when one can't be:
