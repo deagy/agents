@@ -104,16 +104,26 @@ class OverlayError(ValueError):
     """A project-local overlay is malformed or violates a merge rule."""
 
 
-def find_project_overlay(filename: str, start: Path | None = None) -> Path | None:
-    """Walk upward from `start` for a project-local .agents/shared/<filename>.
+def find_file_at_project_root(
+    relative_path: Path, start: Path | None = None, maximum_depth: int = MAXIMUM_WALK_DEPTH
+) -> Path | None:
+    """Walk upward from `start` for a project-local file at `relative_path`.
 
     Stops at the first directory containing .git (the project boundary) or
-    after MAXIMUM_WALK_DEPTH levels if no .git is found, so an overlay above
-    the project root is never picked up.
+    after `maximum_depth` levels if no .git is found, so a file above the
+    project root is never picked up. This is the single implementation of
+    the walk-up-to-.git discovery convention shared across this repository's
+    project-local override mechanisms: `find_project_overlay` (below, for
+    `.agents/shared/<filename>`), `agents/knowledge-store/src/config.py`'s
+    project-local `config.json` lookup, and
+    `agents/orchestration/src/routing_overlay.py`'s project-local routing
+    overlay lookup. Extracted here (rather than reimplemented per consumer)
+    per this repository's own "don't introduce a fourth distinct find-the-
+    project-root convention" rule.
     """
     current = (start or Path.cwd()).resolve()
-    for _ in range(MAXIMUM_WALK_DEPTH):
-        candidate = current / PROJECT_OVERLAY_RELATIVE_DIR / filename
+    for _ in range(maximum_depth):
+        candidate = current / relative_path
         if candidate.is_file():
             return candidate
         if (current / ".git").exists():
@@ -123,6 +133,16 @@ def find_project_overlay(filename: str, start: Path | None = None) -> Path | Non
             return None
         current = parent
     return None
+
+
+def find_project_overlay(filename: str, start: Path | None = None) -> Path | None:
+    """Walk upward from `start` for a project-local .agents/shared/<filename>.
+
+    Stops at the first directory containing .git (the project boundary) or
+    after MAXIMUM_WALK_DEPTH levels if no .git is found, so an overlay above
+    the project root is never picked up.
+    """
+    return find_file_at_project_root(PROJECT_OVERLAY_RELATIVE_DIR / filename, start)
 
 
 def _require_yaml():

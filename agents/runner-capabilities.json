@@ -1,0 +1,67 @@
+{
+  "$schema": "runner-capabilities.schema.json",
+  "version": 1,
+  "capability_tiers": {
+    "read_only": {
+      "tools": ["Read", "Grep", "Glob"],
+      "sandbox_mode": "read-only"
+    },
+    "document_author": {
+      "tools": ["Read", "Grep", "Glob", "Bash", "Edit", "Write"],
+      "sandbox_mode": "workspace-write"
+    },
+    "code_author": {
+      "tools": ["Read", "Grep", "Glob", "Bash", "Edit", "Write"],
+      "sandbox_mode": "workspace-write"
+    },
+    "test_author": {
+      "tools": ["Read", "Grep", "Glob", "Bash", "Edit", "Write"],
+      "sandbox_mode": "workspace-write"
+    },
+    "environment_operator": {
+      "tools": ["Read", "Grep", "Glob", "Bash", "Edit", "Write"],
+      "sandbox_mode": "workspace-write"
+    }
+  },
+  "model_tiers": {
+    "opus": { "codex_model": "gpt-5.6-sol", "reasoning_effort": "high" },
+    "sonnet": { "codex_model": "gpt-5.6-terra", "reasoning_effort": "medium" },
+    "haiku": { "codex_model": "gpt-5.6-luna", "reasoning_effort": "low" }
+  },
+  "allowed_reasoning_efforts": ["low", "medium", "high", "xhigh"],
+  "runners": {
+    "claude-code": {
+      "has_generated_wrapper": true,
+      "dispatch_naming": "agents:<role-id> (plugin-installed) or bare <role-id> (project-local override)",
+      "communication_mode_peer_support": "gated",
+      "peer_support_gate": "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1",
+      "nested_teams_supported": false,
+      "team_size_guidance": { "minimum": 3, "maximum": 5, "note": "disjoint file ownership per teammate" },
+      "named_agent_dispatch_supported": true,
+      "named_agent_dispatch_workaround": null,
+      "concurrency_bound_config_key": null
+    },
+    "codex": {
+      "has_generated_wrapper": true,
+      "dispatch_naming": ".codex/agents/<role-id>.toml (project) or ~/.codex/agents/agents-<role-id>.toml (global)",
+      "communication_mode_peer_support": "no",
+      "peer_support_gate": null,
+      "nested_teams_supported": "not_applicable",
+      "team_size_guidance": null,
+      "named_agent_dispatch_supported": false,
+      "named_agent_dispatch_workaround": "dispatch_secure_cloud_role MCP tool (cadre mcp-dispatch-server), preferred; manual per-file developer_instructions injection into spawn_agent, fallback",
+      "concurrency_bound_config_key": "agents.max_concurrent_threads_per_session (native spawn_agent) or MAX_CONCURRENT_CHILDREN (this repo's MCP dispatch server path)"
+    },
+    "cline": {
+      "has_generated_wrapper": false,
+      "dispatch_naming": null,
+      "communication_mode_peer_support": "best_effort",
+      "peer_support_gate": null,
+      "nested_teams_supported": "not_applicable",
+      "team_size_guidance": null,
+      "named_agent_dispatch_supported": false,
+      "named_agent_dispatch_workaround": "manual per-file injection only (no MCP-equivalent documented)",
+      "concurrency_bound_config_key": null
+    }
+  }
+}

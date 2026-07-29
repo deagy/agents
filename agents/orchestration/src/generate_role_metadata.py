@@ -44,6 +44,7 @@ from generate_global_plugin import (  # noqa: E402
     ALLOWED_MODELS,
     ALLOWED_REASONING_EFFORTS,
     CAPABILITY_PROFILES,
+    MODEL_TIERS,
 )
 from role_metadata import (  # noqa: E402
     is_migrated,
@@ -85,10 +86,13 @@ ALLOWED_PHASES = frozenset(
 # closed with no exceptions -- confirmed by the Product Owner. Verified by
 # hand against today's full 47-role catalog.yaml before this check was
 # introduced: no deviations found (see the Wave 0 implementation report).
+#
+# Derived from `agents/runner-capabilities.json` (idea #8,
+# REQ-CADRE-BACKLOG-8) via generate_global_plugin.py's MODEL_TIERS, not
+# hand-duplicated -- see that module's ManifestError docstring for why this
+# can never independently drift from the manifest.
 TIER_MAP: dict[str, tuple[str, str]] = {
-    "opus": ("gpt-5.6-sol", "high"),
-    "sonnet": ("gpt-5.6-terra", "medium"),
-    "haiku": ("gpt-5.6-luna", "low"),
+    tier: (data["codex_model"], data["reasoning_effort"]) for tier, data in MODEL_TIERS.items()
 }
 
 CATALOG_FIELD_ORDER = ("definition", "phase", "capability", "model", "codex_model", "reasoning_effort")

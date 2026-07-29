@@ -6,6 +6,18 @@ is hosting this skill. Read this before dispatching the first agent of a
 session, and again before proposing anything beyond an ordinary parallel
 wave — see [team-recipes.md](team-recipes.md) for when that's warranted.
 
+`agents/runner-capabilities.json` (validated by `agents/runner-capabilities.schema.json`)
+is the machine-readable, build-time source of truth for eight closed-value
+structural facts drawn from this file — generated-wrapper existence and
+dispatch naming, `communication_mode: "peer"` support/gating and nested-team
+support, named-agent-dispatch support and its workaround, and concurrency
+bounds — one runner's values at a time under `runners.<runner-id>`. The
+prose below is the narrative/investigative record (root-cause chains, issue
+tracking, setup walkthroughs, epistemic caveats) that manifest cannot and
+does not attempt to replace; where a structural fact and this prose overlap,
+treat the manifest as authoritative for the *value* and this file as
+authoritative for the *why*.
+
 ## Claude Code
 
 - **Ordinary dispatch**: use the Agent tool, referencing the role by its
