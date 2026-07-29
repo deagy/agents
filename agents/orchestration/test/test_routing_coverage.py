@@ -110,6 +110,191 @@ class RoutingCoverageTests(unittest.TestCase):
             findings,
         )
 
+    def test_dangling_route_primary_reference_is_named_with_route_and_field(self) -> None:
+        config = copy.deepcopy(load_routing(ROUTING_PATH))
+        catalog_agent_ids = load_catalog(CATALOG_PATH)
+
+        for route in config["routes"]:
+            if route["id"] == "orchestration":
+                route.setdefault("primary", []).append("nonexistent-bogus-agent")
+                break
+        else:  # pragma: no cover - guards fixture assumption
+            self.fail('routing.yaml no longer has an "orchestration" route to attach the fixture to')
+
+        findings = check_routing_coverage(config, catalog_agent_ids)
+
+        self.assertTrue(
+            any(
+                'routes[' in finding
+                and 'id="orchestration"' in finding
+                and ".primary[" in finding
+                and 'agent "nonexistent-bogus-agent"' in finding
+                for finding in findings
+            ),
+            findings,
+        )
+
+    def test_dangling_route_support_reference_is_named_with_route_and_field(self) -> None:
+        config = copy.deepcopy(load_routing(ROUTING_PATH))
+        catalog_agent_ids = load_catalog(CATALOG_PATH)
+
+        for route in config["routes"]:
+            if route["id"] == "orchestration":
+                route.setdefault("support", []).append("nonexistent-bogus-agent")
+                break
+        else:  # pragma: no cover - guards fixture assumption
+            self.fail('routing.yaml no longer has an "orchestration" route to attach the fixture to')
+
+        findings = check_routing_coverage(config, catalog_agent_ids)
+
+        self.assertTrue(
+            any(
+                'routes[' in finding
+                and 'id="orchestration"' in finding
+                and ".support[" in finding
+                and 'agent "nonexistent-bogus-agent"' in finding
+                for finding in findings
+            ),
+            findings,
+        )
+
+    def test_dangling_risk_rule_primary_reference_is_named_with_rule_and_field(self) -> None:
+        config = copy.deepcopy(load_routing(ROUTING_PATH))
+        catalog_agent_ids = load_catalog(CATALOG_PATH)
+
+        rule = config["risk_rules"][0]
+        rule.setdefault("primary", []).append("nonexistent-bogus-agent")
+
+        findings = check_routing_coverage(config, catalog_agent_ids)
+
+        self.assertTrue(
+            any(
+                "risk_rules[" in finding
+                and f'id="{rule["id"]}")' in finding
+                and ".primary[" in finding
+                and 'agent "nonexistent-bogus-agent"' in finding
+                for finding in findings
+            ),
+            findings,
+        )
+
+    def test_dangling_risk_rule_reviewers_reference_is_named_with_rule_and_field(self) -> None:
+        config = copy.deepcopy(load_routing(ROUTING_PATH))
+        catalog_agent_ids = load_catalog(CATALOG_PATH)
+
+        rule = config["risk_rules"][0]
+        rule.setdefault("reviewers", []).append("nonexistent-bogus-agent")
+
+        findings = check_routing_coverage(config, catalog_agent_ids)
+
+        self.assertTrue(
+            any(
+                "risk_rules[" in finding
+                and f'id="{rule["id"]}")' in finding
+                and ".reviewers[" in finding
+                and 'agent "nonexistent-bogus-agent"' in finding
+                for finding in findings
+            ),
+            findings,
+        )
+
+    def test_dangling_risk_rule_support_reference_is_named_with_rule_and_field(self) -> None:
+        config = copy.deepcopy(load_routing(ROUTING_PATH))
+        catalog_agent_ids = load_catalog(CATALOG_PATH)
+
+        rule = config["risk_rules"][0]
+        rule.setdefault("support", []).append("nonexistent-bogus-agent")
+
+        findings = check_routing_coverage(config, catalog_agent_ids)
+
+        self.assertTrue(
+            any(
+                "risk_rules[" in finding
+                and f'id="{rule["id"]}")' in finding
+                and ".support[" in finding
+                and 'agent "nonexistent-bogus-agent"' in finding
+                for finding in findings
+            ),
+            findings,
+        )
+
+    def test_dangling_team_recipe_member_reference_is_named_with_recipe_and_field(self) -> None:
+        config = copy.deepcopy(load_routing(ROUTING_PATH))
+        catalog_agent_ids = load_catalog(CATALOG_PATH)
+
+        recipe = config["team_recipes"][0]
+        recipe.setdefault("members", []).append("nonexistent-bogus-agent")
+
+        findings = check_routing_coverage(config, catalog_agent_ids)
+
+        self.assertTrue(
+            any(
+                "team_recipes[" in finding
+                and f'id="{recipe["id"]}")' in finding
+                and ".members[" in finding
+                and 'agent "nonexistent-bogus-agent"' in finding
+                for finding in findings
+            ),
+            findings,
+        )
+
+    def test_dangling_team_recipe_role_reference_is_named_with_recipe_and_field(self) -> None:
+        config = copy.deepcopy(load_routing(ROUTING_PATH))
+        catalog_agent_ids = load_catalog(CATALOG_PATH)
+
+        for recipe in config["team_recipes"]:
+            if "role" in recipe:
+                recipe["role"] = "nonexistent-bogus-agent"
+                target_recipe = recipe
+                break
+        else:  # pragma: no cover - guards fixture assumption
+            self.fail("routing.yaml no longer has a team_recipe with a 'role' field to attach the fixture to")
+
+        findings = check_routing_coverage(config, catalog_agent_ids)
+
+        self.assertTrue(
+            any(
+                "team_recipes[" in finding
+                and f'id="{target_recipe["id"]}")' in finding
+                and ".role" in finding
+                and 'agent "nonexistent-bogus-agent"' in finding
+                for finding in findings
+            ),
+            findings,
+        )
+
+    def test_dangling_change_intake_agents_reference_is_named(self) -> None:
+        config = copy.deepcopy(load_routing(ROUTING_PATH))
+        catalog_agent_ids = load_catalog(CATALOG_PATH)
+
+        config["change_intake"].setdefault("agents", []).append("nonexistent-bogus-agent")
+
+        findings = check_routing_coverage(config, catalog_agent_ids)
+
+        self.assertTrue(
+            any(
+                "change_intake.agents[" in finding and 'agent "nonexistent-bogus-agent"' in finding
+                for finding in findings
+            ),
+            findings,
+        )
+
+    def test_dangling_cross_stack_support_reference_is_named(self) -> None:
+        config = copy.deepcopy(load_routing(ROUTING_PATH))
+        catalog_agent_ids = load_catalog(CATALOG_PATH)
+
+        config["cross_stack"].setdefault("support", []).append("nonexistent-bogus-agent")
+
+        findings = check_routing_coverage(config, catalog_agent_ids)
+
+        self.assertTrue(
+            any(
+                "cross_stack.support[" in finding and 'agent "nonexistent-bogus-agent"' in finding
+                for finding in findings
+            ),
+            findings,
+        )
+
     def test_removing_an_agent_from_every_reference_list_produces_an_orphan_finding(self) -> None:
         """End-to-end fixture: drop "technical-writer" from every reference
         list in a routing.yaml copy (it is heavily referenced today), then

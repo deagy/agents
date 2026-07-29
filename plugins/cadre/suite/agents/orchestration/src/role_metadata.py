@@ -39,6 +39,43 @@ FRONTMATTER_FIELDS = (
 # generated content -- not a general YAML plain-scalar grammar.
 _YAML_INDICATOR_CHARS = set("!&*-?|>'\"%@`{}[],#:")
 
+# YAML 1.1 (PyYAML's default `safe_load` resolver) type-coerces an unquoted
+# plain scalar equal to one of these tokens, in any letter-case, to a bool or
+# null instead of leaving it a string -- this module's own `read_scalar`
+# would still read the same unquoted text back as the literal string, which
+# is exactly the round-trip divergence this set exists to prevent. See
+# https://yaml.org/type/bool.html and https://yaml.org/type/null.html.
+_YAML_11_RESERVED_WORDS = frozenset(
+    {
+        "true", "false",
+        "yes", "no",
+        "on", "off",
+        "null", "~",
+    }
+)
+
+# A bare (unquoted) plain scalar that looks like an integer or float literal
+# is resolved by a real YAML parser to a number, not a string, with the same
+# `read_scalar`-vs-`yaml.safe_load` divergence risk as the reserved words
+# above. Deliberately narrow, matching `_YAML_INDICATOR_CHARS`'s own
+# "small, conservative subset" caveat: this only covers plain decimal
+# int/float, not every literal form PyYAML's implicit resolver treats as
+# numeric (underscore-grouped digits like `1_000`, `0x`/`0b` prefixes,
+# sexagesimal `1:30`, or the `.inf`/`.nan` tokens). None of those forms are
+# plausible values for this repo's current frontmatter fields (enums or
+# prose), so this is not treated as an active gap -- widen it if a future
+# field's legitimate values could plausibly collide.
+_INT_RE = re.compile(r"^[-+]?[0-9]+$")
+_FLOAT_RE = re.compile(r"^[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?$")
+
+
+def _looks_like_bare_number(value: str) -> bool:
+    if _INT_RE.match(value):
+        return True
+    if "." in value or "e" in value or "E" in value:
+        return bool(_FLOAT_RE.match(value))
+    return False
+
 
 def is_migrated(text: str) -> bool:
     """A role's `AGENT.md` is "migrated" iff it starts with exactly `---\\n`
@@ -61,6 +98,10 @@ def _needs_quoting(value: str) -> bool:
         return True
     if value[0] in _YAML_INDICATOR_CHARS:
         return True
+    if value.lower() in _YAML_11_RESERVED_WORDS:
+        return True
+    if _looks_like_bare_number(value):
+        return True
     return False
 
 
@@ -72,11 +113,15 @@ def emit_scalar(value: str) -> str:
     which would otherwise be mistaken for a mapping separator or a comment
     by a naive line-oriented reader), contains no embedded `\n`/`\r` (which
     would otherwise split into extra lines that `parse_frontmatter`'s flat
-    `key: value`-per-line grammar cannot read back), and does not start with
-    a YAML flow/comment/anchor/alias/tag/quote indicator character. Every
-    other value (including the empty string) is rendered as a JSON string
-    literal -- JSON string syntax is a strict subset of YAML flow-scalar
-    syntax, so this stays valid to read back with the same rule in reverse.
+    `key: value`-per-line grammar cannot read back), does not start with a
+    YAML flow/comment/anchor/alias/tag/quote indicator character, is not a
+    YAML 1.1 reserved bool/null word (`true`/`false`/`yes`/`no`/`on`/`off`/
+    `null`/`~`, in any letter-case) that a real YAML parser would type-coerce
+    away from a string, and does not look like a bare integer/float literal
+    for the same reason. Every other value (including the empty string) is
+    rendered as a JSON string literal -- JSON string syntax is a strict
+    subset of YAML flow-scalar syntax, so this stays valid to read back with
+    the same rule in reverse.
     """
     if _needs_quoting(value):
         return json.dumps(value)
