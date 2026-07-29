@@ -1,7 +1,7 @@
 {
   "name": "cadre",
   "displayName": "Cadre",
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "System-wide access to this repository's secure cloud agent suite: 47 specialist roles, orchestration skills, and the shared knowledge store, reachable from any project once installed at global scope.",
   "author": {
     "name": "Cadre maintainers",
