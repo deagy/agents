@@ -491,6 +491,28 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
             "commit them (git add) before regenerating the plugin: "
             + ", ".join(sorted(untracked_role_paths))
         )
+    # Same failure class as untracked_role_paths above, for
+    # bin/subcommands.tsv instead of catalog.yaml: generate_bin_wrapper()
+    # builds the packaged bin/cadre wrapper straight from
+    # packaged_subcommands() (bin/subcommands.tsv), independently of
+    # `tracked`/`selected` here. An untracked new subcommand script would
+    # otherwise get a working case-statement entry in the wrapper while the
+    # script itself silently never gets copied into suite/, producing a
+    # package whose subcommand references a file that doesn't exist. Fail
+    # loudly here instead, before either file is written.
+    subcommands_table_path = REPOSITORY_ROOT / "bin" / "subcommands.tsv"
+    subcommand_script_paths = (
+        {script for _name, script in packaged_subcommands(REPOSITORY_ROOT) if script.startswith("agents/")}
+        if subcommands_table_path.is_file()
+        else set()
+    )
+    untracked_subcommand_scripts = subcommand_script_paths - tracked
+    if untracked_subcommand_scripts:
+        raise ValueError(
+            "bin/subcommands.tsv references script(s) not tracked in git; "
+            "commit them (git add) before regenerating the plugin: "
+            + ", ".join(sorted(untracked_subcommand_scripts))
+        )
     documentation_paths = {
         "AGENTS.md",
         "CONTRIBUTING.md",

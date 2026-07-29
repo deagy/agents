@@ -24,6 +24,7 @@ case "$command_name" in
   resolve-shared) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/shared/src/resolve.py" "$@" ;;
   mcp-dispatch-server) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/mcp/dispatch_server.py" "$@" ;;
   init) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/shared/src/init_project.py" "$@" ;;
-  help|-h|--help) echo "Usage: cadre {select|knowledge|bootstrap-codex|resolve-shared|mcp-dispatch-server|init|sdlc} [args...]" ;;
+  profile) exec "$AGENT_PYTHON" "$SUITE_ROOT/agents/orchestration/src/profile_diff.py" "$@" ;;
+  help|-h|--help) echo "Usage: cadre {select|knowledge|bootstrap-codex|resolve-shared|mcp-dispatch-server|init|profile|sdlc} [args...]" ;;
   *) echo "cadre: unknown subcommand $command_name" >&2; exit 1 ;;
 esac
