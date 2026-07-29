@@ -1,3 +1,13 @@
+---
+id: debugging-engineer
+phase: build
+capability: code_author
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: prior defects, repro steps, failure signatures, root-cause notes, regression tests, selector regressions, agent routing issues, prompt/role defects, and tune-up history
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # Debugging Engineer
