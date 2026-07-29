@@ -71,6 +71,18 @@ packages = ["cadre_cli"]
 "bin/subcommands.tsv" = "cadre_cli/_vendor/bin/subcommands.tsv"
 
 "agents/catalog.yaml" = "cadre_cli/_vendor/agents/catalog.yaml"
+# Idea #8's runner/capability/model-tier manifest: generate_global_plugin.py
+# loads it unconditionally at import time (module-level _RUNNER_CAPABILITIES
+# = _load_runner_capabilities()), and generate_role_metadata.py imports that
+# module -- so `cadre generate-role-metadata --check` (an installed-must-work
+# subcommand, see cadre_cli/__init__.py) fails closed with a raw
+# FileNotFoundError/ManifestError traceback from an installed distribution
+# without this file vendored. Only the manifest is a runtime dependency;
+# runner-capabilities.schema.json is a dev/CI-time validation artifact (see
+# test_runner_capabilities.py) that no installed subcommand reads, so it is
+# deliberately not vendored here -- same precedent as catalog.yaml above
+# being vendored without catalog.schema.json.
+"agents/runner-capabilities.json" = "cadre_cli/_vendor/agents/runner-capabilities.json"
 "agents/architecture" = "cadre_cli/_vendor/agents/architecture"
 "agents/authority" = "cadre_cli/_vendor/agents/authority"
 "agents/data" = "cadre_cli/_vendor/agents/data"
