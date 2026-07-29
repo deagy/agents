@@ -1,3 +1,13 @@
+---
+id: product-intent-agent
+phase: planning
+capability: document_author
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: approved product objectives, mission outcomes, scope decisions, constraints, classifications, environments, and success measures
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # Product Intent Agent
