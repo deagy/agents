@@ -1,5 +1,7 @@
 # Cadre
 
+[![validate](https://github.com/deagy/cadre/actions/workflows/validate.yml/badge.svg)](https://github.com/deagy/cadre/actions/workflows/validate.yml)
+
 This repository contains a secure cloud agent suite. It is intended for teams building self-hosted infrastructure and applications with Proxmox, Talos, Kubernetes, Helm, OpenTofu, GitLab CI/CD, Go, PostgreSQL, React, TypeScript, Python where useful, and Gherkin-based integration/regression testing.
 
 The agent suite helps select, coordinate, test, review, document, support, and escalate work across specialized roles. Agents may prepare scoped repository changes and evidence, but human approval is still required for production, persistent infrastructure, destructive actions, policy exceptions, privileged access, and risk acceptance.
