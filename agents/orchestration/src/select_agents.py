@@ -15,6 +15,11 @@ from urllib.parse import urlparse
 
 from build_dispatch_plan import build_dispatch_plan
 from routing import load_catalog, load_routing
+from selection_telemetry import (
+    include_task_enabled,
+    is_enabled as telemetry_is_enabled,
+    record_selection,
+)
 
 ORCHESTRATION_ROOT = Path(__file__).resolve().parent.parent
 AGENTS_ROOT = ORCHESTRATION_ROOT.parent
@@ -42,6 +47,29 @@ def _parser() -> argparse.ArgumentParser:
         "--require-sdlc",
         action="store_true",
         help="Fail instead of degrading to standalone mode if Agentic SDLC isn't available",
+    )
+    parser.add_argument(
+        "--record-telemetry",
+        action="store_true",
+        help=(
+            "Opt in to appending a local, structural-only outcome record to "
+            "selection-telemetry.jsonl (see selection_telemetry.py); off by "
+            "default, equivalent to CADRE_SELECTION_TELEMETRY=1"
+        ),
+    )
+    parser.add_argument(
+        "--record-telemetry-include-task",
+        action="store_true",
+        help=(
+            "With --record-telemetry (or CADRE_SELECTION_TELEMETRY=1), also "
+            "record the raw task text and changed files; off by default even "
+            "when telemetry recording is enabled, equivalent to "
+            "CADRE_SELECTION_TELEMETRY_INCLUDE_TASK=1"
+        ),
+    )
+    parser.add_argument(
+        "--telemetry-path",
+        help="Override the telemetry JSON-lines file path (default: CADRE_SELECTION_TELEMETRY_PATH or <root>/.agents/orchestration/selection-telemetry.jsonl)",
     )
     return parser
 
@@ -173,6 +201,13 @@ def main(argv: list[str] | None = None) -> int:
         catalog_path=catalog_path,
         routing_path=routing_path,
     )
+    if telemetry_is_enabled(options.record_telemetry):
+        record_selection(
+            plan,
+            repository_root=repository_root,
+            telemetry_path=options.telemetry_path,
+            include_task=include_task_enabled(options.record_telemetry_include_task),
+        )
     serialized = f"{json.dumps(plan, indent=2, ensure_ascii=False)}\n"
     if options.output:
         output_path = Path(options.output).resolve()
