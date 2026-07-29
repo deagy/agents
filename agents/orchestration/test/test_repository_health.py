@@ -16,6 +16,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 REPOSITORY_ROOT = ROOT.parent
 
+# Single source of truth for this repository's current role count. Cross-
+# checked directly against the AGENT.md files on disk below, so a role
+# add/remove without updating this constant fails immediately instead of
+# leaving the other assertions below silently pinned to a stale number.
+EXPECTED_ROLE_COUNT = 47
+
 
 class RepositoryHealthTests(unittest.TestCase):
     @staticmethod
@@ -53,7 +59,8 @@ class RepositoryHealthTests(unittest.TestCase):
                 key, value = line.strip().split(":", 1)
                 metadata[current_agent][key] = value.strip()
 
-        self.assertEqual(47, len(metadata))
+        self.assertEqual(EXPECTED_ROLE_COUNT, len(metadata))
+        self.assertEqual(EXPECTED_ROLE_COUNT, len(list(ROOT.rglob("AGENT.md"))))
         allowed = {"read_only", "document_author", "code_author", "test_author", "environment_operator"}
         for agent_id, values in metadata.items():
             with self.subTest(agent=agent_id):
@@ -229,6 +236,18 @@ class RepositoryHealthTests(unittest.TestCase):
         )
         self.assertEqual(0, checked.returncode, checked.stderr)
 
+    def test_role_metadata_files_are_generated_and_in_sync(self) -> None:
+        generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_role_metadata.py"
+        checked = subprocess.run(
+            ["python3", str(generator), "--check"],
+            cwd=REPOSITORY_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        self.assertEqual(0, checked.returncode, checked.stderr)
+
     def test_secure_cloud_agents_plugin_is_generated_and_in_sync(self) -> None:
         generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_global_plugin.py"
         with tempfile.TemporaryDirectory(prefix="agents-health-") as temporary_directory:
@@ -385,7 +404,7 @@ class RepositoryHealthTests(unittest.TestCase):
         catalog_count = len(
             json.loads((plugin_root / "agent-catalog.json").read_text(encoding="utf-8"))["agents"]
         )
-        self.assertEqual(47, catalog_count)
+        self.assertEqual(EXPECTED_ROLE_COUNT, catalog_count)
         for manifest in (
             plugin_root / ".codex-plugin" / "plugin.json",
             plugin_root / ".claude-plugin" / "plugin.json",
@@ -433,7 +452,7 @@ class RepositoryHealthTests(unittest.TestCase):
                 / "agent-catalog.json"
             ).read_text(encoding="utf-8")
         )
-        self.assertEqual(47, len(catalog["agents"]))
+        self.assertEqual(EXPECTED_ROLE_COUNT, len(catalog["agents"]))
 
     def test_packaged_plugin_manifests_declare_a_matching_semver_version(self) -> None:
         sys.path.insert(0, str(ROOT / "orchestration" / "src"))

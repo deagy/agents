@@ -94,6 +94,61 @@ class GenerateSuiteCopyTests(unittest.TestCase):
             copied = plugin_root / "suite" / "agents" / "staged-role" / "AGENT.md"
             self.assertTrue(copied.is_file())
 
+    def test_migrated_role_with_embedded_triple_dash_in_frontmatter_value_marker_lands_after_real_delimiter(
+        self,
+    ) -> None:
+        """A raw `content.find("---", 3)` would false-match the literal
+        `---` embedded in `knowledge_focus` below (which appears before the
+        real closing delimiter line), splicing the GENERATED_MARKER into the
+        middle of the frontmatter block instead of after it. Proves the
+        marker lands after the real closing `---` line and the frontmatter
+        block itself is left untouched.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _init_git_repo(root)
+            frontmatter_role_text = (
+                "---\n"
+                "id: sample-role\n"
+                "phase: build\n"
+                "capability: code_author\n"
+                "model: sonnet\n"
+                "codex_model: gpt-5.6-terra\n"
+                "reasoning_effort: medium\n"
+                "knowledge_focus: value with --- embedded before the real delimiter\n"
+                "---\n"
+                "\n"
+                "# Sample Role\n"
+                "\n"
+                "Body text.\n"
+            )
+            _write(root / "agents" / "sample-role" / "AGENT.md", frontmatter_role_text)
+            subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+            subprocess.run(["git", "-C", str(root), "commit", "-qm", "base"], check=True)
+            catalog = {"sample-role": {"definition": "sample-role/AGENT.md"}}
+            plugin_root = self._plugin_root_with_readme(root)
+
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(ggp, "PLUGIN_ROOT", plugin_root):
+                ggp.generate_suite_copy(catalog, plugin_root)
+
+            copied = plugin_root / "suite" / "agents" / "sample-role" / "AGENT.md"
+            content = copied.read_text(encoding="utf-8")
+
+            # The frontmatter block itself (opening delimiter through the
+            # real closing delimiter line) must be byte-identical to the
+            # source -- the marker must not have spliced into it.
+            frontmatter_block = frontmatter_role_text[: frontmatter_role_text.index("---\n\n") + 3]
+            self.assertTrue(content.startswith(frontmatter_block))
+            self.assertNotIn(ggp.GENERATED_MARKER, frontmatter_block)
+
+            # The marker appears exactly once, after the real closing
+            # delimiter and before the prose body.
+            self.assertEqual(1, content.count(ggp.GENERATED_MARKER))
+            marker_index = content.index(ggp.GENERATED_MARKER)
+            body_index = content.index("# Sample Role")
+            self.assertLess(len(frontmatter_block), marker_index)
+            self.assertLess(marker_index, body_index)
+
 
 class ReasoningEffortPropagationTests(unittest.TestCase):
     """`parse_catalog_entries` (routing.py) has a hardcoded allowlist of

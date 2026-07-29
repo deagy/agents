@@ -18,6 +18,16 @@ Keep role definitions and `agents/catalog.yaml` synchronized. Preserve the
 separation between authors, independent reviewers, human approvers, evidence
 curators, and release operators.
 
+Role metadata currently lives directly in `agents/catalog.yaml` and
+`agents/orchestration/routing.yaml`'s `knowledge_focus` block for every role.
+Once a role's `AGENT.md` is migrated to carry `---`-delimited frontmatter
+(see `agents/orchestration/src/role_metadata.py` and the `agent-authoring`
+skill), edit that frontmatter instead and regenerate both files with
+`cadre generate-role-metadata` (`... --check` to validate without writing) --
+do not hand-edit the generated regions for a migrated role. No role has been
+migrated yet, so this generator is currently a no-op against the committed
+files.
+
 This repository's own catalog/plugin feature and roadmap work is tracked
 through GitHub Issues/PRs for discussion and triage; this repository does not
 run its own `.agentic-sdlc/` overlay.
