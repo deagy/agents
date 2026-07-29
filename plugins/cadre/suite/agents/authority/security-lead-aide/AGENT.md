@@ -1,3 +1,13 @@
+---
+id: security-lead-aide
+phase: authority
+capability: read_only
+model: opus
+codex_model: gpt-5.6-sol
+reasoning_effort: high
+knowledge_focus: prior G5 security sign-off decisions, accepted/rejected risk history, and unresolved security-lead escalations
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
