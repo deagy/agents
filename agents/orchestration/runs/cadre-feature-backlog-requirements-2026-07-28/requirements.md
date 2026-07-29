@@ -121,6 +121,20 @@ This matches the order you originally listed (routing linter, golden-corpus, age
 
 ---
 
+## Addendum: review-sourced follow-up items (2026-07-29)
+
+Items #1–3 shipped as PR #46 (merged, squash commit `d68298f`); item #10 shipped as PR #47. Independent post-merge/pre-merge review (`code-reviewer`, `test-engineer`, `pipeline-security-reviewer`, dispatched via `cadre:run-agent-orchestration`) surfaced three non-blocking gaps, grounded in the actual shipped code, added to the backlog as new items:
+
+| # | Idea | Priority | Beneficiary | Dependency | Source |
+|---|------|----------|-------------|------------|--------|
+| 21 | Expand `generate_role_metadata.py`'s fail-closed test coverage — 10 of 17 `RoleMetadataError` raise sites (field-enum validation branches, missing `id`, `splice_knowledge_focus`'s own internal invariant guards) are currently exercised only by the broad identity/end-to-end tests, not a dedicated fixture per raise site | P2 | Suite maintainers | none; touches #3's generator | `code-reviewer` review of PR #46, 2026-07-29 |
+| 22 | Add per-reference-class negative fixtures to `test_routing_coverage.py` — only `routes[].reviewers` has a dedicated dangling-reference fixture; `risk_rules[].primary/reviewers/support`, `team_recipes[].members`, `team_recipes[].role`, `change_intake.agents`, and `cross_stack.support` share the same detection code path but have no fixture proving each is independently caught and correctly located | P2 | Suite maintainers | none; touches #1's linter | `test-engineer` review of PR #46, 2026-07-29 |
+| 23 | Harden `role_metadata.emit_scalar` against YAML 1.1 reserved-word/bare-numeric ambiguity (`yes`/`no`/`true`/`false`/`null`/`on`/`off` in any case, bare int/float) — not an active bug today (no live occurrence in current `catalog.yaml`), but now a real risk since `schema_validate.py` (idea #10) genuinely parses `catalog.yaml` with `yaml.safe_load`, which would silently type-coerce an unquoted reserved-word frontmatter value while this module's own `read_scalar` would still read it back as a string — a round-trip divergence between the two parsers of the same file | P2 | Suite maintainers | relates to #3 (generator) and #10 (real YAML parser) | `code-reviewer` review of PR #46, 2026-07-29 |
+
+No new open design decisions; all three are additive hardening work on already-shipped code, none blocking.
+
+---
+
 ## Disposition
 
 - **Human gates reached:** none required to reach this point (all work was read-only planning).
