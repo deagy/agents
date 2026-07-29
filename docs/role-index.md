@@ -11,6 +11,10 @@ subject-matter domain instead. `cost-capacity-planner` is the clearest case:
 definition lives under `agents/operations/` (capacity and cost are an
 operations concern once a workload is live). Treat `catalog.yaml`'s `phase`
 as authoritative for sequencing; the directory is only a filing convenience.
+For a phase/capability-tier browsable view instead, see the
+[capability index](capability-index.md); for term definitions (capability
+tier, route, quality gate, human gate, ...), see the
+[glossary](terminology.md).
 
 ## Planning and governance
 
