@@ -1,3 +1,13 @@
+---
+id: chaos-resilience-engineer
+phase: verify
+capability: environment_operator
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: fault-injection exercises, observed recovery times, data-loss windows, alerting gaps, and resilience-assumption drift
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # Chaos & Resilience Engineer

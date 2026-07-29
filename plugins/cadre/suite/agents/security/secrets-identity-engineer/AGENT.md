@@ -1,3 +1,13 @@
+---
+id: secrets-identity-engineer
+phase: security
+capability: code_author
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: identity flows, workload identity decisions, RBAC, secret rotation, credential exposure, access reviews, and break-glass ownership
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # Secrets & Identity Engineer

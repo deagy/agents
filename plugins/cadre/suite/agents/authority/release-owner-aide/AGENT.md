@@ -1,3 +1,13 @@
+---
+id: release-owner-aide
+phase: authority
+capability: read_only
+model: opus
+codex_model: gpt-5.6-sol
+reasoning_effort: high
+knowledge_focus: prior G7/G8 release-readiness and release-execution decisions, rollback history, and unresolved release-owner escalations
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->

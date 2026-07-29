@@ -1,3 +1,13 @@
+---
+id: application-engineer
+phase: build
+capability: code_author
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: cross-stack contracts, integration decisions, shared behavior, and implementation patterns
+---
+
 # Application Engineer
 
 ## Role

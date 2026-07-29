@@ -1,3 +1,13 @@
+---
+id: cryptographic-assurance-engineer
+phase: security
+capability: document_author
+model: opus
+codex_model: gpt-5.6-sol
+reasoning_effort: high
+knowledge_focus: cryptographic inventories, algorithms, key lifecycles, certificates, crypto agility, downgrade risks, PQC, QKMS, QKD, and QRNG applicability
+---
+
 # Cryptographic Assurance Engineer
 
 ## Role

@@ -1,3 +1,13 @@
+---
+id: release-engineer
+phase: release
+capability: environment_operator
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: release history, rollback, incidents, dependencies, and verification thresholds
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # Release Engineer

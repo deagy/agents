@@ -1,3 +1,13 @@
+---
+id: code-reviewer
+phase: review
+capability: read_only
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: prior defects, coding conventions, exceptions, and relevant findings
+---
+
 # Code Reviewer
 
 ## Role

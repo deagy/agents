@@ -1,3 +1,13 @@
+---
+id: accessibility-reviewer
+phase: review
+capability: read_only
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: prior accessibility findings, conformance target decisions, affected journeys, and assistive-technology constraints
+---
+
 # Accessibility Reviewer
 
 ## Role

@@ -61,6 +61,7 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from role_metadata import frontmatter_closing_delimiter_end, is_migrated, strip_frontmatter  # noqa: E402
 from routing import parse_catalog_entries  # noqa: E402
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
@@ -238,8 +239,14 @@ def generate_agent_wrappers(catalog: dict[str, dict[str, Any]], plugin_root: Pat
             for relative in SHARED_POLICIES
         )
         description = f"Secure cloud agent suite role for the {phase} phase ({agent_id})."
+        # A migrated role's AGENT.md carries `---`-delimited frontmatter
+        # ahead of its prose body (see role_metadata.py); that frontmatter
+        # is generated-file bookkeeping for catalog.yaml/routing.yaml, not
+        # role instructions, so it must never be embedded into the wrapper.
+        # A no-op today (no AGENT.md has frontmatter yet).
+        role_body = strip_frontmatter(definition_path.read_text(encoding="utf-8")).strip()
         instructions = (
-            f"# Role: {agent_id}\n\n{definition_path.read_text(encoding='utf-8').strip()}"
+            f"# Role: {agent_id}\n\n{role_body}"
             f"\n\n{shared_content}\n\n{SHARED_OVERRIDE_NOTE}\n\n{ASK_HUMAN_RULE}"
         )
 
@@ -326,7 +333,7 @@ def generate_agent_catalog_export(catalog: dict[str, dict[str, Any]], plugin_roo
 # Subcommands from bin/subcommands.tsv that manage this source repository
 # itself (regenerating/inspecting the packaged plugin) and therefore have no
 # meaning once shipped inside the plugin they regenerate.
-PACKAGED_SUBCOMMAND_EXCLUSIONS = {"generate-plugin", "generate-authority-aides", "version"}
+PACKAGED_SUBCOMMAND_EXCLUSIONS = {"generate-plugin", "generate-authority-aides", "generate-role-metadata", "version"}
 
 # Extra argv this packaged wrapper must inject ahead of the caller's own
 # "$@" for a subcommand whose packaged invocation needs plugin-relative
@@ -496,7 +503,24 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
             content = content.replace("`../README.md`", "`README.md`")
             content = content.replace("../plugins/cadre/README.md", "../README.md")
             content = content.replace("../plugins/cadre/", "./")
-            content = f"{GENERATED_MARKER}\n\n{content}"
+            # A migrated role's AGENT.md starts with `---`-delimited
+            # frontmatter (see role_metadata.py); inserting the marker at
+            # byte 0 would land it inside that frontmatter block instead of
+            # before it, corrupting the block. Insert after the closing
+            # delimiter instead, mirroring generate_skill_copies()'s
+            # SKILL.md package-note placement above. No-op today (no
+            # AGENT.md has frontmatter yet), but no source file in the
+            # copied suite happens to start with "---" today either, so
+            # this only ever takes the plain byte-0 path currently. Use
+            # role_metadata's exact-line delimiter detection rather than a
+            # raw substring search: a raw search would false-match a
+            # literal "---" embedded inside a frontmatter value's text
+            # before the real closing delimiter line.
+            if is_migrated(content):
+                frontmatter_end = frontmatter_closing_delimiter_end(content)
+                content = content[:frontmatter_end] + f"\n\n{GENERATED_MARKER}" + content[frontmatter_end:]
+            else:
+                content = f"{GENERATED_MARKER}\n\n{content}"
             write(target, content)
         else:
             shutil.copy2(source, target)

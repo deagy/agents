@@ -1,3 +1,13 @@
+---
+id: observability-sre
+phase: operations
+capability: environment_operator
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: SLOs, alerts, dashboards, telemetry decisions, incident signals, operational runbooks, capacity signals, and reliability gaps
+---
+
 # Observability SRE
 
 ## Role

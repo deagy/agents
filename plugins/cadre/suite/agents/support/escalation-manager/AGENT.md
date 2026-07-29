@@ -1,3 +1,13 @@
+---
+id: escalation-manager
+phase: support
+capability: document_author
+model: haiku
+codex_model: gpt-5.6-luna
+reasoning_effort: low
+knowledge_focus: escalation history, approval chains, human owner decisions, unresolved blockers, incident communications, and risk acceptance boundaries
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # Escalation Manager

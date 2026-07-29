@@ -1,0 +1,976 @@
+{
+  "_comment": [
+    "Golden-corpus regression fixtures for build_dispatch_plan()'s deterministic",
+    "selector. Each case is run through build_dispatch_plan() in standalone",
+    "mode (Agentic SDLC lifecycle contract forced unavailable, see",
+    "test_selection_golden_corpus.py) so the corpus is reproducible without",
+    "AGENTIC_SDLC_BIN or network access. 'expected' compares exactly against",
+    "the four build_dispatch_plan() output fields named in the requirements",
+    "baseline (primary, reviewers, support, matched_routes); 'team_ids' is an",
+    "optional fifth field asserted only for cases whose purpose is to pin a",
+    "team_recipes trigger. Task strings reused verbatim from",
+    "test_selector.py/test_agents_dispatcher.py are noted in 'description' so",
+    "this corpus does not silently drift from those regression tests.",
+    "A route/keyword edit that changes any of these fields must update this",
+    "file in the same reviewable diff (see CLAUDE.md/AGENTS.md and B-FR-6).",
+    "",
+    "Coverage: this corpus covers all 31 route categories defined in",
+    "routing.yaml's routes[] array as of the review that added this note",
+    "(product-intent, requirements-baseline, governance-planning,",
+    "data-governance, cryptographic-assurance, runtime-assurance,",
+    "agent-suite-governance, orchestration, frontend, backend,",
+    "infrastructure, pipeline, testing, debugging, black-box-testing,",
+    "end-user-testing, performance-testing, chaos-resilience, support,",
+    "incident-response, observability, secrets-identity,",
+    "database-reliability, policy-as-code, supply-chain, cost-capacity,",
+    "cost-operations, api-contract, documentation, knowledge-store,",
+    "architecture-design), matching B-FR-5's 'initial corpus covers every",
+    "existing route category' requirement. Most single-route fixtures were",
+    "authored fresh (not reused from test_selector.py) specifically to",
+    "isolate one route per case; where routing.yaml's own paths/keywords",
+    "genuinely overlap between two or more routes (e.g. testing and",
+    "black-box-testing both list **/*.feature; backend and",
+    "database-reliability both list 'postgresql' as a keyword), the fixture",
+    "description says so explicitly rather than treating the extra matched",
+    "route as an authoring mistake. The corpus also separately pins the",
+    "'production' and 'destructive' risk_rules with distinct fixtures",
+    "(PRODUCTION-RISK-1, DESTRUCTIVE-RISK-1) since they have separate",
+    "keyword_groups, human_gate, and reviewers in routing.yaml and one does",
+    "not stand in for the other. A future routing.yaml edit that adds,",
+    "removes, or renames a route category must update this comment and the",
+    "corresponding fixture(s) in the same diff, and",
+    "test_corpus_covers_every_required_route_category in",
+    "test_selection_golden_corpus.py enforces that every route id currently",
+    "in routing.yaml is represented in this file's matched_routes."
+  ],
+  "cases": [
+    {
+      "id": "FRONTEND-1",
+      "description": "frontend route; task text reused verbatim from test_selector.py::test_frontend_route_includes_accessibility_reviewer",
+      "task": "Update the React navigation for keyboard accessibility",
+      "changed_files": [
+        "frontend/src/Nav.tsx"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-FRONTEND-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "frontend-engineer"
+        ],
+        "reviewers": [
+          "test-engineer",
+          "code-reviewer",
+          "accessibility-reviewer"
+        ],
+        "support": [
+          "product-intent-agent",
+          "requirements-agent"
+        ],
+        "matched_routes": [
+          "frontend"
+        ]
+      }
+    },
+    {
+      "id": "BACKEND-1",
+      "description": "backend route only, no other route paths/keywords involved",
+      "task": "Implement a backend API for user upload",
+      "changed_files": [
+        "services/upload/main.go"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-BACKEND-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "backend-engineer"
+        ],
+        "reviewers": [
+          "test-engineer",
+          "code-reviewer"
+        ],
+        "support": [
+          "product-intent-agent",
+          "requirements-agent"
+        ],
+        "matched_routes": [
+          "backend"
+        ]
+      }
+    },
+    {
+      "id": "INFRA-1",
+      "description": "infrastructure route; task text reused verbatim from test_selector.py::test_selects_infrastructure_workflow_and_independent_review",
+      "task": "Update Terraform for a Proxmox worker VM",
+      "changed_files": [
+        "terraform/modules/worker/main.tf"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-INFRA-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "infrastructure-provisioner"
+        ],
+        "reviewers": [
+          "infrastructure-reviewer"
+        ],
+        "support": [
+          "product-intent-agent",
+          "requirements-agent"
+        ],
+        "matched_routes": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "id": "PIPELINE-1",
+      "description": "pipeline route; task/file reused verbatim from test_selector.py::test_cli_emits_a_valid_plan_for_explicit_files",
+      "task": "Change the GitLab pipeline runner configuration",
+      "changed_files": [
+        ".gitlab-ci.yml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-PIPELINE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "cicd-engineer"
+        ],
+        "reviewers": [
+          "pipeline-security-reviewer"
+        ],
+        "support": [
+          "product-intent-agent",
+          "requirements-agent"
+        ],
+        "matched_routes": [
+          "pipeline"
+        ]
+      }
+    },
+    {
+      "id": "TESTING-1",
+      "description": "testing route, deliberately avoiding the black-box-testing/**/*.feature path overlap so only 'testing' and the incidental backend **/*.go path match",
+      "task": "Add regression test coverage for checkout flow",
+      "changed_files": [
+        "services/internal/upload_test.go"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-TESTING-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "backend-engineer",
+          "test-engineer"
+        ],
+        "reviewers": [
+          "code-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "backend",
+          "testing"
+        ]
+      }
+    },
+    {
+      "id": "DEBUGGING-1",
+      "description": "debugging route; task/file reused verbatim from test_selector.py::test_selects_debugging_engineer_for_root_cause_work",
+      "task": "Debug a panic and identify the root cause from the stack trace",
+      "changed_files": [
+        "services/internal/repository/regression/panic_test.go"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-DEBUGGING-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "backend-engineer",
+          "debugging-engineer",
+          "test-engineer"
+        ],
+        "reviewers": [
+          "code-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "backend",
+          "testing",
+          "debugging"
+        ]
+      }
+    },
+    {
+      "id": "AGENT-SUITE-GOVERNANCE-1",
+      "description": "agent-suite-governance route; task/files reused verbatim from test_selector.py::test_plugin_packaging_routes_to_agent_suite_governance",
+      "task": "Package the Secure Cloud Agentic SDLC provider",
+      "changed_files": [
+        "plugins/cadre/provider.json",
+        ".agents/plugins/marketplace.json"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-AGENT-SUITE-GOV-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "application-engineer",
+          "debugging-engineer"
+        ],
+        "reviewers": [
+          "test-engineer",
+          "code-reviewer"
+        ],
+        "support": [
+          "technical-writer"
+        ],
+        "matched_routes": [
+          "agent-suite-governance"
+        ]
+      }
+    },
+    {
+      "id": "PRODUCTION-RISK-1",
+      "description": "production risk_rule (release-engineer support, human_gate not asserted here) layered on the infrastructure route; task/file reused verbatim from test_selector.py::test_emits_schema_v2_quality_gates_separately_from_human_gates",
+      "task": "Deploy to production with Terraform",
+      "changed_files": [
+        "terraform/service/main.tf"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-PRODUCTION-RISK-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "infrastructure-provisioner"
+        ],
+        "reviewers": [
+          "infrastructure-reviewer"
+        ],
+        "support": [
+          "release-engineer"
+        ],
+        "matched_routes": [
+          "infrastructure"
+        ]
+      }
+    },
+    {
+      "id": "CROSS-STACK-1",
+      "description": "cross-stack minimum-match case (frontend+backend) that also pins the fixed 'cross-stack-build' team_recipe trigger; task/files reused verbatim from test_selector.py::test_selects_frontend_and_backend_with_cross_stack_coordination / test_two_route_task_forms_cross_stack_build_team_only",
+      "task": "Add a React upload form backed by a PostgreSQL API",
+      "changed_files": [
+        "frontend/src/Upload.tsx",
+        "services/upload/main.go"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-CROSS-STACK-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "frontend-engineer",
+          "backend-engineer"
+        ],
+        "reviewers": [
+          "test-engineer",
+          "code-reviewer",
+          "accessibility-reviewer"
+        ],
+        "support": [
+          "application-engineer"
+        ],
+        "matched_routes": [
+          "frontend",
+          "backend"
+        ],
+        "team_ids": [
+          "cross-stack-build"
+        ]
+      }
+    },
+    {
+      "id": "DYNAMIC-TEAM-1",
+      "description": "dynamic 'competing-hypotheses-debugging' team_recipe trigger on the debugging route; task/file reused verbatim from test_selector.py::test_intermittent_debugging_task_forms_dynamic_team",
+      "task": "Debug an intermittent panic that has not converged after several fixes",
+      "changed_files": [
+        "services/internal/repository/regression/panic_test.go"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-DYNAMIC-TEAM-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "backend-engineer",
+          "debugging-engineer",
+          "test-engineer"
+        ],
+        "reviewers": [
+          "code-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "backend",
+          "testing",
+          "debugging"
+        ],
+        "team_ids": [
+          "competing-hypotheses-debugging"
+        ]
+      }
+    },
+    {
+      "id": "NEEDS-TRIAGE-1",
+      "description": "no route/risk matches; task/file reused verbatim from test_selector.py::test_returns_needs_triage_instead_of_guessing. Deliberately marked expect_needs_triage=true so a route/keyword edit that starts matching this task is itself a reportable drift, not a silent pass.",
+      "task": "Investigate an unexplained issue",
+      "changed_files": [
+        "unknown/file.xyz"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-NEEDS-TRIAGE-1",
+      "expect_needs_triage": true,
+      "expected": {
+        "primary": [],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": []
+      }
+    },
+    {
+      "id": "PRODUCT-INTENT-1",
+      "description": "product-intent route; authored to isolate the route (no other route paths/keywords involved)",
+      "task": "Capture the product intent for the new mission objective",
+      "changed_files": [
+        "product/intent/scope.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-PRODUCT-INTENT-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "product-intent-agent"
+        ],
+        "reviewers": [],
+        "support": [
+          "requirements-agent"
+        ],
+        "matched_routes": [
+          "product-intent"
+        ]
+      }
+    },
+    {
+      "id": "REQUIREMENTS-BASELINE-1",
+      "description": "requirements-baseline route; authored to isolate the route",
+      "task": "Perform requirements decomposition and requirements traceability",
+      "changed_files": [
+        "product/requirements/baseline.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-REQUIREMENTS-BASELINE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "requirements-agent"
+        ],
+        "reviewers": [
+          "test-engineer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "requirements-baseline"
+        ]
+      }
+    },
+    {
+      "id": "GOVERNANCE-PLANNING-1",
+      "description": "governance-planning route; authored to isolate the route",
+      "task": "Assess governance impact and data jurisdiction",
+      "changed_files": [
+        "governance/impact/notes.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-GOVERNANCE-PLANNING-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "governance-planner"
+        ],
+        "reviewers": [
+          "compliance-reviewer"
+        ],
+        "support": [
+          "evidence-curator"
+        ],
+        "matched_routes": [
+          "governance-planning"
+        ]
+      }
+    },
+    {
+      "id": "DATA-GOVERNANCE-1",
+      "description": "data-governance route; authored to isolate the route",
+      "task": "Define non-egress data lineage requirements",
+      "changed_files": [
+        "governance/data/policy.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-DATA-GOVERNANCE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "data-governance-engineer"
+        ],
+        "reviewers": [
+          "security-reviewer",
+          "compliance-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "data-governance"
+        ]
+      }
+    },
+    {
+      "id": "CRYPTOGRAPHIC-ASSURANCE-1",
+      "description": "cryptographic-assurance route; authored to isolate the route",
+      "task": "Review crypto agility and algorithm posture for PQC",
+      "changed_files": [
+        "security/crypto-assurance/inventory.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-CRYPTOGRAPHIC-ASSURANCE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "cryptographic-assurance-engineer"
+        ],
+        "reviewers": [
+          "security-reviewer"
+        ],
+        "support": [
+          "threat-modeler",
+          "secrets-identity-engineer"
+        ],
+        "matched_routes": [
+          "cryptographic-assurance"
+        ]
+      }
+    },
+    {
+      "id": "RUNTIME-ASSURANCE-1",
+      "description": "runtime-assurance route; authored to isolate the route",
+      "task": "Observe production runtime conformance for deployed behavior",
+      "changed_files": [
+        "runtime-assurance/notes.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-RUNTIME-ASSURANCE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "observability-sre"
+        ],
+        "reviewers": [
+          "security-reviewer",
+          "compliance-reviewer"
+        ],
+        "support": [
+          "support-triage-agent"
+        ],
+        "matched_routes": [
+          "runtime-assurance"
+        ]
+      }
+    },
+    {
+      "id": "ORCHESTRATION-1",
+      "description": "orchestration route; keyword-only match ('agent selector'/'agent routing'/'dispatch plan' are orchestration-only keywords) with a changed file that matches no route path, since orchestration's own paths are a strict subset of agent-suite-governance's paths and would otherwise always co-match",
+      "task": "Adjust the agent selector agent routing dispatch plan",
+      "changed_files": [
+        "notes.txt"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-ORCHESTRATION-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "application-engineer"
+        ],
+        "reviewers": [
+          "test-engineer",
+          "code-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "orchestration"
+        ]
+      }
+    },
+    {
+      "id": "BLACK-BOX-TESTING-1",
+      "description": "black-box-testing route; the 'testing' route also matches because routing.yaml's testing.paths and black-box-testing.paths both list **/*.feature, a genuine overlap in routing.yaml itself, not a fixture defect",
+      "task": "Add a black-box test for opaque system external behavior",
+      "changed_files": [
+        "e2e/checkout.feature"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-BLACK-BOX-TESTING-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "test-engineer",
+          "black-box-tester"
+        ],
+        "reviewers": [
+          "code-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "testing",
+          "black-box-testing"
+        ]
+      }
+    },
+    {
+      "id": "END-USER-TESTING-1",
+      "description": "end-user-testing route; authored to isolate the route",
+      "task": "Run a user acceptance test for the new persona journey",
+      "changed_files": [
+        "uat/journey.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-END-USER-TESTING-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "end-user-tester"
+        ],
+        "reviewers": [
+          "technical-writer"
+        ],
+        "support": [
+          "support-triage-agent"
+        ],
+        "matched_routes": [
+          "end-user-testing"
+        ]
+      }
+    },
+    {
+      "id": "PERFORMANCE-TESTING-1",
+      "description": "performance-testing route; authored to isolate the route",
+      "task": "Run a load test to validate throughput",
+      "changed_files": [
+        "performance-test/plan.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-PERFORMANCE-TESTING-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "performance-testing-engineer"
+        ],
+        "reviewers": [
+          "infrastructure-reviewer"
+        ],
+        "support": [
+          "cost-capacity-planner"
+        ],
+        "matched_routes": [
+          "performance-testing"
+        ]
+      }
+    },
+    {
+      "id": "CHAOS-RESILIENCE-1",
+      "description": "chaos-resilience route; authored to isolate the route",
+      "task": "Run a chaos engineering fault injection game day",
+      "changed_files": [
+        "chaos/gameday.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-CHAOS-RESILIENCE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "chaos-resilience-engineer"
+        ],
+        "reviewers": [
+          "infrastructure-reviewer"
+        ],
+        "support": [
+          "cloud-architect",
+          "observability-sre"
+        ],
+        "matched_routes": [
+          "chaos-resilience"
+        ]
+      }
+    },
+    {
+      "id": "SUPPORT-1",
+      "description": "support route; task text avoids 'reproduction steps' (shares a keyword root with debugging's 'reproduction'/'reproduce') so only support matches",
+      "task": "Provide user report triage and a workaround for a customer issue",
+      "changed_files": [
+        "support/ticket-123.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-SUPPORT-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "support-triage-agent"
+        ],
+        "reviewers": [
+          "technical-writer"
+        ],
+        "support": [
+          "escalation-manager"
+        ],
+        "matched_routes": [
+          "support"
+        ]
+      }
+    },
+    {
+      "id": "INCIDENT-RESPONSE-1",
+      "description": "incident-response route; changed file under postmortems/** rather than incidents/** so support's own **/incidents/** path (a genuine overlap in routing.yaml) does not also match",
+      "task": "Coordinate rollback during a sev1 major incident postmortem",
+      "changed_files": [
+        "postmortems/2026-07-28.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-INCIDENT-RESPONSE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "incident-commander"
+        ],
+        "reviewers": [
+          "technical-writer"
+        ],
+        "support": [
+          "support-triage-agent",
+          "escalation-manager",
+          "observability-sre"
+        ],
+        "matched_routes": [
+          "incident-response"
+        ]
+      }
+    },
+    {
+      "id": "OBSERVABILITY-1",
+      "description": "observability route; authored to isolate the route",
+      "task": "Add an SLO alert dashboard for error budget monitoring",
+      "changed_files": [
+        "observability/dashboard.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-OBSERVABILITY-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "observability-sre"
+        ],
+        "reviewers": [
+          "technical-writer"
+        ],
+        "support": [
+          "support-triage-agent"
+        ],
+        "matched_routes": [
+          "observability"
+        ]
+      }
+    },
+    {
+      "id": "SECRETS-IDENTITY-1",
+      "description": "secrets-identity route; also pins the sensitive-data and identity-privilege risk_rules (both keyed on 'credential'/'workload identity', a genuine overlap, not a fixture defect)",
+      "task": "Rotate a credential and review workload identity",
+      "changed_files": [
+        "secrets/rotation.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-SECRETS-IDENTITY-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "secrets-identity-engineer"
+        ],
+        "reviewers": [
+          "security-reviewer",
+          "compliance-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "secrets-identity"
+        ]
+      }
+    },
+    {
+      "id": "DATABASE-RELIABILITY-1",
+      "description": "database-reliability route; the 'backend' route also matches because backend.keywords and database-reliability.keywords both include 'postgresql', a genuine overlap in routing.yaml, not a fixture defect",
+      "task": "Validate postgresql ha pitr backup and restore",
+      "changed_files": [
+        "backup/plan.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-DATABASE-RELIABILITY-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "backend-engineer",
+          "database-reliability-engineer"
+        ],
+        "reviewers": [
+          "test-engineer",
+          "code-reviewer",
+          "infrastructure-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "backend",
+          "database-reliability"
+        ]
+      }
+    },
+    {
+      "id": "POLICY-AS-CODE-1",
+      "description": "policy-as-code route; authored to isolate the route",
+      "task": "Add a kyverno admission policy as code rule",
+      "changed_files": [
+        "policy/kyverno-rule.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-POLICY-AS-CODE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "policy-as-code-engineer"
+        ],
+        "reviewers": [
+          "infrastructure-reviewer",
+          "security-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "policy-as-code"
+        ]
+      }
+    },
+    {
+      "id": "SUPPLY-CHAIN-1",
+      "description": "supply-chain route; changed_files reused verbatim from test_selector.py-style go.mod fixtures; support includes product-intent-agent/requirements-agent because 'update' is also a change_intake keyword",
+      "task": "Update the dependency sbom and provenance signing",
+      "changed_files": [
+        "go.mod"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-SUPPLY-CHAIN-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "supply-chain-security-reviewer"
+        ],
+        "reviewers": [
+          "security-reviewer"
+        ],
+        "support": [
+          "product-intent-agent",
+          "requirements-agent",
+          "release-engineer"
+        ],
+        "matched_routes": [
+          "supply-chain"
+        ]
+      }
+    },
+    {
+      "id": "COST-CAPACITY-1",
+      "description": "cost-capacity route; authored to isolate the route",
+      "task": "Assess capacity sizing and quota headroom",
+      "changed_files": [
+        "capacity/plan.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-COST-CAPACITY-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "cost-capacity-planner"
+        ],
+        "reviewers": [
+          "infrastructure-reviewer"
+        ],
+        "support": [
+          "observability-sre"
+        ],
+        "matched_routes": [
+          "cost-capacity"
+        ]
+      }
+    },
+    {
+      "id": "COST-OPERATIONS-1",
+      "description": "cost-operations route (paths: [], keyword-only); observability and cost-capacity also match because 'alert' and 'cost' are shared keywords across those routes, a genuine overlap in routing.yaml, not a fixture defect",
+      "task": "Investigate a cost anomaly and budget alert",
+      "changed_files": [
+        "unrelated/file.xyz"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-COST-OPERATIONS-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "observability-sre",
+          "cost-capacity-planner",
+          "finops-engineer"
+        ],
+        "reviewers": [
+          "infrastructure-reviewer",
+          "technical-writer"
+        ],
+        "support": [
+          "support-triage-agent"
+        ],
+        "matched_routes": [
+          "observability",
+          "cost-capacity",
+          "cost-operations"
+        ]
+      }
+    },
+    {
+      "id": "API-CONTRACT-1",
+      "description": "api-contract route; 'backend' also matches because backend.keywords includes 'schema', a genuine overlap in routing.yaml; support includes product-intent-agent/requirements-agent because 'change' is also a change_intake keyword",
+      "task": "Version the schema contract and check breaking change compatibility",
+      "changed_files": [
+        "contracts/openapi.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-API-CONTRACT-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "api-contract-engineer",
+          "backend-engineer"
+        ],
+        "reviewers": [
+          "test-engineer",
+          "code-reviewer"
+        ],
+        "support": [
+          "product-intent-agent",
+          "requirements-agent",
+          "cloud-architect",
+          "frontend-engineer"
+        ],
+        "matched_routes": [
+          "backend",
+          "api-contract"
+        ]
+      }
+    },
+    {
+      "id": "DOCUMENTATION-1",
+      "description": "documentation route; authored to isolate the route",
+      "task": "Write an operator guide runbook document",
+      "changed_files": [
+        "docs/guide.md"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-DOCUMENTATION-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "technical-writer"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "documentation"
+        ]
+      }
+    },
+    {
+      "id": "KNOWLEDGE-STORE-1",
+      "description": "knowledge-store route; authored to isolate the route",
+      "task": "Tune the knowledge store retrieval and embedding vector search",
+      "changed_files": [
+        "agents/knowledge-store/notes.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-KNOWLEDGE-STORE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "knowledge-store-steward"
+        ],
+        "reviewers": [
+          "security-reviewer",
+          "compliance-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "knowledge-store"
+        ]
+      }
+    },
+    {
+      "id": "ARCHITECTURE-DESIGN-1",
+      "description": "architecture-design route; also pins the architecture-change risk_rule ('architecture' is a shared keyword), a genuine overlap in routing.yaml, not a fixture defect",
+      "task": "Design the architecture and system design proposal",
+      "changed_files": [
+        "architecture/design.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-ARCHITECTURE-DESIGN-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "cloud-architect"
+        ],
+        "reviewers": [
+          "threat-modeler"
+        ],
+        "support": [],
+        "matched_routes": [
+          "architecture-design"
+        ]
+      }
+    },
+    {
+      "id": "DESTRUCTIVE-RISK-1",
+      "description": "destructive risk_rule, pinned distinctly from the existing production risk_rule fixture (PRODUCTION-RISK-1): 'delete'+'database table' satisfy destructive's two keyword_groups without satisfying production's ('production' alone, with no group-2 deploy/change verb present, does not trigger the production rule); support includes product-intent-agent/requirements-agent because 'delete' is also a change_intake keyword",
+      "task": "Delete the production database table",
+      "changed_files": [
+        "db/notes.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-DESTRUCTIVE-RISK-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "backend-engineer",
+          "database-reliability-engineer"
+        ],
+        "reviewers": [
+          "test-engineer",
+          "code-reviewer",
+          "infrastructure-reviewer",
+          "security-reviewer"
+        ],
+        "support": [
+          "product-intent-agent",
+          "requirements-agent"
+        ],
+        "matched_routes": [
+          "backend",
+          "database-reliability"
+        ]
+      }
+    }
+  ]
+}

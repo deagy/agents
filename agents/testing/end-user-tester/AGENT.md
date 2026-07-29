@@ -1,3 +1,13 @@
+---
+id: end-user-tester
+phase: verify
+capability: test_author
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: personas, user journeys, UAT decisions, accessibility observations, user-readiness risks, and supportability gaps
+---
+
 # End-User Tester
 
 ## Role

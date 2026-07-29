@@ -73,6 +73,8 @@ Choose agents by the capability the task needs. The examples in this runbook sta
 | Prepare a decision package for a human lifecycle-gate authority | Matching `<authority>-aide` (e.g. product-owner-aide for G1/G2/G6, release-authority-aide for G9) | The named human authority itself |
 
 Use `catalog.yaml` when an orchestrator needs a machine-readable role inventory. Each role optionally declares a `model` tier (`haiku`/`sonnet`/`opus`), assigned by the fixed heuristic documented in the file's header comment: `opus` for design/architecture/governance/crypto-assurance roles making high-blast-radius judgment calls, `sonnet` as the default for build/review/test/operations/support roles, `haiku` for narrow single-purpose roles (evidence cataloging, knowledge-store stewardship, triage/escalation routing). `generate_global_plugin.py` propagates it into both the generated Claude Code subagent wrapper's `model:` frontmatter and the Codex `.toml` wrapper's `model` key — regenerate with `cadre generate-plugin` after changing it.
+
+`catalog.yaml` and `orchestration/routing.yaml`'s `knowledge_focus` block are themselves generated files, produced by `agents/orchestration/src/generate_role_metadata.py` from `agents/catalog-order.txt` (the dispatch-precedence id order) and every role's own `AGENT.md` frontmatter -- every role's `AGENT.md` carries `---`-delimited frontmatter (`id`, `phase`, `capability`, `model`, `codex_model`, `reasoning_effort`, `knowledge_focus` -- `definition` is never stored in frontmatter, it is always derived from the file's own path); an `AGENT.md` without frontmatter is a generator error, not a supported state. Never hand-edit `catalog.yaml` or `routing.yaml`'s `knowledge_focus` block directly: edit the role's frontmatter and run `cadre generate-role-metadata` (or `python3 agents/orchestration/src/generate_role_metadata.py`) to regenerate both derived files, and `... --check` to validate without writing. Adding a role always means adding its `AGENT.md` (with frontmatter) and adding its id to `catalog-order.txt` in the same change.
 Use `workflows/debugging.md` when reproducing defects, analyzing runtime failures, or tuning agent definitions/routing.
 
 ### Select agents locally
@@ -655,6 +657,14 @@ generate-plugin` so the packaged plugin picks up the regenerated files.
 `cadre generate-authority-aides --check` is the CI drift-guard equivalent
 for this table, parallel to `cadre generate-plugin --check` for the plugin
 as a whole.
+
+Every role's `AGENT.md` carries `---`-delimited frontmatter (see §2 above),
+so editing a role's `AGENT.md` requires the same kind of extra step: run
+`cadre generate-role-metadata` to regenerate `agents/catalog.yaml` and
+`agents/orchestration/routing.yaml`'s `knowledge_focus` block from the
+frontmatter, *then* `cadre generate-plugin` so the packaged plugin picks up
+the regenerated files. `cadre generate-role-metadata --check` is the CI
+drift-guard equivalent.
 
 ## 18. Record a GitHub-backed human gate approval
 

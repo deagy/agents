@@ -1,3 +1,13 @@
+---
+id: test-engineer
+phase: verify
+capability: read_only
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: Gherkin scenarios, regressions, failure cases, and quality history
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # Test Engineer

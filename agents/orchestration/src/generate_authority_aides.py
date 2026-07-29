@@ -29,13 +29,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from agentic_sdlc_contracts import try_lifecycle_contract  # noqa: E402
 from generate_global_plugin import GENERATED_MARKER  # noqa: E402
+from role_metadata import emit_scalar, frontmatter_closing_delimiter_end  # noqa: E402
 from routing import parse_keyed_entries  # noqa: E402
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 AUTHORITY_ROOT = REPOSITORY_ROOT / "agents" / "authority"
 DATA_PATH = AUTHORITY_ROOT / "aides.yaml"
 TEMPLATE_PATH = AUTHORITY_ROOT / "_template.md.tmpl"
-REQUIRED_FIELDS = ("title", "gates")
+REQUIRED_FIELDS = ("title", "gates", "knowledge_focus")
 
 
 def _strip_inline_comment(value: str) -> str:
@@ -87,6 +88,7 @@ def load_aides(path: Path) -> list[dict[str, object]]:
                 "id": aide_id,
                 "title": _strip_inline_comment(fields["title"]),
                 "gates": _parse_gates(path, aide_id, fields["gates"]),
+                "knowledge_focus": _strip_inline_comment(fields["knowledge_focus"]),
             }
         )
     return aides
@@ -136,7 +138,9 @@ def render(template: str, aide: dict[str, object]) -> str:
     gates = aide["gates"]
     assert isinstance(gates, list)
     try:
-        body = template.format(
+        rendered = template.format(
+            id=emit_scalar(str(aide["id"])),
+            knowledge_focus=emit_scalar(str(aide["knowledge_focus"])),
             title=aide["title"],
             gate_phrase=gate_phrase(gates),
             gate_list=gate_list(gates),
@@ -145,7 +149,14 @@ def render(template: str, aide: dict[str, object]) -> str:
         raise ValueError(
             f"{TEMPLATE_PATH}: failed to render aide {aide['id']!r}: {error}"
         ) from error
-    return f"{GENERATED_MARKER}\n\n{body}"
+    # The rendered template starts with `---`-delimited frontmatter (see
+    # role_metadata.py); insert the generated-file marker after the closing
+    # delimiter rather than at byte 0, mirroring
+    # generate_global_plugin.py's identical placement for packaged copies of
+    # migrated AGENT.md files.
+    frontmatter_end = frontmatter_closing_delimiter_end(rendered)
+    assert frontmatter_end is not None
+    return rendered[:frontmatter_end] + f"\n\n{GENERATED_MARKER}" + rendered[frontmatter_end:]
 
 
 def generate(aides: list[dict[str, object]], template: str) -> dict[Path, str]:

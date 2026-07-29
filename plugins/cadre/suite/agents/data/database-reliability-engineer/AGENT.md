@@ -1,3 +1,13 @@
+---
+id: database-reliability-engineer
+phase: operations
+capability: code_author
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: PostgreSQL reliability decisions, migration history, backup and restore evidence, PITR, indexes, locks, schema lifecycle, and data retention
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # Database Reliability Engineer

@@ -1,3 +1,13 @@
+---
+id: release-authority-aide
+phase: authority
+capability: read_only
+model: opus
+codex_model: gpt-5.6-sol
+reasoning_effort: high
+knowledge_focus: prior G9 release-authority decisions, independent-check findings, and unresolved release-authority escalations
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->

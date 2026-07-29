@@ -1,3 +1,13 @@
+---
+id: infrastructure-provisioner
+phase: build
+capability: code_author
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: platform infrastructure, cluster lifecycle, package deployment, storage, networking, and approved stack-specific infrastructure patterns
+---
+
 # Infrastructure Provisioner
 
 ## Role

@@ -1,3 +1,13 @@
+---
+id: engineering-lead-aide
+phase: authority
+capability: read_only
+model: opus
+codex_model: gpt-5.6-sol
+reasoning_effort: high
+knowledge_focus: prior G2/G6 decisions, requirements-baseline sign-offs, engineering-scope calls, and unresolved engineering-lead escalations
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->

@@ -1,3 +1,13 @@
+---
+id: threat-modeler
+phase: design
+capability: document_author
+model: opus
+codex_model: gpt-5.6-sol
+reasoning_effort: high
+knowledge_focus: prior threats, incidents, mitigations, trust boundaries, and residual risks
+---
+
 # Threat Modeler
 
 ## Role

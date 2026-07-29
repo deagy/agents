@@ -1,3 +1,13 @@
+---
+id: cost-capacity-planner
+phase: planning
+capability: document_author
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: capacity models, resource limits, storage growth, runner utilization, cost tradeoffs, quotas, and sizing assumptions
+---
+
 # Cost & Capacity Planner
 
 ## Role

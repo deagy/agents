@@ -1,3 +1,13 @@
+---
+id: cicd-engineer
+phase: build
+capability: code_author
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: delivery pipelines, runners, artifacts, signing, deployment flows, rollback paths, and approved GitLab pipeline conventions
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # CI/CD Engineer

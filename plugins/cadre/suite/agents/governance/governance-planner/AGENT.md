@@ -1,3 +1,13 @@
+---
+id: governance-planner
+phase: design
+capability: document_author
+model: opus
+codex_model: gpt-5.6-sol
+reasoning_effort: high
+knowledge_focus: governance impacts, jurisdictions, accreditation plans, control interpretations, evidence obligations, and accountable owner decisions
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # Governance Planner

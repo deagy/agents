@@ -1,3 +1,13 @@
+---
+id: black-box-tester
+phase: verify
+capability: test_author
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: externally visible behavior, public API and UI contracts, black-box regressions, client compatibility, and reproducible defects
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # Black-Box Tester

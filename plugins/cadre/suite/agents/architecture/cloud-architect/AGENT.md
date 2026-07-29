@@ -1,3 +1,13 @@
+---
+id: cloud-architect
+phase: design
+capability: document_author
+model: opus
+codex_model: gpt-5.6-sol
+reasoning_effort: high
+knowledge_focus: prior architecture decisions, constraints, alternatives, failure domains, and recovery objectives
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # Cloud Architect

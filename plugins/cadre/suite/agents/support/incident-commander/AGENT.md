@@ -1,3 +1,13 @@
+---
+id: incident-commander
+phase: support
+capability: environment_operator
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: incident timelines, severity decisions, mitigation history, communication cadence, owner chains, postmortems, and unresolved blockers
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # Incident Commander

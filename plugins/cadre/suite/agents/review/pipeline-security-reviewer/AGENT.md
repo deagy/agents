@@ -1,3 +1,13 @@
+---
+id: pipeline-security-reviewer
+phase: review
+capability: read_only
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: runner, token, dependency, artifact, and pipeline findings
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # Pipeline Security Reviewer

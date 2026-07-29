@@ -1,3 +1,13 @@
+---
+id: requirements-agent
+phase: planning
+capability: document_author
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: approved intent baselines, requirement decompositions, acceptance criteria, dependencies, control mappings, test obligations, and traceability decisions
+---
+
 # Requirements Agent
 
 ## Role

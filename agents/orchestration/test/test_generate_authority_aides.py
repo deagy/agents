@@ -48,11 +48,20 @@ class LoadAidesTests(unittest.TestCase):
                 "aides:\n"
                 "  engineering-lead-aide:\n"
                 "    gates: [2, 6]\n"
-                "    title: Engineering Lead\n",
+                "    title: Engineering Lead\n"
+                "    knowledge_focus: prior escalations\n",
             )
             aides = gaa.load_aides(path)
             self.assertEqual(
-                [{"id": "engineering-lead-aide", "title": "Engineering Lead", "gates": [2, 6]}], aides
+                [
+                    {
+                        "id": "engineering-lead-aide",
+                        "title": "Engineering Lead",
+                        "gates": [2, 6],
+                        "knowledge_focus": "prior escalations",
+                    }
+                ],
+                aides,
             )
 
     def test_inline_comment_on_a_field_is_stripped(self) -> None:
@@ -62,7 +71,8 @@ class LoadAidesTests(unittest.TestCase):
                 "aides:\n"
                 "  engineering-lead-aide:\n"
                 "    title: Engineering Lead  # primary approver\n"
-                "    gates: [2, 6]\n",
+                "    gates: [2, 6]\n"
+                "    knowledge_focus: prior escalations\n",
             )
             aides = gaa.load_aides(path)
             self.assertEqual("Engineering Lead", aides[0]["title"])
@@ -71,7 +81,8 @@ class LoadAidesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = self._write(
                 Path(directory),
-                "aides:\n  engineering-lead-aide:\n    title: C# Lead\n    gates: [2, 6]\n",
+                "aides:\n  engineering-lead-aide:\n    title: C# Lead\n    gates: [2, 6]\n"
+                "    knowledge_focus: prior escalations\n",
             )
             aides = gaa.load_aides(path)
             self.assertEqual("C# Lead", aides[0]["title"])
@@ -84,9 +95,11 @@ class LoadAidesTests(unittest.TestCase):
                 "  engineering-lead-aide:\n"
                 "    title: Engineering Lead\n"
                 "    gates: [2, 6]\n"
+                "    knowledge_focus: prior escalations\n"
                 "  engineering-lead-aide:\n"
                 "    title: Duplicate\n"
-                "    gates: [9]\n",
+                "    gates: [9]\n"
+                "    knowledge_focus: prior escalations\n",
             )
             with self.assertRaisesRegex(ValueError, "duplicate id"):
                 gaa.load_aides(path)
@@ -103,7 +116,8 @@ class LoadAidesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = self._write(
                 Path(directory),
-                "aides:\n  engineering-lead-aide:\n    title: Engineering Lead\n    gates: []\n",
+                "aides:\n  engineering-lead-aide:\n    title: Engineering Lead\n    gates: []\n"
+                "    knowledge_focus: prior escalations\n",
             )
             with self.assertRaisesRegex(ValueError, "empty gates list"):
                 gaa.load_aides(path)
@@ -115,6 +129,7 @@ class LoadAidesTests(unittest.TestCase):
                 "aides:\n"
                 "  engineering-lead-aide:\n"
                 "    title: Engineering Lead\n"
+                "    knowledge_focus: prior escalations\n"
                 "    gates:\n"
                 "      - 2\n"
                 "      - 6\n",
@@ -126,7 +141,8 @@ class LoadAidesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = self._write(
                 Path(directory),
-                "aides:\n  engineering-lead-aide:\n    title: Engineering Lead\n    gates: [two]\n",
+                "aides:\n  engineering-lead-aide:\n    title: Engineering Lead\n    gates: [two]\n"
+                "    knowledge_focus: prior escalations\n",
             )
             with self.assertRaisesRegex(ValueError, "non-integer gate"):
                 gaa.load_aides(path)
@@ -135,7 +151,8 @@ class LoadAidesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = self._write(
                 Path(directory),
-                "aides:\n  engineering-lead-aide:\n    title: Engineering Lead\n    gates: [2, 2]\n",
+                "aides:\n  engineering-lead-aide:\n    title: Engineering Lead\n    gates: [2, 2]\n"
+                "    knowledge_focus: prior escalations\n",
             )
             with self.assertRaisesRegex(ValueError, "duplicate gate"):
                 gaa.load_aides(path)
@@ -144,11 +161,16 @@ class LoadAidesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = self._write(
                 Path(directory),
-                "aides:\n  ops-lead-aide:\n    title: Ops Léad\n    gates: [3]\n",
+                "aides:\n  ops-lead-aide:\n    title: Ops Léad\n    gates: [3]\n"
+                "    knowledge_focus: prior escalations\n",
             )
             aides = gaa.load_aides(path)
             self.assertEqual("Ops Léad", aides[0]["title"])
-            rendered = gaa.render("# {title}\n\n{gate_phrase}\n{gate_list}\n", aides[0])
+            rendered = gaa.render(
+                "---\nid: {id}\nknowledge_focus: {knowledge_focus}\n---\n\n# {title}\n\n"
+                "{gate_phrase}\n{gate_list}\n",
+                aides[0],
+            )
             self.assertIn("Ops Léad", rendered)
 
 
@@ -209,10 +231,14 @@ class MainWritePathTests(unittest.TestCase):
             "aides:\n"
             "  engineering-lead-aide:\n"
             "    title: Engineering Lead\n"
-            "    gates: [2, 6]\n",
+            "    gates: [2, 6]\n"
+            "    knowledge_focus: prior escalations\n",
             encoding="utf-8",
         )
-        (directory / "_template.md.tmpl").write_text("# {title}\n\ngates: {gate_list}\n", encoding="utf-8")
+        (directory / "_template.md.tmpl").write_text(
+            "---\nid: {id}\nknowledge_focus: {knowledge_focus}\n---\n\n# {title}\n\ngates: {gate_list}\n",
+            encoding="utf-8",
+        )
 
     def test_plain_generate_creates_missing_role_directories(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

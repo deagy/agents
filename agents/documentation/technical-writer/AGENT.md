@@ -1,3 +1,13 @@
+---
+id: technical-writer
+phase: document
+capability: document_author
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: approved decisions, current operations, terminology, and audience conventions
+---
+
 # Technical Writer
 
 ## Role
