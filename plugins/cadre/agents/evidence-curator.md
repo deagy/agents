@@ -3,6 +3,7 @@ name: evidence-curator
 description: Secure cloud agent suite role for the evidence phase (evidence-curator).
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: haiku
+effort: low
 generated: true
 canonical_source: agents/documentation/evidence-curator/AGENT.md
 ---

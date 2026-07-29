@@ -3,6 +3,7 @@ name: compliance-reviewer
 description: Secure cloud agent suite role for the review phase (compliance-reviewer).
 tools: Read, Grep, Glob
 model: sonnet
+effort: medium
 generated: true
 canonical_source: agents/review/compliance-reviewer/AGENT.md
 ---

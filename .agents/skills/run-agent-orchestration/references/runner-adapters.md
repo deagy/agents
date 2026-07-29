@@ -83,7 +83,8 @@ wave — see [team-recipes.md](team-recipes.md) for when that's warranted.
   - **Preferred: register this repo's MCP dispatch server.**
     `agents/orchestration/mcp/dispatch_server.py` exposes a real
     `dispatch_secure_cloud_role` tool that resolves `role_id` to its `.toml`
-    wrapper, extracts `developer_instructions`/`model`/`sandbox_mode` itself,
+    wrapper, extracts `developer_instructions`/`model`/`sandbox_mode`/
+    `model_reasoning_effort` itself,
     enforces sandbox narrowing and a human confirmation gate for
     write-capable dispatch, and spawns the child in its own process group
     with an explicit wait/timeout/group-kill and a bounded concurrency
@@ -99,12 +100,14 @@ wave — see [team-recipes.md](team-recipes.md) for when that's warranted.
        at `cadre mcp-dispatch-server` (repository-root `bin/cadre`, resolves
        a Python 3.10+ interpreter the same way every other subcommand does) or
        directly at `python3 <repo>/agents/orchestration/mcp/dispatch_server.py`
-       if `cadre` isn't on `PATH`. The exact `[mcp_servers]` table syntax
-       below is this suite's best current understanding of Codex CLI's config
-       format and has not been verified against a live `codex` binary from
-       inside this sandbox (no network/package access here) — verify against
-       current Codex CLI docs before relying on it in production, matching
-       this file's other unverified-Codex-specifics caveats:
+       if `cadre` isn't on `PATH`. The `[mcp_servers]` table syntax below
+       (`command`/`args` keys) is verified against Codex CLI's live
+       `config-reference` docs (2026-07-28) — `mcp_servers.<id>.command` and
+       `mcp_servers.<id>.args` are documented config keys. Still unverified
+       from inside this sandbox: actually registering and invoking this
+       server through a live, authenticated `codex` session end to end (no
+       API/ChatGPT credentials configured here) — that part still matches
+       this file's other live-execution caveats:
        ```toml
        [mcp_servers.agents-dispatch]
        command = "agents"
@@ -123,8 +126,12 @@ wave — see [team-recipes.md](team-recipes.md) for when that's warranted.
     `spawn_agent` with the generic `agent_type`, pass that
     `developer_instructions` text plus the task brief as the `prompt`
     argument, and pass the file's `model` value as the explicit `model`
-    override (do not assume the tool infers either from a bare name). Report
-    in the final summary that this per-file-injection fallback was used
+    override (do not assume the tool infers either from a bare name). If the
+    file also sets `model_reasoning_effort`, pass it too if `spawn_agent`
+    exposes a matching override in your Codex CLI version; if it doesn't,
+    note the gap in the final summary rather than silently dropping the
+    role's intended reasoning-effort tier. Report in the final summary that
+    this per-file-injection fallback was used
     (rather than the MCP server), so it isn't mistaken for a properly closed
     dispatch — the "agent doesn't close on completion" symptom above applies
     to this fallback, not to the MCP path.

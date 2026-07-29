@@ -3,6 +3,7 @@ name: application-engineer
 description: Secure cloud agent suite role for the build phase (application-engineer).
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: sonnet
+effort: medium
 generated: true
 canonical_source: agents/engineering/application-engineer/AGENT.md
 ---

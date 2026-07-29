@@ -3,6 +3,7 @@ name: pipeline-security-reviewer
 description: Secure cloud agent suite role for the review phase (pipeline-security-reviewer).
 tools: Read, Grep, Glob
 model: sonnet
+effort: medium
 generated: true
 canonical_source: agents/review/pipeline-security-reviewer/AGENT.md
 ---

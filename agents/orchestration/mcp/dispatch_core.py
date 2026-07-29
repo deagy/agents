@@ -304,7 +304,7 @@ def _is_project_tier_git_clean(path: Path, project_root: Path) -> bool:
 # string) is treated as a parse failure, never silently skipped.
 # ---------------------------------------------------------------------------
 
-_TARGET_KEYS = ("developer_instructions", "model", "sandbox_mode")
+_TARGET_KEYS = ("developer_instructions", "model", "sandbox_mode", "model_reasoning_effort")
 _BASIC_STRING_FIELD = re.compile(
     r'(?m)^(?P<key>' + "|".join(_TARGET_KEYS) + r')\s*=\s*"(?P<value>(?:[^"\\]|\\.)*)"\s*$'
 )
@@ -372,6 +372,7 @@ class ResolvedRole:
     developer_instructions: str
     model: str
     sandbox_mode: str | None
+    model_reasoning_effort: str | None
     instructions_sha256: str
     # H-1 remediation outcome: True/False when the project-tier git-clean
     # check actually ran (tier == "project" and mode ==
@@ -458,6 +459,7 @@ def resolve_role_file(
         if not model:
             raise DispatchDenied(f"{tier}-tier role file is missing required model: {candidate}")
         sandbox_mode = fields.get("sandbox_mode")
+        model_reasoning_effort = fields.get("model_reasoning_effort")
 
         digest = hashlib.sha256(developer_instructions.encode("utf-8")).hexdigest()
         return ResolvedRole(
@@ -467,6 +469,7 @@ def resolve_role_file(
             developer_instructions=developer_instructions,
             model=model,
             sandbox_mode=sandbox_mode,
+            model_reasoning_effort=model_reasoning_effort,
             instructions_sha256=digest,
             project_tier_git_clean=project_tier_git_clean,
         )
@@ -715,39 +718,43 @@ def compose_prompt(developer_instructions: str, brief: str) -> str:
 def build_child_argv(role: ResolvedRole, effective_sandbox: str, project_root: Path) -> list[str]:
     """Build the dispatched Codex CLI child's argv.
 
-    UNCERTAIN / FLAG FOR REVIEWER: the `codex exec` flag names below
-    (--sandbox, --model, --cd, --skip-git-repo-check, reading the prompt
-    from stdin via a trailing "-") are this suite's best current
-    understanding of Codex CLI's non-interactive subcommand and have not
-    been verified against a live `codex` binary from inside this sandbox
-    (no package/network access here to install or invoke a real Codex CLI).
-    Verify against `codex exec --help` for the deployed Codex CLI version
-    before relying on this in production. Isolated in this one function
-    specifically so a correction never touches any safety-relevant logic
-    elsewhere in this module.
+    VERIFIED 2026-07-28: `--sandbox` (read-only|workspace-write|
+    danger-full-access), `--model`, `--cd`, `--skip-git-repo-check`, and
+    reading the prompt from stdin via a trailing "-" all match `codex exec
+    --help` from a real installed `@openai/codex@0.145.0` npm package
+    (this sandbox now has outbound network access; earlier notes here
+    claiming it didn't are stale). Still NOT verified: actual live,
+    authenticated `codex exec` execution -- no API/ChatGPT credentials are
+    configured here, so real exit-code semantics and end-to-end dispatch
+    behavior remain unconfirmed against a real run, only against --help's
+    documented flag shapes. Isolated in this one function specifically so a
+    correction never touches any safety-relevant logic elsewhere in this
+    module.
 
-    TODO(2026-07-25, M-3, tracked follow-up -- see security review of the
-    MCP dispatch server): verify this exact invocation shape (flag names,
-    flag ordering, stdin-prompt convention, exit-code semantics) against a
-    real installed `codex` binary, not just documentation/memory. Not done
-    here because this sandbox has no network/package access to install or
-    invoke a real Codex CLI. Until verified, treat any test coverage of this
-    function as covering "the code does what this docstring says", not
-    "this matches the real Codex CLI".
+    `model_reasoning_effort` has no dedicated `codex exec` flag (confirmed
+    absent from the same --help output); the CLI's only mechanism for it is
+    the generic `-c, --config <key=value>` override (`--help` gives `-c
+    model="o3"` as its own example of this exact pattern), so it's passed
+    that way here rather than as a flag.
     """
     codex_bin = os.environ.get(CODEX_BIN_ENV_VAR, "codex")
-    return [
+    argv = [
         codex_bin,
         "exec",
         "--sandbox",
         effective_sandbox,
         "--model",
         role.model,
+    ]
+    if role.model_reasoning_effort:
+        argv += ["-c", f"model_reasoning_effort={role.model_reasoning_effort}"]
+    argv += [
         "--cd",
         str(project_root),
         "--skip-git-repo-check",
         "-",
     ]
+    return argv
 
 
 def spawn_and_wait(

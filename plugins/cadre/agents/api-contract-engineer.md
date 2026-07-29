@@ -3,6 +3,7 @@ name: api-contract-engineer
 description: Secure cloud agent suite role for the design phase (api-contract-engineer).
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: opus
+effort: high
 generated: true
 canonical_source: agents/architecture/api-contract-engineer/AGENT.md
 ---

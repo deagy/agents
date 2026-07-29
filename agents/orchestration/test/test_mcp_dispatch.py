@@ -768,6 +768,47 @@ class TerminalVsFallbackDispatchTests(unittest.TestCase):
         result = self._dispatch(mode="planning-review-only", child_runner=fake_runner)
         # danger-full-access is forced to read-only, which needs no confirmation.
         self.assertEqual(result["status"], "dispatched")
+
+    def test_model_reasoning_effort_is_passed_as_a_config_override(self) -> None:
+        # codex exec has no dedicated flag for this (confirmed against a real
+        # installed @openai/codex --help); it must go through -c key=value.
+        _write_wrapper(
+            self.layout.plugin_file("application-engineer"),
+            sandbox_mode="read-only",
+            extra_lines=['model_reasoning_effort = "high"'],
+        )
+
+        def fake_runner(argv, **kwargs):
+            self.assertIn("-c", argv)
+            self.assertEqual(argv[argv.index("-c") + 1], "model_reasoning_effort=high")
+            return {
+                "pid": 1,
+                "exit_code": 0,
+                "timed_out": False,
+                "duration_seconds": 0.1,
+                "stdout_truncated": False,
+                "stdout_text": "",
+            }
+
+        result = self._dispatch(mode="planning-review-only", child_runner=fake_runner)
+        self.assertEqual(result["status"], "dispatched")
+
+    def test_no_model_reasoning_effort_omits_the_config_override(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+
+        def fake_runner(argv, **kwargs):
+            self.assertNotIn("-c", argv)
+            return {
+                "pid": 1,
+                "exit_code": 0,
+                "timed_out": False,
+                "duration_seconds": 0.1,
+                "stdout_truncated": False,
+                "stdout_text": "",
+            }
+
+        result = self._dispatch(mode="planning-review-only", child_runner=fake_runner)
+        self.assertEqual(result["status"], "dispatched")
         self.assertEqual(result["effective_sandbox"], "read-only")
 
     def test_concurrency_cap_returns_structured_backpressure_error(self) -> None:

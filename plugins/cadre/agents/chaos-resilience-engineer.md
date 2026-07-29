@@ -3,6 +3,7 @@ name: chaos-resilience-engineer
 description: Secure cloud agent suite role for the verify phase (chaos-resilience-engineer).
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: sonnet
+effort: medium
 generated: true
 canonical_source: agents/testing/chaos-resilience-engineer/AGENT.md
 ---

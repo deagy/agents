@@ -95,5 +95,65 @@ class GenerateSuiteCopyTests(unittest.TestCase):
             self.assertTrue(copied.is_file())
 
 
+class ReasoningEffortPropagationTests(unittest.TestCase):
+    """`parse_catalog_entries` (routing.py) has a hardcoded allowlist of
+    catalog.yaml field names it captures; a field missing from that list is
+    silently dropped rather than erroring, so adding `reasoning_effort` to
+    catalog.yaml without also adding it to that allowlist produced fully
+    passing tests and a "current" `--check` while every generated wrapper
+    silently omitted `effort:`/`model_reasoning_effort`. Exercises the real
+    parser plus generate_agent_wrappers() end to end against a real,
+    existing role definition (architecture/cloud-architect/AGENT.md) rather
+    than mocking either layer, since mocking the parser is exactly what
+    would have hidden this bug.
+    """
+
+    def test_reasoning_effort_propagates_to_both_wrapper_formats(self) -> None:
+        catalog_text = (
+            "version: 1\n"
+            "agents:\n"
+            "  cloud-architect:\n"
+            "    definition: architecture/cloud-architect/AGENT.md\n"
+            "    phase: design\n"
+            "    capability: document_author\n"
+            "    model: opus\n"
+            "    codex_model: gpt-5.6-sol\n"
+            "    reasoning_effort: high\n"
+        )
+        sys.path.insert(0, str(ROOT / "src"))
+        try:
+            from routing import parse_catalog_entries
+        finally:
+            sys.path.pop(0)
+        catalog = parse_catalog_entries(catalog_text)
+        self.assertEqual("high", catalog["cloud-architect"]["reasoning_effort"])
+
+        with tempfile.TemporaryDirectory() as directory:
+            plugin_root = Path(directory) / "plugin"
+            ggp.generate_agent_wrappers(catalog, plugin_root)
+            md_text = (plugin_root / "agents" / "cloud-architect.md").read_text(encoding="utf-8")
+            toml_text = (plugin_root / "codex-agents" / "agents-cloud-architect.toml").read_text(encoding="utf-8")
+        self.assertIn("effort: high", md_text)
+        self.assertIn('model_reasoning_effort = "high"', toml_text)
+
+    def test_missing_reasoning_effort_omits_both_fields(self) -> None:
+        catalog = {
+            "cloud-architect": {
+                "definition": "architecture/cloud-architect/AGENT.md",
+                "phase": "design",
+                "capability": "document_author",
+                "model": "opus",
+                "codex_model": "gpt-5.6-sol",
+            }
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            plugin_root = Path(directory) / "plugin"
+            ggp.generate_agent_wrappers(catalog, plugin_root)
+            md_text = (plugin_root / "agents" / "cloud-architect.md").read_text(encoding="utf-8")
+            toml_text = (plugin_root / "codex-agents" / "agents-cloud-architect.toml").read_text(encoding="utf-8")
+        self.assertNotIn("effort:", md_text)
+        self.assertNotIn("model_reasoning_effort", toml_text)
+
+
 if __name__ == "__main__":
     unittest.main()

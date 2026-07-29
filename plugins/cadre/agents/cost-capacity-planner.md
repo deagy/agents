@@ -3,6 +3,7 @@ name: cost-capacity-planner
 description: Secure cloud agent suite role for the planning phase (cost-capacity-planner).
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: sonnet
+effort: medium
 generated: true
 canonical_source: agents/operations/cost-capacity-planner/AGENT.md
 ---

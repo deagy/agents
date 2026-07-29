@@ -3,6 +3,7 @@ name: release-authority-aide
 description: Secure cloud agent suite role for the authority phase (release-authority-aide).
 tools: Read, Grep, Glob
 model: opus
+effort: high
 generated: true
 canonical_source: agents/authority/release-authority-aide/AGENT.md
 ---

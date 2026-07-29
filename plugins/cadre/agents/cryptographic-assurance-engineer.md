@@ -3,6 +3,7 @@ name: cryptographic-assurance-engineer
 description: Secure cloud agent suite role for the security phase (cryptographic-assurance-engineer).
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: opus
+effort: high
 generated: true
 canonical_source: agents/security/cryptographic-assurance-engineer/AGENT.md
 ---

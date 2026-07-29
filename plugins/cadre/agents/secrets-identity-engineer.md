@@ -3,6 +3,7 @@ name: secrets-identity-engineer
 description: Secure cloud agent suite role for the security phase (secrets-identity-engineer).
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: sonnet
+effort: medium
 generated: true
 canonical_source: agents/security/secrets-identity-engineer/AGENT.md
 ---

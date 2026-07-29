@@ -3,6 +3,7 @@ name: data-governance-engineer
 description: Secure cloud agent suite role for the design phase (data-governance-engineer).
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: opus
+effort: high
 generated: true
 canonical_source: agents/data/data-governance-engineer/AGENT.md
 ---

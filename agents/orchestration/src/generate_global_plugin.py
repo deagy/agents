@@ -91,6 +91,12 @@ SHARED_OVERRIDE_NOTE = (
 
 ALLOWED_MODELS = {"haiku", "sonnet", "opus"}
 ALLOWED_CODEX_MODELS = {"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"}
+# Shared between both wrappers (Claude Code's `effort:` frontmatter and
+# Codex's `model_reasoning_effort` TOML key) -- restricted to the subset
+# both runners accept, so a single catalog.yaml value is always valid on
+# either side. See catalog.yaml's `reasoning_effort` comment for the source
+# of this list.
+ALLOWED_REASONING_EFFORTS = {"low", "medium", "high", "xhigh"}
 
 CAPABILITY_PROFILES: dict[str, dict[str, Any]] = {
     "read_only": {
@@ -140,6 +146,12 @@ def load_catalog(path: Path) -> dict[str, dict[str, Any]]:
             raise ValueError(
                 f"Agent {agent_id} declares an unsupported codex_model {codex_model!r}; "
                 f"must be one of: {', '.join(sorted(ALLOWED_CODEX_MODELS))}"
+            )
+        reasoning_effort = metadata.get("reasoning_effort")
+        if reasoning_effort is not None and reasoning_effort not in ALLOWED_REASONING_EFFORTS:
+            raise ValueError(
+                f"Agent {agent_id} declares an unsupported reasoning_effort {reasoning_effort!r}; "
+                f"must be one of: {', '.join(sorted(ALLOWED_REASONING_EFFORTS))}"
             )
     return agents
 
@@ -218,6 +230,7 @@ def generate_agent_wrappers(catalog: dict[str, dict[str, Any]], plugin_root: Pat
         capability = metadata["capability"]
         model = metadata.get("model")
         codex_model = metadata.get("codex_model")
+        reasoning_effort = metadata.get("reasoning_effort")
         profile = CAPABILITY_PROFILES[capability]
         definition_path = AGENTS_ROOT / definition
         shared_content = "\n\n".join(
@@ -239,6 +252,8 @@ def generate_agent_wrappers(catalog: dict[str, dict[str, Any]], plugin_root: Pat
         ]
         if model:
             md_lines.append(f"model: {model}")
+        if reasoning_effort:
+            md_lines.append(f"effort: {reasoning_effort}")
         md_lines += [
             "generated: true",
             f"canonical_source: agents/{definition}",
@@ -266,6 +281,8 @@ def generate_agent_wrappers(catalog: dict[str, dict[str, Any]], plugin_root: Pat
         ]
         if codex_model:
             toml_lines.append(f"model = {toml_string(codex_model)}")
+        if reasoning_effort:
+            toml_lines.append(f"model_reasoning_effort = {toml_string(reasoning_effort)}")
         toml_lines += [
             f"developer_instructions = {toml_string(instructions)}",
             "",

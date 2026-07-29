@@ -3,6 +3,7 @@ name: black-box-tester
 description: Secure cloud agent suite role for the verify phase (black-box-tester).
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: sonnet
+effort: medium
 generated: true
 canonical_source: agents/testing/black-box-tester/AGENT.md
 ---

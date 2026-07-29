@@ -3,6 +3,7 @@ name: database-reliability-engineer
 description: Secure cloud agent suite role for the operations phase (database-reliability-engineer).
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: sonnet
+effort: medium
 generated: true
 canonical_source: agents/data/database-reliability-engineer/AGENT.md
 ---

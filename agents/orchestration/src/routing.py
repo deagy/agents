@@ -144,7 +144,9 @@ def parse_catalog_entries(content: str) -> dict[str, dict[str, str]]:
     generate_global_plugin.py (which needs the full per-agent metadata) so
     the two never silently diverge on catalog.yaml's format.
     """
-    return parse_keyed_entries(content, ("definition", "phase", "capability", "model", "codex_model"))
+    return parse_keyed_entries(
+        content, ("definition", "phase", "capability", "model", "codex_model", "reasoning_effort")
+    )
 
 
 def load_catalog(file_path: Path) -> list[str]:

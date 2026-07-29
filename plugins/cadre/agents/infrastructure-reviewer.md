@@ -3,6 +3,7 @@ name: infrastructure-reviewer
 description: Secure cloud agent suite role for the review phase (infrastructure-reviewer).
 tools: Read, Grep, Glob
 model: sonnet
+effort: medium
 generated: true
 canonical_source: agents/review/infrastructure-reviewer/AGENT.md
 ---

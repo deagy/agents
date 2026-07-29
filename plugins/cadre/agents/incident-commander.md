@@ -3,6 +3,7 @@ name: incident-commander
 description: Secure cloud agent suite role for the support phase (incident-commander).
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: sonnet
+effort: medium
 generated: true
 canonical_source: agents/support/incident-commander/AGENT.md
 ---

@@ -3,6 +3,7 @@ name: finops-engineer
 description: Secure cloud agent suite role for the operations phase (finops-engineer).
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: sonnet
+effort: medium
 generated: true
 canonical_source: agents/operations/finops-engineer/AGENT.md
 ---

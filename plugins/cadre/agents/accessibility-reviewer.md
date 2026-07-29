@@ -3,6 +3,7 @@ name: accessibility-reviewer
 description: Secure cloud agent suite role for the review phase (accessibility-reviewer).
 tools: Read, Grep, Glob
 model: sonnet
+effort: medium
 generated: true
 canonical_source: agents/review/accessibility-reviewer/AGENT.md
 ---
