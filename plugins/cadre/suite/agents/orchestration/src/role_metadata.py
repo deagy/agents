@@ -4,17 +4,16 @@ This module is the parsing/rendering layer only -- it knows how to detect
 whether an `AGENT.md` file carries `---`-delimited frontmatter, how to parse
 and render that frontmatter's flat `key: value` scalar shape, and how to
 strip it back out to recover the file's prose body byte-identically. It does
-not know about `catalog.yaml`, `routing.yaml`, or the merge/validation rules
-that combine frontmatter-bearing and legacy roles into the generated files --
-that orchestration lives in `generate_role_metadata.py`, which imports this
-module. Kept dependency-free (stdlib only), matching every other module in
-this package (see `routing.py`).
+not know about `catalog.yaml`, `routing.yaml`, or the validation rules that
+turn every role's frontmatter into the generated files -- that orchestration
+lives in `generate_role_metadata.py`, which imports this module. Kept
+dependency-free (stdlib only), matching every other module in this package
+(see `routing.py`).
 
 Frontmatter schema (all scalar, flat, no nesting): `id`, `phase`,
 `capability`, `model`, `codex_model`, `reasoning_effort`, `knowledge_focus`.
 `definition` is deliberately never stored here -- it is always derived from
-the `AGENT.md` file's own path relative to `agents/`, exactly as it is for a
-legacy (non-frontmatter) role today.
+the `AGENT.md` file's own path relative to `agents/`.
 """
 
 from __future__ import annotations
@@ -43,10 +42,10 @@ _YAML_INDICATOR_CHARS = set("!&*-?|>'\"%@`{}[],#:")
 
 def is_migrated(text: str) -> bool:
     """A role's `AGENT.md` is "migrated" iff it starts with exactly `---\\n`
-    or `---\\r\\n` -- this is the sole signal `generate_role_metadata.py`
-    uses to choose the frontmatter branch over the legacy
-    catalog.yaml/routing.yaml branch for a given role. No other heuristic
-    (file length, presence of `id:` text elsewhere, etc.) counts.
+    or `---\\r\\n` -- `generate_role_metadata.py` requires this of every
+    `AGENT.md` it discovers, raising a `RoleMetadataError` for any file that
+    is not migrated. No other heuristic (file length, presence of `id:` text
+    elsewhere, etc.) counts.
     """
     return text.startswith("---\n") or text.startswith("---\r\n")
 

@@ -1,11 +1,13 @@
 """Unit tests for role_metadata.py and generate_role_metadata.py.
 
-Wave 0 ships this generator with zero migrated roles, so the single most
-important test here is test_generator_is_identity_on_current_repository:
-run the generator against a full copy of the real repository tree and
-assert agents/catalog.yaml and agents/orchestration/routing.yaml come back
-byte-identical. Everything else uses small synthetic fixtures, since no real
-AGENT.md carries frontmatter yet.
+Every role's AGENT.md now carries `---`-delimited frontmatter, and
+agents/catalog.yaml / agents/orchestration/routing.yaml are purely generated
+output derived from it -- never an input for role metadata. The single most
+important test here is test_generator_is_identity_on_current_repository: run
+the generator against a full copy of the real repository tree and assert
+agents/catalog.yaml and agents/orchestration/routing.yaml come back
+byte-identical. Everything else uses small synthetic, frontmatter-only
+fixtures.
 """
 
 from __future__ import annotations
@@ -50,7 +52,10 @@ def _catalog_text(entries: dict[str, dict[str, str]]) -> str:
     return "".join(lines)
 
 
-def _legacy_record(definition: str, **overrides: str) -> dict[str, str]:
+def _record(definition: str, **overrides: str) -> dict[str, str]:
+    """A catalog.yaml-shaped record (used only to build the fixture's
+    *expected/rendered* catalog.yaml content, never as generator input).
+    """
     record = {
         "definition": definition,
         "phase": "build",
@@ -63,30 +68,39 @@ def _legacy_record(definition: str, **overrides: str) -> dict[str, str]:
     return record
 
 
-def _build_two_role_fixture(root: Path, *, second_migrated: bool) -> None:
-    """role-a is always legacy; role-b is migrated iff `second_migrated`."""
-    agents_root = root / "agents"
-    _write(agents_root / "domain" / "role-a" / "AGENT.md", "# Role A\n\nLegacy role.\n")
-    catalog_entries = {"role-a": _legacy_record("domain/role-a/AGENT.md")}
-    knowledge_focus = {"role-a": "role-a knowledge focus"}
+def _write_migrated_role(
+    agents_root: Path, relative_dir: str, role_id: str, knowledge_focus: str, **overrides: str
+) -> str:
+    """Write a migrated (frontmatter) `AGENT.md` for `role_id` under
+    `agents_root/relative_dir/`. Returns the definition path (relative to
+    `agents_root`).
+    """
+    fields = {
+        "id": role_id,
+        "phase": "build",
+        "capability": "code_author",
+        "model": "sonnet",
+        "codex_model": "gpt-5.6-terra",
+        "reasoning_effort": "medium",
+        "knowledge_focus": knowledge_focus,
+    }
+    fields.update(overrides)
+    frontmatter = rm.render_frontmatter(fields)
+    _write(agents_root / relative_dir / "AGENT.md", frontmatter + f"\n# {role_id}\n\nMigrated role.\n")
+    return f"{relative_dir}/AGENT.md"
 
-    if second_migrated:
-        frontmatter = rm.render_frontmatter(
-            {
-                "id": "role-b",
-                "phase": "build",
-                "capability": "code_author",
-                "model": "sonnet",
-                "codex_model": "gpt-5.6-terra",
-                "reasoning_effort": "medium",
-                "knowledge_focus": "role-b knowledge focus",
-            }
-        )
-        _write(agents_root / "domain" / "role-b" / "AGENT.md", frontmatter + "\n# Role B\n\nMigrated role.\n")
-    else:
-        _write(agents_root / "domain" / "role-b" / "AGENT.md", "# Role B\n\nLegacy role.\n")
-        catalog_entries["role-b"] = _legacy_record("domain/role-b/AGENT.md")
-        knowledge_focus["role-b"] = "role-b knowledge focus"
+
+def _build_two_role_fixture(root: Path) -> None:
+    """role-a and role-b are both migrated (frontmatter) roles; catalog.yaml
+    and routing.yaml are written to already match what the generator would
+    derive from that frontmatter, so `--check` fixtures start clean.
+    """
+    agents_root = root / "agents"
+    definition_a = _write_migrated_role(agents_root, "domain/role-a", "role-a", "role-a knowledge focus")
+    definition_b = _write_migrated_role(agents_root, "domain/role-b", "role-b", "role-b knowledge focus")
+
+    catalog_entries = {"role-a": _record(definition_a), "role-b": _record(definition_b)}
+    knowledge_focus = {"role-a": "role-a knowledge focus", "role-b": "role-b knowledge focus"}
 
     _write(agents_root / "catalog.yaml", _catalog_text(catalog_entries))
     _write(agents_root / "orchestration" / "routing.yaml", _routing_text(knowledge_focus))
@@ -263,14 +277,14 @@ class CheckModeFixtureTests(unittest.TestCase):
     def test_check_passes_on_freshly_built_fixture(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            _build_two_role_fixture(root, second_migrated=False)
+            _build_two_role_fixture(root)
             result = self._run_check(root)
             self.assertEqual(0, result.returncode, result.stderr)
 
     def test_check_fails_on_hand_edited_catalog(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            _build_two_role_fixture(root, second_migrated=False)
+            _build_two_role_fixture(root)
             _, catalog_path, _, _, _ = _paths(root)
             # Hand-edit formatting (not a value the generator would itself
             # re-derive differently) so the file on disk no longer matches
@@ -289,7 +303,7 @@ class CheckModeFixtureTests(unittest.TestCase):
     def test_check_fails_on_hand_edited_knowledge_focus(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            _build_two_role_fixture(root, second_migrated=False)
+            _build_two_role_fixture(root)
             _, _, routing_path, _, _ = _paths(root)
             # Hand-edit formatting inside the knowledge_focus block (extra
             # space after the colon) that the surgical splice's canonical
@@ -308,142 +322,113 @@ class CheckModeFixtureTests(unittest.TestCase):
             self.assertIn("routing.yaml", result.stderr)
 
 
-class DualFormatMergeTests(unittest.TestCase):
-    def test_legacy_only_fixture_merges_both_roles(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            _build_two_role_fixture(root, second_migrated=False)
-            agents_root, catalog_path, routing_path, order_path, header_path = _paths(root)
-            order_ids, roles = grm.build_role_model(agents_root, catalog_path, routing_path, order_path)
-            self.assertEqual(["role-a", "role-b"], order_ids)
-            self.assertEqual("role-a knowledge focus", roles["role-a"]["knowledge_focus"])
-            self.assertEqual("role-b knowledge focus", roles["role-b"]["knowledge_focus"])
+class RoleModelBuildTests(unittest.TestCase):
+    """`build_role_model` now reads role metadata exclusively from each
+    `AGENT.md`'s frontmatter; catalog.yaml/routing.yaml are not read here at
+    all (only the tests' own `--check` fixtures still write them, as
+    expected *rendered output* for `CheckModeFixtureTests`).
+    """
 
-    def test_mixed_migrated_and_legacy_fixture_merges_both_branches(self) -> None:
+    def test_two_migrated_roles_build_role_model(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            _build_two_role_fixture(root, second_migrated=True)
-            agents_root, catalog_path, routing_path, order_path, header_path = _paths(root)
-            order_ids, roles = grm.build_role_model(agents_root, catalog_path, routing_path, order_path)
+            _build_two_role_fixture(root)
+            agents_root, _catalog_path, _routing_path, order_path, _header_path = _paths(root)
+            order_ids, roles = grm.build_role_model(agents_root, order_path)
             self.assertEqual(["role-a", "role-b"], order_ids)
             self.assertEqual("domain/role-a/AGENT.md", roles["role-a"]["definition"])
             self.assertEqual("domain/role-b/AGENT.md", roles["role-b"]["definition"])
+            self.assertEqual("role-a knowledge focus", roles["role-a"]["knowledge_focus"])
             self.assertEqual("role-b knowledge focus", roles["role-b"]["knowledge_focus"])
 
             catalog_content = grm.render_catalog(order_ids, roles, HEADER_TEMPLATE)
             self.assertIn("role-b:", catalog_content)
             self.assertIn("gpt-5.6-terra", catalog_content)
 
+    def test_unmigrated_agent_md_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _build_two_role_fixture(root)
+            agents_root, _catalog_path, _routing_path, order_path, _header_path = _paths(root)
+
+            # Overwrite role-b's AGENT.md with plain prose carrying no
+            # frontmatter at all -- this must now be a generator error, not
+            # a silently-accepted transitional state.
+            (agents_root / "domain" / "role-b" / "AGENT.md").write_text(
+                "# Role B\n\nNo frontmatter here.\n", encoding="utf-8"
+            )
+
+            with self.assertRaisesRegex(grm.RoleMetadataError, "does not carry"):
+                grm.build_role_model(agents_root, order_path)
+
     def test_migrated_role_missing_required_field_fails_closed_with_no_fallback(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            _build_two_role_fixture(root, second_migrated=True)
-            agents_root, catalog_path, routing_path, order_path, header_path = _paths(root)
+            _build_two_role_fixture(root)
+            agents_root, _catalog_path, _routing_path, order_path, _header_path = _paths(root)
 
-            # Drop the frontmatter's knowledge_focus field entirely. Even
-            # though a routing.yaml legacy entry could in principle exist,
-            # the merge must not fall back to it for a migrated role.
+            # Drop the frontmatter's knowledge_focus field entirely -- there
+            # is no other source left to fall back to.
             role_b_path = agents_root / "domain" / "role-b" / "AGENT.md"
             content = role_b_path.read_text(encoding="utf-8")
             content = content.replace("knowledge_focus: role-b knowledge focus\n", "")
             role_b_path.write_text(content, encoding="utf-8")
 
             with self.assertRaisesRegex(grm.RoleMetadataError, r"role-b.*missing required field.*knowledge_focus"):
-                grm.build_role_model(agents_root, catalog_path, routing_path, order_path)
-
-    def test_migrated_role_frontmatter_id_mismatch_with_stale_catalog_key_fails_closed(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            _build_two_role_fixture(root, second_migrated=False)
-            agents_root, catalog_path, routing_path, order_path, header_path = _paths(root)
-
-            # Migrate role-b's AGENT.md to frontmatter declaring a
-            # different id, but leave the stale catalog.yaml entry (still
-            # keyed "role-b") in place.
-            frontmatter = rm.render_frontmatter(
-                {
-                    "id": "role-b-renamed",
-                    "phase": "build",
-                    "capability": "code_author",
-                    "model": "sonnet",
-                    "codex_model": "gpt-5.6-terra",
-                    "reasoning_effort": "medium",
-                    "knowledge_focus": "role-b knowledge focus",
-                }
-            )
-            (agents_root / "domain" / "role-b" / "AGENT.md").write_text(
-                frontmatter + "\n# Role B\n", encoding="utf-8"
-            )
-
-            with self.assertRaisesRegex(grm.RoleMetadataError, "does not match"):
-                grm.build_role_model(agents_root, catalog_path, routing_path, order_path)
+                grm.build_role_model(agents_root, order_path)
 
     def test_order_file_lists_id_with_no_matching_agent_md_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            _build_two_role_fixture(root, second_migrated=False)
-            agents_root, catalog_path, routing_path, order_path, header_path = _paths(root)
+            _build_two_role_fixture(root)
+            agents_root, _catalog_path, _routing_path, order_path, _header_path = _paths(root)
             order_path.write_text("role-a\nrole-b\nrole-c\n", encoding="utf-8")
 
             with self.assertRaisesRegex(grm.RoleMetadataError, "no matching AGENT.md"):
-                grm.build_role_model(agents_root, catalog_path, routing_path, order_path)
+                grm.build_role_model(agents_root, order_path)
 
     def test_discovered_agent_md_not_in_order_file_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            _build_two_role_fixture(root, second_migrated=False)
-            agents_root, catalog_path, routing_path, order_path, header_path = _paths(root)
-            _write(agents_root / "domain" / "role-c" / "AGENT.md", "# Role C\n")
-            catalog_text = catalog_path.read_text(encoding="utf-8")
-            catalog_text += "  role-c:\n" + "".join(
-                f"    {field}: {value}\n"
-                for field, value in _legacy_record("domain/role-c/AGENT.md").items()
-            )
-            catalog_path.write_text(catalog_text, encoding="utf-8")
+            _build_two_role_fixture(root)
+            agents_root, _catalog_path, _routing_path, order_path, _header_path = _paths(root)
+            _write_migrated_role(agents_root, "domain/role-c", "role-c", "role-c knowledge focus")
 
             with self.assertRaisesRegex(grm.RoleMetadataError, "not listed in"):
-                grm.build_role_model(agents_root, catalog_path, routing_path, order_path)
+                grm.build_role_model(agents_root, order_path)
 
     def test_duplicate_id_across_two_agent_md_files_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            _build_two_role_fixture(root, second_migrated=True)
-            agents_root, catalog_path, routing_path, order_path, header_path = _paths(root)
+            _build_two_role_fixture(root)
+            agents_root, _catalog_path, _routing_path, order_path, _header_path = _paths(root)
 
             # A second AGENT.md whose frontmatter claims role-b's id.
-            frontmatter = rm.render_frontmatter(
-                {
-                    "id": "role-b",
-                    "phase": "build",
-                    "capability": "code_author",
-                    "model": "sonnet",
-                    "codex_model": "gpt-5.6-terra",
-                    "reasoning_effort": "medium",
-                    "knowledge_focus": "duplicate role-b knowledge focus",
-                }
+            _write_migrated_role(
+                agents_root, "domain/role-b-duplicate", "role-b", "duplicate role-b knowledge focus"
             )
-            _write(agents_root / "domain" / "role-b-duplicate" / "AGENT.md", frontmatter + "\n# Role B Duplicate\n")
 
             with self.assertRaisesRegex(grm.RoleMetadataError, "duplicate role id"):
-                grm.build_role_model(agents_root, catalog_path, routing_path, order_path)
+                grm.build_role_model(agents_root, order_path)
 
 
 class TierConsistencyTests(unittest.TestCase):
     def test_tier_mismatch_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            _build_two_role_fixture(root, second_migrated=False)
-            agents_root, catalog_path, routing_path, order_path, header_path = _paths(root)
-            catalog_path.write_text(
-                catalog_path.read_text(encoding="utf-8").replace(
-                    "model: sonnet\n    codex_model: gpt-5.6-terra",
-                    "model: opus\n    codex_model: gpt-5.6-terra",
+            _build_two_role_fixture(root)
+            agents_root, _catalog_path, _routing_path, order_path, _header_path = _paths(root)
+            role_a_path = agents_root / "domain" / "role-a" / "AGENT.md"
+            role_a_path.write_text(
+                role_a_path.read_text(encoding="utf-8").replace(
+                    "model: sonnet\ncodex_model: gpt-5.6-terra",
+                    "model: opus\ncodex_model: gpt-5.6-terra",
                     1,
                 ),
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(grm.RoleMetadataError, "requires codex_model"):
-                grm.build_role_model(agents_root, catalog_path, routing_path, order_path)
+                grm.build_role_model(agents_root, order_path)
 
 
 class KnowledgeFocusSpliceTests(unittest.TestCase):

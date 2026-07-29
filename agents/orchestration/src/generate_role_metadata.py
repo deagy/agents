@@ -3,25 +3,23 @@
 `knowledge_focus` block from role metadata.
 
 This is the generator half of the frontmatter-based role-metadata format
-(the parsing/rendering primitives live in `role_metadata.py`). It reads, for
-every role, whichever of two sources currently holds that role's metadata:
-
-- **Migrated** roles (an `AGENT.md` that starts with `---`-delimited
-  frontmatter): every field comes from the frontmatter, with no fallback to
-  a legacy `catalog.yaml`/`routing.yaml` entry -- a field missing from
-  frontmatter is a hard error, never silently inherited.
-- **Legacy** (not yet migrated) roles: metadata comes from today's
-  `agents/catalog.yaml` entry plus `agents/orchestration/routing.yaml`'s
-  `knowledge_focus` entry, exactly as read today.
+(the parsing/rendering primitives live in `role_metadata.py`). Every role's
+`AGENT.md` must start with `---`-delimited frontmatter; every field comes
+from that frontmatter, with no fallback to any other source -- a field
+missing from frontmatter is a hard error, never silently inherited. An
+`AGENT.md` that does not carry frontmatter (see `role_metadata.is_migrated`)
+is a generator error, not a supported transitional state: `catalog.yaml` and
+`routing.yaml` are purely generated output now, never an input for role
+metadata.
 
 `agents/catalog-order.txt` supplies the dispatch-precedence order both
 generated files are built in, and is the source of truth for which role ids
 exist at all -- see that file's own header comment.
 
-As of this generator's introduction, zero roles have been migrated, so every
-run reproduces `agents/catalog.yaml` and `agents/orchestration/routing.yaml`
-byte-for-byte from their legacy sources; the generator only starts changing
-either file once a role's `AGENT.md` actually gains frontmatter.
+Every run derives `agents/catalog.yaml` and
+`agents/orchestration/routing.yaml`'s `knowledge_focus` block entirely from
+each role's `AGENT.md` frontmatter; re-running this generator after editing
+catalog-order.txt or a role's frontmatter is how those two files get updated.
 
 Regenerate after editing catalog-order.txt or a role's frontmatter:
 
@@ -39,7 +37,6 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from generate_global_plugin import (  # noqa: E402
@@ -53,7 +50,7 @@ from role_metadata import (  # noqa: E402
     parse_frontmatter,
     parse_order_file,
 )
-from routing import load_routing, parse_catalog_entries  # noqa: E402
+from routing import load_routing  # noqa: E402
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_AGENTS_ROOT = REPOSITORY_ROOT / "agents"
@@ -97,16 +94,16 @@ TIER_MAP: dict[str, tuple[str, str]] = {
 CATALOG_FIELD_ORDER = ("definition", "phase", "capability", "model", "codex_model", "reasoning_effort")
 
 # Historic hand-authored comment that sits directly above the first
-# `phase: authority` role block in today's catalog.yaml (lines 325-330,
-# immediately before the `product-owner-aide:` block). It documents
-# authority-aide policy, not any one role's metadata, so it does not belong
-# in frontmatter -- it is reproduced here verbatim so a Wave 0 (zero
-# migrations) run of this generator remains byte-identical to today's file.
-# If product-owner-aide is ever migrated to frontmatter, or reordered ahead
-# of another authority role in catalog-order.txt, this constant should move
-# to prefix whichever role becomes the first `phase: authority` entry, or be
-# turned into prose in a more durable location -- it is pinned to a specific
-# id only because that is where it already lives today.
+# `phase: authority` role block in catalog.yaml, immediately before the
+# `product-owner-aide:` block. It documents authority-aide policy, not any
+# one role's metadata, so it does not belong in frontmatter -- it is
+# reproduced here verbatim so this generator's rendered catalog.yaml stays
+# byte-identical to the hand-authored original. If product-owner-aide is
+# ever reordered ahead of another authority role in catalog-order.txt, this
+# constant should move to prefix whichever role becomes the first
+# `phase: authority` entry, or be turned into prose in a more durable
+# location -- it is pinned to a specific id only because that is where it
+# already lives today.
 ROLE_PREFIX_COMMENTS: dict[str, str] = {
     "product-owner-aide": (
         "  # `phase: authority` roles below prepare the decision package a human\n"
@@ -175,56 +172,35 @@ def load_order(order_path: Path) -> list[str]:
 
 
 def build_role_model(
-    agents_root: Path, catalog_path: Path, routing_path: Path, order_path: Path
+    agents_root: Path, order_path: Path
 ) -> tuple[list[str], dict[str, dict[str, str]]]:
-    """Merge legacy and (once they exist) migrated role metadata into a
-    single `(order_ids, roles)` result, `roles` keyed by role id and holding
+    """Build a single `(order_ids, roles)` result from every discovered
+    `AGENT.md`'s frontmatter, `roles` keyed by role id and holding
     `definition`/`phase`/`capability`/`model`/`codex_model`/
     `reasoning_effort`/`knowledge_focus`. Every cross-check is fail-closed
     and names the offending role id.
+
+    Every discovered `AGENT.md` must carry frontmatter (see
+    `role_metadata.is_migrated`) -- an unmigrated file is a
+    `RoleMetadataError`, not a supported fallback path.
     """
     order_ids = load_order(order_path)
     order_set = set(order_ids)
 
-    legacy_catalog = parse_catalog_entries(catalog_path.read_text(encoding="utf-8"))
-    routing_config = load_routing(routing_path)
-    knowledge_focus_legacy: dict[str, str] = routing_config.get("knowledge_focus", {})
-
-    legacy_path_to_id: dict[str, str] = {}
-    for legacy_id, fields in legacy_catalog.items():
-        definition = fields.get("definition")
-        if definition is None:
-            continue
-        if definition in legacy_path_to_id:
-            raise RoleMetadataError(
-                f"{catalog_path}: definition path {definition!r} is used by both "
-                f"{legacy_path_to_id[definition]!r} and {legacy_id!r}"
-            )
-        legacy_path_to_id[definition] = legacy_id
-
-    discovered: dict[str, tuple[bool, str]] = {}
+    discovered: dict[str, str] = {}
     for path in sorted(agents_root.rglob("AGENT.md")):
         relative = path.relative_to(agents_root).as_posix()
         text = path.read_text(encoding="utf-8")
-        discovered[relative] = (is_migrated(text), text)
+        if not is_migrated(text):
+            raise RoleMetadataError(f"{relative}: AGENT.md does not carry '---'-delimited frontmatter")
+        discovered[relative] = text
 
     id_to_path: dict[str, str] = {}
-    for relative, (migrated, text) in discovered.items():
-        if migrated:
-            fields, _body = parse_frontmatter(text)  # type: ignore[misc]
-            role_id = fields.get("id")
-            if not role_id:
-                raise RoleMetadataError(f"{relative}: migrated role frontmatter is missing required field 'id'")
-            stale_catalog_id = legacy_path_to_id.get(relative)
-            if stale_catalog_id is not None and stale_catalog_id != role_id:
-                raise RoleMetadataError(
-                    f"{relative}: frontmatter id {role_id!r} does not match "
-                    f"{catalog_path}'s existing key {stale_catalog_id!r} for this definition path"
-                )
-        else:
-            role_id = legacy_path_to_id.get(relative)
-            if role_id is None:
-                raise RoleMetadataError(f"{relative}: unmigrated AGENT.md has no matching {catalog_path} entry")
+    for relative, text in discovered.items():
+        fields, _body = parse_frontmatter(text)  # type: ignore[misc]
+        role_id = fields.get("id")
+        if not role_id:
+            raise RoleMetadataError(f"{relative}: frontmatter is missing required field 'id'")
         if role_id in id_to_path:
             raise RoleMetadataError(
                 f"duplicate role id {role_id!r}: {id_to_path[role_id]!r} and {relative!r}"
@@ -245,36 +221,17 @@ def build_role_model(
     roles: dict[str, dict[str, str]] = {}
     for role_id in order_ids:
         relative = id_to_path[role_id]
-        migrated, text = discovered[relative]
-        if migrated:
-            fields, _body = parse_frontmatter(text)  # type: ignore[misc]
-            required = ("phase", "capability", "model", "codex_model", "reasoning_effort", "knowledge_focus")
-            missing_fields = [field for field in required if field not in fields]
-            if missing_fields:
-                raise RoleMetadataError(
-                    f"role {role_id!r} ({relative}): frontmatter is missing required field(s): "
-                    + ", ".join(missing_fields)
-                )
-            record = {"definition": relative, **{field: fields[field] for field in required}}
-            source = relative
-        else:
-            legacy_fields = legacy_catalog[role_id]
-            knowledge_focus = knowledge_focus_legacy.get(role_id)
-            if knowledge_focus is None:
-                raise RoleMetadataError(
-                    f"role {role_id!r} ({relative}): missing its {routing_path} knowledge_focus entry"
-                )
-            record = {
-                "definition": legacy_fields.get("definition", relative),
-                "phase": legacy_fields.get("phase", ""),
-                "capability": legacy_fields.get("capability", ""),
-                "model": legacy_fields.get("model", ""),
-                "codex_model": legacy_fields.get("codex_model", ""),
-                "reasoning_effort": legacy_fields.get("reasoning_effort", ""),
-                "knowledge_focus": knowledge_focus,
-            }
-            source = str(catalog_path)
-        _validate_record(role_id, record, source)
+        text = discovered[relative]
+        fields, _body = parse_frontmatter(text)  # type: ignore[misc]
+        required = ("phase", "capability", "model", "codex_model", "reasoning_effort", "knowledge_focus")
+        missing_fields = [field for field in required if field not in fields]
+        if missing_fields:
+            raise RoleMetadataError(
+                f"role {role_id!r} ({relative}): frontmatter is missing required field(s): "
+                + ", ".join(missing_fields)
+            )
+        record = {"definition": relative, **{field: fields[field] for field in required}}
+        _validate_record(role_id, record, relative)
         roles[role_id] = record
 
     return order_ids, roles
@@ -379,7 +336,7 @@ def generate(
     order_path: Path = DEFAULT_ORDER,
     header_template_path: Path = DEFAULT_HEADER_TEMPLATE,
 ) -> dict[Path, str]:
-    order_ids, roles = build_role_model(agents_root, catalog_path, routing_path, order_path)
+    order_ids, roles = build_role_model(agents_root, order_path)
     header_template = header_template_path.read_text(encoding="utf-8")
     catalog_content = render_catalog(order_ids, roles, header_template)
 
