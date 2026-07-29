@@ -463,6 +463,7 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
             selected.append(relative)
         elif relative in role_paths or relative in {
             "agents/catalog.yaml",
+            "agents/catalog.schema.json",
             "agents/catalog-order.txt",
             "agents/_catalog_header.yaml.tmpl",
             "agents/authority/aides.yaml",
