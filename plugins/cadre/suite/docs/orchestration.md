@@ -4,7 +4,11 @@
 
 Use orchestration to turn a bounded task into a reviewable plan with the right
 specialists, evidence expectations, and handoffs. The selector plans work; it
-does not grant authority or replace accountable humans.
+does not grant authority or replace accountable humans. See the
+[glossary](terminology.md) for definitions of terms used throughout this
+guide (route, risk rule, team recipe, dispatch plan, quality gate, human
+gate, ...), and [sample selection output](sample-selection-output.md) for an
+annotated real plan.
 
 ## Plan a task
 
