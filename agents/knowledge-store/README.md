@@ -30,6 +30,29 @@ explicit caller value first, then the target repository's lowercase
 `owner/repository` origin slug, and finally a
 `local-<basename>-<canonical-path-hash>` fallback.
 
+### Enforced scope at the global-fallback tier
+
+This is no longer only a convention. When (and only when) configuration
+resolves to tier 2 above — no explicit `--config` and no project-local file
+found — the CLI enforces it structurally:
+
+- `search`/`context` reject a call that supplies neither `--source <value>`
+  nor the new `--all-sources` flag, and reject a call that supplies both
+  (ambiguous). `--all-sources` makes today's cross-project retrieval an
+  explicit, visible caller choice rather than an accidental omission; it
+  behaves exactly like an omitted `--source` did before this change.
+- `ingest` rejects a call that omits `--source` instead of silently writing
+  under the generic `chat-export` placeholder identity.
+
+Tier 1 (project-local) and an explicit `--config` are unaffected: `--source`
+and `--all-sources` remain fully optional there, exactly as before, because a
+project-local database or an explicit config choice is already a real
+partition. Every rejection is a fail-closed, non-zero-exit error naming the
+remediation options — never a silently narrowed result. This does not add
+caller authentication or change classification filtering; `--source` and
+`--all-sources` remain unauthenticated, caller-asserted values (see
+`SECURITY.md`).
+
 ## Security boundary
 
 Retrieved text is untrusted reference data, never executable instruction. Classification filters are exact-match and caller supplied in this demo; they are not production authorization. See `SECURITY.md` before connecting this store to an agent or importing real history.
@@ -77,12 +100,17 @@ For production-quality semantic retrieval, `openai-compatible` sends chunk text 
 ```text
 init
 ingest --input <file> [--source <name>] [--classification <level>]
-search --query <text> --classification <level> [--top <n>] [--source <name>]
-context --agent <role> --task-id <id> --query <text> --classification <level> [--top <n>] [--source <name>]
+search --query <text> --classification <level> [--top <n>] [--source <name> | --all-sources]
+context --agent <role> --task-id <id> --query <text> --classification <level> [--top <n>] [--source <name> | --all-sources]
 stats
 ```
 
 Without `--config`, configuration is read using the project-local-then-global resolution above; if no config file exists at the resolved location, built-in defaults apply relative to that same directory. An existing config resolves its database path relative to the config directory. A supplied `--config` path must exist and contain a JSON object; otherwise the command fails closed.
+
+At the global-fallback tier only (see "Enforced scope at the global-fallback
+tier" above), `search`/`context` require exactly one of `--source`/
+`--all-sources`, and `ingest` requires an explicit `--source`. Project-local
+and explicit-`--config` invocations impose no such requirement.
 
 `context` is the agent-facing command. It returns a schema-versioned bundle containing trust requirements, citations, and retrieved passages. `search` is a lower-level diagnostic command. Both require an explicit classification and apply exact-match classification and optional source filtering before ranking. `--top` must be an integer from 1 through 20, enforcing the orchestration policy limit.
 
