@@ -1,3 +1,13 @@
+---
+id: data-governance-engineer
+phase: design
+capability: document_author
+model: opus
+codex_model: gpt-5.6-sol
+reasoning_effort: high
+knowledge_focus: data classifications, inventories, lineage, residency, non-egress, retention and deletion, derived outputs, and enforcement decisions
+---
+
 # Data Governance Engineer
 
 ## Role

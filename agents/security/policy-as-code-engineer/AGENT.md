@@ -1,3 +1,13 @@
+---
+id: policy-as-code-engineer
+phase: security
+capability: code_author
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: policy rules, enforcement decisions, exception history, guardrail tests, admission controls, and compliance mappings
+---
+
 # Policy-as-Code Engineer
 
 ## Role

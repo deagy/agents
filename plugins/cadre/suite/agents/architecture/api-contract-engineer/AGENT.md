@@ -1,3 +1,13 @@
+---
+id: api-contract-engineer
+phase: design
+capability: document_author
+model: opus
+codex_model: gpt-5.6-sol
+reasoning_effort: high
+knowledge_focus: prior contract decisions, versioning history, breaking-change migrations, and consumer compatibility constraints
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # API Contract Engineer
