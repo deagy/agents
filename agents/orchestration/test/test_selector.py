@@ -226,6 +226,72 @@ class SelectorTests(unittest.TestCase):
         self.assertEqual(production_gate["contributing_routes"], ["production"])
         self.assertEqual([gate["id"] for gate in result["human_gates"]], ["production-change"])
 
+    def test_dispatch_disposition_is_staffed_when_a_primary_or_reviewer_is_selected(self) -> None:
+        result = plan(
+            task="Deploy to production with Terraform",
+            changed_files=["terraform/service/main.tf"],
+        )
+        self.assertEqual(result["dispatch_disposition"]["status"], "staffed")
+
+    def test_dispatch_disposition_is_no_agents_selected_when_nothing_matches(self) -> None:
+        result = plan(task="", changed_files=[])
+        self.assertEqual(result["status"], "needs-triage")
+        self.assertEqual(result["dispatch_disposition"], {
+            "status": "no-agents-selected",
+            "reason": "No route or risk rule matched this task; there is nothing to dispatch.",
+        })
+
+    def test_dispatch_disposition_flags_advisory_only_destructive_but_reviewable_workflow(self) -> None:
+        # Regression for issue #45: exporting a local backlog artifact and then
+        # deleting the source GitLab issues only ever matched change_intake's
+        # generic "delete" keyword, which lands product-intent-agent,
+        # requirements-agent, and code-reviewer in `support` with no primary
+        # or reviewer role selected. Without an explicit disposition field,
+        # that support-only selection was indistinguishable in the plan from a
+        # fully-staffed one, so an orchestrator could silently perform the
+        # destructive step itself with no structured reason surfaced.
+        result = plan(
+            task="Export the GitLab issues to a local backlog artifact, then delete the GitLab issues",
+            changed_files=[],
+        )
+        self.assertEqual(result["agents"]["primary"], [])
+        self.assertEqual(result["agents"]["reviewers"], [])
+        self.assertTrue(result["agents"]["support"])
+        self.assertEqual(result["dispatch_disposition"]["status"], "advisory-only")
+        for agent in result["agents"]["support"]:
+            self.assertIn(agent, result["dispatch_disposition"]["reason"])
+
+    def test_dispatch_disposition_is_staffed_via_reviewers_only_with_empty_primary(self) -> None:
+        # The existing "staffed" test only reaches that status via a route
+        # that also has a primary (infrastructure-provisioner). Pin the other
+        # half of `if groups["primary"] or groups["reviewers"]` independently:
+        # a risk rule with reviewers but no primary (authentication-authorization)
+        # must also be staffed on its own.
+        result = plan(
+            task="Rotate the session token used for authorization",
+            changed_files=[],
+        )
+        self.assertEqual(result["agents"]["primary"], [])
+        self.assertIn("security-reviewer", result["agents"]["reviewers"])
+        self.assertEqual(result["dispatch_disposition"]["status"], "staffed")
+
+    @unittest.skipUnless(AGENTIC_SDLC_AVAILABLE, "Agentic SDLC executable is required")
+    def test_dispatch_disposition_stays_advisory_only_when_support_is_gate_agents_only(self) -> None:
+        # In lifecycle-integrated mode, `_gate_agents` can add a default
+        # review agent (e.g. code-reviewer) to `support` for a route that has
+        # no primary or reviewers of its own (architecture-change: support
+        # only, quality_gates: [G3]). That must not get conflated with a real
+        # `reviewers`-group role -- this is the same "support looks staffed
+        # but isn't" risk issue #45 raised, via a second code path.
+        result = plan(
+            task="Discuss the new component's platform topology",
+            changed_files=[],
+        )
+        self.assertEqual(result["agents"]["primary"], [])
+        self.assertEqual(result["agents"]["reviewers"], [])
+        self.assertIn("code-reviewer", result["agents"]["support"])
+        self.assertEqual(result["dispatch_disposition"]["status"], "advisory-only")
+
     @unittest.skipUnless(AGENTIC_SDLC_AVAILABLE, "Agentic SDLC executable is required")
     def test_selects_product_intake_agents_and_gates_for_intent_only(self) -> None:
         result = plan(task="Capture product intent and requirements decomposition", changed_files=[])

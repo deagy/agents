@@ -257,6 +257,42 @@ def _build_quality_gates(
     ]
 
 
+def _build_dispatch_disposition(groups: dict[str, list[str]]) -> dict[str, Any]:
+    """Make explicit whether the selection can be dispatched as an accountable
+    executor/reviewer, or is advisory-only support with no such role selected.
+
+    Without this, a selection that only ever populated `agents.support`
+    (e.g. via `change_intake` or default gate review agents) is
+    indistinguishable in the plan from a fully-staffed one — the orchestrator
+    has no field to check before silently proceeding to execute a task
+    itself instead of reporting that no primary or reviewer role matched
+    (see the runbook/issue-45 gap this closes: destructive-but-reviewable
+    workflows going undispatched with no structured reason surfaced).
+    """
+    if groups["primary"] or groups["reviewers"]:
+        return {
+            "status": "staffed",
+            "reason": "A primary and/or reviewer role was selected and can be dispatched as an accountable executor or independent reviewer.",
+        }
+    if groups["support"]:
+        support_list = ", ".join(groups["support"])
+        return {
+            "status": "advisory-only",
+            "reason": (
+                f"Only support role(s) ({support_list}) were selected; no primary or reviewer role "
+                "matched this task. Support-only selections are advisory input, not an accountable "
+                "executor or independent reviewer. Before performing any destructive or "
+                "persistent-environment action directly, report this disposition and either dispatch "
+                "an available reviewer for independent pre-action verification or state explicitly "
+                "why no dispatch occurred."
+            ),
+        }
+    return {
+        "status": "no-agents-selected",
+        "reason": "No route or risk rule matched this task; there is nothing to dispatch.",
+    }
+
+
 def _build_knowledge_context(
     config: dict[str, Any], selected_agents: list[str], input_data: dict[str, Any]
 ) -> dict[str, Any]:
@@ -488,6 +524,7 @@ def build_dispatch_plan(
         "matched_routes": [match["id"] for match in matched_routes],
         "matched_risks": [{"id": match["id"], "reasons": _reasons(match)} for match in matched_risks],
         "agents": groups,
+        "dispatch_disposition": _build_dispatch_disposition(groups),
         "teams": teams,
         "lifecycle_tracking": lifecycle_tracking,
         "required_quality_gates": required_quality_gates,

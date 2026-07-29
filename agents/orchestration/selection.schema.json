@@ -4,7 +4,7 @@
   "title": "Local Agent Selection Plan",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "task_id", "dispatch_fingerprint", "generated_at", "status", "workflow", "inputs", "matched_routes", "matched_risks", "agents", "teams", "lifecycle_tracking", "required_quality_gates", "ignored_quality_gates", "gate_dispatch", "human_gates", "knowledge_context"],
+  "required": ["schema_version", "task_id", "dispatch_fingerprint", "generated_at", "status", "workflow", "inputs", "matched_routes", "matched_risks", "agents", "dispatch_disposition", "teams", "lifecycle_tracking", "required_quality_gates", "ignored_quality_gates", "gate_dispatch", "human_gates", "knowledge_context"],
   "properties": {
     "schema_version": { "const": 2 },
     "task_id": { "$ref": "#/$defs/nonempty" },
@@ -70,6 +70,15 @@
         "primary": { "$ref": "#/$defs/stringArray" },
         "reviewers": { "$ref": "#/$defs/stringArray" },
         "support": { "$ref": "#/$defs/stringArray" }
+      }
+    },
+    "dispatch_disposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": { "enum": ["staffed", "advisory-only", "no-agents-selected"] },
+        "reason": { "$ref": "#/$defs/nonempty" }
       }
     },
     "teams": {

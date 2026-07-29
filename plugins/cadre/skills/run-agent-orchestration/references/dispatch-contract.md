@@ -64,6 +64,7 @@ Check the plan's `lifecycle_tracking.status` (see SKILL.md's "Operating modes"):
 task_id: <id>
 mode: <mode>
 selection_status: <ready|needs-triage>
+dispatch_disposition: <staffed|advisory-only|no-agents-selected>
 agents:
   completed: []
   blocked: []
