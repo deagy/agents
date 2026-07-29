@@ -8,3 +8,4 @@ version	agents/orchestration/src/plugin_version.py	Read, check, or set the packa
 resolve-shared	agents/shared/src/resolve.py	Resolve effective shared config for the current project (resolve.py)
 mcp-dispatch-server	agents/orchestration/mcp/dispatch_server.py	Run the Codex MCP dispatch server (stdio; requires the mcp package)
 init	agents/shared/src/init_project.py	Guide a project through generating .agents/shared/ overlays (init_project.py)
+profile	agents/orchestration/src/profile_diff.py	Read-only provider/profile drift report against a consuming project's copy (profile_diff.py)
