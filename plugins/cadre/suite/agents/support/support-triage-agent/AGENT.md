@@ -1,3 +1,13 @@
+---
+id: support-triage-agent
+phase: support
+capability: document_author
+model: haiku
+codex_model: gpt-5.6-luna
+reasoning_effort: low
+knowledge_focus: prior incidents, user reports, reproduction notes, support runbooks, known workarounds, severity patterns, and ownership history
+---
+
 <!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->
 
 # Support Triage Agent

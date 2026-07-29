@@ -1,3 +1,13 @@
+---
+id: performance-testing-engineer
+phase: verify
+capability: test_author
+model: sonnet
+codex_model: gpt-5.6-terra
+reasoning_effort: medium
+knowledge_focus: load profiles, throughput and latency results, capacity-assumption drift, bottlenecks, and scaling-trigger accuracy
+---
+
 # Performance & Load Testing Engineer
 
 ## Role
