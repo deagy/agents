@@ -24,6 +24,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 ├── docs/                     # Audience-oriented guides and human-readable role index
 ├── IDENTITY.md               # Informational suite identity; never an authority source
 ├── CONTRIBUTING.md           # GitHub contribution and review workflow
+├── CHANGELOG.md              # Consumer-visible changes to what this suite ships
 └── README.md                 # This overview
 ```
 
@@ -32,11 +33,13 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 | Goal | Start here |
 | --- | --- |
 | Understand the suite | [IDENTITY.md](IDENTITY.md), then [documentation index](docs/README.md) |
+| Adopt this suite in a new project, start to finish | [Adopt-Cadre quickstart](docs/adopt-cadre-quickstart.md) |
 | Use the suite from a checkout | [Getting started](docs/getting-started.md) |
 | Select and coordinate agents | [Orchestration guide](docs/orchestration.md) |
 | Set up lifecycle gates conversationally (non-engineers) | `lifecycle-onboarding` skill — ask an agent to run it |
 | Set up lifecycle gates in a target project (direct CLI) | [Lifecycle and plugin operations](docs/lifecycle-and-plugin-operations.md) |
 | Find the right specialist | [Role index](docs/role-index.md), or ask an agent to run the `role-discovery` skill for a guided conversation |
+| See what changed recently | [CHANGELOG.md](CHANGELOG.md) |
 | Contribute here | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Operate the full system | [agents/RUNBOOK.md](agents/RUNBOOK.md) |
 
