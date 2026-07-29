@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -150,6 +151,57 @@ class ScalarRoundTripTests(unittest.TestCase):
         self.assertEqual(json.dumps("line one\nline two"), rm.emit_scalar("line one\nline two"))
         self.assertEqual(json.dumps("line one\rline two"), rm.emit_scalar("line one\rline two"))
 
+    def test_yaml_11_reserved_words_are_quoted_in_any_case(self) -> None:
+        # Unquoted, a real YAML 1.1 parser (e.g. yaml.safe_load, used by
+        # schema_validate.py on catalog.yaml) would type-coerce any of these
+        # to a bool or None instead of leaving them a string, diverging from
+        # what this module's own read_scalar would read back.
+        reserved_values = [
+            "true", "True", "TRUE",
+            "false", "False", "FALSE",
+            "yes", "Yes", "YES",
+            "no", "No", "NO",
+            "on", "On", "ON",
+            "off", "Off", "OFF",
+            "null", "Null", "NULL",
+            "~",
+        ]
+        for value in reserved_values:
+            with self.subTest(value=value):
+                self.assertEqual(json.dumps(value), rm.emit_scalar(value))
+
+    def test_bare_numeric_values_are_quoted(self) -> None:
+        # Unquoted, a real YAML parser resolves these as int/float, not
+        # string.
+        numeric_values = ["0", "1", "-1", "+1", "42", "3.14", "-0.5", ".5", "1e10", "-1.5e-10"]
+        for value in numeric_values:
+            with self.subTest(value=value):
+                self.assertEqual(json.dumps(value), rm.emit_scalar(value))
+
+    def test_non_numeric_non_reserved_values_stay_unquoted(self) -> None:
+        # Guard against over-quoting: a value that merely contains digits or
+        # letters resembling (but not equal to) a reserved word/number must
+        # still emit unquoted, since it is not actually type-coercion-prone.
+        self.assertEqual("v1-release-candidate", rm.emit_scalar("v1-release-candidate"))
+        self.assertEqual("truest-form", rm.emit_scalar("truest-form"))
+        self.assertEqual("not-really-null", rm.emit_scalar("not-really-null"))
+
+    def test_reserved_word_round_trip_agrees_with_real_yaml_parser(self) -> None:
+        # Synthetic round-trip proving yaml.safe_load and this module's own
+        # read_scalar now agree on a reserved-word-valued frontmatter field,
+        # where they would previously have diverged (yaml.safe_load would
+        # have resolved the unquoted token to bool/None, read_scalar would
+        # have returned the literal string).
+        import yaml
+
+        for value in ("yes", "NULL", "True", "off"):
+            with self.subTest(value=value):
+                emitted = rm.emit_scalar(value)
+                line = f"knowledge_focus: {emitted}\n"
+                parsed_by_real_yaml = yaml.safe_load(line)
+                self.assertEqual({"knowledge_focus": value}, parsed_by_real_yaml)
+                self.assertEqual(value, rm.read_scalar(emitted))
+
 
 class FrontmatterParsingTests(unittest.TestCase):
     def test_strip_frontmatter_leaves_body_byte_identical(self) -> None:
@@ -184,6 +236,26 @@ class FrontmatterParsingTests(unittest.TestCase):
     def test_render_frontmatter_requires_all_fields(self) -> None:
         with self.assertRaisesRegex(ValueError, "missing field"):
             rm.render_frontmatter({"id": "x"})
+
+    def test_render_frontmatter_rejects_unknown_fields(self) -> None:
+        fields = {
+            "id": "sample-role",
+            "phase": "build",
+            "capability": "code_author",
+            "model": "sonnet",
+            "codex_model": "gpt-5.6-terra",
+            "reasoning_effort": "medium",
+            "knowledge_focus": "sample knowledge focus",
+            "unexpected_field": "should not be accepted",
+        }
+        with self.assertRaisesRegex(ValueError, "unknown field.*unexpected_field"):
+            rm.render_frontmatter(fields)
+
+    def test_parse_frontmatter_unrecognized_line_raises(self) -> None:
+        # A non-blank line inside the frontmatter block that does not match
+        # the flat `key: value` shape (no colon at all here).
+        with self.assertRaisesRegex(ValueError, "unrecognized frontmatter line"):
+            rm.parse_frontmatter("---\nid: x\nthis line has no colon at all\n---\n")
 
     def test_field_with_embedded_newline_round_trips_through_render_and_parse(self) -> None:
         # Exercises the REAL round-trip path (render_frontmatter ->
@@ -429,6 +501,193 @@ class TierConsistencyTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(grm.RoleMetadataError, "requires codex_model"):
                 grm.build_role_model(agents_root, order_path)
+
+
+class FieldEnumValidationTests(unittest.TestCase):
+    """Dedicated fixtures for `_validate_record`'s individual field-enum
+    branches -- each of these previously had no dedicated test and was only
+    reachable incidentally (if at all) through the broader identity/
+    end-to-end tests, unlike the already-tested tier-consistency
+    cross-check (see TierConsistencyTests).
+    """
+
+    def _build_role_a_with_override(self, root: Path, **overrides: str) -> tuple[Path, Path]:
+        _build_two_role_fixture(root)
+        agents_root, _catalog_path, _routing_path, order_path, _header_path = _paths(root)
+        role_a_path = agents_root / "domain" / "role-a" / "AGENT.md"
+        text = role_a_path.read_text(encoding="utf-8")
+        for field, value in overrides.items():
+            fields = {
+                "id": "role-a",
+                "phase": "build",
+                "capability": "code_author",
+                "model": "sonnet",
+                "codex_model": "gpt-5.6-terra",
+                "reasoning_effort": "medium",
+                "knowledge_focus": "role-a knowledge focus",
+            }
+            fields[field] = value
+            role_a_path.write_text(
+                rm.render_frontmatter(fields) + "\n# role-a\n\nMigrated role.\n", encoding="utf-8"
+            )
+        return agents_root, order_path
+
+    def test_invalid_phase_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            agents_root, order_path = self._build_role_a_with_override(root, phase="not-a-real-phase")
+            with self.assertRaisesRegex(grm.RoleMetadataError, "phase 'not-a-real-phase' must be one of"):
+                grm.build_role_model(agents_root, order_path)
+
+    def test_invalid_capability_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            agents_root, order_path = self._build_role_a_with_override(root, capability="not-a-real-capability")
+            with self.assertRaisesRegex(
+                grm.RoleMetadataError, "capability 'not-a-real-capability' must be one of"
+            ):
+                grm.build_role_model(agents_root, order_path)
+
+    def test_invalid_model_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            agents_root, order_path = self._build_role_a_with_override(root, model="not-a-real-model")
+            with self.assertRaisesRegex(grm.RoleMetadataError, "model 'not-a-real-model' must be one of"):
+                grm.build_role_model(agents_root, order_path)
+
+    def test_invalid_codex_model_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            agents_root, order_path = self._build_role_a_with_override(root, codex_model="not-a-real-codex-model")
+            with self.assertRaisesRegex(
+                grm.RoleMetadataError, "codex_model 'not-a-real-codex-model' must be one of"
+            ):
+                grm.build_role_model(agents_root, order_path)
+
+    def test_invalid_reasoning_effort_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            agents_root, order_path = self._build_role_a_with_override(
+                root, reasoning_effort="not-a-real-effort"
+            )
+            with self.assertRaisesRegex(
+                grm.RoleMetadataError, "reasoning_effort 'not-a-real-effort' must be one of"
+            ):
+                grm.build_role_model(agents_root, order_path)
+
+    def test_empty_knowledge_focus_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            agents_root, order_path = self._build_role_a_with_override(root, knowledge_focus="")
+            with self.assertRaisesRegex(
+                grm.RoleMetadataError, "knowledge_focus must be a non-empty string"
+            ):
+                grm.build_role_model(agents_root, order_path)
+
+
+class MissingIdFieldTests(unittest.TestCase):
+    def test_frontmatter_missing_id_field_entirely_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _build_two_role_fixture(root)
+            agents_root, _catalog_path, _routing_path, order_path, _header_path = _paths(root)
+
+            # Hand-write frontmatter (bypassing render_frontmatter, which
+            # itself requires 'id') that omits the 'id' field entirely --
+            # every other required field is present and valid.
+            content = (
+                "---\n"
+                "phase: build\n"
+                "capability: code_author\n"
+                "model: sonnet\n"
+                "codex_model: gpt-5.6-terra\n"
+                "reasoning_effort: medium\n"
+                "knowledge_focus: role-c knowledge focus\n"
+                "---\n"
+                "# role-c\n\nMigrated role.\n"
+            )
+            _write(agents_root / "domain" / "role-c" / "AGENT.md", content)
+
+            with self.assertRaisesRegex(grm.RoleMetadataError, "missing required field 'id'"):
+                grm.build_role_model(agents_root, order_path)
+
+
+class KnowledgeFocusSpliceInvariantGuardTests(unittest.TestCase):
+    """Dedicated fixtures for `splice_knowledge_focus`'s own internal
+    safety-net checks (not the "exactly one anchor" checks, which already
+    have coverage in KnowledgeFocusSpliceTests). These two `RoleMetadataError`
+    sites exist purely to catch a bug in the splice algorithm itself, not any
+    real-world routing.yaml content -- so a dedicated fixture has to
+    deliberately misuse the function to trigger them.
+    """
+
+    def test_id_set_mismatch_after_splice_fails_closed(self) -> None:
+        # `roles` claims "role-b" exists, but neither the original
+        # knowledge_focus block nor order_ids mentions it, so the rebuilt
+        # block can never actually contain it -- the id-set invariant must
+        # catch this rather than silently emitting a routing.yaml whose
+        # knowledge_focus block is missing an id the caller asked for.
+        original = _routing_text({"role-a": "role-a focus"})
+        roles = {
+            "role-a": {"knowledge_focus": "role-a focus"},
+            "role-b": {"knowledge_focus": "role-b focus"},
+        }
+        with self.assertRaisesRegex(grm.RoleMetadataError, "knowledge_focus id-set mismatch after splice"):
+            grm.splice_knowledge_focus(original, ["role-a"], roles)
+
+    def test_splice_bug_that_corrupts_another_key_is_caught_by_invariant(self) -> None:
+        # Simulate the exact class of algorithm bug this invariant exists to
+        # catch: a brace-finder that returns the wrong region. Build a
+        # fixture where "change_intake" (a sibling top-level dict key) sits
+        # AFTER the real knowledge_focus block, then monkeypatch
+        # `_find_knowledge_focus_block` to report change_intake's own brace
+        # span instead of the real one. The splice then overwrites
+        # change_intake's content with knowledge_focus-shaped JSON, and the
+        # invariant must fail closed rather than silently corrupt that
+        # unrelated key.
+        payload = {
+            "version": 1,
+            "ignored_gates": [],
+            "routes": [],
+            "risk_rules": [],
+            "knowledge_focus": {"role-a": "role-a focus"},
+            "change_intake": {"keywords": ["implement"], "agents": [], "quality_gates": []},
+        }
+        original = json.dumps(payload, indent=2) + "\n"
+        roles = {"role-a": {"knowledge_focus": "role-a focus"}}
+
+        anchor = '  "change_intake": {'
+        anchor_start = original.index(anchor)
+        open_brace_index = original.index("{", anchor_start)
+        depth = 0
+        close_brace_index = None
+        for index in range(open_brace_index, len(original)):
+            character = original[index]
+            if character == "{":
+                depth += 1
+            elif character == "}":
+                depth -= 1
+                if depth == 0:
+                    close_brace_index = index
+                    break
+        assert close_brace_index is not None
+
+        with unittest.mock.patch.object(
+            grm, "_find_knowledge_focus_block", return_value=(open_brace_index, close_brace_index)
+        ):
+            with self.assertRaisesRegex(
+                grm.RoleMetadataError, "splice unexpectedly altered routing.yaml key 'change_intake'"
+            ):
+                grm.splice_knowledge_focus(original, ["role-a"], roles)
+
+    def test_no_matching_closing_brace_fails_closed(self) -> None:
+        # The knowledge_focus anchor and its opening brace are present, but
+        # the text is truncated before any closing brace -- the brace-finder
+        # must fail closed rather than scan past the end of the string.
+        original = '{\n  "knowledge_focus": {\n    "role-a": "x"\n'
+        roles = {"role-a": {"knowledge_focus": "x"}}
+        with self.assertRaisesRegex(grm.RoleMetadataError, "could not find a matching closing"):
+            grm.splice_knowledge_focus(original, ["role-a"], roles)
 
 
 class KnowledgeFocusSpliceTests(unittest.TestCase):
