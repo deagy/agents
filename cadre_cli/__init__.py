@@ -1,0 +1,135 @@
+"""In-process console-script entry point for the pip/pipx-installable `cadre`
+distribution.
+
+This package is a second, independent distribution channel for the
+`bin/cadre` / `bin/cadre.py` / `bin/cadre.ps1` checkout CLI (see
+pyproject.toml and README.md's "pip / pipx install" section) — it does not
+replace the checkout path, which stays completely unmodified.
+
+Rather than duplicating `bin/cadre.py`'s subcommand table and dispatch logic
+(REQ-PIP: prefer reuse over duplication), this module vendors a byte-for-byte
+build-time copy of the real `bin/` and `agents/` (plus `.agents/skills/` and
+`plugins/cadre/{provider.json,agent-catalog.json,profiles,extensions}`) trees
+under `cadre_cli/_vendor/` (see the wheel's
+`[tool.hatch.build.targets.wheel.force-include]` table) and then *loads and
+calls* the vendored `bin/cadre.py`'s own `main()` function in-process.
+
+Why this works with zero changes to `bin/cadre.py`: every dispatched script
+under `agents/` resolves its own resource roots (agents/catalog.yaml,
+agents/orchestration/routing.yaml, role AGENT.md files, etc.) purely from its
+own `Path(__file__).resolve()` position, walking a fixed number of parents —
+never from an environment variable or the caller's cwd. `bin/cadre.py` itself
+computes `REPO_ROOT = Path(__file__).resolve().parent.parent` the same way.
+As long as the vendored copy preserves the exact relative directory layout
+the checkout has (`<root>/bin/cadre.py` next to `<root>/agents/...`), loading
+the vendored `bin/cadre.py` from its vendored location makes every one of
+those `__file__`-relative computations land inside the vendored tree
+automatically, with no branching logic here and no edits to any dispatched
+script.
+
+`agentic_sdlc/__init__.py` (the sibling `agentic-sdlc` kernel distribution)
+uses the same "bundled copy sits next to the package, checked for at import
+time" shape for its single `contracts/` directory; this module applies the
+same principle to a larger, multi-directory resource surface by vendoring
+whole directory trees instead of one.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import sys
+from pathlib import Path
+from types import ModuleType
+
+_PACKAGE_DIR = Path(__file__).resolve().parent
+
+# Bundled (built wheel / installed package): resources live under
+# cadre_cli/_vendor/{bin,agents,.agents,plugins}, copied in at build time by
+# hatchling's force-include (see pyproject.toml). Editable/development
+# install (`pip install -e .` from this checkout): no _vendor/ directory
+# exists, so fall back to the real checkout root next to this package
+# directory, exactly like agentic_sdlc/__init__.py's PLUGIN_ROOT fallback.
+_BUNDLED_VENDOR_ROOT = _PACKAGE_DIR / "_vendor"
+if (_BUNDLED_VENDOR_ROOT / "bin" / "cadre.py").is_file():
+    VENDOR_ROOT = _BUNDLED_VENDOR_ROOT
+else:
+    VENDOR_ROOT = _PACKAGE_DIR.parent
+
+_VENDORED_CADRE_PY = VENDOR_ROOT / "bin" / "cadre.py"
+
+# `generate-plugin` (generate_global_plugin.py) reads agents/README.md,
+# agents/RUNBOOK.md, plugins/cadre/README.md, and the whole docs/ tree, then
+# *writes* regenerated output back into this repository's own
+# plugins/cadre/{suite,codex-agents,bin,.claude-plugin,.codex-plugin} --
+# a maintainer/regeneration operation against this repository's own tree,
+# not something that makes sense pointed at an installed site-packages
+# copy. `version` (plugin_version.py) reads
+# plugins/cadre/{.claude-plugin,.codex-plugin}/plugin.json, the Claude/Codex
+# plugin-marketplace manifests -- also not vendored, for the same reason.
+# `generate-authority-aides` (generate_authority_aides.py) is the same class
+# of operation: it *writes* regenerated agents/authority/*/AGENT.md files
+# back into this repository's own tree, so pointed at an installed
+# distribution it would silently write into site-packages instead of
+# failing -- same rationale, same fix.
+# Rather than vendor the entire plugins/cadre/ tree plus docs/ just to make
+# these "work" from an install (which would make write-into-site-packages
+# behavior appear supported when it isn't, and meaningfully bloat the
+# wheel), these subcommand names fail closed here, in the installed
+# (bundled _vendor/) dispatch path only -- the checkout path (`bin/cadre.py`
+# run directly, or via bin/cadre / bin/cadre.ps1) is completely untouched
+# and keeps working exactly as before.
+_CHECKOUT_ONLY_SUBCOMMANDS = frozenset({"generate-plugin", "version", "generate-authority-aides"})
+
+
+def _is_bundled_install() -> bool:
+    """True when running from the built/installed distribution (vendored
+    copy under cadre_cli/_vendor/), False for an editable/dev checkout
+    install where VENDOR_ROOT falls back to the real repository root.
+    """
+    return VENDOR_ROOT == _BUNDLED_VENDOR_ROOT
+
+
+def _load_vendored_cadre_module() -> ModuleType:
+    """Import the vendored (or, in an editable install, the real) bin/cadre.py
+    as a module, without adding anything to sys.path and without ever
+    touching the real bin/cadre.py file on disk.
+    """
+    if not _VENDORED_CADRE_PY.is_file():
+        raise RuntimeError(
+            f"cadre: could not locate bin/cadre.py under {VENDOR_ROOT} "
+            "-- this installed distribution is missing its vendored resources"
+        )
+    spec = importlib.util.spec_from_file_location("_cadre_vendored_bin_cadre", _VENDORED_CADRE_PY)
+    if spec is None or spec.loader is None:  # pragma: no cover - defensive
+        raise RuntimeError(f"cadre: failed to load module spec for {_VENDORED_CADRE_PY}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Console-script entry point (`[project.scripts] cadre = "cadre_cli:main"`).
+
+    Reproduces `bin/cadre.py`'s dispatch behavior in-process (no
+    subprocess-of-a-subprocess re-exec of a checkout shim) by calling the
+    vendored module's own `main()`, so the subcommand table, `sdlc`
+    delegation, and usage text are never duplicated here.
+    """
+    effective_argv = sys.argv[1:] if argv is None else argv
+    command = effective_argv[0] if effective_argv else None
+    if command in _CHECKOUT_ONLY_SUBCOMMANDS and _is_bundled_install():
+        print(
+            f"cadre {command}: requires a full repository checkout "
+            "(this is a maintainer/regeneration tool, not available from a "
+            "pip-installed distribution); clone "
+            "https://github.com/deagy/cadre and run "
+            f"./bin/cadre {command} instead.",
+            file=sys.stderr,
+        )
+        return 1
+    cadre_module = _load_vendored_cadre_module()
+    return cadre_module.main(effective_argv)
+
+
+if __name__ == "__main__":  # pragma: no cover - convenience for `python -m cadre_cli`
+    raise SystemExit(main())

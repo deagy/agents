@@ -1,0 +1,167 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cadre"
+dynamic = ["version"]
+description = "Pip/pipx-installable distribution of the Cadre secure-cloud subagent suite CLI (select, knowledge, sdlc, init, and related subcommands)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+dependencies = []
+
+[project.optional-dependencies]
+# `cadre resolve-shared` / `cadre init` can resolve YAML shared-config
+# overlays; JSON-only overlays work without this (see
+# agents/shared/requirements-validation.txt / agents/shared/src/resolve.py's
+# _require_yaml()). Not a core dependency so a plain `pip install cadre`
+# stays dependency-light for callers who only use JSON overlays.
+yaml = [
+    "PyYAML==6.0.3",
+]
+# `cadre mcp-dispatch-server` requires the official MCP Python SDK (stdio
+# transport only -- see agents/orchestration/mcp/requirements-mcp.txt /
+# dispatch_server.py's _require_mcp()). Not a core dependency: every other
+# subcommand works without it, and it fails closed with an install pointer
+# if invoked without this extra installed.
+mcp = [
+    "mcp==1.2.1",
+]
+
+[project.urls]
+Repository = "https://github.com/deagy/cadre"
+
+[project.scripts]
+cadre = "cadre_cli:main"
+
+[tool.hatch.version]
+path = "cadre_cli/_version.py"
+pattern = "VERSION = \"(?P<version>[^\"]+)\""
+
+[tool.hatch.build.targets.wheel]
+packages = ["cadre_cli"]
+
+# agents/, .agents/skills/, and bin/cadre.py + bin/subcommands.tsv stay a
+# single source of truth at their existing top-level checkout locations
+# (not duplicated under cadre_cli/ in the source tree) -- hatchling's
+# force-include copies each of them into the built wheel only, at build
+# time, so an installed/pipx distribution carries its own bundled copy
+# without the checkout ever having two live copies to keep in sync. See
+# cadre_cli/__init__.py's VENDOR_ROOT resolution for the runtime lookup that
+# matches this.
+#
+# hatchling's force-include does not honor [tool.hatch.build] exclude
+# patterns (verified empirically), so each subtree below is listed
+# individually rather than force-including the whole `agents/` directory
+# and trying to exclude `test/`, `examples/`, `runs/`, `data/`, and
+# `proposed-knowledge/` afterward -- those are dev-only/generated-at-runtime
+# paths that no dispatched script reads as a packaged resource, so they are
+# simply never listed here. `__pycache__`/`*.pyc` are skipped by hatchling
+# by default even under force-include.
+[tool.hatch.build.targets.wheel.force-include]
+"bin/cadre.py" = "cadre_cli/_vendor/bin/cadre.py"
+"bin/subcommands.tsv" = "cadre_cli/_vendor/bin/subcommands.tsv"
+
+"agents/catalog.yaml" = "cadre_cli/_vendor/agents/catalog.yaml"
+"agents/architecture" = "cadre_cli/_vendor/agents/architecture"
+"agents/authority" = "cadre_cli/_vendor/agents/authority"
+"agents/data" = "cadre_cli/_vendor/agents/data"
+"agents/documentation" = "cadre_cli/_vendor/agents/documentation"
+"agents/engineering" = "cadre_cli/_vendor/agents/engineering"
+"agents/governance" = "cadre_cli/_vendor/agents/governance"
+"agents/operations" = "cadre_cli/_vendor/agents/operations"
+"agents/planning" = "cadre_cli/_vendor/agents/planning"
+"agents/review" = "cadre_cli/_vendor/agents/review"
+"agents/security" = "cadre_cli/_vendor/agents/security"
+"agents/support" = "cadre_cli/_vendor/agents/support"
+"agents/testing" = "cadre_cli/_vendor/agents/testing"
+"agents/workflows" = "cadre_cli/_vendor/agents/workflows"
+
+"agents/knowledge-store/AGENT.md" = "cadre_cli/_vendor/agents/knowledge-store/AGENT.md"
+"agents/knowledge-store/README.md" = "cadre_cli/_vendor/agents/knowledge-store/README.md"
+"agents/knowledge-store/SECURITY.md" = "cadre_cli/_vendor/agents/knowledge-store/SECURITY.md"
+"agents/knowledge-store/agent-context.schema.json" = "cadre_cli/_vendor/agents/knowledge-store/agent-context.schema.json"
+"agents/knowledge-store/canonical-message.schema.json" = "cadre_cli/_vendor/agents/knowledge-store/canonical-message.schema.json"
+"agents/knowledge-store/config.example.json" = "cadre_cli/_vendor/agents/knowledge-store/config.example.json"
+"agents/knowledge-store/src" = "cadre_cli/_vendor/agents/knowledge-store/src"
+
+"agents/orchestration/escalation-policy.md" = "cadre_cli/_vendor/agents/orchestration/escalation-policy.md"
+"agents/orchestration/handoff-contracts.md" = "cadre_cli/_vendor/agents/orchestration/handoff-contracts.md"
+"agents/orchestration/knowledge-retrieval-policy.yaml" = "cadre_cli/_vendor/agents/orchestration/knowledge-retrieval-policy.yaml"
+"agents/orchestration/review-response-template.md" = "cadre_cli/_vendor/agents/orchestration/review-response-template.md"
+"agents/orchestration/routing.yaml" = "cadre_cli/_vendor/agents/orchestration/routing.yaml"
+"agents/orchestration/selection.schema.json" = "cadre_cli/_vendor/agents/orchestration/selection.schema.json"
+"agents/orchestration/task-brief-template.md" = "cadre_cli/_vendor/agents/orchestration/task-brief-template.md"
+"agents/orchestration/src" = "cadre_cli/_vendor/agents/orchestration/src"
+"agents/orchestration/mcp" = "cadre_cli/_vendor/agents/orchestration/mcp"
+
+"agents/shared/README.md" = "cadre_cli/_vendor/agents/shared/README.md"
+"agents/shared/agent-autonomy.yaml" = "cadre_cli/_vendor/agents/shared/agent-autonomy.yaml"
+"agents/shared/cloud-guardrails.md" = "cadre_cli/_vendor/agents/shared/cloud-guardrails.md"
+"agents/shared/control-mapping-template.yaml" = "cadre_cli/_vendor/agents/shared/control-mapping-template.yaml"
+"agents/shared/definition-of-done.md" = "cadre_cli/_vendor/agents/shared/definition-of-done.md"
+"agents/shared/knowledge-use-policy.md" = "cadre_cli/_vendor/agents/shared/knowledge-use-policy.md"
+"agents/shared/library-standards.yaml" = "cadre_cli/_vendor/agents/shared/library-standards.yaml"
+"agents/shared/operating-principles.md" = "cadre_cli/_vendor/agents/shared/operating-principles.md"
+"agents/shared/platform-impact-profile.yaml" = "cadre_cli/_vendor/agents/shared/platform-impact-profile.yaml"
+"agents/shared/requirements-validation.txt" = "cadre_cli/_vendor/agents/shared/requirements-validation.txt"
+"agents/shared/risk-severity-model.md" = "cadre_cli/_vendor/agents/shared/risk-severity-model.md"
+"agents/shared/secure-development-policy.md" = "cadre_cli/_vendor/agents/shared/secure-development-policy.md"
+"agents/shared/team-profile.yaml" = "cadre_cli/_vendor/agents/shared/team-profile.yaml"
+"agents/shared/technology-standards.md" = "cadre_cli/_vendor/agents/shared/technology-standards.md"
+"agents/shared/init-presets" = "cadre_cli/_vendor/agents/shared/init-presets"
+"agents/shared/output-schemas" = "cadre_cli/_vendor/agents/shared/output-schemas"
+"agents/shared/src" = "cadre_cli/_vendor/agents/shared/src"
+
+".agents/skills" = "cadre_cli/_vendor/.agents/skills"
+
+# Needed for `cadre sdlc` (bin/cadre.py's dispatch_sdlc() passes
+# --provider REPO_ROOT/plugins/cadre/provider.json to the externally
+# installed `agentic-sdlc` binary). Only the manifest + the resources it
+# references (agent_catalog, profile_roots, extension_roots) are vendored;
+# plugins/cadre/{suite,codex-agents,skills,bin,README.md} are the separate
+# Claude/Codex plugin distribution channel and are out of scope here.
+"plugins/cadre/provider.json" = "cadre_cli/_vendor/plugins/cadre/provider.json"
+"plugins/cadre/agent-catalog.json" = "cadre_cli/_vendor/plugins/cadre/agent-catalog.json"
+"plugins/cadre/profiles" = "cadre_cli/_vendor/plugins/cadre/profiles"
+"plugins/cadre/extensions" = "cadre_cli/_vendor/plugins/cadre/extensions"
+
+# `cadre generate-role-metadata` (generate_role_metadata.py) reads these two
+# top-level agents/ files as its source of truth for dispatch-precedence
+# order and the generated-file header template; `cadre bootstrap-codex`
+# (sync_codex_agents.py's DEFAULT_SOURCE) reads plugins/cadre/codex-agents/
+# as the default set of wrappers to install into the caller's own ~/.codex/
+# config. Both subcommands only *read* these resources (bootstrap-codex
+# writes into the caller's own home directory, never back into this
+# package), so vendoring them is safe and keeps these two subcommands fully
+# working from an installed distribution -- unlike generate-plugin/version
+# below, which fail closed instead (see cadre_cli/__init__.py).
+"agents/catalog-order.txt" = "cadre_cli/_vendor/agents/catalog-order.txt"
+"agents/_catalog_header.yaml.tmpl" = "cadre_cli/_vendor/agents/_catalog_header.yaml.tmpl"
+"plugins/cadre/codex-agents" = "cadre_cli/_vendor/plugins/cadre/codex-agents"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "cadre_cli/**",
+    "bin/cadre.py",
+    "bin/subcommands.tsv",
+    "agents/**",
+    ".agents/skills/**",
+    "plugins/cadre/provider.json",
+    "plugins/cadre/agent-catalog.json",
+    "plugins/cadre/profiles/**",
+    "plugins/cadre/extensions/**",
+    "plugins/cadre/codex-agents/**",
+    "README.md",
+]
+exclude = [
+    "agents/*/test/**",
+    "agents/orchestration/examples/**",
+    "agents/orchestration/runs/**",
+    "agents/knowledge-store/examples/**",
+    "agents/knowledge-store/proposed-knowledge/**",
+    "agents/knowledge-store/data/**",
+    "**/__pycache__/**",
+    "**/*.pyc",
+]

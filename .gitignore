@@ -52,3 +52,8 @@ evidence/
 node_modules/
 plugins/cline/dist/
 plugins/cline/*.tsbuildinfo
+
+# Build artifacts for the root-level `cadre` pip/pipx distribution
+# (pyproject.toml / cadre_cli/); `python -m build` writes here.
+/dist/
+/build/
