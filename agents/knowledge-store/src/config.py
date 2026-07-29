@@ -43,6 +43,14 @@ def _positive_integer(value: Any, name: str, minimum: int = 1) -> None:
 PROJECT_LOCAL_RELATIVE_PATH = Path(".agents") / "knowledge-store" / "config.json"
 MAXIMUM_WALK_DEPTH = 64
 
+# Config-resolution tiers (KS-FR-1). Exposed so callers (cli.py) can gate
+# behavior — e.g. requiring an explicit project scope — only at the shared
+# global-fallback tier, without altering the resolution order itself
+# (KS-FR-2).
+TIER_EXPLICIT_CONFIG = "explicit-config"
+TIER_PROJECT_LOCAL = "project-local"
+TIER_GLOBAL_FALLBACK = "global-fallback"
+
 
 def find_project_local_config(start: Path) -> Path | None:
     """Walk upward from `start` for a project-local `.agents/knowledge-store/config.json`.
@@ -85,16 +93,30 @@ def default_config_path() -> Path:
     return base / "config.json"
 
 
-def load_config(config_path: str | None = None) -> dict[str, Any]:
-    """Load config, failing closed when an explicit path does not exist."""
+def load_config(
+    config_path: str | None = None, *, return_tier: bool = False
+) -> dict[str, Any] | tuple[dict[str, Any], str]:
+    """Load config, failing closed when an explicit path does not exist.
+
+    By default returns only the merged, resolved config dict, exactly as
+    before. Pass `return_tier=True` to additionally receive which of the
+    three resolution tiers (`TIER_EXPLICIT_CONFIG`, `TIER_PROJECT_LOCAL`,
+    `TIER_GLOBAL_FALLBACK`) supplied the config actually loaded — this is a
+    read-only exposure of a fact resolution already determines internally
+    (KS-FR-1); it does not change resolution order or precedence (KS-FR-2),
+    and the existing fail-closed `FileNotFoundError` for a missing explicit
+    `--config` still fires before the tier is even computed (KS-FR-3).
+    """
     implicit_project_config = False
     if config_path:
         selected = Path(config_path).resolve()
         if not selected.is_file():
             raise FileNotFoundError(f"Explicit config file does not exist: {selected}")
+        tier = TIER_EXPLICIT_CONFIG
     else:
         selected = default_config_path()
         implicit_project_config = find_project_local_config(Path.cwd()) == selected
+        tier = TIER_PROJECT_LOCAL if implicit_project_config else TIER_GLOBAL_FALLBACK
 
     supplied: dict[str, Any] = {}
     if selected.is_file():
@@ -136,4 +158,6 @@ def load_config(config_path: str | None = None) -> dict[str, Any]:
         raise ValueError("chunking.overlap_characters must be a non-negative integer")
     if chunking["overlap_characters"] >= chunking["max_characters"]:
         raise ValueError("chunk overlap must be smaller than max_characters")
+    if return_tier:
+        return config, tier
     return config
