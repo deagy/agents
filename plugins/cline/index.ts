@@ -90,7 +90,7 @@ const setup = (api: SetupApi, ctx: SetupContext) => {
         } catch (caught) {
           const err = caught as { message?: string; stderr?: string };
           return {
-            error: err.message ?? "agents select failed",
+            error: [err.stderr?.trim(), err.message].filter(Boolean).join("\n") || "agents select failed",
             stderr: err.stderr,
           };
         }
