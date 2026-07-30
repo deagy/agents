@@ -1,8 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { execFile } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { promisify } from "node:util";
 import type { AgentTool } from "@cline/sdk";
 import { plugin, type SetupApi, type SetupContext } from "./index.ts";
+
+const execFileAsync = promisify(execFile);
 
 const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(PLUGIN_DIR, "..", "..");
@@ -147,6 +153,43 @@ describe("cadre plugin", () => {
     // And the round-trip must preserve the data.
     const reparsed = JSON.parse(JSON.stringify(result));
     expect(reparsed).toEqual(result);
+  });
+
+  describe("agents_select against a workspace root that is not this checkout", () => {
+    // Regression test for the bug found investigating a Cline report of
+    // non-deterministic "JSON.stringify cannot serialize cyclic structures"
+    // errors: the plugin used to resolve the cadre binary as a bare
+    // "./bin/cadre" spawned with `cwd: rootPath`, which only ever worked
+    // when rootPath happened to be this repository itself. Any other
+    // project (e.g. deagy/agentic-sdlc, which has no bin/cadre of its own)
+    // deterministically failed with `spawn ./bin/cadre ENOENT`. This fixture
+    // is a throwaway git repo standing in for "some other project" — it has
+    // no bin/cadre, matching that failure mode exactly.
+    let otherWorkspace: string;
+
+    beforeAll(async () => {
+      otherWorkspace = mkdtempSync(path.join(tmpdir(), "cadre-cline-plugin-test-"));
+      await execFileAsync("git", ["init", "-q"], { cwd: otherWorkspace });
+    });
+
+    afterAll(() => {
+      rmSync(otherWorkspace, { recursive: true, force: true });
+    });
+
+    it("resolves the cadre binary relative to this plugin, not the target workspace", async () => {
+      const tools = await registerTools(otherWorkspace);
+      const tool = findTool(tools, "agents_select");
+
+      const result = (await tool.execute(
+        { task: "xyzzy plugh", files: "no-such-extension.zzz" },
+        {} as never,
+      )) as Record<string, unknown>;
+
+      // Before the fix this was `{ error: "spawn ./bin/cadre ENOENT", ... }`.
+      expect(result.error).toBeUndefined();
+      expect(result.status).toBe("needs-triage");
+      expect((result.inputs as Record<string, unknown>).repository_root).toBe(otherWorkspace);
+    });
   });
 
   it("agents_select result is a plain object with no hidden properties", async () => {
