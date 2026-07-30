@@ -1,10 +1,21 @@
 import { execFile } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { z } from "zod";
 import { type AgentPlugin, createTool } from "@cline/sdk";
 import { safeJsonStringify } from "@cline/shared";
 
 const execFileAsync = promisify(execFile);
+
+// Resolved from this module's own location, not the target workspace: the
+// `cadre` CLI lives at <this plugin's checkout>/bin/cadre regardless of which
+// project's rootPath the tool is invoked against. Resolving it relative to
+// rootPath instead (as a bare "./bin/cadre" with `cwd: rootPath`) only works
+// when rootPath happens to be this repository itself, and fails closed with
+// ENOENT in every other consumer project.
+const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url));
+const CADRE_BIN = path.resolve(PLUGIN_DIR, "..", "..", "bin", "cadre");
 
 const AgentsSelectInputSchema = z.object({
   task: z
@@ -97,17 +108,17 @@ const setup = (api: SetupApi, ctx: SetupContext) => {
 
         try {
           const { stdout } = await execFileAsync(
-            "./bin/cadre",
+            CADRE_BIN,
             buildSelectArgs(input, rootPath),
             { cwd: rootPath },
           );
           return sanitizeToolResult(JSON.parse(stdout));
         } catch (caught) {
           const err = caught as { message?: string; stderr?: string };
-          return {
+          return sanitizeToolResult({
             error: [err.stderr?.trim(), err.message].filter(Boolean).join("\n") || "agents_select failed",
             stderr: err.stderr,
-          };
+          }) as AgentsSelectError;
         }
       },
     }),
