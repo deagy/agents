@@ -128,4 +128,38 @@ describe("cadre plugin", () => {
     expect(typeof result.error).toBe("string");
     expect(result.error).toMatch(/workspace root/i);
   });
+
+  it("agents_select result is fully re-serializable (sanitizeToolResult guards against cycles)", async () => {
+    const tools = await registerTools(REPO_ROOT);
+    const tool = findTool(tools, "agents_select");
+
+    const result = (await tool.execute(
+      { task: "Review README changes", files: "README.md", classification: "internal" },
+      {} as never,
+    )) as Record<string, unknown>;
+
+    // The sanitizeToolResult wrapper must produce a result that can be
+    // round-tripped through JSON.stringify without throwing — this is the
+    // contract that protects against downstream SDK hooks injecting circular
+    // references (e.g., Error objects with e.error === e).
+    expect(() => JSON.stringify(result)).not.toThrow();
+
+    // And the round-trip must preserve the data.
+    const reparsed = JSON.parse(JSON.stringify(result));
+    expect(reparsed).toEqual(result);
+  });
+
+  it("agents_select result is a plain object with no hidden properties", async () => {
+    const tools = await registerTools(REPO_ROOT);
+    const tool = findTool(tools, "agents_select");
+
+    const result = (await tool.execute(
+      { task: "Review README changes", files: "README.md", classification: "internal" },
+      {} as never,
+    )) as Record<string, unknown>;
+
+    // sanitizeToolResult re-parses through JSON, which strips functions,
+    // symbols, and undefined values. The result must be a plain object.
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+  });
 });
