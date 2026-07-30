@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { z } from "zod";
 import { type AgentPlugin, createTool } from "@cline/sdk";
+import { safeJsonStringify } from "@cline/shared";
 
 const execFileAsync = promisify(execFile);
 
@@ -53,6 +54,20 @@ export type SetupApi = Parameters<SetupFn>[0];
 export type SetupContext = Parameters<SetupFn>[1];
 export type { AgentsSelectInput, AgentsSelectError };
 
+/**
+ * Sanitize a tool result to ensure it is fully JSON-serializable without
+ * circular references, hidden properties, or non-JSON values (functions,
+ * symbols, undefined). Uses the SDK's safeJsonStringify which detects and
+ * replaces cycles with "[Circular]" rather than throwing.
+ */
+function sanitizeToolResult(input: unknown): Record<string, unknown> | AgentsSelectError {
+  try {
+    return JSON.parse(safeJsonStringify(input)) as Record<string, unknown>;
+  } catch {
+    return { error: "agents_select failed: result could not be serialized" };
+  }
+}
+
 const setup = (api: SetupApi, ctx: SetupContext) => {
   const rootPath = ctx.workspaceInfo?.rootPath;
 
@@ -86,11 +101,11 @@ const setup = (api: SetupApi, ctx: SetupContext) => {
             buildSelectArgs(input, rootPath),
             { cwd: rootPath },
           );
-          return JSON.parse(stdout) as Record<string, unknown>;
+          return sanitizeToolResult(JSON.parse(stdout));
         } catch (caught) {
           const err = caught as { message?: string; stderr?: string };
           return {
-            error: [err.stderr?.trim(), err.message].filter(Boolean).join("\n") || "agents select failed",
+            error: [err.stderr?.trim(), err.message].filter(Boolean).join("\n") || "agents_select failed",
             stderr: err.stderr,
           };
         }
