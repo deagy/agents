@@ -996,6 +996,421 @@
           "database-reliability"
         ]
       }
+    },
+    {
+      "id": "HALT-AUTHORITY-1",
+      "description": "halt-determination route; authored to isolate the route",
+      "task": "Issue a halt determination for this workstream",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-HALT-AUTHORITY-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "halt-authority"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "halt-determination"
+        ]
+      }
+    },
+    {
+      "id": "APPROVAL-ROUTER-1",
+      "description": "approval-routing route; authored to isolate the route",
+      "task": "Run approval routing to see who must approve this artifact",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-APPROVAL-ROUTER-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "approval-router"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "approval-routing"
+        ]
+      }
+    },
+    {
+      "id": "DOCTRINE-CONFORMANCE-1",
+      "description": "doctrine-conformance-check route; authored to isolate the route",
+      "task": "Run a doctrine conformance check on this narrative before release",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-DOCTRINE-CONFORMANCE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "doctrine-conformance"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "doctrine-conformance-check"
+        ]
+      }
+    },
+    {
+      "id": "ARCHITECTURE-AUTHORITY-1",
+      "description": "architecture-authority-review route; authored to isolate the route",
+      "task": "Verify this change passes through the approved abstraction layer boundary",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-ARCHITECTURE-AUTHORITY-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "architecture-authority"
+        ],
+        "reviewers": [
+          "infrastructure-reviewer"
+        ],
+        "support": [
+          "product-intent-agent",
+          "requirements-agent"
+        ],
+        "matched_routes": [
+          "architecture-authority-review"
+        ]
+      }
+    },
+    {
+      "id": "SCOPE-BOUNDARY-1",
+      "description": "scope-boundary-check route; authored to isolate the route",
+      "task": "Run a scope boundary check on this new backlog item",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-SCOPE-BOUNDARY-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "scope-boundary"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "scope-boundary-check"
+        ]
+      }
+    },
+    {
+      "id": "PHASE-GATE-1",
+      "description": "phase-gate-check route; authored to isolate the route",
+      "task": "Run the phase gate check before the next phase transition",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-PHASE-GATE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "phase-gate"
+        ],
+        "reviewers": [
+          "compliance-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "phase-gate-check"
+        ]
+      }
+    },
+    {
+      "id": "ASSUMPTION-REGISTER-1",
+      "description": "assumption-register route; authored to isolate the route",
+      "task": "Add an entry to the assumption register for this premise",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-ASSUMPTION-REGISTER-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "assumption-register"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "assumption-register"
+        ]
+      }
+    },
+    {
+      "id": "DECISION-RECORD-1",
+      "description": "decision-record-capture route; authored to isolate the route",
+      "task": "Record who decided this and why in a decision record",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-DECISION-RECORD-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "decision-record"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "decision-record-capture"
+        ]
+      }
+    },
+    {
+      "id": "RED-TEAM-1",
+      "description": "red-team-assessment route; authored to isolate the route",
+      "task": "Run a red team assessment of the deployed system",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-RED-TEAM-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "red-team"
+        ],
+        "reviewers": [
+          "security-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "red-team-assessment"
+        ]
+      }
+    },
+    {
+      "id": "PREMORTEM-1",
+      "description": "premortem route; authored to isolate the route",
+      "task": "Run a premortem on this planned commitment",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-PREMORTEM-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "premortem"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "premortem"
+        ]
+      }
+    },
+    {
+      "id": "FIRST-PRINCIPLES-1",
+      "description": "first-principles-challenge route; authored to isolate the route",
+      "task": "Run a first principles challenge on this design constraint",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-FIRST-PRINCIPLES-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "first-principles-challenger"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "first-principles-challenge"
+        ]
+      }
+    },
+    {
+      "id": "SUBTRACTION-1",
+      "description": "subtraction-review route; authored to isolate the route",
+      "task": "Run a subtraction review of this scope increase",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-SUBTRACTION-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "subtraction-agent"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "subtraction-review"
+        ]
+      }
+    },
+    {
+      "id": "FALSIFICATION-1",
+      "description": "falsification-test route; authored to isolate the route",
+      "task": "Run a falsification test on this correctness claim",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-FALSIFICATION-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "falsification-agent"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "falsification-test"
+        ]
+      }
+    },
+    {
+      "id": "DEPLOYMENT-REALIST-1",
+      "description": "deployment-realism-review route; authored to isolate the route",
+      "task": "Run a deployment realism review of this pilot",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-DEPLOYMENT-REALIST-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "deployment-realist"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "deployment-realism-review"
+        ]
+      }
+    },
+    {
+      "id": "CLASSIFICATION-MARKING-1",
+      "description": "classification-and-marking route; authored to isolate the route",
+      "task": "Run the classification and marking gate before this artifact leaves the environment",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-CLASSIFICATION-MARKING-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "classification-and-marking-gate"
+        ],
+        "reviewers": [
+          "compliance-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "classification-and-marking"
+        ]
+      }
+    },
+    {
+      "id": "CLAIM-CONFORMANCE-1",
+      "description": "claim-conformance-check route; authored to isolate the route",
+      "task": "Run a claim conformance check on this floor script review",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-CLAIM-CONFORMANCE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "claim-conformance"
+        ],
+        "reviewers": [
+          "compliance-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "claim-conformance-check"
+        ]
+      }
+    },
+    {
+      "id": "VENDOR-REGISTER-1",
+      "description": "vendor-register-review route; authored to isolate the route",
+      "task": "Run a vendor register review for drift in tooling assessments",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-VENDOR-REGISTER-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "vendor-register-steward"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "vendor-register-review"
+        ]
+      }
+    },
+    {
+      "id": "RETENTION-DELETION-1",
+      "description": "retention-deletion-execution route; authored to isolate the route",
+      "task": "Execute the retention and deletion obligation for this data",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-RETENTION-DELETION-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "retention-and-deletion-executor"
+        ],
+        "reviewers": [
+          "security-reviewer",
+          "compliance-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "retention-deletion-execution"
+        ]
+      }
+    },
+    {
+      "id": "AGENT-PERF-EVAL-1",
+      "description": "agent-performance-evaluation route; authored to isolate the route",
+      "task": "Run an agent performance evaluation on recent outputs",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-AGENT-PERF-EVAL-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "agent-performance-evaluator"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "agent-performance-evaluation"
+        ]
+      }
+    },
+    {
+      "id": "AGENT-VERSION-CONTROL-1",
+      "description": "agent-version-provenance route; authored to isolate the route",
+      "task": "Check agent version control for which version produced this artifact",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-AGENT-VERSION-CONTROL-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "agent-version-control"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "agent-version-provenance"
+        ]
+      }
+    },
+    {
+      "id": "IP-PROVENANCE-1",
+      "description": "ip-provenance-determination route; authored to isolate the route",
+      "task": "Produce an ip determination for this artifact",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-IP-PROVENANCE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "ip-provenance-agent"
+        ],
+        "reviewers": [],
+        "support": [],
+        "matched_routes": [
+          "ip-provenance-determination"
+        ]
+      }
     }
   ]
 }

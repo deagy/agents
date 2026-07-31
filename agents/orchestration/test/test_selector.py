@@ -145,6 +145,186 @@ class SelectorTests(unittest.TestCase):
         self.assertIn("security-reviewer", result["agents"]["reviewers"])
         self.assertIn("compliance-reviewer", result["agents"]["reviewers"])
 
+    def test_selects_halt_authority_for_halt_determination(self) -> None:
+        result = plan(
+            task="Issue a halt determination for this workstream",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['halt-authority'])
+        # Absolute-force finding: structurally backed by a human_gate, not
+        # just asserted in AGENT.md prose.
+        self.assertEqual([g["id"] for g in result["human_gates"]], ["halt-authority-determination"])
+
+    def test_selects_approval_router_for_approval_routing(self) -> None:
+        result = plan(
+            task="Run approval routing to see who must approve this artifact",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['approval-router'])
+
+    def test_selects_doctrine_conformance_for_doctrine_check(self) -> None:
+        result = plan(
+            task="Run a doctrine conformance check on this narrative before release",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['doctrine-conformance'])
+
+    def test_selects_architecture_authority_for_abstraction_layer_review(self) -> None:
+        result = plan(
+            task="Verify this change passes through the approved abstraction layer boundary",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['architecture-authority'])
+        self.assertEqual(result["agents"]["reviewers"], ["infrastructure-reviewer"])
+        self.assertEqual([g["id"] for g in result["human_gates"]], ["architecture-boundary-violation"])
+
+    def test_selects_scope_boundary_for_backlog_check(self) -> None:
+        result = plan(
+            task="Run a scope boundary check on this new backlog item",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['scope-boundary'])
+
+    def test_selects_phase_gate_for_phase_transition(self) -> None:
+        result = plan(
+            task="Run the phase gate check before the next phase transition",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['phase-gate'])
+        self.assertEqual(result["agents"]["reviewers"], ["compliance-reviewer"])
+
+    def test_selects_assumption_register_for_recorded_premise(self) -> None:
+        result = plan(
+            task="Add an entry to the assumption register for this premise",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['assumption-register'])
+
+    def test_selects_decision_record_for_captured_decision(self) -> None:
+        result = plan(
+            task="Record who decided this and why in a decision record",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['decision-record'])
+
+    def test_selects_red_team_for_adversarial_assessment(self) -> None:
+        result = plan(
+            task="Run a red team assessment of the deployed system",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['red-team'])
+        self.assertEqual(result["agents"]["reviewers"], ['security-reviewer'])
+
+    def test_selects_premortem_for_planned_commitment(self) -> None:
+        result = plan(
+            task="Run a premortem on this planned commitment",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['premortem'])
+
+    def test_selects_first_principles_challenger_for_constraint_challenge(self) -> None:
+        result = plan(
+            task="Run a first principles challenge on this design constraint",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['first-principles-challenger'])
+
+    def test_selects_subtraction_agent_for_scope_increase(self) -> None:
+        result = plan(
+            task="Run a subtraction review of this scope increase",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['subtraction-agent'])
+
+    def test_selects_falsification_agent_for_correctness_claim(self) -> None:
+        result = plan(
+            task="Run a falsification test on this correctness claim",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['falsification-agent'])
+
+    def test_selects_deployment_realist_for_pilot_review(self) -> None:
+        result = plan(
+            task="Run a deployment realism review of this pilot",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['deployment-realist'])
+
+    def test_selects_classification_and_marking_gate_for_boundary_crossing(self) -> None:
+        result = plan(
+            task="Run the classification and marking gate before this artifact leaves the environment",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['classification-and-marking-gate'])
+        self.assertEqual(result["agents"]["reviewers"], ["compliance-reviewer"])
+        self.assertEqual([g["id"] for g in result["human_gates"]], ["classification-and-marking"])
+
+    def test_selects_claim_conformance_for_external_artifact(self) -> None:
+        result = plan(
+            task="Run a claim conformance check on this floor script review",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['claim-conformance'])
+        self.assertEqual(result["agents"]["reviewers"], ["compliance-reviewer"])
+
+    def test_selects_vendor_register_steward_for_tooling_drift(self) -> None:
+        result = plan(
+            task="Run a vendor register review for drift in tooling assessments",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['vendor-register-steward'])
+
+    def test_selects_retention_and_deletion_executor_for_obligation(self) -> None:
+        result = plan(
+            task="Execute the retention and deletion obligation for this data",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['retention-and-deletion-executor'])
+        self.assertEqual(result["agents"]["reviewers"], ["security-reviewer", "compliance-reviewer"])
+        self.assertEqual([g["id"] for g in result["human_gates"]], ["retention-deletion-execution"])
+
+    def test_selects_agent_performance_evaluator_for_output_review(self) -> None:
+        result = plan(
+            task="Run an agent performance evaluation on recent outputs",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['agent-performance-evaluator'])
+
+    def test_selects_agent_version_control_for_provenance_check(self) -> None:
+        result = plan(
+            task="Check agent version control for which version produced this artifact",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['agent-version-control'])
+
+    def test_selects_ip_provenance_agent_for_ip_determination(self) -> None:
+        result = plan(
+            task="Produce an ip determination for this artifact",
+            changed_files=[],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ['ip-provenance-agent'])
+
     def test_two_route_task_forms_cross_stack_build_team_only(self) -> None:
         result = plan(
             task="Add a React upload form backed by a PostgreSQL API",

@@ -168,6 +168,10 @@ def _build_human_gates(risks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         "destructive-action": "An authorized human must approve the exact destructive action and recovery plan.",
         "accountable-human-escalation": "An accountable human owner or approval group must make the requested decision.",
         "privileged-identity-change": "An authorized human must approve privileged identity, credential, or break-glass changes.",
+        "halt-authority-determination": "An accountable human must confirm or lift a halt-authority stop determination before affected work resumes.",
+        "architecture-boundary-violation": "An authorized human must approve any infrastructure boundary crossing architecture-authority found missing a required element.",
+        "classification-and-marking": "An authorized human must approve an artifact's classification/marking before it may leave the environment.",
+        "retention-deletion-execution": "An authorized human must confirm the retention/deletion obligation and scope before execution.",
     }
     gate_ids = _unique(
         risk["rule"].get("human_gate")
