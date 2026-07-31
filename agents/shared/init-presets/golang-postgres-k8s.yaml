@@ -1,4 +1,4 @@
-# Example `agents init --stack golang-postgres-k8s` starter preset.
+# Example `cadre init --stack golang-postgres-k8s` starter preset.
 #
 # A stack preset is a static, human-reviewed RG-A-only starter fragment: it
 # may only propose values for team-profile.yaml / library-standards.yaml /
@@ -8,7 +8,7 @@
 # cloud-guardrails.md — governance answers always start blank and always
 # require explicit human input (THREAT-MODEL-HARDENING-5).
 #
-# A preset only *suggests* values; `agents init` still requires an explicit
+# A preset only *suggests* values; `cadre init` still requires an explicit
 # kept/overridden/deferred field_decisions entry for every field it touches,
 # same as any other answer.
 rg_a_stack:

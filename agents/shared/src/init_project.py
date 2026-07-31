@@ -2,7 +2,7 @@
 """Guide a project through generating `.agents/shared/<filename>` overlays.
 
 Implements REQ-SC-GENERIC-0001 rev 2 / ARCH-SC-GENERIC-0001 (G3-approved):
-`agents init` walks a project through RG-A (stack/tooling opinions), RG-B
+`cadre init` walks a project through RG-A (stack/tooling opinions), RG-B
 (governance/autonomy narrowing), and RG-C (platform impact-profile guided fill-in)
 and writes the resulting overlays through a single, containment-checked write
 chokepoint. It never invents a new config format: every file it writes is
@@ -166,7 +166,7 @@ def _refuse_if_self_checkout_resolved(resolved: Path) -> None:
     if _is_same_or_descendant(resolved, REPO_ROOT):
         raise InitError(
             f"refusing to write into this agents suite's own checkout ({REPO_ROOT}); "
-            "`agents init` writes only into a consuming project's .agents/shared/, never here"
+            "`cadre init` writes only into a consuming project's .agents/shared/, never here"
         )
     # Walk from the target up through its ancestors (not just the target
     # itself), so a target that is a genuine subdirectory of an unrelated
@@ -319,7 +319,7 @@ def _extract_managed_block_body(existing_text: str | None) -> str | None:
 
 
 # Separator between prior-run addendum entries inside technology-standards.md's
-# managed block (finding 1): each `agents init` run that supplies a new
+# managed block (finding 1): each `cadre init` run that supplies a new
 # addendum appends it as its own entry rather than replacing whatever a prior
 # run already wrote there. Kept distinct from ordinary blank-line paragraph
 # breaks so a single multi-paragraph addendum from one run is never split
@@ -418,7 +418,7 @@ def build_guardrails_overlay(
 
 def autonomy_allowed_choices(default_value: str) -> list[str]:
     """Every ranked value at or above (more restrictive than) the default's
-    rank — the exhaustive, closed set `agents init` may ever offer or accept
+    rank — the exhaustive, closed set `cadre init` may ever offer or accept
     for an agent-autonomy.yaml field. No free text is ever accepted."""
     default_rank = _autonomy_rank("<candidate>", default_value)
     return [
@@ -508,7 +508,7 @@ def build_autonomy_overlay(
         if fixed_key in fragment:
             raise InitError(
                 f"agent-autonomy.yaml field {fixed_key!r} is fixed policy contract and may never "
-                "be set through `agents init` (B-003)"
+                "be set through `cadre init` (B-003)"
             )
     existing_text = _read_existing_overlay_text(target_root, _AUTONOMY_FILENAME)
     existing: dict[str, Any] = _require_yaml().safe_load(existing_text) or {} if existing_text else {}

@@ -26,7 +26,7 @@ plugin's bin/ directory onto the Bash tool's PATH for the duration of a session
 (convention-based, no plugin.json field required), so an orchestrating Claude
 Code agent gets `cadre <subcommand>` for free once this plugin is installed,
 without the human's own shell PATH being touched (that part stays manual — see
-README.md "System-wide install"; no plugin can modify a user's shell profile).
+README.md "Put `cadre` on `PATH`"; no plugin can modify a user's shell profile).
 Codex CLI has no equivalent bin/ auto-discovery, so this is a Claude-Code-only
 convenience layered on top of the manual PATH setup, not a replacement for it.
 

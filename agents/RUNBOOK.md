@@ -570,7 +570,7 @@ Follow `workflows/knowledge-ingestion.md` and read `knowledge-store/SECURITY.md`
 
 ### Prepare and test
 
-`bin/cadre` resolves the Python 3.10+ interpreter for you. One-time global setup, from anywhere `cadre` is on `PATH` (see "System-wide install" in `../README.md`):
+`bin/cadre` resolves the Python 3.10+ interpreter for you. One-time global setup, from anywhere `cadre` is on `PATH` (see "Put `cadre` on `PATH`" in `../README.md`):
 
 ```sh
 mkdir -p ~/.agents/knowledge-store
