@@ -1066,7 +1066,9 @@
         "primary": [
           "architecture-authority"
         ],
-        "reviewers": [],
+        "reviewers": [
+          "infrastructure-reviewer"
+        ],
         "support": [
           "product-intent-agent",
           "requirements-agent"
@@ -1107,7 +1109,9 @@
         "primary": [
           "phase-gate"
         ],
-        "reviewers": [],
+        "reviewers": [
+          "compliance-reviewer"
+        ],
         "support": [],
         "matched_routes": [
           "phase-gate-check"
@@ -1280,7 +1284,9 @@
         "primary": [
           "classification-and-marking-gate"
         ],
-        "reviewers": [],
+        "reviewers": [
+          "compliance-reviewer"
+        ],
         "support": [],
         "matched_routes": [
           "classification-and-marking"
@@ -1299,7 +1305,9 @@
         "primary": [
           "claim-conformance"
         ],
-        "reviewers": [],
+        "reviewers": [
+          "compliance-reviewer"
+        ],
         "support": [],
         "matched_routes": [
           "claim-conformance-check"
@@ -1337,7 +1345,10 @@
         "primary": [
           "retention-and-deletion-executor"
         ],
-        "reviewers": [],
+        "reviewers": [
+          "security-reviewer",
+          "compliance-reviewer"
+        ],
         "support": [],
         "matched_routes": [
           "retention-deletion-execution"

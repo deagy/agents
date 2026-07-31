@@ -152,6 +152,9 @@ class SelectorTests(unittest.TestCase):
             classification="internal",
         )
         self.assertEqual(result["agents"]["primary"], ['halt-authority'])
+        # Absolute-force finding: structurally backed by a human_gate, not
+        # just asserted in AGENT.md prose.
+        self.assertEqual([g["id"] for g in result["human_gates"]], ["halt-authority-determination"])
 
     def test_selects_approval_router_for_approval_routing(self) -> None:
         result = plan(
@@ -176,6 +179,8 @@ class SelectorTests(unittest.TestCase):
             classification="internal",
         )
         self.assertEqual(result["agents"]["primary"], ['architecture-authority'])
+        self.assertEqual(result["agents"]["reviewers"], ["infrastructure-reviewer"])
+        self.assertEqual([g["id"] for g in result["human_gates"]], ["architecture-boundary-violation"])
 
     def test_selects_scope_boundary_for_backlog_check(self) -> None:
         result = plan(
@@ -192,6 +197,7 @@ class SelectorTests(unittest.TestCase):
             classification="internal",
         )
         self.assertEqual(result["agents"]["primary"], ['phase-gate'])
+        self.assertEqual(result["agents"]["reviewers"], ["compliance-reviewer"])
 
     def test_selects_assumption_register_for_recorded_premise(self) -> None:
         result = plan(
@@ -265,6 +271,8 @@ class SelectorTests(unittest.TestCase):
             classification="internal",
         )
         self.assertEqual(result["agents"]["primary"], ['classification-and-marking-gate'])
+        self.assertEqual(result["agents"]["reviewers"], ["compliance-reviewer"])
+        self.assertEqual([g["id"] for g in result["human_gates"]], ["classification-and-marking"])
 
     def test_selects_claim_conformance_for_external_artifact(self) -> None:
         result = plan(
@@ -273,6 +281,7 @@ class SelectorTests(unittest.TestCase):
             classification="internal",
         )
         self.assertEqual(result["agents"]["primary"], ['claim-conformance'])
+        self.assertEqual(result["agents"]["reviewers"], ["compliance-reviewer"])
 
     def test_selects_vendor_register_steward_for_tooling_drift(self) -> None:
         result = plan(
@@ -289,6 +298,8 @@ class SelectorTests(unittest.TestCase):
             classification="internal",
         )
         self.assertEqual(result["agents"]["primary"], ['retention-and-deletion-executor'])
+        self.assertEqual(result["agents"]["reviewers"], ["security-reviewer", "compliance-reviewer"])
+        self.assertEqual([g["id"] for g in result["human_gates"]], ["retention-deletion-execution"])
 
     def test_selects_agent_performance_evaluator_for_output_review(self) -> None:
         result = plan(

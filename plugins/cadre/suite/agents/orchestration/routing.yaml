@@ -69,7 +69,8 @@
       "id": "phase-gate-check",
       "paths": [],
       "keywords": ["phase gate", "phase exit criteria", "phase transition"],
-      "primary": ["phase-gate"]
+      "primary": ["phase-gate"],
+      "reviewers": ["compliance-reviewer"]
     },
     {
       "id": "first-principles-challenge",
@@ -112,7 +113,8 @@
       "id": "claim-conformance-check",
       "paths": [],
       "keywords": ["claim conformance", "external claim review", "floor script review"],
-      "primary": ["claim-conformance"]
+      "primary": ["claim-conformance"],
+      "reviewers": ["compliance-reviewer"]
     },
     {
       "id": "vendor-register-review",
@@ -440,6 +442,33 @@
       "reviewers": ["compliance-reviewer"],
       "support": ["evidence-curator"],
       "quality_gates": ["G4", "G7"]
+    },
+    {
+      "id": "halt-authority-required",
+      "keywords": ["halt determination", "stop the line", "emergency stop", "system halt"],
+      "paths": [],
+      "human_gate": "halt-authority-determination"
+    },
+    {
+      "id": "architecture-boundary-violation-required",
+      "keywords": ["abstraction layer", "infrastructure boundary violation", "architecture authority review"],
+      "paths": [],
+      "reviewers": ["infrastructure-reviewer"],
+      "human_gate": "architecture-boundary-violation"
+    },
+    {
+      "id": "classification-marking-required",
+      "keywords": ["classification and marking", "data classification gate", "artifact leaving the environment"],
+      "paths": [],
+      "reviewers": ["compliance-reviewer"],
+      "human_gate": "classification-and-marking"
+    },
+    {
+      "id": "retention-deletion-execution-required",
+      "keywords": ["retention and deletion", "execute data deletion", "retention obligation"],
+      "paths": [],
+      "reviewers": ["security-reviewer", "compliance-reviewer"],
+      "human_gate": "retention-deletion-execution"
     },
     {
       "id": "production",
