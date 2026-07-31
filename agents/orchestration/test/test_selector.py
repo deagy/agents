@@ -258,6 +258,33 @@ class SelectorTests(unittest.TestCase):
         # definition (build_dispatch_plan.py's KERNEL_MUTATION_GATE_IDS).
         self.assertEqual(result["human_gates"][0]["kernel_mutation_gate_id"], "production-deployment")
 
+    @unittest.skipUnless(AGENTIC_SDLC_AVAILABLE, "Agentic SDLC executable is required")
+    def test_kernel_mutation_gate_ids_reconcile_against_live_kernel_contract(self) -> None:
+        # KERNEL_MUTATION_GATE_IDS is a static, hand-authored cross-reference
+        # to the Agentic SDLC kernel's own contracts/mutation-gates.json ids
+        # -- accurate at the time it was written, but nothing previously
+        # caught the kernel silently renaming/removing an id out from under
+        # it. This pulls the real contract from whatever kernel is on PATH
+        # (the same resolution AGENTIC_SDLC_AVAILABLE/try_lifecycle_contract
+        # already use) and asserts every non-None mapped value still exists.
+        from build_dispatch_plan import KERNEL_MUTATION_GATE_IDS
+
+        executable = os.environ.get("AGENTIC_SDLC_BIN") or shutil.which("agentic-sdlc")
+        result = subprocess.run(
+            [executable, "show-contract", "mutation-gates"],
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        contract = json.loads(result.stdout)
+        kernel_ids = {entry["id"] for entry in contract["human_only"]}
+        for cadre_id, kernel_id in KERNEL_MUTATION_GATE_IDS.items():
+            if kernel_id is None:
+                continue
+            with self.subTest(cadre_id=cadre_id, kernel_id=kernel_id):
+                self.assertIn(kernel_id, kernel_ids)
+
     def test_dispatch_disposition_is_staffed_when_a_primary_or_reviewer_is_selected(self) -> None:
         result = plan(
             task="Deploy to production with Terraform",

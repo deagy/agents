@@ -63,7 +63,7 @@ role_query_focus:
   threat-modeler: prior threats, incidents, mitigations, trust boundaries, and residual risks
   frontend-engineer: React patterns, UX decisions, accessibility, API contracts, and browser security
   backend-engineer: Go patterns, PostgreSQL decisions, schemas, migrations, APIs, and operational lessons
-  application-engineer: cross-stack contracts, integration decisions, shared behavior, and prior implementation patterns
+  application-engineer: prior catalog/routing changes, dispatch-plan schema history, and this suite's own tooling conventions
   infrastructure-provisioner: Proxmox, OpenTofu, Talos, Kubernetes, Helm, storage, and networking patterns
   cicd-engineer: GitLab pipelines, runners, artifacts, signing, deployments, and rollback
   test-engineer: Gherkin scenarios, regressions, failure cases, and quality history

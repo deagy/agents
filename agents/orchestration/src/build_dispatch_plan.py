@@ -18,6 +18,22 @@ CLASSIFICATIONS = {"public", "internal", "confidential", "restricted"}
 MAXIMUM_KNOWLEDGE_TOP = 20
 KNOWLEDGE_STORE_ROOT = Path(__file__).resolve().parents[2] / "knowledge-store"
 STANDALONE_REASON = "Agentic SDLC executable not found; team dispatch is unaffected."
+# Cross-references the Agentic SDLC kernel's own mutation-gate taxonomy
+# (contracts/mutation-gates.json) rather than parallel-defining it here.
+# Cadre's own ids are kept as-is (routing.yaml and existing consumers
+# already depend on them) -- this is an explicit, additive pointer to
+# the kernel's authoritative id, not a rename. `None` where cadre has no
+# kernel mutation-gate counterpart. Module-level (not a local in
+# _build_human_gates) so a reconciliation test can check every non-None
+# value here still exists in a live kernel checkout's mutation-gates.json,
+# rather than this silently drifting if the kernel ever renames an id.
+KERNEL_MUTATION_GATE_IDS = {
+    "persistent-database-migration": "persistent-migration",
+    "production-change": "production-deployment",
+    "destructive-action": "destructive-operation",
+    "privileged-identity-change": "privileged-identity-change",
+    "accountable-human-escalation": None,
+}
 
 
 def _lifecycle_gates(require_sdlc: bool) -> tuple[list[dict[str, Any]] | None, int | None]:
@@ -153,19 +169,6 @@ def _build_human_gates(risks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         "accountable-human-escalation": "An accountable human owner or approval group must make the requested decision.",
         "privileged-identity-change": "An authorized human must approve privileged identity, credential, or break-glass changes.",
     }
-    # Cross-references the Agentic SDLC kernel's own mutation-gate taxonomy
-    # (contracts/mutation-gates.json) rather than parallel-defining it here.
-    # Cadre's own ids are kept as-is (routing.yaml and existing consumers
-    # already depend on them) -- this is an explicit, additive pointer to
-    # the kernel's authoritative id, not a rename. `None` where cadre has no
-    # kernel mutation-gate counterpart.
-    kernel_mutation_gate_ids = {
-        "persistent-database-migration": "persistent-migration",
-        "production-change": "production-deployment",
-        "destructive-action": "destructive-operation",
-        "privileged-identity-change": "privileged-identity-change",
-        "accountable-human-escalation": None,
-    }
     gate_ids = _unique(
         risk["rule"].get("human_gate")
         for risk in risks
@@ -176,7 +179,7 @@ def _build_human_gates(risks: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "id": gate_id,
             "required": True,
             "reason": descriptions.get(gate_id, "An authorized human decision is required."),
-            "kernel_mutation_gate_id": kernel_mutation_gate_ids.get(gate_id),
+            "kernel_mutation_gate_id": KERNEL_MUTATION_GATE_IDS.get(gate_id),
         }
         for gate_id in gate_ids
     ]
