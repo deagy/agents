@@ -63,6 +63,27 @@ agents:
     model: sonnet
     codex_model: gpt-5.6-terra
     reasoning_effort: medium
+  premortem:
+    definition: planning/premortem/AGENT.md
+    phase: planning
+    capability: document_author
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
+  assumption-register:
+    definition: planning/assumption-register/AGENT.md
+    phase: planning
+    capability: document_author
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
+  scope-boundary:
+    definition: planning/scope-boundary/AGENT.md
+    phase: planning
+    capability: read_only
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
   governance-planner:
     definition: governance/governance-planner/AGENT.md
     phase: design
@@ -70,6 +91,13 @@ agents:
     model: opus
     codex_model: gpt-5.6-sol
     reasoning_effort: high
+  approval-router:
+    definition: governance/approval-router/AGENT.md
+    phase: review
+    capability: read_only
+    model: haiku
+    codex_model: gpt-5.6-luna
+    reasoning_effort: low
   data-governance-engineer:
     definition: data/data-governance-engineer/AGENT.md
     phase: design
@@ -98,6 +126,13 @@ agents:
     model: opus
     codex_model: gpt-5.6-sol
     reasoning_effort: high
+  first-principles-challenger:
+    definition: architecture/first-principles-challenger/AGENT.md
+    phase: design
+    capability: read_only
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
   api-contract-engineer:
     definition: architecture/api-contract-engineer/AGENT.md
     phase: design
@@ -119,6 +154,13 @@ agents:
     model: sonnet
     codex_model: gpt-5.6-terra
     reasoning_effort: medium
+  architecture-authority:
+    definition: review/architecture-authority/AGENT.md
+    phase: review
+    capability: read_only
+    model: opus
+    codex_model: gpt-5.6-sol
+    reasoning_effort: high
   frontend-engineer:
     definition: engineering/frontend-engineer/AGENT.md
     phase: build
@@ -182,10 +224,31 @@ agents:
     model: sonnet
     codex_model: gpt-5.6-terra
     reasoning_effort: medium
+  red-team:
+    definition: testing/red-team/AGENT.md
+    phase: verify
+    capability: test_author
+    model: opus
+    codex_model: gpt-5.6-sol
+    reasoning_effort: high
+  falsification-agent:
+    definition: testing/falsification-agent/AGENT.md
+    phase: verify
+    capability: read_only
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
   chaos-resilience-engineer:
     definition: testing/chaos-resilience-engineer/AGENT.md
     phase: verify
     capability: environment_operator
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
+  deployment-realist:
+    definition: operations/deployment-realist/AGENT.md
+    phase: operations
+    capability: read_only
     model: sonnet
     codex_model: gpt-5.6-terra
     reasoning_effort: medium
@@ -210,6 +273,13 @@ agents:
     model: sonnet
     codex_model: gpt-5.6-terra
     reasoning_effort: medium
+  halt-authority:
+    definition: review/halt-authority/AGENT.md
+    phase: review
+    capability: read_only
+    model: opus
+    codex_model: gpt-5.6-sol
+    reasoning_effort: high
   observability-sre:
     definition: operations/observability-sre/AGENT.md
     phase: operations
@@ -226,6 +296,20 @@ agents:
     reasoning_effort: medium
   finops-engineer:
     definition: operations/finops-engineer/AGENT.md
+    phase: operations
+    capability: environment_operator
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
+  vendor-register-steward:
+    definition: operations/vendor-register-steward/AGENT.md
+    phase: operations
+    capability: document_author
+    model: haiku
+    codex_model: gpt-5.6-luna
+    reasoning_effort: low
+  retention-and-deletion-executor:
+    definition: operations/retention-and-deletion-executor/AGENT.md
     phase: operations
     capability: environment_operator
     model: sonnet
@@ -256,6 +340,13 @@ agents:
     definition: operations/decommission-engineer/AGENT.md
     phase: operations
     capability: environment_operator
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
+  phase-gate:
+    definition: review/phase-gate/AGENT.md
+    phase: release
+    capability: read_only
     model: sonnet
     codex_model: gpt-5.6-terra
     reasoning_effort: medium
@@ -315,6 +406,34 @@ agents:
     model: sonnet
     codex_model: gpt-5.6-terra
     reasoning_effort: medium
+  doctrine-conformance:
+    definition: review/doctrine-conformance/AGENT.md
+    phase: review
+    capability: read_only
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
+  subtraction-agent:
+    definition: review/subtraction-agent/AGENT.md
+    phase: review
+    capability: read_only
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
+  claim-conformance:
+    definition: review/claim-conformance/AGENT.md
+    phase: release
+    capability: read_only
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
+  classification-and-marking-gate:
+    definition: review/classification-and-marking-gate/AGENT.md
+    phase: release
+    capability: read_only
+    model: opus
+    codex_model: gpt-5.6-sol
+    reasoning_effort: high
   technical-writer:
     definition: documentation/technical-writer/AGENT.md
     phase: document
@@ -322,6 +441,13 @@ agents:
     model: sonnet
     codex_model: gpt-5.6-terra
     reasoning_effort: medium
+  decision-record:
+    definition: documentation/decision-record/AGENT.md
+    phase: document
+    capability: document_author
+    model: haiku
+    codex_model: gpt-5.6-luna
+    reasoning_effort: low
   evidence-curator:
     definition: documentation/evidence-curator/AGENT.md
     phase: evidence
@@ -329,10 +455,31 @@ agents:
     model: haiku
     codex_model: gpt-5.6-luna
     reasoning_effort: low
+  ip-provenance-agent:
+    definition: documentation/ip-provenance-agent/AGENT.md
+    phase: evidence
+    capability: document_author
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
   knowledge-store-steward:
     definition: knowledge-store/AGENT.md
     phase: knowledge
     capability: environment_operator
+    model: haiku
+    codex_model: gpt-5.6-luna
+    reasoning_effort: low
+  agent-performance-evaluator:
+    definition: operations/agent-performance-evaluator/AGENT.md
+    phase: operations
+    capability: read_only
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
+  agent-version-control:
+    definition: operations/agent-version-control/AGENT.md
+    phase: operations
+    capability: document_author
     model: haiku
     codex_model: gpt-5.6-luna
     reasoning_effort: low

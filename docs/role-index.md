@@ -1,6 +1,6 @@
 # Role index
 
-This index is a human-readable view of the 49 roles in
+This index is a human-readable view of the 70 roles in
 [`agents/catalog.yaml`](../agents/catalog.yaml). The catalog and each linked
 `AGENT.md` remain authoritative.
 
@@ -81,6 +81,34 @@ tier, route, quality gate, human gate, ...), see the
 | support-triage-agent | support | Classify user reports, protect sensitive data, and route actionable cases. | [AGENT.md](../agents/support/support-triage-agent/AGENT.md) |
 | escalation-manager | support | Coordinate escalations so urgent or high-risk issues stop at the right gate. | [AGENT.md](../agents/support/escalation-manager/AGENT.md) |
 | incident-commander | support | Coordinate major incidents while preserving safety, evidence, and communication. | [AGENT.md](../agents/support/incident-commander/AGENT.md) |
+
+## Governance, authority, and challenge functions
+
+Cross-cutting roles that gate, route, capture provenance for, or deliberately challenge other work, rather than producing it. Distinct from the human authority aides below, which prepare a decision package for one named human lifecycle authority; these roles instead produce a finding, register entry, or determination usable at any applicable gate.
+
+| Role | Phase | Purpose | Definition |
+| --- | --- | --- | --- |
+| halt-authority | review | Hold the cross-cutting stop-control finding: arrest work in progress on a doctrine, architecture, evidence-chain, or safety condition. | [AGENT.md](../agents/review/halt-authority/AGENT.md) |
+| approval-router | review | Encode the authority matrix and block work until the required signature is present. | [AGENT.md](../agents/governance/approval-router/AGENT.md) |
+| doctrine-conformance | review | Verify narrative, framing, and terminology against the project's doctrine and terminology register. | [AGENT.md](../agents/review/doctrine-conformance/AGENT.md) |
+| architecture-authority | review | Enforce the abstraction-layer rule; reject any change reaching infrastructure without an approved boundary. | [AGENT.md](../agents/review/architecture-authority/AGENT.md) |
+| scope-boundary | planning | Reject work that drifts outside the stated build boundary into future-state capability. | [AGENT.md](../agents/planning/scope-boundary/AGENT.md) |
+| phase-gate | release | Verify a build phase's exit criteria are met and evidenced before the next phase begins. | [AGENT.md](../agents/review/phase-gate/AGENT.md) |
+| assumption-register | planning | Track what the build depends on being true and what observation would invalidate it. | [AGENT.md](../agents/planning/assumption-register/AGENT.md) |
+| decision-record | document | Capture decision provenance: who decided, when, on what basis, and what alternatives were rejected. | [AGENT.md](../agents/documentation/decision-record/AGENT.md) |
+| red-team | verify | Run adversarial assessment against the system as actually deployed, not as designed. | [AGENT.md](../agents/testing/red-team/AGENT.md) |
+| premortem | planning | Assume a committed initiative already failed and work backward to plausible causes. | [AGENT.md](../agents/planning/premortem/AGENT.md) |
+| first-principles-challenger | design | Challenge whether an inherited design constraint is real or just unexamined. | [AGENT.md](../agents/architecture/first-principles-challenger/AGENT.md) |
+| subtraction-agent | review | Argue for removal on any scope increase, feature addition, or interface expansion. | [AGENT.md](../agents/review/subtraction-agent/AGENT.md) |
+| falsification-agent | verify | Demand the disproving test for any claim of correctness, resilience, or continuity. | [AGENT.md](../agents/testing/falsification-agent/AGENT.md) |
+| deployment-realist | operations | Assess operability at real scale with real participants, not demonstrated feasibility. | [AGENT.md](../agents/operations/deployment-realist/AGENT.md) |
+| classification-and-marking-gate | release | Determine whether an artifact is correctly classified and marked, and may leave the environment. | [AGENT.md](../agents/review/classification-and-marking-gate/AGENT.md) |
+| claim-conformance | release | Verify an external-facing artifact does not assert more than the project can demonstrate. | [AGENT.md](../agents/review/claim-conformance/AGENT.md) |
+| vendor-register-steward | operations | Maintain the vendor/tooling register and detect drift as repositories and workflows change. | [AGENT.md](../agents/operations/vendor-register-steward/AGENT.md) |
+| retention-and-deletion-executor | operations | Execute already-approved retention and deletion obligations, with evidence. | [AGENT.md](../agents/operations/retention-and-deletion-executor/AGENT.md) |
+| agent-performance-evaluator | operations | Assess whether the roles in this catalog are producing correct output. | [AGENT.md](../agents/operations/agent-performance-evaluator/AGENT.md) |
+| agent-version-control | operations | Maintain provenance for the agent definitions themselves as they change. | [AGENT.md](../agents/operations/agent-version-control/AGENT.md) |
+| ip-provenance-agent | evidence | Apply the current IP rule version to an artifact's provenance record and produce a determination. | [AGENT.md](../agents/documentation/ip-provenance-agent/AGENT.md) |
 
 ## Human authority aides
 

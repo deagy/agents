@@ -24,6 +24,133 @@
       "quality_gates": ["G1", "G2"]
     },
     {
+      "id": "premortem",
+      "paths": [],
+      "keywords": ["premortem", "pre-mortem", "assume this failed"],
+      "primary": ["premortem"]
+    },
+    {
+      "id": "assumption-register",
+      "paths": [],
+      "keywords": ["assumption register", "record an assumption", "track assumptions"],
+      "primary": ["assumption-register"]
+    },
+    {
+      "id": "scope-boundary-check",
+      "paths": [],
+      "keywords": ["scope boundary check", "build boundary", "future-state capability", "in scope or out of scope"],
+      "primary": ["scope-boundary"]
+    },
+    {
+      "id": "approval-routing",
+      "paths": [],
+      "keywords": ["approval routing", "who must approve", "authority matrix lookup"],
+      "primary": ["approval-router"]
+    },
+    {
+      "id": "halt-determination",
+      "paths": [],
+      "keywords": ["halt determination", "stop the line", "emergency stop", "system halt"],
+      "primary": ["halt-authority"]
+    },
+    {
+      "id": "doctrine-conformance-check",
+      "paths": [],
+      "keywords": ["doctrine conformance", "doctrinal language", "doctrine check"],
+      "primary": ["doctrine-conformance"]
+    },
+    {
+      "id": "architecture-authority-review",
+      "paths": [],
+      "keywords": ["abstraction layer", "infrastructure boundary violation", "architecture authority review"],
+      "primary": ["architecture-authority"]
+    },
+    {
+      "id": "phase-gate-check",
+      "paths": [],
+      "keywords": ["phase gate", "phase exit criteria", "phase transition"],
+      "primary": ["phase-gate"]
+    },
+    {
+      "id": "first-principles-challenge",
+      "paths": [],
+      "keywords": ["first principles challenge", "first-principles challenge", "challenge this constraint"],
+      "primary": ["first-principles-challenger"]
+    },
+    {
+      "id": "subtraction-review",
+      "paths": [],
+      "keywords": ["subtraction review", "what comes out", "argue for removal"],
+      "primary": ["subtraction-agent"]
+    },
+    {
+      "id": "falsification-test",
+      "paths": [],
+      "keywords": ["falsification test", "disproving test", "falsify this claim"],
+      "primary": ["falsification-agent"]
+    },
+    {
+      "id": "red-team-assessment",
+      "paths": [],
+      "keywords": ["red team assessment", "red team", "adversarial assessment"],
+      "primary": ["red-team"],
+      "reviewers": ["security-reviewer"]
+    },
+    {
+      "id": "deployment-realism-review",
+      "paths": [],
+      "keywords": ["deployment realism", "operate this at scale", "pilot readiness review"],
+      "primary": ["deployment-realist"]
+    },
+    {
+      "id": "classification-and-marking",
+      "paths": [],
+      "keywords": ["classification and marking", "data classification gate", "artifact leaving the environment"],
+      "primary": ["classification-and-marking-gate"]
+    },
+    {
+      "id": "claim-conformance-check",
+      "paths": [],
+      "keywords": ["claim conformance", "external claim review", "floor script review"],
+      "primary": ["claim-conformance"]
+    },
+    {
+      "id": "vendor-register-review",
+      "paths": [],
+      "keywords": ["vendor register", "tooling register", "vendor and tooling assessment"],
+      "primary": ["vendor-register-steward"]
+    },
+    {
+      "id": "retention-deletion-execution",
+      "paths": [],
+      "keywords": ["retention and deletion", "execute data deletion", "retention obligation"],
+      "primary": ["retention-and-deletion-executor"]
+    },
+    {
+      "id": "agent-performance-evaluation",
+      "paths": [],
+      "keywords": ["agent performance evaluation", "evaluate agent output", "agent feedback loop"],
+      "primary": ["agent-performance-evaluator"]
+    },
+    {
+      "id": "agent-version-provenance",
+      "paths": [],
+      "keywords": ["agent version control", "agent definition provenance", "which version of the agent"],
+      "primary": ["agent-version-control"]
+    },
+    {
+      "id": "ip-provenance-determination",
+      "paths": [],
+      "keywords": ["ip provenance", "intellectual property provenance", "ip determination"],
+      "primary": ["ip-provenance-agent"]
+    },
+    {
+      "id": "decision-record-capture",
+      "paths": [],
+      "keywords": ["decision record", "capture decision provenance", "record this decision"],
+      "primary": ["decision-record"]
+    },
+    {
       "id": "governance-planning",
       "paths": ["governance/impact/**", "governance/accreditation/**"],
       "keywords": ["governance impact", "data jurisdiction", "accreditation plan"],
@@ -499,6 +626,27 @@
     "release-authority-aide": "prior G9 release-authority decisions, independent-check findings, and unresolved release-authority escalations",
     "service-owner-aide": "prior G10 operational-readiness decisions, evidence-presence history, and unresolved service-owner escalations",
     "interaction-designer": "prior UX decisions, interaction patterns, accessibility findings, and user journey/flow history",
-    "decommission-engineer": "prior decommission runbooks, dependency/traffic-drain findings, data retention obligations, and post-sunset incident history"
+    "decommission-engineer": "prior decommission runbooks, dependency/traffic-drain findings, data retention obligations, and post-sunset incident history",
+    "premortem": "prior premortem findings, the assumption register, and capacity/dependency history",
+    "assumption-register": "prior recorded assumptions, invalidating observations, and design/decision history",
+    "scope-boundary": "the current build boundary/horizon definitions and prior scope-drift determinations",
+    "approval-router": "the current authority matrix, prior routing determinations, and gate-register history",
+    "first-principles-challenger": "the constraints register, prior constraint-origin findings, and requirements source specifications",
+    "architecture-authority": "the capability/adapter registries, prior boundary-violation findings, and architecture control service records",
+    "red-team": "prior adversarial findings, deployed configuration history, and trust/crypto boundary changes",
+    "falsification-agent": "prior falsification findings, test results, and the assumption register",
+    "deployment-realist": "operational runbooks, prior operability findings, and degraded-mode definitions",
+    "halt-authority": "prior halt determinations, doctrine/architecture violation patterns, and evidence-chain integrity findings",
+    "vendor-register-steward": "the vendor/tooling register, prior assessment drift findings, and repository/workflow change history",
+    "retention-and-deletion-executor": "retention policy definitions, the data inventory, and prior deletion-evidence records",
+    "phase-gate": "phase exit-criteria definitions, the evidence store, and prior phase-transition determinations",
+    "doctrine-conformance": "prior doctrine and terminology conformance findings, and the project's doctrine/terminology register",
+    "subtraction-agent": "the scope boundary, backlog history, and prior removal/subtraction findings",
+    "claim-conformance": "test evidence, approved external-facing language rules, and prior claim-conformance findings",
+    "classification-and-marking-gate": "classification/marking rules, data-boundary definitions, and prior boundary-crossing determinations",
+    "decision-record": "prior decision records, rejected alternatives, and their downstream consequences",
+    "ip-provenance-agent": "the current IP rule version, counsel guidance history, and prior provenance determinations",
+    "agent-performance-evaluator": "prior agent-output defects, human corrections, and per-role evaluation history",
+    "agent-version-control": "agent-definition change history and prior provenance records"
   }
 }

@@ -6,7 +6,7 @@ it names a concrete field or file, the link goes to that source instead.
 
 | Term | Meaning |
 | --- | --- |
-| Agent definition | The canonical `AGENT.md` describing one role's purpose, inputs, authority, escalation conditions, and completion criteria. See the [role index](role-index.md) for all 49. |
+| Agent definition | The canonical `AGENT.md` describing one role's purpose, inputs, authority, escalation conditions, and completion criteria. See the [role index](role-index.md) for all 70. |
 | Catalog | [`agents/catalog.yaml`](../agents/catalog.yaml), the machine-readable inventory of role IDs, definition paths, phases, capability tiers, model tiers, and reasoning effort. See the [capability index](capability-index.md) for a browsable view. |
 | Capability tier | The class of change authority a role has, recorded as `catalog.yaml`'s `capability` field: `read_only`, `document_author`, `code_author`, `test_author`, or `environment_operator`. See the [capability index](capability-index.md) for every role grouped by tier, and each role's own `AGENT.md` "Authority" section for its exact scope. |
 | Reasoning effort | A shared per-role value in `catalog.yaml` (`low`/`medium`/`high`) propagated into both generated wrappers — Claude Code's `effort:` frontmatter and Codex's `model_reasoning_effort` — so one field drives both runners. Tied to the same fixed heuristic as the role's model tier (`catalog.yaml`'s header comment): `opus`→`high`, `sonnet`→`medium`, `haiku`→`low`. |
