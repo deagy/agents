@@ -103,7 +103,14 @@ class SelectorTests(unittest.TestCase):
         self.assertEqual(result["agents"]["primary"], ["frontend-engineer", "backend-engineer"])
         self.assertIn("test-engineer", result["agents"]["reviewers"])
         self.assertIn("code-reviewer", result["agents"]["reviewers"])
-        self.assertIn("application-engineer", result["agents"]["support"])
+        # cross_stack.support is [frontend-engineer, backend-engineer], but
+        # both are already primary here, so the de-dup in build_dispatch_plan
+        # filters them back out of support -- application-engineer is no
+        # longer part of this cross-stack path at all (see AGENT.md: it's
+        # scoped to this suite's own tooling, not a target project's app).
+        # interaction-designer remains, contributed by the frontend route's
+        # own support list, independent of cross_stack.
+        self.assertEqual(result["agents"]["support"], ["interaction-designer"])
         self.assertEqual(result["knowledge_context"]["status"], "planned")
         requests = result["knowledge_context"]["requests"]
         self.assertTrue(any(request["agent"] == "frontend-engineer" for request in requests))
@@ -117,6 +124,26 @@ class SelectorTests(unittest.TestCase):
         self.assertTrue(all(request["invocation"]["launcher"] == expected_launcher for request in requests))
         self.assertTrue(all(Path(request["invocation"]["args"][0]).is_absolute() for request in requests))
         self.assertTrue(all(request["invocation"]["args"][1] == "context" for request in requests))
+
+    def test_selects_interaction_designer_as_frontend_support(self) -> None:
+        result = plan(
+            task="Design the upload flow interaction states for the new UI",
+            changed_files=["frontend/src/Upload.tsx"],
+            classification="internal",
+        )
+        self.assertIn("frontend-engineer", result["agents"]["primary"])
+        self.assertIn("interaction-designer", result["agents"]["support"])
+        self.assertIn("accessibility-reviewer", result["agents"]["reviewers"])
+
+    def test_selects_decommission_engineer_for_service_retirement(self) -> None:
+        result = plan(
+            task="Plan the decommission and retirement of the legacy upload service",
+            changed_files=["decommission/upload-service.json"],
+            classification="internal",
+        )
+        self.assertEqual(result["agents"]["primary"], ["decommission-engineer"])
+        self.assertIn("security-reviewer", result["agents"]["reviewers"])
+        self.assertIn("compliance-reviewer", result["agents"]["reviewers"])
 
     def test_two_route_task_forms_cross_stack_build_team_only(self) -> None:
         result = plan(
@@ -212,12 +239,12 @@ class SelectorTests(unittest.TestCase):
             self.assertNotIn("cwd", request["invocation"])
 
     @unittest.skipUnless(AGENTIC_SDLC_AVAILABLE, "Agentic SDLC executable is required")
-    def test_emits_schema_v2_quality_gates_separately_from_human_gates(self) -> None:
+    def test_emits_schema_v3_quality_gates_separately_from_human_gates(self) -> None:
         result = plan(
             task="Deploy to production with Terraform",
             changed_files=["terraform/service/main.tf"],
         )
-        self.assertEqual(result["schema_version"], 2)
+        self.assertEqual(result["schema_version"], 3)
         self.assertEqual(result["workflow"], "production-release")
         self.assertEqual(self.quality_gate_ids(result), ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9"])
         production_gate = next(
@@ -225,6 +252,38 @@ class SelectorTests(unittest.TestCase):
         )
         self.assertEqual(production_gate["contributing_routes"], ["production"])
         self.assertEqual([gate["id"] for gate in result["human_gates"]], ["production-change"])
+        # kernel_mutation_gate_id cross-references the Agentic SDLC kernel's
+        # own contracts/mutation-gates.json id -- cadre's "production-change"
+        # maps to the kernel's "production-deployment", not a duplicate
+        # definition (build_dispatch_plan.py's KERNEL_MUTATION_GATE_IDS).
+        self.assertEqual(result["human_gates"][0]["kernel_mutation_gate_id"], "production-deployment")
+
+    @unittest.skipUnless(AGENTIC_SDLC_AVAILABLE, "Agentic SDLC executable is required")
+    def test_kernel_mutation_gate_ids_reconcile_against_live_kernel_contract(self) -> None:
+        # KERNEL_MUTATION_GATE_IDS is a static, hand-authored cross-reference
+        # to the Agentic SDLC kernel's own contracts/mutation-gates.json ids
+        # -- accurate at the time it was written, but nothing previously
+        # caught the kernel silently renaming/removing an id out from under
+        # it. This pulls the real contract from whatever kernel is on PATH
+        # (the same resolution AGENTIC_SDLC_AVAILABLE/try_lifecycle_contract
+        # already use) and asserts every non-None mapped value still exists.
+        from build_dispatch_plan import KERNEL_MUTATION_GATE_IDS
+
+        executable = os.environ.get("AGENTIC_SDLC_BIN") or shutil.which("agentic-sdlc")
+        result = subprocess.run(
+            [executable, "show-contract", "mutation-gates"],
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        contract = json.loads(result.stdout)
+        kernel_ids = {entry["id"] for entry in contract["human_only"]}
+        for cadre_id, kernel_id in KERNEL_MUTATION_GATE_IDS.items():
+            if kernel_id is None:
+                continue
+            with self.subTest(cadre_id=cadre_id, kernel_id=kernel_id):
+                self.assertIn(kernel_id, kernel_ids)
 
     def test_dispatch_disposition_is_staffed_when_a_primary_or_reviewer_is_selected(self) -> None:
         result = plan(
@@ -274,6 +333,18 @@ class SelectorTests(unittest.TestCase):
         self.assertEqual(result["agents"]["primary"], [])
         self.assertIn("security-reviewer", result["agents"]["reviewers"])
         self.assertEqual(result["dispatch_disposition"]["status"], "staffed")
+
+    def test_risk_only_match_with_no_build_shaped_route_is_unclassified(self) -> None:
+        # A lone risk-rule match with no build-shaped route (frontend/backend/
+        # infrastructure/pipeline) and no architecture-change risk must not be
+        # silently mislabeled "new-service" -- it doesn't look like building
+        # anything. Same task as the staffed-via-reviewers-only case above.
+        result = plan(
+            task="Rotate the session token used for authorization",
+            changed_files=[],
+        )
+        self.assertEqual(result["matched_routes"], [])
+        self.assertEqual(result["workflow"], "unclassified")
 
     @unittest.skipUnless(AGENTIC_SDLC_AVAILABLE, "Agentic SDLC executable is required")
     def test_dispatch_disposition_stays_advisory_only_when_support_is_gate_agents_only(self) -> None:
@@ -339,7 +410,7 @@ class SelectorTests(unittest.TestCase):
         # CI's python-contracts job), the kernel enriches required_quality_gates
         # to the full cumulative G1..max(declared) sequence, since reaching a
         # later gate implies every earlier one was also required — see
-        # test_emits_schema_v2_quality_gates_separately_from_human_gates above
+        # test_emits_schema_v3_quality_gates_separately_from_human_gates above
         # for the same cumulative pattern on an unrelated route.
         cases = [
             ("product owner decision package", "product-owner-aide", ["G1", "G2", "G6"]),
@@ -409,13 +480,12 @@ class SelectorTests(unittest.TestCase):
                     *result["agents"]["reviewers"],
                     *result["agents"]["support"],
                 }
-                gate_agents = {
-                    agent
-                    for gate in result["gate_dispatch"]
-                    if gate["status"] == "required"
-                    for agent in gate["agents"]
-                }
-                self.assertTrue(gate_agents.issubset(selected))
+                # _gate_agents always contributes "code-reviewer" to support
+                # whenever any required_quality_gates entry applies (see
+                # test_dispatch_disposition_stays_advisory_only_when_support_is_gate_agents_only) --
+                # confirm that invariant holds without a stray unselected gap.
+                if any(gate["required"] for gate in result["required_quality_gates"]):
+                    self.assertIn("code-reviewer", selected)
                 self.assertNotEqual(result["workflow"], "runtime-assurance")
 
     def test_knowledge_invocation_preserves_argv_and_output_contract(self) -> None:
@@ -1148,7 +1218,6 @@ class SelectorTests(unittest.TestCase):
         self.assertEqual(result["lifecycle_tracking"], {"status": "standalone", "reason": STANDALONE_REASON})
         self.assertEqual(result["agents"]["primary"], ["frontend-engineer", "backend-engineer"])
         self.assertIn("test-engineer", result["agents"]["reviewers"])
-        self.assertEqual(result["gate_dispatch"], [])
 
     @patch("build_dispatch_plan.try_lifecycle_contract", return_value=None)
     def test_standalone_mode_still_reports_needs_triage(self, _mock) -> None:

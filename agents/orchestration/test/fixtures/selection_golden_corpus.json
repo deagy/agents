@@ -65,7 +65,8 @@
         ],
         "support": [
           "product-intent-agent",
-          "requirements-agent"
+          "requirements-agent",
+          "interaction-designer"
         ],
         "matched_routes": [
           "frontend"
@@ -278,7 +279,7 @@
           "accessibility-reviewer"
         ],
         "support": [
-          "application-engineer"
+          "interaction-designer"
         ],
         "matched_routes": [
           "frontend",
@@ -480,6 +481,30 @@
         ],
         "matched_routes": [
           "runtime-assurance"
+        ]
+      }
+    },
+    {
+      "id": "DECOMMISSION-1",
+      "description": "decommission route; task/file reused verbatim from test_selector.py::test_selects_decommission_engineer_for_service_retirement",
+      "task": "Plan the decommission and retirement of the legacy upload service",
+      "changed_files": [
+        "decommission/upload-service.json"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-DECOMMISSION-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "decommission-engineer"
+        ],
+        "reviewers": [
+          "security-reviewer",
+          "compliance-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "decommission"
         ]
       }
     },

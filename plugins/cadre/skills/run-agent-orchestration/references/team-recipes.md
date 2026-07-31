@@ -64,20 +64,22 @@ can't run as an independent peer in the same team.
 **Selector trigger**: `team_recipes` id `cross-stack-build` in
 `routing.yaml`, sharing its trigger with the existing `cross_stack` block
 (2 or more of `frontend`/`backend`/`infrastructure`/`pipeline` routes match
-the same task) — that block still separately adds `application-engineer` as
-support; the team recipe additionally surfaces the matching engineers
-themselves as a named team. That shared trigger is this repo's own existing
-evidence these four roles' work is independent and commonly concurrent —
-`RUNBOOK.md`: "Implementation roles may work concurrently after architecture
-and threat requirements are stable."
+the same task) — that block separately adds any of `frontend-engineer`/
+`backend-engineer` not already selected as `primary` into `support` (a
+no-op when, as in the common case, both are already primary); the team
+recipe additionally surfaces the matching engineers themselves as a named
+team. That shared trigger is this repo's own existing evidence these four
+roles' work is independent and commonly concurrent — `RUNBOOK.md`:
+"Implementation roles may work concurrently after architecture and threat
+requirements are stable."
 
 **Each teammate's focus**: build only their own layer — `frontend-engineer`
 (React/TypeScript UI), `backend-engineer` (Go/PostgreSQL service),
 `infrastructure-provisioner` (OpenTofu/Helm/Kubernetes),
-`cicd-engineer` (pipeline for the new artifact). `application-engineer` is
-consulted for cross-stack contract questions as support, not spawned as a
-fifth teammate unless the task has substantial cross-stack glue code of its
-own.
+`cicd-engineer` (pipeline for the new artifact). Cross-stack contract
+questions are the teammates' own direct coordination — `application-engineer`
+is not part of this path at all; it is scoped to this suite's own tooling,
+not a target project's application (see its `AGENT.md`).
 
 **Synthesis**: before spawning, the lead assigns each teammate a disjoint file
 set — two teammates editing the same file causes silent overwrites, exactly

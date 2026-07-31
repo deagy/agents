@@ -2,7 +2,7 @@
 
 # Capability index
 
-This page lists all 47 roles from [`agents/catalog.yaml`](../agents/catalog.yaml)
+This page lists all 49 roles from [`agents/catalog.yaml`](../agents/catalog.yaml)
 grouped by their `capability` and `phase` fields, so you can find every role
 in a given class of change authority (for example, every role that can only
 review, or every role that can operate a live environment) or every role
@@ -21,7 +21,7 @@ For a purpose-oriented view grouped by subject-matter domain instead, see the
 class of change authority a role has, not its subject-matter domain --
 see each role's own `AGENT.md` "Authority" section for its exact scope.
 
-### `read_only` (16 roles)
+### `read_only` (15 roles)
 
 Reads and evaluates only; produces findings, decision packages, or approvals but does not edit the artifact it assesses.
 
@@ -42,9 +42,8 @@ Reads and evaluates only; produces findings, decision packages, or approvals but
 | service-owner-aide | authority | [AGENT.md](../agents/authority/service-owner-aide/AGENT.md) |
 | supply-chain-security-reviewer | review | [AGENT.md](../agents/review/supply-chain-security-reviewer/AGENT.md) |
 | system-architect-aide | authority | [AGENT.md](../agents/authority/system-architect-aide/AGENT.md) |
-| test-engineer | verify | [AGENT.md](../agents/engineering/test-engineer/AGENT.md) |
 
-### `document_author` (13 roles)
+### `document_author` (14 roles)
 
 Creates or edits documents, plans, and requirements (not application code).
 
@@ -58,6 +57,7 @@ Creates or edits documents, plans, and requirements (not application code).
 | escalation-manager | support | [AGENT.md](../agents/support/escalation-manager/AGENT.md) |
 | evidence-curator | evidence | [AGENT.md](../agents/documentation/evidence-curator/AGENT.md) |
 | governance-planner | design | [AGENT.md](../agents/governance/governance-planner/AGENT.md) |
+| interaction-designer | design | [AGENT.md](../agents/architecture/interaction-designer/AGENT.md) |
 | product-intent-agent | planning | [AGENT.md](../agents/planning/product-intent-agent/AGENT.md) |
 | requirements-agent | planning | [AGENT.md](../agents/planning/requirements-agent/AGENT.md) |
 | support-triage-agent | support | [AGENT.md](../agents/support/support-triage-agent/AGENT.md) |
@@ -80,7 +80,7 @@ Creates or edits application, infrastructure, pipeline, or policy-as-code source
 | policy-as-code-engineer | security | [AGENT.md](../agents/security/policy-as-code-engineer/AGENT.md) |
 | secrets-identity-engineer | security | [AGENT.md](../agents/security/secrets-identity-engineer/AGENT.md) |
 
-### `test_author` (3 roles)
+### `test_author` (4 roles)
 
 Creates or edits test artifacts and executes them against authorized non-production environments.
 
@@ -89,14 +89,16 @@ Creates or edits test artifacts and executes them against authorized non-product
 | black-box-tester | verify | [AGENT.md](../agents/testing/black-box-tester/AGENT.md) |
 | end-user-tester | verify | [AGENT.md](../agents/testing/end-user-tester/AGENT.md) |
 | performance-testing-engineer | verify | [AGENT.md](../agents/testing/performance-testing-engineer/AGENT.md) |
+| test-engineer | verify | [AGENT.md](../agents/engineering/test-engineer/AGENT.md) |
 
-### `environment_operator` (6 roles)
+### `environment_operator` (7 roles)
 
 Operates authorized environments directly (observability, release, incident response, chaos, knowledge-store, cost/finops).
 
 | Role | Phase | Definition |
 | --- | --- | --- |
 | chaos-resilience-engineer | verify | [AGENT.md](../agents/testing/chaos-resilience-engineer/AGENT.md) |
+| decommission-engineer | operations | [AGENT.md](../agents/operations/decommission-engineer/AGENT.md) |
 | finops-engineer | operations | [AGENT.md](../agents/operations/finops-engineer/AGENT.md) |
 | incident-commander | support | [AGENT.md](../agents/support/incident-commander/AGENT.md) |
 | knowledge-store-steward | knowledge | [AGENT.md](../agents/knowledge-store/AGENT.md) |
@@ -118,7 +120,7 @@ grouping instead.
 | product-intent-agent | document_author | [AGENT.md](../agents/planning/product-intent-agent/AGENT.md) |
 | requirements-agent | document_author | [AGENT.md](../agents/planning/requirements-agent/AGENT.md) |
 
-### `design` (5 roles)
+### `design` (6 roles)
 
 | Role | Capability | Definition |
 | --- | --- | --- |
@@ -126,6 +128,7 @@ grouping instead.
 | cloud-architect | document_author | [AGENT.md](../agents/architecture/cloud-architect/AGENT.md) |
 | data-governance-engineer | document_author | [AGENT.md](../agents/data/data-governance-engineer/AGENT.md) |
 | governance-planner | document_author | [AGENT.md](../agents/governance/governance-planner/AGENT.md) |
+| interaction-designer | document_author | [AGENT.md](../agents/architecture/interaction-designer/AGENT.md) |
 | threat-modeler | document_author | [AGENT.md](../agents/architecture/threat-modeler/AGENT.md) |
 
 ### `security` (3 roles)
@@ -155,7 +158,7 @@ grouping instead.
 | chaos-resilience-engineer | environment_operator | [AGENT.md](../agents/testing/chaos-resilience-engineer/AGENT.md) |
 | end-user-tester | test_author | [AGENT.md](../agents/testing/end-user-tester/AGENT.md) |
 | performance-testing-engineer | test_author | [AGENT.md](../agents/testing/performance-testing-engineer/AGENT.md) |
-| test-engineer | read_only | [AGENT.md](../agents/engineering/test-engineer/AGENT.md) |
+| test-engineer | test_author | [AGENT.md](../agents/engineering/test-engineer/AGENT.md) |
 
 ### `review` (7 roles)
 
@@ -183,11 +186,12 @@ grouping instead.
 | incident-commander | environment_operator | [AGENT.md](../agents/support/incident-commander/AGENT.md) |
 | support-triage-agent | document_author | [AGENT.md](../agents/support/support-triage-agent/AGENT.md) |
 
-### `operations` (3 roles)
+### `operations` (4 roles)
 
 | Role | Capability | Definition |
 | --- | --- | --- |
 | database-reliability-engineer | code_author | [AGENT.md](../agents/data/database-reliability-engineer/AGENT.md) |
+| decommission-engineer | environment_operator | [AGENT.md](../agents/operations/decommission-engineer/AGENT.md) |
 | finops-engineer | environment_operator | [AGENT.md](../agents/operations/finops-engineer/AGENT.md) |
 | observability-sre | environment_operator | [AGENT.md](../agents/operations/observability-sre/AGENT.md) |
 

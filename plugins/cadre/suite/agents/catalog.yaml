@@ -105,6 +105,13 @@ agents:
     model: opus
     codex_model: gpt-5.6-sol
     reasoning_effort: high
+  interaction-designer:
+    definition: architecture/interaction-designer/AGENT.md
+    phase: design
+    capability: document_author
+    model: opus
+    codex_model: gpt-5.6-sol
+    reasoning_effort: high
   application-engineer:
     definition: engineering/application-engineer/AGENT.md
     phase: build
@@ -150,7 +157,7 @@ agents:
   test-engineer:
     definition: engineering/test-engineer/AGENT.md
     phase: verify
-    capability: read_only
+    capability: test_author
     model: sonnet
     codex_model: gpt-5.6-terra
     reasoning_effort: medium
@@ -242,6 +249,13 @@ agents:
     definition: data/database-reliability-engineer/AGENT.md
     phase: operations
     capability: code_author
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
+  decommission-engineer:
+    definition: operations/decommission-engineer/AGENT.md
+    phase: operations
+    capability: environment_operator
     model: sonnet
     codex_model: gpt-5.6-terra
     reasoning_effort: medium

@@ -4,14 +4,14 @@
   "title": "Local Agent Selection Plan",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "task_id", "dispatch_fingerprint", "generated_at", "status", "workflow", "inputs", "matched_routes", "matched_risks", "agents", "dispatch_disposition", "teams", "lifecycle_tracking", "required_quality_gates", "ignored_quality_gates", "gate_dispatch", "human_gates", "knowledge_context"],
+  "required": ["schema_version", "task_id", "dispatch_fingerprint", "generated_at", "status", "workflow", "inputs", "matched_routes", "matched_risks", "agents", "dispatch_disposition", "teams", "lifecycle_tracking", "required_quality_gates", "ignored_quality_gates", "human_gates", "knowledge_context"],
   "properties": {
-    "schema_version": { "const": 2 },
+    "schema_version": { "const": 3 },
     "task_id": { "$ref": "#/$defs/nonempty" },
     "dispatch_fingerprint": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
     "generated_at": { "type": "string", "format": "date-time" },
     "status": { "enum": ["ready", "needs-triage"] },
-    "workflow": { "enum": ["new-service", "product-intake", "runtime-assurance", "debugging", "infrastructure-change", "pipeline-change", "knowledge-ingestion", "support-escalation", "production-release", "rollback", "needs-triage"] },
+    "workflow": { "enum": ["new-service", "product-intake", "runtime-assurance", "debugging", "infrastructure-change", "pipeline-change", "knowledge-ingestion", "support-escalation", "production-release", "rollback", "unclassified", "needs-triage"] },
     "inputs": {
       "type": "object",
       "additionalProperties": false,
@@ -156,31 +156,20 @@
       }
     },
     "ignored_quality_gates": { "$ref": "#/$defs/stringArray" },
-    "gate_dispatch": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["gate_id", "status", "agents", "tasks", "artifacts"],
-        "properties": {
-          "gate_id": { "$ref": "#/$defs/nonempty" },
-          "status": { "enum": ["required", "ignored"] },
-          "agents": { "$ref": "#/$defs/stringArray" },
-          "tasks": { "$ref": "#/$defs/stringArray" },
-          "artifacts": { "$ref": "#/$defs/stringArray" }
-        }
-      }
-    },
     "human_gates": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "required", "reason"],
+        "required": ["id", "required", "reason", "kernel_mutation_gate_id"],
         "properties": {
           "id": { "$ref": "#/$defs/nonempty" },
           "required": { "const": true },
-          "reason": { "$ref": "#/$defs/nonempty" }
+          "reason": { "$ref": "#/$defs/nonempty" },
+          "kernel_mutation_gate_id": {
+            "description": "Cross-reference to the Agentic SDLC kernel's own contracts/mutation-gates.json id, when one exists for this cadre-side human_gate id. The kernel stays the authoritative definition source; this is a pointer, not a duplicated definition. Null when cadre has no kernel mutation-gate counterpart (e.g. accountable-human-escalation).",
+            "type": ["string", "null"]
+          }
         }
       }
     },
