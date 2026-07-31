@@ -257,7 +257,9 @@ build or a built artifact you trust.
 `cadre resolve-shared` / `cadre init` can optionally parse YAML shared-config
 overlays (JSON-only overlays work without this), and `cadre
 mcp-dispatch-server` requires the official MCP SDK — both are optional
-extras so a bare `pip install cadre` stays dependency-light:
+extras, so installing the built wheel without them stays dependency-light
+(note: an unrelated third-party project already owns the name `cadre` on
+PyPI — always install from your own `dist/` build, never from PyPI):
 
 ```sh
 pipx install "dist/cadre-*.whl[yaml]"        # or [mcp], or [yaml,mcp]
