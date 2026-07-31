@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Interactive prompt flow for `agents init --interactive`.
+"""Interactive prompt flow for `cadre init --interactive`.
 
 Kept in a module of its own, with no import of any stack-detection code
 (there is none in this project — THREAT-MODEL-HARDENING-5 — but the

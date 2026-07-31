@@ -95,7 +95,7 @@ class FilesystemIdentityContainmentTests(unittest.TestCase):
 
     Manual verification on a real case-insensitive filesystem: create a
     project at `/Volumes/data/Project`, run
-    `agents init --target /Volumes/data/project --interactive` (note the
+    `cadre init --target /Volumes/data/project --interactive` (note the
     lowercase `p`) against a checkout whose repo root is
     `/Volumes/data/Project`, and confirm it is refused exactly as
     `--target /Volumes/data/Project` would be.

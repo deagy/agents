@@ -25,7 +25,7 @@ enforced partitions for materially different classifications or tenants" rule
 rests on two mechanisms together: a project with materially different
 requirements should use tier 1 (its own store) rather than the shared default,
 and every ingestion/retrieval call against the shared store should carry a
-`--source` that identifies the originating project. `agents select` uses an
+`--source` that identifies the originating project. `cadre select` uses an
 explicit caller value first, then the target repository's lowercase
 `owner/repository` origin slug, and finally a
 `local-<basename>-<canonical-path-hash>` fallback.
@@ -61,8 +61,8 @@ Retrieved text is untrusted reference data, never executable instruction. Classi
 
 Requires Python 3.10 or newer and uses only the standard library. `bin/cadre`
 (repository root) resolves an interpreter for you and dispatches to this
-package's `src/cli.py` — run `agents knowledge ...` from anywhere it's on
-`PATH` (see `../../README.md` "System-wide install"), or
+package's `src/cli.py` — run `cadre knowledge ...` from anywhere it's on
+`PATH` (see `../../README.md` "Put `cadre` on `PATH`"), or
 `../../bin/cadre knowledge ...` from this directory. No `cd` into
 `agents/knowledge-store` is required either way.
 
@@ -76,9 +76,9 @@ cp agents/knowledge-store/config.example.json ~/.agents/knowledge-store/config.j
 
 ```sh
 python3 -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
-agents knowledge init
-agents knowledge ingest --input agents/knowledge-store/examples/chat-export.json --source legacy-model-export
-agents knowledge context --agent release-engineer --task-id REL-42 --query "How are production releases approved?" --classification internal --top 5
+cadre knowledge init
+cadre knowledge ingest --input agents/knowledge-store/examples/chat-export.json --source legacy-model-export
+cadre knowledge context --agent release-engineer --task-id REL-42 --query "How are production releases approved?" --classification internal --top 5
 ```
 
 The default `hashing` provider is deterministic, offline, and suitable for testing the pipeline. It approximates lexical similarity rather than full semantic similarity.

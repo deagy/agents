@@ -2,7 +2,7 @@
 
 Three team compositions drawn from signals already present in this repo — not
 invented groupings. Each is now also a deterministic entry in
-`agents/orchestration/routing.yaml`'s `team_recipes` list: `agents select`
+`agents/orchestration/routing.yaml`'s `team_recipes` list: `cadre select`
 evaluates the same trigger described here and, when it matches, emits the
 team in its `teams` field with a members/role list already intersected with
 whichever agents routing actually selected — no team recipe ever pulls in an

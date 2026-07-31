@@ -18,7 +18,7 @@ placing a same-named file at `.agents/shared/<filename>` in its own tree.
    `config.json`).
 3. The global default in this directory.
 
-Resolve the effective value with `agents resolve-shared <filename>` (see
+Resolve the effective value with `cadre resolve-shared <filename>` (see
 `agents/shared/src/resolve.py`), run from anywhere inside the target
 project. It fails closed: a malformed overlay is an error, not a silent
 fallback to the default.
@@ -61,10 +61,10 @@ Only files a project actually wants to extend or override need to exist
 under `.agents/shared/`; anything absent resolves straight to the global
 default.
 
-## Generating overlays with `agents init`
+## Generating overlays with `cadre init`
 
 Rather than hand-authoring `.agents/shared/<filename>` overlays from scratch,
-run `agents init --target <project-root>` (see `agents/shared/src/
+run `cadre init --target <project-root>` (see `agents/shared/src/
 init_project.py`) to be guided through RG-A (stack/tooling opinions), RG-B
 (governance/autonomy narrowing, with a closed allowlist — never free text —
 for `agent-autonomy.yaml`), and RG-C (guided `platform-impact-profile.yaml`
@@ -93,7 +93,7 @@ only ever written to the audit log (or the resulting overlay file itself) as
 a hash or as real file content.
 
 `technology-standards.md` and `cloud-guardrails.md` overlays use a managed
-block (`<!-- agents-init:managed:start/end -->`): re-running `agents init`
+block (`<!-- agents-init:managed:start/end -->`): re-running `cadre init`
 against the same project accumulates new addendum entries/guardrail bullets
 onto whatever a prior run already wrote there instead of replacing it
 (exact-duplicate bullets are deduped), and any content a human has manually
@@ -103,7 +103,7 @@ Every field an answer set supplies a value for must have a corresponding
 `field_decisions` entry recording a `kept`/`overridden`/`deferred` status and
 a `category` of either `stack` (team-profile.yaml/library-standards.yaml/
 technology-standards.md/platform-impact-profile.yaml) or `governance`
-(agent-autonomy.yaml/cloud-guardrails.md). `agents init` fails closed (no
+(agent-autonomy.yaml/cloud-guardrails.md). `cadre init` fails closed (no
 writes) if a touched field is missing a decision entry, or if a field's
 declared category doesn't match which file it actually touches.
 

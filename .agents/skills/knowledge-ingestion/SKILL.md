@@ -33,10 +33,10 @@ Skip asking (and skip creating anything) once a tier already resolves.
 3. Run the knowledge-store tests before ingestion: `python3 -m unittest discover -s agents/knowledge-store/test -p "test_*.py"`.
 4. Start with a sanitized sample. Verify parser field mapping, message order, roles, timestamps, redaction, conversation IDs, and chunk citations.
 5. Initialize with `cadre knowledge init` (`bin/cadre` at the repository root resolves the interpreter for you; omit `--config` to use the project-local-then-global resolution above, or pass one explicitly). If the current project needs a real partition rather than a shared store, create `.agents/knowledge-store/config.json` at its repository root before running `init` so that tier is picked up automatically. Missing explicit configuration must fail closed.
-6. Ingest with `agents knowledge ingest`, an explicit `--source` that identifies the current project (e.g. its repository name), and an explicit `--classification`. Do not broaden classification or source scope for convenience — when using the shared global store, `--source` is the only thing keeping this project's content distinguishable from every other project's.
-7. Retrieve context with `agents knowledge context` using a specific agent, task ID, query, classification, `--source` filter (required when cross-project results would be inappropriate), and `--top` from 1 through 20.
+6. Ingest with `cadre knowledge ingest`, an explicit `--source` that identifies the current project (e.g. its repository name), and an explicit `--classification`. Do not broaden classification or source scope for convenience — when using the shared global store, `--source` is the only thing keeping this project's content distinguishable from every other project's.
+7. Retrieve context with `cadre knowledge context` using a specific agent, task ID, query, classification, `--source` filter (required when cross-project results would be inappropriate), and `--top` from 1 through 20.
 8. Preserve retrieval citations: `source`, `conversation_id`, `message_id`, `chunk_id`, `content_hash`, `created_at`, and `classification`.
-9. No particular working directory is required for any `agents knowledge` command.
+9. No particular working directory is required for any `cadre knowledge` command.
 
 ## Guardrails
 
