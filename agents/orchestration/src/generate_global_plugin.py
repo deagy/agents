@@ -86,6 +86,8 @@ PROVIDER_ROOT = REPOSITORY_ROOT / "provider"
 # script must read back out of the plugin repository -- `--output` can point
 # at an empty directory and still produce a complete package.
 PACKAGING_README = REPOSITORY_ROOT / "packaging" / "plugin-README.md"
+# Used to rewrite packaged links whose targets exist only in the register.
+REGISTER_URL = "https://github.com/deagy/cadre"
 PROVIDER_BUNDLE = ("provider.json", "agent-catalog.json", "profiles", "extensions", "codex-agents")
 # Register-only member of provider/: verbatim copies of every role's AGENT.md.
 # The kernel resolves agent-catalog.json's `definition` values relative to the
@@ -783,13 +785,40 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
         if target.suffix.lower() == ".md":
             content = source.read_text(encoding="utf-8")
             content = content.replace("../bin/cadre", "../../bin/cadre")
-            content = content.replace("../README.md", "README.md")
-            content = content.replace("`../README.md`", "`README.md`")
+            # Links to the register's top-level README point at the packaged
+            # README under suite/. Depth-aware: a plain
+            # `"../README.md" -> "README.md"` substring replace also matches
+            # inside `../../README.md` (written by files one level deeper),
+            # silently retargeting them to suite/agents/README.md -- a file
+            # that exists, so no link checker catches it.
+            source_depth = len(relative.split("/")) - 1
+            if source_depth:
+                root_readme = "../" * source_depth + "README.md"
+                suite_readme = os.path.relpath(
+                    plugin_root / "suite" / "README.md", target.parent
+                ).replace(os.sep, "/")
+                content = content.replace(root_readme, suite_readme)
             # The register's source for the packaged README (PACKAGING_README)
             # has no counterpart inside the package; point at the packaged
             # copy of it instead. Every file carrying this link sits one level
             # under suite/, so `../README.md` resolves to suite/README.md.
             content = content.replace("../packaging/plugin-README.md", "../README.md")
+            # Skills are packaged at the package root (skills/<name>/), not
+            # under suite/, so a source link into .agents/skills/ would dangle.
+            # Computed per file rather than hardcoded: suite/docs/x.md and
+            # suite/AGENTS.md sit at different depths and need different
+            # prefixes for the same source text.
+            to_package_root = os.path.relpath(plugin_root, target.parent).replace(os.sep, "/")
+            
+            content = content.replace("../.agents/skills/", f"{to_package_root}/skills/")
+            content = content.replace("../.claude/skills/", f"{to_package_root}/skills/")
+            # Not packaged at all (the package ships no changelog, and tests
+            # are excluded), so point at the register instead of dangling.
+            content = content.replace("](../CHANGELOG.md)", f"]({REGISTER_URL}/blob/main/CHANGELOG.md)")
+            content = content.replace(
+                "](../agents/orchestration/test/",
+                f"]({REGISTER_URL}/blob/main/agents/orchestration/test/",
+            )
             # A migrated role's AGENT.md starts with `---`-delimited
             # frontmatter (see role_metadata.py); inserting the marker at
             # byte 0 would land it inside that frontmatter block instead of

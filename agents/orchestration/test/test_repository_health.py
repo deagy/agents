@@ -57,7 +57,13 @@ def generated_package() -> Path:
             cwd=REPOSITORY_ROOT, check=False, capture_output=True, text=True, encoding="utf-8",
         )
         if generated.returncode != 0:  # pragma: no cover - defensive
-            raise AssertionError(f"generate-plugin failed: {generated.stderr}")
+            # Surfaces inside whichever test called this first, so name the
+            # helper explicitly rather than letting it read as that test's own
+            # unrelated failure.
+            raise AssertionError(
+                "generated_package(): `generate-plugin --output` failed, so every test "
+                f"depending on a generated package will fail too:\n{generated.stderr}"
+            )
         _GENERATED_PACKAGE = target
     return _GENERATED_PACKAGE
 
@@ -266,7 +272,7 @@ class RepositoryHealthTests(unittest.TestCase):
     def test_authority_aide_agents_are_generated_and_in_sync(self) -> None:
         generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_authority_aides.py"
         checked = subprocess.run(
-            ["python3", str(generator), "--check"],
+            [sys.executable, str(generator), "--check"],
             cwd=REPOSITORY_ROOT,
             check=False,
             capture_output=True,
@@ -278,7 +284,7 @@ class RepositoryHealthTests(unittest.TestCase):
     def test_role_metadata_files_are_generated_and_in_sync(self) -> None:
         generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_role_metadata.py"
         checked = subprocess.run(
-            ["python3", str(generator), "--check"],
+            [sys.executable, str(generator), "--check"],
             cwd=REPOSITORY_ROOT,
             check=False,
             capture_output=True,
@@ -292,7 +298,7 @@ class RepositoryHealthTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="agents-health-") as temporary_directory:
             output = Path(temporary_directory) / "plugin"
             generated = subprocess.run(
-                ["python3", str(generator), "--output", str(output)],
+                [sys.executable, str(generator), "--output", str(output)],
                 cwd=REPOSITORY_ROOT,
                 check=False,
                 capture_output=True,
@@ -301,7 +307,7 @@ class RepositoryHealthTests(unittest.TestCase):
             )
             self.assertEqual(0, generated.returncode, generated.stderr)
             checked = subprocess.run(
-                ["python3", str(generator), "--check", "--output", str(output)],
+                [sys.executable, str(generator), "--check", "--output", str(output)],
                 cwd=REPOSITORY_ROOT,
                 check=False,
                 capture_output=True,
@@ -327,7 +333,10 @@ class RepositoryHealthTests(unittest.TestCase):
         plugin_root = generated_package()
         offenders: list[str] = []
         for path in plugin_root.rglob("*"):
-            if not path.is_file():
+            # Other tests execute the packaged bin/cadre out of this shared
+            # fixture, which leaves __pycache__/*.pyc behind. Filter them
+            # rather than relying on this test happening to run first.
+            if not path.is_file() or path.suffix in {".pyc", ".pyo"} or "__pycache__" in path.parts:
                 continue
             content = path.read_text(encoding="utf-8", errors="ignore")
             if "plugins/agentic-sdlc" in content or "migrate_execution_summary" in content:
@@ -407,7 +416,7 @@ class RepositoryHealthTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="agents-capabilities-") as temporary_directory:
             plugin_root = Path(temporary_directory) / "plugin"
             result = subprocess.run(
-                ["python3", str(generator), "--output", str(plugin_root)],
+                [sys.executable, str(generator), "--output", str(plugin_root)],
                 cwd=REPOSITORY_ROOT,
                 check=True,
                 capture_output=True,
@@ -428,6 +437,22 @@ class RepositoryHealthTests(unittest.TestCase):
                 author = (plugin_root / "agents" / f"{agent_id}.md").read_text(encoding="utf-8")
                 self.assertIn("tools: Read, Grep, Glob, Bash, Edit, Write", author)
                 self.assertIn('sandbox_mode = "workspace-write"', (plugin_root / "codex-agents" / f"agents-{agent_id}.toml").read_text(encoding="utf-8"))
+
+    def test_every_relative_link_in_the_generated_package_resolves(self) -> None:
+        """The generator rewrites relative links as it copies docs into
+        suite/, and a rewrite that lands on the wrong depth produces a link
+        that still *exists* -- so nothing catches it by inspection. 22 links
+        pointing at unpackaged files, plus one silently retargeted to
+        suite/agents/README.md instead of suite/README.md, went unnoticed
+        exactly this way.
+        """
+        package = generated_package()
+        broken = []
+        for markdown in sorted(package.rglob("*.md")):
+            for match in re.finditer(r"\]\((?!https?:|#|mailto:)([^)#]+)", markdown.read_text(encoding="utf-8")):
+                if not (markdown.parent / match.group(1)).resolve().exists():
+                    broken.append(f"{markdown.relative_to(package)} -> {match.group(1)}")
+        self.assertEqual([], broken)
 
     def test_advertised_role_count_in_register_owned_prose_matches_the_catalog(self) -> None:
         """`packaging/plugin-README.md` is register-owned and rendered verbatim
@@ -877,7 +902,7 @@ class RepositoryHealthTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="agents-packaging-") as temporary_directory:
             plugin_root = Path(temporary_directory) / "plugin"
             subprocess.run(
-                ["python3", str(generator), "--output", str(plugin_root)],
+                [sys.executable, str(generator), "--output", str(plugin_root)],
                 cwd=REPOSITORY_ROOT,
                 check=True,
                 capture_output=True,
