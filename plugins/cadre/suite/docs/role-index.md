@@ -2,7 +2,7 @@
 
 # Role index
 
-This index is a human-readable view of the 47 roles in
+This index is a human-readable view of the 49 roles in
 [`agents/catalog.yaml`](../agents/catalog.yaml). The catalog and each linked
 `AGENT.md` remain authoritative.
 
@@ -34,6 +34,7 @@ tier, route, quality gate, human gate, ...), see the
 | cloud-architect | design | Design secure, resilient, operable, cost-aware architecture. | [AGENT.md](../agents/architecture/cloud-architect/AGENT.md) |
 | threat-modeler | design | Identify credible threats and translate them into testable requirements. | [AGENT.md](../agents/architecture/threat-modeler/AGENT.md) |
 | api-contract-engineer | design | Own cross-service API/schema contract design, versioning, and compatibility. | [AGENT.md](../agents/architecture/api-contract-engineer/AGENT.md) |
+| interaction-designer | design | Own user-facing interaction/UX design, flow states, and accessibility intent upstream of implementation. | [AGENT.md](../agents/architecture/interaction-designer/AGENT.md) |
 | data-governance-engineer | design | Define classification, ownership, lineage, residency, retention, and deletion requirements. | [AGENT.md](../agents/data/data-governance-engineer/AGENT.md) |
 | cryptographic-assurance-engineer | security | Assess cryptographic inventory, algorithms, keys, certificates, and agility. | [AGENT.md](../agents/security/cryptographic-assurance-engineer/AGENT.md) |
 | secrets-identity-engineer | security | Review secrets, workload identity, credentials, RBAC, and access boundaries. | [AGENT.md](../agents/security/secrets-identity-engineer/AGENT.md) |
@@ -41,12 +42,13 @@ tier, route, quality gate, human gate, ...), see the
 | database-reliability-engineer | operations | Assess PostgreSQL reliability, migrations, backups, recovery, and performance risk. | [AGENT.md](../agents/data/database-reliability-engineer/AGENT.md) |
 | observability-sre | operations | Design telemetry, SLOs, alerts, dashboards, and day-2 readiness. | [AGENT.md](../agents/operations/observability-sre/AGENT.md) |
 | finops-engineer | operations | Monitor live cost/utilization drift against the approved capacity model. | [AGENT.md](../agents/operations/finops-engineer/AGENT.md) |
+| decommission-engineer | operations | Plan and verify preconditions for retiring a capability or service after G10. | [AGENT.md](../agents/operations/decommission-engineer/AGENT.md) |
 
 ## Engineering and delivery
 
 | Role | Phase | Purpose | Definition |
 | --- | --- | --- | --- |
-| application-engineer | build | Implement cross-stack application changes against approved requirements. | [AGENT.md](../agents/engineering/application-engineer/AGENT.md) |
+| application-engineer | build | Own routine changes to this suite's own tooling, catalog, and orchestration source (not a target project's application code). | [AGENT.md](../agents/engineering/application-engineer/AGENT.md) |
 | frontend-engineer | build | Build secure, accessible React and TypeScript frontends. | [AGENT.md](../agents/engineering/frontend-engineer/AGENT.md) |
 | backend-engineer | build | Build secure Go backend services with PostgreSQL. | [AGENT.md](../agents/engineering/backend-engineer/AGENT.md) |
 | infrastructure-provisioner | build | Create reusable infrastructure-as-code and reviewable plans. | [AGENT.md](../agents/engineering/infrastructure-provisioner/AGENT.md) |

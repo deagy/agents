@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repository is
 
-A runner-neutral **Cadre** suite: 47 specialist subagent role definitions (`agents/<phase>/<role>/AGENT.md`), the machine-readable inventory of them (`agents/catalog.yaml`), deterministic orchestration/routing tooling, a knowledge-store retrieval layer, and a generated Claude Code / Codex CLI plugin (`plugins/cadre/`) packaged from all of the above. It supplies dispatch inputs and role/policy content into projects that adopt the separate, portable [`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc) lifecycle kernel. This repository does not run its own `.agentic-sdlc/` overlay (see boundary note below).
+A runner-neutral **Cadre** suite: 49 specialist subagent role definitions (`agents/<phase>/<role>/AGENT.md`), the machine-readable inventory of them (`agents/catalog.yaml`), deterministic orchestration/routing tooling, a knowledge-store retrieval layer, and a generated Claude Code / Codex CLI plugin (`plugins/cadre/`) packaged from all of the above. It supplies dispatch inputs and role/policy content into projects that adopt the separate, portable [`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc) lifecycle kernel. This repository does not run its own `.agentic-sdlc/` overlay (see boundary note below).
 
 Read `AGENTS.md` (repo-wide rules) and `agents/RUNBOOK.md` (the complete operating reference, with worked examples for every workflow) before making product changes.
 

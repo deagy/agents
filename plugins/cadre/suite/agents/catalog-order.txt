@@ -24,6 +24,7 @@ cryptographic-assurance-engineer
 cloud-architect
 threat-modeler
 api-contract-engineer
+interaction-designer
 application-engineer
 frontend-engineer
 backend-engineer
@@ -44,6 +45,7 @@ finops-engineer
 secrets-identity-engineer
 policy-as-code-engineer
 database-reliability-engineer
+decommission-engineer
 release-engineer
 code-reviewer
 accessibility-reviewer

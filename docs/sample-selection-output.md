@@ -3,7 +3,7 @@
 This walks through one real, committed `cadre select` plan so a reader can see
 what the selector actually produces before running it themselves. The
 authoritative shape is [`agents/orchestration/selection.schema.json`](../agents/orchestration/selection.schema.json)
-(`schema_version: 2`); if this page and the schema ever disagree, the schema
+(`schema_version: 3`); if this page and the schema ever disagree, the schema
 wins.
 
 See the [glossary](terminology.md) for definitions of the terms used below
@@ -35,8 +35,8 @@ cadre select \
 are derived from the environment the selector runs in (working tree path,
 wall-clock time, the `deagy/cadre` origin remote of this checkout, and a hash
 over the rest of the plan, respectively) — expect different values in your own
-checkout. `lifecycle_tracking.status`, `required_quality_gates[].reason`, and
-`gate_dispatch` also depend on your environment: this capture shows
+checkout. `lifecycle_tracking.status` and `required_quality_gates[].reason`
+also depend on your environment: this capture shows
 `lifecycle_tracking.status: "integrated"` and gate-specific reasons because a
 standalone Agentic SDLC executable was present on `PATH` when it ran; without
 one, `lifecycle_tracking.status` reads `"standalone"` with a `reason`, and
@@ -51,7 +51,7 @@ comment).
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "task_id": "GOLDEN-CROSS-STACK-1",
   "generated_at": "2026-07-29T19:29:03.748Z",
   "status": "ready",
@@ -84,8 +84,12 @@ comment).
       "accessibility-reviewer"
     ],
     "support": [
-      "application-engineer"
+      "interaction-designer"
     ]
+  },
+  "dispatch_disposition": {
+    "status": "staffed",
+    "reason": "A primary and/or reviewer role was selected and can be dispatched as an accountable executor or independent reviewer."
   },
   "teams": [
     {
@@ -172,71 +176,6 @@ comment).
     }
   ],
   "ignored_quality_gates": [],
-  "gate_dispatch": [
-    {
-      "gate_id": "G1",
-      "status": "required",
-      "agents": [
-        "code-reviewer"
-      ],
-      "tasks": [],
-      "artifacts": []
-    },
-    {
-      "gate_id": "G2",
-      "status": "required",
-      "agents": [
-        "code-reviewer"
-      ],
-      "tasks": [],
-      "artifacts": []
-    },
-    {
-      "gate_id": "G3",
-      "status": "required",
-      "agents": [
-        "code-reviewer"
-      ],
-      "tasks": [],
-      "artifacts": []
-    },
-    {
-      "gate_id": "G4",
-      "status": "required",
-      "agents": [
-        "code-reviewer"
-      ],
-      "tasks": [],
-      "artifacts": []
-    },
-    {
-      "gate_id": "G5",
-      "status": "required",
-      "agents": [
-        "code-reviewer"
-      ],
-      "tasks": [],
-      "artifacts": []
-    },
-    {
-      "gate_id": "G6",
-      "status": "required",
-      "agents": [
-        "code-reviewer"
-      ],
-      "tasks": [],
-      "artifacts": []
-    },
-    {
-      "gate_id": "G7",
-      "status": "required",
-      "agents": [
-        "code-reviewer"
-      ],
-      "tasks": [],
-      "artifacts": []
-    }
-  ],
   "human_gates": [],
   "knowledge_context": {
     "status": "planned",
@@ -244,8 +183,8 @@ comment).
     "source_filter": "deagy/cadre",
     "requests": [
       {
-        "agent": "application-engineer",
-        "query": "Task: Add a React upload form backed by a PostgreSQL API. Retrieve cross-stack contracts, integration decisions, shared behavior, and implementation patterns.",
+        "agent": "interaction-designer",
+        "query": "Task: Add a React upload form backed by a PostgreSQL API. Retrieve prior UX decisions, interaction patterns, accessibility findings, and user journey/flow history.",
         "invocation": {
           "launcher": {
             "runtime": "python",
@@ -256,11 +195,11 @@ comment).
             "/path/to/your/checkout/agents/knowledge-store/src/cli.py",
             "context",
             "--agent",
-            "application-engineer",
+            "interaction-designer",
             "--task-id",
             "GOLDEN-CROSS-STACK-1",
             "--query",
-            "Task: Add a React upload form backed by a PostgreSQL API. Retrieve cross-stack contracts, integration decisions, shared behavior, and implementation patterns.",
+            "Task: Add a React upload form backed by a PostgreSQL API. Retrieve prior UX decisions, interaction patterns, accessibility findings, and user journey/flow history.",
             "--classification",
             "internal",
             "--top",
@@ -407,7 +346,7 @@ comment).
       }
     ]
   },
-  "dispatch_fingerprint": "sha256:2c638925d08bfd825bea2b1926727ad0d5565336f426b50717c46539e62ddb29"
+  "dispatch_fingerprint": "sha256:e78661f0f32d5b0212e6850f1182247133b4447ba26a650653586fcb356c1f07"
 }
 ```
 
@@ -427,6 +366,11 @@ comment).
 - **`agents.primary` / `.reviewers` / `.support`** — the deduplicated role ids
   selected across all matched routes: who implements, who independently
   reviews, and who supports without owning the change.
+- **`dispatch_disposition`** — `"staffed"` when `agents.primary`/`.reviewers`
+  hold an accountable executor or independent reviewer; `"advisory-only"` when
+  only `agents.support` was populated with nothing else selected;
+  `"no-agents-selected"` otherwise. An orchestrator must not treat
+  `"advisory-only"` as authorization to do the work itself.
 - **`teams`** — deterministic `team_recipes` (routing.yaml) triggered by the
   matched route combination; never adds a role that wasn't already in
   `agents.*`. This example's `cross-stack-build` recipe fires because both
@@ -442,11 +386,12 @@ comment).
   this task's matched routes and lifecycle phase require, each with the
   route(s) that contributed it, versus any gates explicitly ignored by
   `routing.yaml`'s `ignored_gates`.
-- **`gate_dispatch`** — per-gate dispatch detail: which agents are assigned
-  to satisfy that gate, and any task/artifact hints.
 - **`human_gates`** — gates requiring an accountable human decision (risk
   acceptance, production authorization, policy exception); empty here because
-  this task reaches no such gate.
+  this task reaches no such gate. Each entry also carries a
+  `kernel_mutation_gate_id`, cross-referencing the Agentic SDLC kernel's own
+  `contracts/mutation-gates.json` id where one exists — the kernel stays the
+  authoritative definition, this is a pointer to it, not a duplicate.
 - **`knowledge_context`** — one retrieval request per selected agent, each
   with the exact CLI invocation to run against the knowledge store
   (`--source` scoped to this repository's origin remote, `--classification`

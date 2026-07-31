@@ -20,7 +20,7 @@ REPOSITORY_ROOT = ROOT.parent
 # checked directly against the AGENT.md files on disk below, so a role
 # add/remove without updating this constant fails immediately instead of
 # leaving the other assertions below silently pinned to a stale number.
-EXPECTED_ROLE_COUNT = 47
+EXPECTED_ROLE_COUNT = 49
 
 
 class RepositoryHealthTests(unittest.TestCase):
@@ -72,7 +72,7 @@ class RepositoryHealthTests(unittest.TestCase):
                     # independence clause (docs/proposals/human-authority-
                     # role-agents.md §8.2).
                     self.assertEqual("read_only", values["capability"])
-                if values.get("definition", "").startswith("review/") or agent_id == "test-engineer":
+                if values.get("definition", "").startswith("review/"):
                     self.assertEqual("read_only", values["capability"])
 
     def test_workflow_values_match_schema_and_files(self) -> None:
@@ -386,7 +386,7 @@ class RepositoryHealthTests(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual(0, result.returncode)
-            for agent_id in ("code-reviewer", "security-reviewer", "test-engineer"):
+            for agent_id in ("code-reviewer", "security-reviewer"):
                 markdown = (plugin_root / "agents" / f"{agent_id}.md").read_text(encoding="utf-8")
                 toml = (plugin_root / "codex-agents" / f"agents-{agent_id}.toml").read_text(encoding="utf-8")
                 self.assertIn("tools: Read, Grep, Glob", markdown)
@@ -395,9 +395,10 @@ class RepositoryHealthTests(unittest.TestCase):
                 self.assertIn("generated: true", markdown)
                 self.assertIn("canonical_source:", markdown)
                 self.assertIn("# GENERATED FILE:", toml)
-            author = (plugin_root / "agents" / "application-engineer.md").read_text(encoding="utf-8")
-            self.assertIn("tools: Read, Grep, Glob, Bash, Edit, Write", author)
-            self.assertIn('sandbox_mode = "workspace-write"', (plugin_root / "codex-agents" / "agents-application-engineer.toml").read_text(encoding="utf-8"))
+            for agent_id in ("application-engineer", "test-engineer"):
+                author = (plugin_root / "agents" / f"{agent_id}.md").read_text(encoding="utf-8")
+                self.assertIn("tools: Read, Grep, Glob, Bash, Edit, Write", author)
+                self.assertIn('sandbox_mode = "workspace-write"', (plugin_root / "codex-agents" / f"agents-{agent_id}.toml").read_text(encoding="utf-8"))
 
     def test_plugin_advertised_role_count_matches_generated_catalog(self) -> None:
         plugin_root = REPOSITORY_ROOT / "plugins" / "cadre"

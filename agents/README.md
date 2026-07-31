@@ -41,7 +41,7 @@ reviewers/support`) needs only this suite's own `catalog.yaml` and
 `routing.yaml`, useful on its own for a single small project. When the
 standalone Agentic SDLC executable is also available (`AGENTIC_SDLC_BIN` or
 `agentic-sdlc` on `PATH`), the plan is automatically enriched with
-lifecycle-contract-derived `gate_dispatch` and gate-augmented quality gates;
+lifecycle-contract-derived, gate-augmented `required_quality_gates`;
 pass `--require-sdlc` to fail instead of silently falling back to standalone
 when that integration is required (for example, a larger or multi-project
 effort tracked through Agentic SDLC). Check the emitted `lifecycle_tracking.status`

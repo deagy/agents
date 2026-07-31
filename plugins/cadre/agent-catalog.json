@@ -133,6 +133,15 @@
       ],
       "definition": "suite/agents/engineering/debugging-engineer/AGENT.md"
     },
+    "decommission-engineer": {
+      "phase": "operations",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/agents/operations/decommission-engineer/AGENT.md"
+    },
     "end-user-tester": {
       "phase": "verify",
       "kind": "author",
@@ -230,6 +239,15 @@
         "reviewer"
       ],
       "definition": "suite/agents/review/infrastructure-reviewer/AGENT.md"
+    },
+    "interaction-designer": {
+      "phase": "design",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/agents/architecture/interaction-designer/AGENT.md"
     },
     "knowledge-store-steward": {
       "phase": "knowledge",

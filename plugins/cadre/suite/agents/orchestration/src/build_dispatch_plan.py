@@ -1,4 +1,4 @@
-"""Build the stable version 2 agent dispatch-plan document."""
+"""Build the stable version 3 agent dispatch-plan document."""
 
 from __future__ import annotations
 
@@ -38,16 +38,16 @@ def _unique(values: Iterable[str]) -> list[str]:
     return list(dict.fromkeys(values))
 
 
-def _gate_dispatch(
+def _gate_sequence(
     configured: list[str], ignored: list[str], gates: list[dict[str, Any]] | None
-) -> tuple[list[str], list[dict[str, Any]], list[str]]:
+) -> tuple[list[str], list[str]]:
     if not configured:
-        return [], [], []
+        return [], []
     if gates is None:
         ignored_set = set(ignored).intersection(configured)
         effective = [gate_id for gate_id in configured if gate_id not in ignored_set]
         ignored_list = [gate_id for gate_id in configured if gate_id in ignored_set]
-        return effective, [], ignored_list
+        return effective, ignored_list
     gate_ids = _gate_order(gates)
     unknown = set(ignored) - set(gate_ids)
     if unknown:
@@ -57,18 +57,7 @@ def _gate_dispatch(
         raise ValueError(f"routing references unknown lifecycle gates: {sorted(unknown)}")
     sequence = gate_ids[: max(gate_ids.index(gate_id) for gate_id in configured) + 1]
     ignored_set = set(ignored).intersection(sequence)
-    contracts = {gate["id"]: gate for gate in gates}
-    dispatch = []
-    for gate_id in sequence:
-        contract = contracts[gate_id]
-        dispatch.append({
-            "gate_id": gate_id,
-            "status": "ignored" if gate_id in ignored_set else "required",
-            "agents": _unique([*contract.get("author_agents", []), *contract.get("review_agents", ["code-reviewer"])]),
-            "tasks": contract.get("tasks", []),
-            "artifacts": contract.get("artifacts", []),
-        })
-    return [gate_id for gate_id in sequence if gate_id not in ignored_set], dispatch, sorted(ignored_set, key=gate_ids.index)
+    return [gate_id for gate_id in sequence if gate_id not in ignored_set], sorted(ignored_set, key=gate_ids.index)
 
 
 def _gate_agents(configured: list[str], ignored: list[str], gates: list[dict[str, Any]] | None) -> list[str]:
@@ -142,7 +131,18 @@ def _select_workflow(route_ids: list[str], risk_ids: list[str], has_agents: bool
         route_id in {"frontend", "backend", "infrastructure"} for route_id in route_ids
     ):
         return "pipeline-change"
-    return "new-service"
+    # "new-service" is only for a route/risk combination that actually looks
+    # like building or architecting something -- at least one build-shaped
+    # route, or the architecture-change risk. Anything else that matched
+    # something (so this isn't needs-triage) but doesn't fit any recognized
+    # shape above is genuinely unclassified, not silently mislabeled as a
+    # new service (confirmed empirically: every currently-tested "new-service"
+    # case satisfies this condition; a risk-only match with no build-shaped
+    # route, e.g. a lone security risk rule, did not and was previously
+    # mislabeled).
+    if set(route_ids) & {"frontend", "backend", "infrastructure", "pipeline"} or "architecture-change" in risk_ids:
+        return "new-service"
+    return "unclassified"
 
 
 def _build_human_gates(risks: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -152,6 +152,19 @@ def _build_human_gates(risks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         "destructive-action": "An authorized human must approve the exact destructive action and recovery plan.",
         "accountable-human-escalation": "An accountable human owner or approval group must make the requested decision.",
         "privileged-identity-change": "An authorized human must approve privileged identity, credential, or break-glass changes.",
+    }
+    # Cross-references the Agentic SDLC kernel's own mutation-gate taxonomy
+    # (contracts/mutation-gates.json) rather than parallel-defining it here.
+    # Cadre's own ids are kept as-is (routing.yaml and existing consumers
+    # already depend on them) -- this is an explicit, additive pointer to
+    # the kernel's authoritative id, not a rename. `None` where cadre has no
+    # kernel mutation-gate counterpart.
+    kernel_mutation_gate_ids = {
+        "persistent-database-migration": "persistent-migration",
+        "production-change": "production-deployment",
+        "destructive-action": "destructive-operation",
+        "privileged-identity-change": "privileged-identity-change",
+        "accountable-human-escalation": None,
     }
     gate_ids = _unique(
         risk["rule"].get("human_gate")
@@ -163,6 +176,7 @@ def _build_human_gates(risks: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "id": gate_id,
             "required": True,
             "reason": descriptions.get(gate_id, "An authorized human decision is required."),
+            "kernel_mutation_gate_id": kernel_mutation_gate_ids.get(gate_id),
         }
         for gate_id in gate_ids
     ]
@@ -384,7 +398,7 @@ def build_dispatch_plan(
     catalog_path: Path | None = None,
     routing_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Build a version 2 dispatch plan.
+    """Build a version 3 dispatch plan.
 
     `catalog_path`/`routing_path` are optional and keyword-only: when both
     are supplied (the actual on-disk files `catalog`/`config` were loaded
@@ -483,7 +497,7 @@ def build_dispatch_plan(
     if gates is not None:
         gate_order = _gate_order(gates)
         required_quality_gates.sort(key=lambda gate: gate_order.index(gate["id"]))
-    effective_gate_ids, gate_dispatch, ignored_quality_gates = _gate_dispatch(
+    effective_gate_ids, ignored_quality_gates = _gate_sequence(
         [gate["id"] for gate in required_quality_gates], config.get("ignored_gates", []), gates
     )
     existing = {gate["id"]: gate for gate in required_quality_gates}
@@ -507,7 +521,7 @@ def build_dispatch_plan(
     )
 
     dispatch = {
-        "schema_version": 2,
+        "schema_version": 3,
         "task_id": task_id,
         "generated_at": generated_at,
         "status": "ready" if selected_agents else "needs-triage",
@@ -529,7 +543,6 @@ def build_dispatch_plan(
         "lifecycle_tracking": lifecycle_tracking,
         "required_quality_gates": required_quality_gates,
         "ignored_quality_gates": ignored_quality_gates,
-        "gate_dispatch": gate_dispatch,
         "human_gates": _build_human_gates(matched_risks),
         "knowledge_context": _build_knowledge_context(config, selected_agents, normalized_input),
     }

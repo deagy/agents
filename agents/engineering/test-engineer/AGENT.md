@@ -1,7 +1,7 @@
 ---
 id: test-engineer
 phase: verify
-capability: read_only
+capability: test_author
 model: sonnet
 codex_model: gpt-5.6-terra
 reasoning_effort: medium
