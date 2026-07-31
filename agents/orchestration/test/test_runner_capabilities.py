@@ -268,17 +268,14 @@ class ClineScopeRespectedTests(unittest.TestCase):
         self.assertFalse(cline["has_generated_wrapper"])
         self.assertFalse(cline["named_agent_dispatch_supported"])
 
-    def test_plugins_cline_index_does_not_reference_capability_manifest(self) -> None:
-        """Confirms the grounding claim requirements.md relies on: no code
-        in plugins/cline/ currently reads a tools/sandbox_mode grant, so the
-        manifest correctly declares no such grant for this runner.
-        """
-        index_path = REPOSITORY_ROOT / "plugins" / "cline" / "index.ts"
-        if not index_path.is_file():
-            self.skipTest("plugins/cline/index.ts not present in this checkout")
-        content = index_path.read_text(encoding="utf-8")
-        self.assertNotIn("CAPABILITY_PROFILES", content)
-        self.assertNotIn("runner-capabilities", content)
+    # The companion grounding check -- that no code in the Cline plugin reads a
+    # tools/sandbox_mode grant -- used to live here as
+    # test_plugins_cline_index_does_not_reference_capability_manifest, reading
+    # plugins/cline/index.ts. That plugin moved to deagy/cadre-plugin in the
+    # register/plugin split, so the path can never exist here again and the
+    # test could only ever skip: a permanent green skip that reads like
+    # coverage. Removed rather than left disabled; the assertion belongs in
+    # that repository, against its own cline/index.ts.
 
 
 class PackagingAllowlistParityTests(unittest.TestCase):
@@ -322,9 +319,13 @@ class PackagingAllowlistParityTests(unittest.TestCase):
             subprocess.run(["git", "-C", str(root), "commit", "-qm", "base"], check=True)
             plugin_root = root / "plugins" / "cadre"
             plugin_root.mkdir(parents=True)
-            (plugin_root / "README.md").write_text("template readme\n", encoding="utf-8")
+            packaging_readme = root / "packaging" / "plugin-README.md"
+            packaging_readme.parent.mkdir(parents=True)
+            packaging_readme.write_text("template readme\n", encoding="utf-8")
 
-            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(ggp, "PLUGIN_ROOT", plugin_root):
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(
+                ggp, "PACKAGING_README", packaging_readme
+            ):
                 ggp.generate_suite_copy({}, plugin_root)
 
             self.assertTrue((plugin_root / "suite" / "agents" / "runner-capabilities.json").is_file())
@@ -374,7 +375,9 @@ class PackagingAllowlistParityTests(unittest.TestCase):
             subprocess.run(["git", "-C", str(root), "commit", "-qm", "base"], check=True)
             plugin_root = root / "plugins" / "cadre"
             plugin_root.mkdir(parents=True)
-            (plugin_root / "README.md").write_text("template readme\n", encoding="utf-8")
+            packaging_readme = root / "packaging" / "plugin-README.md"
+            packaging_readme.parent.mkdir(parents=True)
+            packaging_readme.write_text("template readme\n", encoding="utf-8")
 
             # Place the scratch module at the same relative depth as the
             # real one (<root>/agents/orchestration/src/generate_global_plugin.py)
@@ -384,7 +387,7 @@ class PackagingAllowlistParityTests(unittest.TestCase):
             broken_module = self._load_module_from_source(
                 "broken_generate_global_plugin", broken_source, module_path
             )
-            with mock.patch.object(broken_module, "PLUGIN_ROOT", plugin_root):
+            with mock.patch.object(broken_module, "PACKAGING_README", packaging_readme):
                 broken_module.generate_suite_copy({}, plugin_root)
             self.assertFalse((plugin_root / "suite" / "agents" / "runner-capabilities.json").is_file())
 
@@ -392,9 +395,8 @@ class PackagingAllowlistParityTests(unittest.TestCase):
             # fixture repository correctly.
             correct_plugin_root = root / "plugins" / "cadre-correct"
             correct_plugin_root.mkdir(parents=True)
-            (correct_plugin_root / "README.md").write_text("template readme\n", encoding="utf-8")
             with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(
-                ggp, "PLUGIN_ROOT", correct_plugin_root
+                ggp, "PACKAGING_README", packaging_readme
             ):
                 ggp.generate_suite_copy({}, correct_plugin_root)
             self.assertTrue((correct_plugin_root / "suite" / "agents" / "runner-capabilities.json").is_file())

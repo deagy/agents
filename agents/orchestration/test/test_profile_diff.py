@@ -26,8 +26,8 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import profile_diff  # noqa: E402
 
-CURRENT_PROVIDER_PATH = REPOSITORY_ROOT / "plugins" / "cadre" / "provider.json"
-CURRENT_PROFILE_PATH = REPOSITORY_ROOT / "plugins" / "cadre" / "profiles" / "secure-cloud" / "profile.json"
+CURRENT_PROVIDER_PATH = REPOSITORY_ROOT / "provider" / "provider.json"
+CURRENT_PROFILE_PATH = REPOSITORY_ROOT / "provider" / "profiles" / "secure-cloud" / "profile.json"
 
 
 def _load_current() -> tuple[dict, dict]:

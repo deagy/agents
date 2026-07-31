@@ -10,12 +10,13 @@ Agent-role wrappers are NOT symmetric, because the two runners differ here:
   plugin's default agents/ directory (do NOT also declare an "agents" field in
   plugin.json for this — that field expects individual file paths, not a
   directory, and a bare directory string fails manifest validation), so the
-  role wrappers go under plugins/cadre/agents/*.md and become
+  role wrappers go under the package's agents/*.md and become
   global automatically when the plugin is installed at user scope.
 - Codex CLI has no such mechanism — custom agents are only discovered from
   .codex/agents/ (project) or ~/.codex/agents/ (global) on disk, never from a
-  plugin manifest. The *.toml wrappers are generated to the repo-tracked
-  staging directory plugins/cadre/codex-agents/ instead. The
+  plugin manifest. The *.toml wrappers are generated to this repository's
+  tracked staging directory provider/codex-agents/ instead (by `cadre
+  generate-role-metadata`), and copied into the package from there. The
   separate `cadre bootstrap-codex` command safely installs their namespaced
   IDs under ~/.codex/agents/ without overwriting bare roles or unowned files;
   this generator itself never writes outside the repository.
@@ -32,17 +33,21 @@ convenience layered on top of the manual PATH setup, not a replacement for it.
 A generated package-relative agent-catalog.json is loaded by the standalone
 kernel through provider.json.
 
+The package itself is maintained in a separate repository, deagy/cadre-plugin,
+which is almost entirely this script's output: only the two plugin manifests
+carrying the release version are hand-authored there (see PACKAGE_ASSETS).
+``--output <directory>`` points at a checkout of that repository and is
+therefore required — this source repository has no plugins/ directory of its
+own to write into.
+
 Regenerate after adding/removing a role in agents/catalog.yaml or a skill under
 .agents/skills/:
 
-    cadre generate-plugin
+    cadre generate-plugin --output /path/to/cadre-plugin
 
 Validate deterministically without changing the working tree:
 
-    cadre generate-plugin --check
-
-Use ``--output <directory>`` to render or check an isolated package, which is
-useful for tests and packaging review.
+    cadre generate-plugin --check --output /path/to/cadre-plugin
 
 (bin/cadre at the repository root; or `python3 agents/orchestration/src/generate_global_plugin.py`
 directly if bin/cadre isn't set up yet).
@@ -67,7 +72,50 @@ from routing import parse_catalog_entries  # noqa: E402
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 AGENTS_ROOT = REPOSITORY_ROOT / "agents"
 SKILLS_ROOT = REPOSITORY_ROOT / ".agents" / "skills"
-PLUGIN_ROOT = REPOSITORY_ROOT / "plugins" / "cadre"
+# This repository's Agentic SDLC provider bundle. Register-owned, tracked here,
+# and copied verbatim into the package by generate_provider_copy(): the
+# pip/pipx distribution vendors this directory (see pyproject.toml) so `cadre
+# sdlc` and `cadre bootstrap-codex` keep working from an install without a
+# plugin checkout. provider.json/profiles/extensions are hand-authored;
+# agent-catalog.json and codex-agents/ are generated from agents/catalog.yaml
+# by `cadre generate-role-metadata`, which also drift-checks them.
+PROVIDER_ROOT = REPOSITORY_ROOT / "provider"
+# The packaged plugin's own README. Register-owned like the provider bundle:
+# the generator renders it to both <package>/README.md and
+# <package>/suite/README.md, so the package has no hand-authored input this
+# script must read back out of the plugin repository -- `--output` can point
+# at an empty directory and still produce a complete package.
+PACKAGING_README = REPOSITORY_ROOT / "packaging" / "plugin-README.md"
+PROVIDER_BUNDLE = ("provider.json", "agent-catalog.json", "profiles", "extensions", "codex-agents")
+# Register-only member of provider/: verbatim copies of every role's AGENT.md.
+# The kernel resolves agent-catalog.json's `definition` values relative to the
+# directory holding that file and rejects anything escaping it
+# (agentic_sdlc.load_agent_catalog), so role content reachable from
+# provider/agent-catalog.json has to live *under* provider/ -- a relative path
+# back out to agents/ would raise. Without it, `cadre sdlc init --profile
+# secure-cloud` silently falls back to one-line generic role instructions
+# (rich_agent_content() returns None for a missing file), which is what the pip
+# distribution has always done and what a register checkout would otherwise
+# start doing after the plugin split.
+#
+# NOT copied into the package: the package reaches the same content through
+# suite/agents/, and a package-root roles/ would be dead weight. Hence
+# PROVIDER_DEFINITION_PREFIX below.
+PROVIDER_ROLES_DIRNAME = "roles"
+# agent-catalog.json's `definition` values are relative to whichever copy of
+# the file is being read, and the two copies sit in differently shaped trees:
+# provider/roles/... in the register, suite/agents/... in the package. The
+# register spelling is authoritative and generate_provider_copy() rewrites it
+# for the package.
+PROVIDER_DEFINITION_PREFIX = f"{PROVIDER_ROLES_DIRNAME}/"
+PACKAGE_DEFINITION_PREFIX = "suite/agents/"
+# The only files in the plugin package this script does NOT produce. Both
+# carry the package's release version, which is deliberately hand-set in the
+# plugin repository (see its tools/plugin_version.py) so a release stays a
+# separate, reviewed act from a content regeneration. GENERATED_TOP_LEVEL
+# below is the complement: everything reset_generated_content() removes and
+# files_equal() compares.
+PACKAGE_ASSETS = (".claude-plugin", ".codex-plugin")
 SHARED_POLICIES = [
     "agents/shared/operating-principles.md",
     "agents/shared/team-profile.yaml",
@@ -167,7 +215,15 @@ ALLOWED_CODEX_MODELS = {data["codex_model"] for data in MODEL_TIERS.values()}
 ALLOWED_REASONING_EFFORTS = set(_RUNNER_CAPABILITIES["allowed_reasoning_efforts"])
 
 GENERATED_MARKER = "<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->"
-GENERATED_TOP_LEVEL = {"skills", "agents", "codex-agents", "suite", "agent-catalog.json", "bin"}
+GENERATED_TOP_LEVEL = {
+    "skills", "agents", "suite", "bin",
+    # The provider bundle, copied verbatim from this repository's provider/
+    # by generate_provider_copy(). Generated *for the package* even though
+    # some members are hand-authored in the register -- inside the package
+    # they are output, and drift against the register must fail the check.
+    *PROVIDER_BUNDLE,
+    "README.md",
+}
 
 
 def load_catalog(path: Path) -> dict[str, dict[str, Any]]:
@@ -222,13 +278,94 @@ def write(path: Path, content: str) -> None:
 
 
 def reset_generated_content(plugin_root: Path) -> None:
-    for name in ("skills", "agents", "codex-agents", "suite"):
+    # Derived from GENERATED_TOP_LEVEL rather than re-listed, so a new member
+    # can never be generated-but-not-reset (which would leave stale files that
+    # files_equal() then reports as drift forever, with no way to regenerate
+    # out of it). bin/ is the one entry not removed wholesale: only bin/cadre
+    # is generated, and the directory may legitimately hold nothing else.
+    for name in sorted(GENERATED_TOP_LEVEL - {"bin"}):
         path = plugin_root / name
-        if path.exists():
+        if path.is_dir():
             shutil.rmtree(path)
-    for path in (plugin_root / "agent-catalog.json", plugin_root / "bin" / "cadre"):
-        if path.exists():
+        elif path.exists():
             path.unlink()
+    cadre_wrapper = plugin_root / "bin" / "cadre"
+    if cadre_wrapper.exists():
+        cadre_wrapper.unlink()
+
+
+def generate_provider_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -> list[Path]:
+    """Copy this repository's provider/ bundle into the package root.
+
+    The bundle is register-owned (see PROVIDER_ROOT): the package receives a
+    verbatim copy so an installed plugin carries its own provider contracts,
+    and files_equal() then fails the drift check if the package's copy ever
+    diverges from the register's.
+    """
+    # The generated members of provider/ are produced by
+    # `cadre generate-role-metadata`, not here, so this generator can only copy
+    # whatever the register last committed. Editing a role's AGENT.md and
+    # running `generate-plugin` alone would refresh the package's Claude Code
+    # wrappers (built live from the catalog) while silently packaging stale
+    # Codex wrappers and a stale catalog export -- and a following --check,
+    # which compares package against the same stale register content, would
+    # call it current. Fail loudly instead.
+    stale = [
+        str(PROVIDER_ROOT / relative)
+        for relative, expected in {
+            "agent-catalog.json": agent_catalog_export_content(catalog),
+            **{f"codex-agents/{name}": body for name, body in codex_wrapper_contents(catalog).items()},
+        }.items()
+        if not (PROVIDER_ROOT / relative).is_file()
+        or (PROVIDER_ROOT / relative).read_text(encoding="utf-8") != expected
+    ]
+    if stale:
+        raise SystemExit(
+            "provider/ is stale; run `cadre generate-role-metadata` before regenerating the "
+            "package: " + ", ".join(sorted(stale)[:5]) + (" ..." if len(stale) > 5 else "")
+        )
+    written: list[Path] = []
+    for name in PROVIDER_BUNDLE:
+        source = PROVIDER_ROOT / name
+        if not source.exists():
+            raise SystemExit(
+                f"{source}: missing from the provider bundle. Run "
+                "`cadre generate-role-metadata` if it is generated content."
+            )
+        target = plugin_root / name
+        if source.is_dir():
+            # symlinks=False would dereference, silently vendoring out-of-tree
+            # content into a published package; refuse instead, matching
+            # generate_skill_copies()'s stance.
+            for path in sorted(source.rglob("*")):
+                if path.is_symlink():
+                    raise SystemExit(f"{path}: symlinks are not packaged; replace it with a regular file")
+            shutil.copytree(source, target)
+            written.extend(path for path in sorted(target.rglob("*")) if path.is_file())
+        elif name == "agent-catalog.json":
+            # Re-point `definition` from the register's provider/roles/ tree to
+            # the package's own suite/agents/ copy of the same files. The
+            # kernel resolves these relative to whichever copy it reads and
+            # rejects escapes, so the two trees genuinely need different
+            # spellings -- see PROVIDER_DEFINITION_PREFIX.
+            catalog = json.loads(source.read_text(encoding="utf-8"))
+            for metadata in catalog["agents"].values():
+                definition = metadata["definition"]
+                if not definition.startswith(PROVIDER_DEFINITION_PREFIX):
+                    raise SystemExit(
+                        f"{source}: definition {definition!r} does not start with "
+                        f"{PROVIDER_DEFINITION_PREFIX!r}; run `cadre generate-role-metadata`"
+                    )
+                metadata["definition"] = (
+                    PACKAGE_DEFINITION_PREFIX + definition[len(PROVIDER_DEFINITION_PREFIX):]
+                )
+            write(target, json.dumps(catalog, indent=2) + "\n")
+            written.append(target)
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+            written.append(target)
+    return written
 
 
 def generate_skill_copies(plugin_root: Path) -> list[Path]:
@@ -267,32 +404,55 @@ def generate_skill_copies(plugin_root: Path) -> list[Path]:
     return written
 
 
-def generate_agent_wrappers(catalog: dict[str, dict[str, Any]], plugin_root: Path) -> list[Path]:
-    written = []
-    for agent_id, metadata in sorted(catalog.items()):
-        definition = metadata["definition"]
-        phase = metadata.get("phase", "unknown")
-        capability = metadata["capability"]
-        model = metadata.get("model")
-        codex_model = metadata.get("codex_model")
-        reasoning_effort = metadata.get("reasoning_effort")
-        profile = CAPABILITY_PROFILES[capability]
-        definition_path = AGENTS_ROOT / definition
-        shared_content = "\n\n".join(
-            f"# Shared policy: {relative}\n\n{(REPOSITORY_ROOT / relative).read_text(encoding='utf-8').strip()}"
-            for relative in SHARED_POLICIES
-        )
-        description = f"Secure cloud agent suite role for the {phase} phase ({agent_id})."
-        # A migrated role's AGENT.md carries `---`-delimited frontmatter
-        # ahead of its prose body (see role_metadata.py); that frontmatter
-        # is generated-file bookkeeping for catalog.yaml/routing.yaml, not
-        # role instructions, so it must never be embedded into the wrapper.
-        # A no-op today (no AGENT.md has frontmatter yet).
-        role_body = strip_frontmatter(definition_path.read_text(encoding="utf-8")).strip()
-        instructions = (
+def role_wrapper_inputs(agent_id: str, metadata: dict[str, Any]) -> dict[str, Any]:
+    """The wrapper content both runners derive from one role.
+
+    Shared by generate_agent_wrappers() (Claude Code, package-only) and
+    generate_codex_wrappers() (Codex, register-side under provider/), which
+    write to different repositories but must embed byte-identical role and
+    shared-policy instructions.
+    """
+    definition = metadata["definition"]
+    phase = metadata.get("phase", "unknown")
+    profile = CAPABILITY_PROFILES[metadata["capability"]]
+    shared_content = "\n\n".join(
+        f"# Shared policy: {relative}\n\n{(REPOSITORY_ROOT / relative).read_text(encoding='utf-8').strip()}"
+        for relative in SHARED_POLICIES
+    )
+    # A migrated role's AGENT.md carries `---`-delimited frontmatter
+    # ahead of its prose body (see role_metadata.py); that frontmatter
+    # is generated-file bookkeeping for catalog.yaml/routing.yaml, not
+    # role instructions, so it must never be embedded into the wrapper.
+    role_body = strip_frontmatter((AGENTS_ROOT / definition).read_text(encoding="utf-8")).strip()
+    description = f"Secure cloud agent suite role for the {phase} phase ({agent_id})."
+    return {
+        "definition": definition,
+        "description": description,
+        "profile": profile,
+        "model": metadata.get("model"),
+        "codex_model": metadata.get("codex_model"),
+        "reasoning_effort": metadata.get("reasoning_effort"),
+        "instructions": (
             f"# Role: {agent_id}\n\n{role_body}"
             f"\n\n{shared_content}\n\n{SHARED_OVERRIDE_NOTE}\n\n{ASK_HUMAN_RULE}"
-        )
+        ),
+    }
+
+
+def generate_agent_wrappers(catalog: dict[str, dict[str, Any]], plugin_root: Path) -> list[Path]:
+    """Claude Code plugin-bundled subagent wrappers. Package-only: Claude Code
+    auto-discovers these from the installed plugin's agents/ directory, so they
+    have no meaning outside it (unlike the Codex wrappers below).
+    """
+    written = []
+    for agent_id, metadata in sorted(catalog.items()):
+        inputs = role_wrapper_inputs(agent_id, metadata)
+        definition = inputs["definition"]
+        description = inputs["description"]
+        profile = inputs["profile"]
+        model = inputs["model"]
+        reasoning_effort = inputs["reasoning_effort"]
+        instructions = inputs["instructions"]
 
         md_target = plugin_root / "agents" / f"{agent_id}.md"
         md_lines = [
@@ -315,15 +475,41 @@ def generate_agent_wrappers(catalog: dict[str, dict[str, Any]], plugin_root: Pat
         ]
         write(md_target, "\n".join(md_lines))
         written.append(md_target)
+    return written
 
-        # Codex has no plugin-bundled-agent mechanism; this is a repo-tracked
-        # staging copy, not something Codex discovers directly (see module docstring).
+
+def codex_wrapper_contents(catalog: dict[str, dict[str, Any]]) -> dict[str, str]:
+    """Codex role wrappers as {filename: content}, for provider/codex-agents/.
+
+    Codex has no plugin-bundled-agent mechanism: it discovers custom agents
+    only from ~/.codex/agents/ or a project's .codex/agents/, never from a
+    plugin manifest. These are therefore a tracked staging copy that `cadre
+    bootstrap-codex` installs from -- which is why they live here, in the
+    register, rather than only in the plugin package: the pip/pipx
+    distribution vendors provider/ and must be able to serve bootstrap-codex
+    without a plugin install. `cadre generate-role-metadata` writes and
+    drift-checks them there; generate_provider_copy() then copies the same
+    files into the package.
+
+    Returns content rather than writing, so generate_role_metadata.py can fold
+    these into the same rendered-content map it uses for catalog.yaml and
+    routing.yaml and get --check for free.
+    """
+    contents: dict[str, str] = {}
+    for agent_id, metadata in sorted(catalog.items()):
+        inputs = role_wrapper_inputs(agent_id, metadata)
+        definition = inputs["definition"]
+        description = inputs["description"]
+        profile = inputs["profile"]
+        codex_model = inputs["codex_model"]
+        reasoning_effort = inputs["reasoning_effort"]
+        instructions = inputs["instructions"]
+
         # `model` uses catalog.yaml's separate `codex_model` OpenAI identifier, not
-        # the Claude Code wrapper's haiku/sonnet/opus tier name above — the two
+        # the Claude Code wrapper's haiku/sonnet/opus tier name -- the two
         # runners don't share a model-naming space. Re-verify these identifiers
         # against current Codex CLI docs before relying on them in automation.
         codex_agent_id = f"agents-{agent_id}"
-        toml_target = plugin_root / "codex-agents" / f"{codex_agent_id}.toml"
         toml_lines = [
             f"# GENERATED FILE: canonical source is agents/{definition}",
             f"name = {toml_string(codex_agent_id)}",
@@ -338,10 +524,8 @@ def generate_agent_wrappers(catalog: dict[str, dict[str, Any]], plugin_root: Pat
             f"developer_instructions = {toml_string(instructions)}",
             "",
         ]
-        toml_body = "\n".join(toml_lines)
-        write(toml_target, toml_body)
-        written.append(toml_target)
-    return written
+        contents[f"{codex_agent_id}.toml"] = "\n".join(toml_lines)
+    return contents
 
 
 def derive_kind(definition: str) -> str:
@@ -354,8 +538,16 @@ def derive_kind(definition: str) -> str:
     return "author"
 
 
-def generate_agent_catalog_export(catalog: dict[str, dict[str, Any]], plugin_root: Path) -> Path:
-    """Package-relative catalog export consumed through provider.json."""
+def agent_catalog_export_content(catalog: dict[str, dict[str, Any]]) -> str:
+    """Package-relative catalog export consumed through provider.json.
+
+    Written into this repository's own provider/ bundle for the same reason as
+    generate_codex_wrappers() above: `cadre sdlc` must work from the pip/pipx
+    distribution, which vendors provider/ but not the plugin package. The
+    `definition` values stay package-relative (suite/agents/...) because
+    provider.json resolves them inside an installed plugin; that is unchanged
+    from before the register/plugin split.
+    """
     agents = {
         agent_id: {
             "phase": metadata.get("phase", "unknown"),
@@ -365,13 +557,11 @@ def generate_agent_catalog_export(catalog: dict[str, dict[str, Any]], plugin_roo
                 if derive_kind(metadata["definition"]) == "reviewer"
                 else ["author", "dispatch"]
             ),
-            "definition": f"suite/agents/{metadata['definition']}",
+            "definition": f"{PROVIDER_DEFINITION_PREFIX}{metadata['definition']}",
         }
         for agent_id, metadata in sorted(catalog.items())
     }
-    target = plugin_root / "agent-catalog.json"
-    write(target, json.dumps({"schema_version": 1, "agents": agents}, indent=2) + "\n")
-    return target
+    return json.dumps({"schema_version": 1, "agents": agents}, indent=2) + "\n"
 
 
 # Subcommands from bin/subcommands.tsv that manage this source repository
@@ -578,12 +768,14 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
         if relative not in selected and (REPOSITORY_ROOT / relative).is_file()
     )
     written: list[Path] = []
-    package_readme_source = PLUGIN_ROOT / "README.md"
-    package_readme_target = plugin_root / "suite" / "README.md"
-    package_readme_content = package_readme_source.read_text(encoding="utf-8")
-    package_readme_content = f"{GENERATED_MARKER}\n\n{package_readme_content}"
-    write(package_readme_target, package_readme_content)
-    written.append(package_readme_target)
+    # The packaged README is register-owned (PACKAGING_README) and rendered to
+    # two places: the package root, where it is the repository's front page,
+    # and suite/README.md, where the packaged docs cross-reference it.
+    package_readme_content = PACKAGING_README.read_text(encoding="utf-8")
+    write(plugin_root / "README.md", package_readme_content)
+    written.append(plugin_root / "README.md")
+    write(plugin_root / "suite" / "README.md", f"{GENERATED_MARKER}\n\n{package_readme_content}")
+    written.append(plugin_root / "suite" / "README.md")
     for relative in selected:
         source = REPOSITORY_ROOT / relative
         target = plugin_root / "suite" / relative
@@ -593,8 +785,11 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
             content = content.replace("../bin/cadre", "../../bin/cadre")
             content = content.replace("../README.md", "README.md")
             content = content.replace("`../README.md`", "`README.md`")
-            content = content.replace("../plugins/cadre/README.md", "../README.md")
-            content = content.replace("../plugins/cadre/", "./")
+            # The register's source for the packaged README (PACKAGING_README)
+            # has no counterpart inside the package; point at the packaged
+            # copy of it instead. Every file carrying this link sits one level
+            # under suite/, so `../README.md` resolves to suite/README.md.
+            content = content.replace("../packaging/plugin-README.md", "../README.md")
             # A migrated role's AGENT.md starts with `---`-delimited
             # frontmatter (see role_metadata.py); inserting the marker at
             # byte 0 would land it inside that frontmatter block instead of
@@ -622,10 +817,13 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
 
 def generate_package(catalog: dict[str, dict[str, Any]], plugin_root: Path) -> list[Path]:
     reset_generated_content(plugin_root)
-    return generate_skill_copies(plugin_root) + generate_suite_copy(catalog, plugin_root) + generate_agent_wrappers(catalog, plugin_root) + [
-        generate_bin_wrapper(plugin_root),
-        generate_agent_catalog_export(catalog, plugin_root),
-    ]
+    return (
+        generate_skill_copies(plugin_root)
+        + generate_suite_copy(catalog, plugin_root)
+        + generate_agent_wrappers(catalog, plugin_root)
+        + generate_provider_copy(catalog, plugin_root)
+        + [generate_bin_wrapper(plugin_root)]
+    )
 
 
 def files_equal(left: Path, right: Path) -> bool:
@@ -649,14 +847,22 @@ def files_equal(left: Path, right: Path) -> bool:
 def main() -> int:
     catalog = load_catalog(AGENTS_ROOT / "catalog.yaml")
     arguments = sys.argv[1:]
-    output_root = PLUGIN_ROOT
-    if "--output" in arguments:
-        output_index = arguments.index("--output")
-        try:
-            output_root = Path(arguments[output_index + 1]).resolve()
-        except IndexError as error:
-            raise SystemExit("--output requires a directory") from error
-    if "--check" not in arguments and output_root.exists() and output_root != PLUGIN_ROOT:
+    # The package is written into a checkout of the plugin repository
+    # (deagy/cadre-plugin). This repository has nothing to generate into, so
+    # --output is required rather than defaulting anywhere -- a default would
+    # silently create a stray directory here.
+    if "--output" not in arguments:
+        raise SystemExit(
+            "cadre generate-plugin: --output is required. The packaged plugin lives in "
+            "deagy/cadre-plugin; clone it and pass its root, e.g.\n"
+            "    cadre generate-plugin --output /path/to/cadre-plugin"
+        )
+    output_index = arguments.index("--output")
+    try:
+        output_root = Path(arguments[output_index + 1]).resolve()
+    except IndexError as error:
+        raise SystemExit("--output requires a directory") from error
+    if "--check" not in arguments and output_root.exists():
         marker = output_root / ".codex-plugin" / "plugin.json"
         if any(output_root.iterdir()) and not marker.is_file():
             raise SystemExit("--output must be a new directory or an existing generated plugin")
@@ -670,7 +876,7 @@ def main() -> int:
         kernel = os.environ.get("AGENTIC_SDLC_BIN") or shutil.which("agentic-sdlc")
         if kernel:
             checked = subprocess.run(
-                [kernel, "--provider", str(PLUGIN_ROOT / "provider.json"), "provider", "list"],
+                [kernel, "--provider", str(PROVIDER_ROOT / "provider.json"), "provider", "list"],
                 cwd=REPOSITORY_ROOT, check=False, capture_output=True, text=True, encoding="utf-8",
             )
             if checked.returncode != 0:

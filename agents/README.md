@@ -75,7 +75,7 @@ Technology preferences live in `shared/team-profile.yaml`, `shared/technology-st
 
 ## Portable adoption
 
-This repository is the source implementation for the Cadre agent suite. The lifecycle kernel, schemas, command interface, gate transitions, approvals, and lifecycle skills are maintained separately at `github.com/deagy/agentic-sdlc`. This suite contributes its catalog, `secure-cloud` profile, routing, and provider extensions through `plugins/cadre/provider.json`.
+This repository is the source implementation for the Cadre agent suite. The lifecycle kernel, schemas, command interface, gate transitions, approvals, and lifecycle skills are maintained separately at `github.com/deagy/agentic-sdlc`. This suite contributes its catalog, `secure-cloud` profile, routing, and provider extensions through `provider/provider.json`.
 
 Initialize a consuming target project from the repository checkout with:
 
@@ -95,4 +95,4 @@ advance the run record only when all gate criteria and authority checks pass.
 
 ## System-wide adoption
 
-Unlike the portable kernel above, `../plugins/cadre/` does not get copied into other repositories — it makes *this* suite (roles, skills, knowledge store) reachable from any project directory on the machine once installed at global/user scope, since none of it is discoverable from outside this checkout by default. See `../plugins/cadre/README.md` and `RUNBOOK.md` section 17.
+Unlike the portable kernel above, the packaged plugin ([`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin)) does not get copied into other repositories — it makes *this* suite (roles, skills, knowledge store) reachable from any project directory on the machine once installed at global/user scope, since none of it is discoverable from outside this checkout by default. See `../packaging/plugin-README.md` (the register-owned source of that package's README) and `RUNBOOK.md` section 17.

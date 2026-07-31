@@ -21,7 +21,7 @@ Three inputs feed the comparison, per artifact (`provider.json` and
 
 - CURRENT -- this suite's own current release content. Defaults to the
   nearest `provider.json` found by walking up from this file's own
-  location (matches both a source checkout's `plugins/cadre/provider.json`
+  location (matches both a source checkout's `provider/provider.json`
   and a packaged plugin install's top-level `provider.json` without
   needing separate packaging-specific wiring), or may be overridden
   explicitly.
@@ -328,7 +328,7 @@ def find_default_current_paths(profile_id: str) -> tuple[Path, Path] | None:
     """Locate this suite's own current provider.json/profile.json by walking
     up from this file's own location, so the same default works whether
     this module is running from a source checkout
-    (`<repo>/plugins/cadre/provider.json`) or from inside an already-
+    (`<repo>/provider/provider.json`) or from inside an already-
     packaged plugin install (`<plugin_root>/provider.json`,
     `<plugin_root>/profiles/<id>/profile.json`) without separate
     packaging-specific wiring. Returns None if neither shape is found.
@@ -341,9 +341,9 @@ def find_default_current_paths(profile_id: str) -> tuple[Path, Path] | None:
         packaged_provider = ancestor / "provider.json"
         if packaged_provider.is_file() and _is_cadre_provider(packaged_provider):
             return packaged_provider, ancestor / "profiles" / profile_id / "profile.json"
-        checkout_provider = ancestor / "plugins" / "cadre" / "provider.json"
+        checkout_provider = ancestor / "provider" / "provider.json"
         if checkout_provider.is_file() and _is_cadre_provider(checkout_provider):
-            return checkout_provider, ancestor / "plugins" / "cadre" / "profiles" / profile_id / "profile.json"
+            return checkout_provider, ancestor / "provider" / "profiles" / profile_id / "profile.json"
     return None
 
 

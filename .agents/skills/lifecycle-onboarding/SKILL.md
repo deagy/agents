@@ -36,7 +36,7 @@ repo, or `pipx install` per its README), and proceed once it is available.
 Prefer running through this suite's compatibility launcher,
 `./bin/cadre sdlc <subcommand>`, rather than the bare `agentic-sdlc`
 binary — it automatically wires in this repository's own provider profile
-(`plugins/cadre/provider.json`) so `secure-cloud`-derived profiles resolve.
+(`provider/provider.json`) so `secure-cloud`-derived profiles resolve.
 
 ## Step 1 — Resolve the profile
 

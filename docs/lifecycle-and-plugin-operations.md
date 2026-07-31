@@ -42,7 +42,7 @@ appropriate generic profile rather than importing Secure Cloud-specific roles.
 ## Install the suite globally
 
 The self-contained plugin makes this repository's roles and skills available
-from other projects. Follow the [plugin README](../plugins/cadre/README.md)
+from other projects. Follow the [plugin README](../packaging/plugin-README.md)
 for runner-specific installation and regeneration details. Prefer a
 project-local lifecycle profile when only one project needs the Secure Cloud
 roles.

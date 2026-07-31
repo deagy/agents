@@ -34,7 +34,6 @@ jobs:
       - run: python -B -m unittest discover -s agents/shared/test -p "test_*.py"
       - run: ./bin/cadre help
       - run: ./bin/cadre select --task "CI wrapper smoke test" --files README.md --classification internal --task-id CI-SMOKE-1 >/dev/null
-      - run: ./bin/cadre generate-plugin --check
       - run: python agents/orchestration/src/schema_validate.py
       - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc --version
       - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc provider list
@@ -48,92 +47,6 @@ jobs:
           AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract agent-catalog.schema >/dev/null
           AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract artifact.schema >/dev/null
           AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract dispatch-bindings.schema >/dev/null
-
-  cline-plugin:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: plugins/cline
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "22"
-      - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
-      # Pinned to the version this plugin's known-limitation note (README/RUNBOOK) is
-      # scoped to; bump deliberately, not implicitly via an unpinned `latest` install.
-      - run: npm install -g cline@3.0.46
-      # Real install/uninstall smoke test against the packaged plugin source,
-      # catching manifest/packaging regressions rather than relying on doc-trust.
-      #
-      # `cline plugin install` logs a non-fatal `mcpSyncFailures` entry when its
-      # own sandboxed MCP-sync subprocess can't find a file under its installed
-      # package tree; that has been observed to coincide with cline's global npm
-      # binary transiently disappearing immediately afterward (an orphaned `npm
-      # update cline` process shows up in job cleanup logs), breaking the very
-      # next `cline` invocation with "command not found" -- an upstream
-      # packaging/self-repair race, not a regression in this repository.
-      # Reinstalling immediately on top of that in-flight background process
-      # only trades one race for another (`npm error ENOTEMPTY ... rename
-      # .../node_modules/cline -> .../node_modules/.cline-*`, two npm
-      # processes fighting over the same directory) -- so wait for the
-      # binary to reappear on its own first, and only reinstall, patiently
-      # retrying through any such collision, if it genuinely doesn't.
-      - name: cline plugin install (self-healing retry)
-        run: |
-          set -eu
-          wait_for_cline() {
-            for i in 1 2 3 4 5 6; do
-              command -v cline >/dev/null 2>&1 && return 0
-              sleep 5
-            done
-            return 1
-          }
-          reinstall_cline() {
-            for i in 1 2 3; do
-              npm install -g cline@3.0.46 && return 0
-              echo "reinstall attempt $i failed, likely racing cline's own background self-repair; waiting" >&2
-              sleep 10
-            done
-            return 1
-          }
-          for attempt in 1 2 3; do
-            if wait_for_cline && cline plugin install --json "$GITHUB_WORKSPACE/plugins/cline"; then
-              exit 0
-            fi
-            echo "attempt $attempt: cline plugin install failed; attempting reinstall" >&2
-            reinstall_cline || true
-          done
-          exit 1
-      - name: cline plugin uninstall (self-healing retry)
-        run: |
-          set -eu
-          wait_for_cline() {
-            for i in 1 2 3 4 5 6; do
-              command -v cline >/dev/null 2>&1 && return 0
-              sleep 5
-            done
-            return 1
-          }
-          reinstall_cline() {
-            for i in 1 2 3; do
-              npm install -g cline@3.0.46 && return 0
-              echo "reinstall attempt $i failed, likely racing cline's own background self-repair; waiting" >&2
-              sleep 10
-            done
-            return 1
-          }
-          for attempt in 1 2 3; do
-            if wait_for_cline && cline plugin uninstall @deagy/cadre-cline-plugin --json; then
-              exit 0
-            fi
-            echo "attempt $attempt: cline plugin uninstall failed; attempting reinstall" >&2
-            reinstall_cline || true
-          done
-          exit 1
 
   cadre-pip-package:
     runs-on: ubuntu-latest
@@ -165,7 +78,7 @@ jobs:
       # Run every smoke command from outside the checkout ($RUNNER_TEMP, not
       # $GITHUB_WORKSPACE) so this only exercises what an installed
       # distribution can see on its own, the same regression guard the
-      # cline-plugin job provides for the other packaged distribution.
+      # deagy/cadre-plugin's own CI provides for the plugin distribution.
       - name: Smoke test the installed cadre distribution from outside the checkout
         run: |
           set -eu
@@ -188,7 +101,7 @@ jobs:
           # exit, no raw traceback) rather than writing into site-packages
           # or crashing -- see cadre_cli/__init__.py's
           # _CHECKOUT_ONLY_SUBCOMMANDS / _requires_checkout().
-          for cmd in generate-plugin version generate-authority-aides; do
+          for cmd in generate-plugin generate-authority-aides; do
             if output=$("$CADRE" $cmd 2>&1); then
               echo "cadre $cmd unexpectedly succeeded from an installed distribution" >&2
               exit 1

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Lifecycle Review"
-  short_description: "Record an approve/reject/request-changes gate decision conversationally, no CLI needed."
-  default_prompt: "Use $lifecycle-review to record a human decision on an Agentic SDLC lifecycle gate for this project."

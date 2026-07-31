@@ -135,30 +135,27 @@ packages = ["cadre_cli"]
 
 ".agents/skills" = "cadre_cli/_vendor/.agents/skills"
 
-# Needed for `cadre sdlc` (bin/cadre.py's dispatch_sdlc() passes
-# --provider REPO_ROOT/plugins/cadre/provider.json to the externally
-# installed `agentic-sdlc` binary). Only the manifest + the resources it
-# references (agent_catalog, profile_roots, extension_roots) are vendored;
-# plugins/cadre/{suite,codex-agents,skills,bin,README.md} are the separate
-# Claude/Codex plugin distribution channel and are out of scope here.
-"plugins/cadre/provider.json" = "cadre_cli/_vendor/plugins/cadre/provider.json"
-"plugins/cadre/agent-catalog.json" = "cadre_cli/_vendor/plugins/cadre/agent-catalog.json"
-"plugins/cadre/profiles" = "cadre_cli/_vendor/plugins/cadre/profiles"
-"plugins/cadre/extensions" = "cadre_cli/_vendor/plugins/cadre/extensions"
+# The whole provider bundle. Needed for `cadre sdlc` (bin/cadre.py's
+# dispatch_sdlc() passes --provider REPO_ROOT/provider/provider.json to the
+# externally installed `agentic-sdlc` binary) and for `cadre bootstrap-codex`
+# (sync_codex_agents.py's DEFAULT_SOURCE reads provider/codex-agents/ as the
+# default set of wrappers to install into the caller's own ~/.codex/ config).
+#
+# This directory is register-owned precisely so these two subcommands keep
+# working from a pip/pipx install with no plugin checkout anywhere: the
+# separate Claude/Codex plugin distribution (deagy/cadre-plugin) receives a
+# copy of it, rather than the other way round. Both subcommands only *read*
+# these resources (bootstrap-codex writes into the caller's own home
+# directory, never back into this package), so vendoring them is safe --
+# unlike generate-plugin below, which fails closed instead (see
+# cadre_cli/__init__.py).
+"provider" = "cadre_cli/_vendor/provider"
 
 # `cadre generate-role-metadata` (generate_role_metadata.py) reads these two
 # top-level agents/ files as its source of truth for dispatch-precedence
-# order and the generated-file header template; `cadre bootstrap-codex`
-# (sync_codex_agents.py's DEFAULT_SOURCE) reads plugins/cadre/codex-agents/
-# as the default set of wrappers to install into the caller's own ~/.codex/
-# config. Both subcommands only *read* these resources (bootstrap-codex
-# writes into the caller's own home directory, never back into this
-# package), so vendoring them is safe and keeps these two subcommands fully
-# working from an installed distribution -- unlike generate-plugin/version
-# below, which fail closed instead (see cadre_cli/__init__.py).
+# order and the generated-file header template.
 "agents/catalog-order.txt" = "cadre_cli/_vendor/agents/catalog-order.txt"
 "agents/_catalog_header.yaml.tmpl" = "cadre_cli/_vendor/agents/_catalog_header.yaml.tmpl"
-"plugins/cadre/codex-agents" = "cadre_cli/_vendor/plugins/cadre/codex-agents"
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -167,11 +164,7 @@ include = [
     "bin/subcommands.tsv",
     "agents/**",
     ".agents/skills/**",
-    "plugins/cadre/provider.json",
-    "plugins/cadre/agent-catalog.json",
-    "plugins/cadre/profiles/**",
-    "plugins/cadre/extensions/**",
-    "plugins/cadre/codex-agents/**",
+    "provider/**",
     "README.md",
     "LICENSE",
 ]

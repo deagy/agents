@@ -7,17 +7,59 @@ restate this repository's own internal commit history — see `git log` for
 that. New adopters should start with the
 [adopt-cadre quickstart](docs/adopt-cadre-quickstart.md) instead of this file.
 
-Format loosely follows [Keep a Changelog](https://keepachangelog.com/). This
-repository's release convention (see `README.md`'s "Releasing" section) ties
-git tags (`vMAJOR.MINOR.PATCH`) to a deliberate, reviewed version bump of
-`plugins/cadre/.claude-plugin/plugin.json` /
-`plugins/cadre/.codex-plugin/plugin.json`, checked with `cadre version
---check`/`--set`. The latest tagged release at the time of writing is
-**v0.11.0**; the entries below have landed since then and have not yet been
+Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Since
+the plugin split (below), the packaged plugin versions and tags in its own
+repository, [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin); this repository's remaining tags predate that and
+are left as-is. The latest tagged release at the time of writing is
+**v0.12.1**; the entries below have landed since then and have not yet been
 bundled into a version-bumped, tagged release. They are grouped under
 `[Unreleased]` rather than assigned invented version numbers.
 
 ## [Unreleased]
+
+### Changed
+
+- **The packaged plugin distributions moved to their own repository,**
+  [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin). This repository is now purely the agent *register*: role
+  definitions, the catalog, routing, orchestration tooling, the knowledge
+  store, and the `provider/` bundle. The generated Claude Code / Codex
+  package (formerly `plugins/cadre/`) and the hand-authored Cline CLI plugin
+  (formerly `plugins/cline/`) are maintained and released there, with full
+  file history preserved through the move.
+
+  What this changes for consumers:
+
+  - **Installing the plugin** now points at a `deagy/cadre-plugin` checkout
+    rather than this one: `codex plugin marketplace add /path/to/cadre-plugin`
+    (likewise `/plugin marketplace add`). The plugin's own version continues
+    from `0.12.1` rather than resetting, so existing installs read it as a
+    continuation.
+  - **`cadre generate-plugin` now requires `--output`**, naming a
+    `deagy/cadre-plugin` checkout to regenerate. Invoked without it, it exits
+    with an explicit error rather than creating a stray `plugins/` directory.
+    Drift between the two repositories is guarded by the plugin repository's
+    CI against the register revision pinned in its `cadre-ref.txt`.
+  - **`cadre version` was removed** from this repository's CLI. It read the
+    plugin manifests, which now live in the plugin repository; the equivalent
+    is `python3 tools/plugin_version.py` there.
+  - **`cadre sdlc init --profile secure-cloud` keeps producing full role
+    content.** `agent-catalog.json`'s `definition` values are resolved by the
+    kernel relative to whichever copy of that file it reads, and it rejects
+    paths escaping that directory — so the register and the package need
+    different spellings. `provider/roles/` holds register-side copies of every
+    role's `AGENT.md`, and the package's catalog is rewritten to point at its
+    own `suite/agents/`. Without this the kernel falls back silently to
+    one-line generic role instructions. This also fixes the pip/pipx
+    distribution, which never shipped resolvable definitions at all.
+
+  - **New `provider/` directory**: `provider.json`, `profiles/`,
+    `extensions/`, `agent-catalog.json`, and `codex-agents/` moved here from
+    `plugins/cadre/`, and are register-owned. `cadre sdlc` and `cadre
+    bootstrap-codex` read them from this location, and the pip/pipx
+    distribution vendors them directly, so both keep working from an install
+    with no plugin checkout. The last two are generated: `cadre
+    generate-role-metadata` now writes and drift-checks them alongside
+    `agents/catalog.yaml`.
 
 ### Added
 
@@ -87,9 +129,10 @@ bundled into a version-bumped, tagged release. They are grouped under
   yet published to PyPI) puts a `cadre` console script directly on `PATH`
   with no repository checkout required at runtime, as an additional channel
   alongside the existing `./bin/cadre` checkout path (which keeps working
-  identically). `cadre generate-plugin`, `cadre generate-authority-aides`,
-  and `cadre version` remain checkout-only, since they read and write this
-  repository's own generated artifacts; every other subcommand, including
+  identically). `cadre generate-plugin` and `cadre generate-authority-aides`
+  remain checkout-only, since they read and write generated artifacts;
+  `cadre generate-role-metadata --check` works from an install but its write
+  mode is checkout-only for the same reason. Every other subcommand, including
   `cadre select` and `cadre sdlc`, works fully from the installed
   distribution. Optional `[yaml]`/`[mcp]` extras keep a bare `pip install
   cadre` dependency-light.

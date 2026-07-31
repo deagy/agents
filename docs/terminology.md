@@ -27,17 +27,21 @@ it names a concrete field or file, the link goes to that source instead.
 | Generated artifact | A runner or package file produced from canonical source; it is regenerated rather than edited by hand. |
 | Platform | An external organization/platform whose impact-category and BOM (SBOM/CBOM/QBOM/AI-BOM/Trust-BOM/Time-BOM) semantics this repository deliberately does not define — see `agents/shared/platform-impact-profile.yaml`. A consuming project must supply its own authorized definitions and owners before treating any category as applicable; `unknown` blocks the relevant gates by design, not by omission. |
 
-## Relationship between the two repositories
+## Relationship between the three repositories
 
 ```text
 portable Agentic SDLC kernel
     └── target-project overlay and run records
 
-Secure Cloud provider
+Secure Cloud provider (deagy/cadre — the register)
     ├── role catalog and AGENT.md definitions
     ├── shared policies and workflows
     ├── knowledge-store procedures
-    └── runner/plugin packaging
+    └── provider bundle (provider/)
+
+Cadre plugin (deagy/cadre-plugin)
+    ├── generated Claude Code / Codex distribution
+    └── hand-authored Cline CLI plugin
 ```
 
 The kernel owns lifecycle state and gate transitions, permanently — no

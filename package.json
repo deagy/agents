@@ -1,9 +1,0 @@
-{
-  "name": "cadre",
-  "private": true,
-  "cline": {
-    "plugins": [
-      { "paths": ["plugins/cline/index.ts"] }
-    ]
-  }
-}

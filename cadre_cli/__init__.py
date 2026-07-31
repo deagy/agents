@@ -9,7 +9,7 @@ replace the checkout path, which stays completely unmodified.
 Rather than duplicating `bin/cadre.py`'s subcommand table and dispatch logic
 (REQ-PIP: prefer reuse over duplication), this module vendors a byte-for-byte
 build-time copy of the real `bin/` and `agents/` (plus `.agents/skills/` and
-`plugins/cadre/{provider.json,agent-catalog.json,profiles,extensions}`) trees
+`provider/`) trees
 under `cadre_cli/_vendor/` (see the wheel's
 `[tool.hatch.build.targets.wheel.force-include]` table) and then *loads and
 calls* the vendored `bin/cadre.py`'s own `main()` function in-process.
@@ -58,20 +58,18 @@ else:
 _VENDORED_CADRE_PY = VENDOR_ROOT / "bin" / "cadre.py"
 
 # `generate-plugin` (generate_global_plugin.py) reads agents/README.md,
-# agents/RUNBOOK.md, plugins/cadre/README.md, and the whole docs/ tree, then
-# *writes* regenerated output back into this repository's own
-# plugins/cadre/{suite,codex-agents,bin,.claude-plugin,.codex-plugin} --
-# a maintainer/regeneration operation against this repository's own tree,
-# not something that makes sense pointed at an installed site-packages
-# copy. `version` (plugin_version.py) reads
-# plugins/cadre/{.claude-plugin,.codex-plugin}/plugin.json, the Claude/Codex
-# plugin-marketplace manifests -- also not vendored, for the same reason.
+# agents/RUNBOOK.md, the plugin repository's README.md, and the whole docs/
+# tree, then *writes* regenerated output into a checkout of the plugin
+# repository (deagy/cadre-plugin) named by --output -- a maintainer/
+# regeneration operation driven from this repository's own tracked source
+# (it reads this repository's git index), not something that makes sense
+# pointed at an installed site-packages copy.
 # `generate-authority-aides` (generate_authority_aides.py) is the same class
 # of operation: it *writes* regenerated agents/authority/*/AGENT.md files
 # back into this repository's own tree, so pointed at an installed
 # distribution it would silently write into site-packages instead of
 # failing -- same rationale, same fix.
-# Rather than vendor the entire plugins/cadre/ tree plus docs/ just to make
+# Rather than vendor the plugin repository's tree plus docs/ just to make
 # these "work" from an install (which would make write-into-site-packages
 # behavior appear supported when it isn't, and meaningfully bloat the
 # wheel), these subcommand names fail closed here, in the installed
@@ -92,7 +90,7 @@ _VENDORED_CADRE_PY = VENDOR_ROOT / "bin" / "cadre.py"
 # fails closed for it when `--check` is absent from argv; see
 # _requires_checkout().
 _CHECKOUT_ONLY_SUBCOMMANDS = frozenset(
-    {"generate-plugin", "version", "generate-authority-aides", "generate-role-metadata"}
+    {"generate-plugin", "generate-authority-aides", "generate-role-metadata"}
 )
 
 # Subcommands where only *some* invocations are checkout-only (see
@@ -100,7 +98,7 @@ _CHECKOUT_ONLY_SUBCOMMANDS = frozenset(
 # over the remaining argv (excluding the subcommand itself) that returns
 # True when this particular invocation requires a full checkout. A
 # subcommand present in _CHECKOUT_ONLY_SUBCOMMANDS but absent from this map
-# is unconditionally checkout-only (e.g. generate-plugin, version,
+# is unconditionally checkout-only (e.g. generate-plugin,
 # generate-authority-aides).
 _PARTIAL_CHECKOUT_ONLY_PREDICATES = {
     "generate-role-metadata": lambda rest: "--check" not in rest,

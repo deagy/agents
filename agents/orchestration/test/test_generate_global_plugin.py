@@ -16,6 +16,7 @@ hence a dedicated fixture-based test here.
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 import tempfile
@@ -62,7 +63,7 @@ class GenerateSuiteCopyTests(unittest.TestCase):
             catalog = {"new-role": {"definition": "new-role/AGENT.md"}}
             plugin_root = self._plugin_root_with_readme(root)
 
-            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(ggp, "PLUGIN_ROOT", plugin_root):
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root):
                 with self.assertRaisesRegex(ValueError, r"new-role/AGENT\.md"):
                     ggp.generate_suite_copy(catalog, plugin_root)
 
@@ -73,7 +74,7 @@ class GenerateSuiteCopyTests(unittest.TestCase):
             catalog = {"sample-role": {"definition": "sample-role/AGENT.md"}}
             plugin_root = self._plugin_root_with_readme(root)
 
-            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(ggp, "PLUGIN_ROOT", plugin_root):
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root):
                 ggp.generate_suite_copy(catalog, plugin_root)
 
             copied = plugin_root / "suite" / "agents" / "sample-role" / "AGENT.md"
@@ -88,7 +89,7 @@ class GenerateSuiteCopyTests(unittest.TestCase):
             catalog = {"staged-role": {"definition": "staged-role/AGENT.md"}}
             plugin_root = self._plugin_root_with_readme(root)
 
-            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(ggp, "PLUGIN_ROOT", plugin_root):
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root):
                 ggp.generate_suite_copy(catalog, plugin_root)
 
             copied = plugin_root / "suite" / "agents" / "staged-role" / "AGENT.md"
@@ -128,7 +129,7 @@ class GenerateSuiteCopyTests(unittest.TestCase):
             catalog = {"sample-role": {"definition": "sample-role/AGENT.md"}}
             plugin_root = self._plugin_root_with_readme(root)
 
-            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(ggp, "PLUGIN_ROOT", plugin_root):
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root):
                 ggp.generate_suite_copy(catalog, plugin_root)
 
             copied = plugin_root / "suite" / "agents" / "sample-role" / "AGENT.md"
@@ -157,7 +158,7 @@ class ReasoningEffortPropagationTests(unittest.TestCase):
     catalog.yaml without also adding it to that allowlist produced fully
     passing tests and a "current" `--check` while every generated wrapper
     silently omitted `effort:`/`model_reasoning_effort`. Exercises the real
-    parser plus generate_agent_wrappers() end to end against a real,
+    parser plus both wrapper generators end to end against a real,
     existing role definition (architecture/cloud-architect/AGENT.md) rather
     than mocking either layer, since mocking the parser is exactly what
     would have hidden this bug.
@@ -187,7 +188,10 @@ class ReasoningEffortPropagationTests(unittest.TestCase):
             plugin_root = Path(directory) / "plugin"
             ggp.generate_agent_wrappers(catalog, plugin_root)
             md_text = (plugin_root / "agents" / "cloud-architect.md").read_text(encoding="utf-8")
-            toml_text = (plugin_root / "codex-agents" / "agents-cloud-architect.toml").read_text(encoding="utf-8")
+        # Codex wrappers are register-side content now (provider/codex-agents/,
+        # written by generate-role-metadata), so they come back as content
+        # rather than being written into the package tree.
+        toml_text = ggp.codex_wrapper_contents(catalog)["agents-cloud-architect.toml"]
         self.assertIn("effort: high", md_text)
         self.assertIn('model_reasoning_effort = "high"', toml_text)
 
@@ -205,9 +209,132 @@ class ReasoningEffortPropagationTests(unittest.TestCase):
             plugin_root = Path(directory) / "plugin"
             ggp.generate_agent_wrappers(catalog, plugin_root)
             md_text = (plugin_root / "agents" / "cloud-architect.md").read_text(encoding="utf-8")
-            toml_text = (plugin_root / "codex-agents" / "agents-cloud-architect.toml").read_text(encoding="utf-8")
+        toml_text = ggp.codex_wrapper_contents(catalog)["agents-cloud-architect.toml"]
         self.assertNotIn("effort:", md_text)
         self.assertNotIn("model_reasoning_effort", toml_text)
+
+
+class ProviderCopyTests(unittest.TestCase):
+    """generate_provider_copy(): the register/plugin split's load-bearing step.
+
+    It is the only thing that puts provider contracts into the package, and it
+    is also where the two repositories' differing `definition` spellings are
+    reconciled -- an area with no coverage when the split first landed.
+    """
+
+    def _provider_root(self, root: Path, definition: str = "review/code-reviewer/AGENT.md") -> Path:
+        provider = root / "provider"
+        (provider / "profiles" / "secure-cloud").mkdir(parents=True)
+        (provider / "extensions").mkdir(parents=True)
+        (provider / "codex-agents").mkdir(parents=True)
+        (provider / "roles" / Path(definition).parent).mkdir(parents=True)
+        (provider / "provider.json").write_text('{"id": "cadre"}\n', encoding="utf-8")
+        (provider / "profiles" / "secure-cloud" / "profile.json").write_text("{}\n", encoding="utf-8")
+        (provider / "roles" / definition).write_text("# Code Reviewer\n", encoding="utf-8")
+        (provider / "agent-catalog.json").write_text(
+            json.dumps(
+                {"schema_version": 1, "agents": {"code-reviewer": {"definition": f"roles/{definition}"}}},
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return provider
+
+    def _patched_fresh(self, provider: Path):
+        """Make the staleness guard pass for a synthetic fixture, so these
+        tests exercise the copy/rewrite logic in isolation from it.
+        `test_stale_provider_content_refuses_to_package` covers the guard.
+        """
+        catalog_text = (provider / "agent-catalog.json").read_text(encoding="utf-8")
+        return (
+            mock.patch.object(ggp, "PROVIDER_ROOT", provider),
+            mock.patch.object(ggp, "agent_catalog_export_content", lambda catalog: catalog_text),
+            mock.patch.object(ggp, "codex_wrapper_contents", lambda catalog: {}),
+        )
+
+    def test_definition_is_rewritten_to_the_packages_own_suite_copy(self) -> None:
+        """The register spells definitions `roles/...` (resolvable beside its
+        own agent-catalog.json); the package must spell the same roles
+        `suite/agents/...`. The kernel rejects a path escaping the directory
+        holding the catalog, so one spelling genuinely cannot serve both.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            provider = self._provider_root(root)
+            plugin_root = root / "package"
+            plugin_root.mkdir()
+            a, b, c = self._patched_fresh(provider)
+            with a, b, c:
+                ggp.generate_provider_copy({}, plugin_root)
+
+            packaged = json.loads((plugin_root / "agent-catalog.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                "suite/agents/review/code-reviewer/AGENT.md",
+                packaged["agents"]["code-reviewer"]["definition"],
+            )
+            # roles/ is register-only: packaging it would be dead weight the
+            # package never reads, since it reaches the same files via suite/.
+            self.assertFalse((plugin_root / "roles").exists())
+            self.assertTrue((plugin_root / "provider.json").is_file())
+
+    def test_unexpected_definition_prefix_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            provider = self._provider_root(root)
+            catalog_path = provider / "agent-catalog.json"
+            catalog_path.write_text(
+                catalog_path.read_text(encoding="utf-8").replace("roles/review", "elsewhere/review"),
+                encoding="utf-8",
+            )
+            plugin_root = root / "package"
+            plugin_root.mkdir()
+            a, b, c = self._patched_fresh(provider)
+            with a, b, c:
+                with self.assertRaisesRegex(SystemExit, "generate-role-metadata"):
+                    ggp.generate_provider_copy({}, plugin_root)
+
+    def test_committed_register_definitions_resolve_in_both_trees(self) -> None:
+        """End-to-end against the real committed provider/: every definition
+        must resolve beside the register's own catalog, and its rewritten
+        package spelling must resolve inside a generated package. This is the
+        regression that shipped in the split -- `cadre sdlc init` silently
+        produced generic one-line roles because the package-relative spelling
+        did not resolve register-side.
+        """
+        register = json.loads(
+            (ggp.PROVIDER_ROOT / "agent-catalog.json").read_text(encoding="utf-8")
+        )["agents"]
+        self.assertTrue(register)
+        for agent_id, metadata in register.items():
+            with self.subTest(agent=agent_id):
+                definition = metadata["definition"]
+                self.assertTrue(definition.startswith(ggp.PROVIDER_DEFINITION_PREFIX), definition)
+                self.assertTrue((ggp.PROVIDER_ROOT / definition).is_file(), definition)
+
+    def test_stale_provider_content_refuses_to_package(self) -> None:
+        """Editing a role and running only `generate-plugin` would otherwise
+        refresh the package's Claude Code wrappers (built live from the
+        catalog) while packaging stale Codex wrappers and a stale catalog
+        export -- and a following --check would call the result current.
+        """
+        catalog = {
+            "cloud-architect": {
+                "definition": "architecture/cloud-architect/AGENT.md",
+                "phase": "design",
+                "capability": "document_author",
+                "model": "opus",
+                "codex_model": "gpt-5.6-sol",
+            }
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            provider = self._provider_root(root)
+            plugin_root = root / "package"
+            plugin_root.mkdir()
+            with mock.patch.object(ggp, "PROVIDER_ROOT", provider):
+                with self.assertRaisesRegex(SystemExit, "provider/ is stale"):
+                    ggp.generate_provider_copy(catalog, plugin_root)
 
 
 if __name__ == "__main__":

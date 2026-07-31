@@ -1,0 +1,620 @@
+{
+  "schema_version": 1,
+  "agents": {
+    "accessibility-reviewer": {
+      "phase": "review",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "roles/review/accessibility-reviewer/AGENT.md"
+    },
+    "agent-performance-evaluator": {
+      "phase": "operations",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/operations/agent-performance-evaluator/AGENT.md"
+    },
+    "agent-version-control": {
+      "phase": "operations",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/operations/agent-version-control/AGENT.md"
+    },
+    "api-contract-engineer": {
+      "phase": "design",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/architecture/api-contract-engineer/AGENT.md"
+    },
+    "application-engineer": {
+      "phase": "build",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/engineering/application-engineer/AGENT.md"
+    },
+    "approval-router": {
+      "phase": "review",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/governance/approval-router/AGENT.md"
+    },
+    "architecture-authority": {
+      "phase": "review",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "roles/review/architecture-authority/AGENT.md"
+    },
+    "assumption-register": {
+      "phase": "planning",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/planning/assumption-register/AGENT.md"
+    },
+    "backend-engineer": {
+      "phase": "build",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/engineering/backend-engineer/AGENT.md"
+    },
+    "black-box-tester": {
+      "phase": "verify",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/testing/black-box-tester/AGENT.md"
+    },
+    "chaos-resilience-engineer": {
+      "phase": "verify",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/testing/chaos-resilience-engineer/AGENT.md"
+    },
+    "cicd-engineer": {
+      "phase": "build",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/engineering/cicd-engineer/AGENT.md"
+    },
+    "claim-conformance": {
+      "phase": "release",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "roles/review/claim-conformance/AGENT.md"
+    },
+    "classification-and-marking-gate": {
+      "phase": "release",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "roles/review/classification-and-marking-gate/AGENT.md"
+    },
+    "cloud-architect": {
+      "phase": "design",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/architecture/cloud-architect/AGENT.md"
+    },
+    "code-reviewer": {
+      "phase": "review",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "roles/review/code-reviewer/AGENT.md"
+    },
+    "compliance-reviewer": {
+      "phase": "review",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "roles/review/compliance-reviewer/AGENT.md"
+    },
+    "cost-capacity-planner": {
+      "phase": "planning",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/operations/cost-capacity-planner/AGENT.md"
+    },
+    "cryptographic-assurance-engineer": {
+      "phase": "security",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/security/cryptographic-assurance-engineer/AGENT.md"
+    },
+    "data-governance-engineer": {
+      "phase": "design",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/data/data-governance-engineer/AGENT.md"
+    },
+    "database-reliability-engineer": {
+      "phase": "operations",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/data/database-reliability-engineer/AGENT.md"
+    },
+    "debugging-engineer": {
+      "phase": "build",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/engineering/debugging-engineer/AGENT.md"
+    },
+    "decision-record": {
+      "phase": "document",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/documentation/decision-record/AGENT.md"
+    },
+    "decommission-engineer": {
+      "phase": "operations",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/operations/decommission-engineer/AGENT.md"
+    },
+    "deployment-realist": {
+      "phase": "operations",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/operations/deployment-realist/AGENT.md"
+    },
+    "doctrine-conformance": {
+      "phase": "review",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "roles/review/doctrine-conformance/AGENT.md"
+    },
+    "end-user-tester": {
+      "phase": "verify",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/testing/end-user-tester/AGENT.md"
+    },
+    "engineering-lead-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/authority/engineering-lead-aide/AGENT.md"
+    },
+    "escalation-manager": {
+      "phase": "support",
+      "kind": "specialist",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/support/escalation-manager/AGENT.md"
+    },
+    "evidence-curator": {
+      "phase": "evidence",
+      "kind": "specialist",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/documentation/evidence-curator/AGENT.md"
+    },
+    "falsification-agent": {
+      "phase": "verify",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/testing/falsification-agent/AGENT.md"
+    },
+    "finops-engineer": {
+      "phase": "operations",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/operations/finops-engineer/AGENT.md"
+    },
+    "first-principles-challenger": {
+      "phase": "design",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/architecture/first-principles-challenger/AGENT.md"
+    },
+    "frontend-engineer": {
+      "phase": "build",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/engineering/frontend-engineer/AGENT.md"
+    },
+    "governance-lead-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/authority/governance-lead-aide/AGENT.md"
+    },
+    "governance-planner": {
+      "phase": "design",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/governance/governance-planner/AGENT.md"
+    },
+    "halt-authority": {
+      "phase": "review",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "roles/review/halt-authority/AGENT.md"
+    },
+    "incident-commander": {
+      "phase": "support",
+      "kind": "specialist",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/support/incident-commander/AGENT.md"
+    },
+    "infrastructure-provisioner": {
+      "phase": "build",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/engineering/infrastructure-provisioner/AGENT.md"
+    },
+    "infrastructure-reviewer": {
+      "phase": "review",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "roles/review/infrastructure-reviewer/AGENT.md"
+    },
+    "interaction-designer": {
+      "phase": "design",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/architecture/interaction-designer/AGENT.md"
+    },
+    "ip-provenance-agent": {
+      "phase": "evidence",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/documentation/ip-provenance-agent/AGENT.md"
+    },
+    "knowledge-store-steward": {
+      "phase": "knowledge",
+      "kind": "specialist",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/knowledge-store/AGENT.md"
+    },
+    "observability-sre": {
+      "phase": "operations",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/operations/observability-sre/AGENT.md"
+    },
+    "performance-testing-engineer": {
+      "phase": "verify",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/testing/performance-testing-engineer/AGENT.md"
+    },
+    "phase-gate": {
+      "phase": "release",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "roles/review/phase-gate/AGENT.md"
+    },
+    "pipeline-security-reviewer": {
+      "phase": "review",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "roles/review/pipeline-security-reviewer/AGENT.md"
+    },
+    "policy-as-code-engineer": {
+      "phase": "security",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/security/policy-as-code-engineer/AGENT.md"
+    },
+    "premortem": {
+      "phase": "planning",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/planning/premortem/AGENT.md"
+    },
+    "product-intent-agent": {
+      "phase": "planning",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/planning/product-intent-agent/AGENT.md"
+    },
+    "product-owner-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/authority/product-owner-aide/AGENT.md"
+    },
+    "red-team": {
+      "phase": "verify",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/testing/red-team/AGENT.md"
+    },
+    "release-authority-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/authority/release-authority-aide/AGENT.md"
+    },
+    "release-engineer": {
+      "phase": "release",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/engineering/release-engineer/AGENT.md"
+    },
+    "release-owner-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/authority/release-owner-aide/AGENT.md"
+    },
+    "requirements-agent": {
+      "phase": "planning",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/planning/requirements-agent/AGENT.md"
+    },
+    "retention-and-deletion-executor": {
+      "phase": "operations",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/operations/retention-and-deletion-executor/AGENT.md"
+    },
+    "scope-boundary": {
+      "phase": "planning",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/planning/scope-boundary/AGENT.md"
+    },
+    "secrets-identity-engineer": {
+      "phase": "security",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/security/secrets-identity-engineer/AGENT.md"
+    },
+    "security-lead-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/authority/security-lead-aide/AGENT.md"
+    },
+    "security-reviewer": {
+      "phase": "review",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "roles/review/security-reviewer/AGENT.md"
+    },
+    "service-owner-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/authority/service-owner-aide/AGENT.md"
+    },
+    "subtraction-agent": {
+      "phase": "review",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "roles/review/subtraction-agent/AGENT.md"
+    },
+    "supply-chain-security-reviewer": {
+      "phase": "review",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "roles/review/supply-chain-security-reviewer/AGENT.md"
+    },
+    "support-triage-agent": {
+      "phase": "support",
+      "kind": "specialist",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/support/support-triage-agent/AGENT.md"
+    },
+    "system-architect-aide": {
+      "phase": "authority",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/authority/system-architect-aide/AGENT.md"
+    },
+    "technical-writer": {
+      "phase": "document",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/documentation/technical-writer/AGENT.md"
+    },
+    "test-engineer": {
+      "phase": "verify",
+      "kind": "reviewer",
+      "capabilities": [
+        "reviewer"
+      ],
+      "definition": "roles/engineering/test-engineer/AGENT.md"
+    },
+    "threat-modeler": {
+      "phase": "design",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/architecture/threat-modeler/AGENT.md"
+    },
+    "vendor-register-steward": {
+      "phase": "operations",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/operations/vendor-register-steward/AGENT.md"
+    }
+  }
+}

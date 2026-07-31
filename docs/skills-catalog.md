@@ -5,7 +5,7 @@ This repository publishes 9 Codex-native skills under
 any supporting `references/`. Claude Code discovers the same skills through
 thin per-skill pointer files under [`.claude/skills/`](../.claude/skills/)
 (see `AGENTS.md`'s project-structure note); `cadre generate-plugin` also
-packages them into `plugins/cadre/skills/`. Do not hand-edit the packaged
+packages them into the plugin package's `skills/`. Do not hand-edit the packaged
 copy — edit the source under `.agents/skills/` and regenerate.
 
 Name and description below are pulled verbatim from each skill's own
@@ -28,7 +28,8 @@ text a runner uses to decide when to invoke the skill.
 
 After adding, removing, or renaming a skill (or editing its `name`/
 `description` frontmatter) under `.agents/skills/`, update the table above in
-the same change, then run `cadre generate-plugin` and re-run
+the same change, then run `cadre generate-plugin --output /path/to/cadre-plugin`
+in a checkout of that repository, and re-run
 `python3 -m unittest agents.orchestration.test.test_repository_health` — that
 test enforces catalog/plugin drift but does not check this page, so treat
 divergence here as a documentation bug to fix by hand.
