@@ -13,7 +13,7 @@ from pathlib import Path
 
 PROVENANCE_MARKER = "# GENERATED FILE: canonical source is agents/"
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_SOURCE = REPOSITORY_ROOT / "plugins" / "cadre" / "codex-agents"
+DEFAULT_SOURCE = REPOSITORY_ROOT / "provider" / "codex-agents"
 INDEX_FILENAME = "agents-index.json"
 INDEX_SCHEMA_VERSION = 1
 _WRAPPER_NAME_PREFIX = "agents-"

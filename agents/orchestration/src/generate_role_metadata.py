@@ -45,6 +45,10 @@ from generate_global_plugin import (  # noqa: E402
     ALLOWED_REASONING_EFFORTS,
     CAPABILITY_PROFILES,
     MODEL_TIERS,
+    PROVIDER_ROOT,
+    agent_catalog_export_content,
+    codex_wrapper_contents,
+    load_catalog,
 )
 from role_metadata import (  # noqa: E402
     is_migrated,
@@ -339,6 +343,7 @@ def generate(
     routing_path: Path = DEFAULT_ROUTING,
     order_path: Path = DEFAULT_ORDER,
     header_template_path: Path = DEFAULT_HEADER_TEMPLATE,
+    provider_root: Path = PROVIDER_ROOT,
 ) -> dict[Path, str]:
     order_ids, roles = build_role_model(agents_root, order_path)
     header_template = header_template_path.read_text(encoding="utf-8")
@@ -348,7 +353,42 @@ def generate(
     routing_content = splice_knowledge_focus(original_routing_text, order_ids, roles)
     _validate_routing_content(routing_content)
 
-    return {catalog_path: catalog_content, routing_path: routing_content}
+    rendered = {catalog_path: catalog_content, routing_path: routing_content}
+
+    # The generated members of this repository's provider/ bundle (see
+    # generate_global_plugin.PROVIDER_ROOT). They derive from the same role
+    # metadata as catalog.yaml, so they are rendered here and get this
+    # command's --check drift guard for free -- `cadre generate-plugin` only
+    # copies provider/ into the package and never regenerates it, which is
+    # what lets the pip/pipx distribution ship it without a plugin checkout.
+    #
+    # Rendered from the freshly computed catalog content rather than the
+    # committed catalog.yaml on disk, so a stale catalog can never make these
+    # look current.
+    # Only for this repository's own agents/ tree: the wrapper bodies embed
+    # role definitions and agents/shared/ policy resolved from the real
+    # REPOSITORY_ROOT, so rendering them for an arbitrary fixture root (as the
+    # generator's own tests use) would reach outside that root and fail.
+    if agents_root == DEFAULT_AGENTS_ROOT:
+        catalog_entries = load_catalog_content(catalog_content)
+        rendered[provider_root / "agent-catalog.json"] = agent_catalog_export_content(catalog_entries)
+        for filename, content in codex_wrapper_contents(catalog_entries).items():
+            rendered[provider_root / "codex-agents" / filename] = content
+
+    return rendered
+
+
+def load_catalog_content(catalog_content: str) -> dict[str, dict[str, str]]:
+    """`load_catalog()` over in-memory catalog.yaml text rather than a path."""
+    import tempfile
+
+    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False, encoding="utf-8") as handle:
+        handle.write(catalog_content)
+        temporary_path = Path(handle.name)
+    try:
+        return load_catalog(temporary_path)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
 
 def _validate_routing_content(text: str) -> None:
@@ -374,17 +414,26 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--routing", type=Path, default=DEFAULT_ROUTING)
     parser.add_argument("--order", type=Path, default=DEFAULT_ORDER)
     parser.add_argument("--header-template", type=Path, default=DEFAULT_HEADER_TEMPLATE)
+    parser.add_argument("--provider-root", type=Path, default=PROVIDER_ROOT)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args(argv)
 
-    rendered = generate(args.agents_root, args.catalog, args.routing, args.order, args.header_template)
+    rendered = generate(args.agents_root, args.catalog, args.routing, args.order, args.header_template, args.provider_root)
+
+    # Orphans: a removed role leaves a stale wrapper that no rendered entry
+    # covers, so content comparison alone would call the tree current.
+    wrapper_dir = args.provider_root / "codex-agents"
+    scan_for_orphans = args.agents_root == DEFAULT_AGENTS_ROOT and wrapper_dir.is_dir()
+    orphans = sorted(
+        str(path) for path in (wrapper_dir.glob("*.toml") if scan_for_orphans else []) if path not in rendered
+    )
 
     if args.check:
         stale = [
             str(path)
             for path, content in rendered.items()
             if not path.is_file() or path.read_text(encoding="utf-8") != content
-        ]
+        ] + [f"{path} (orphaned)" for path in orphans]
         if stale:
             print(
                 "Role metadata derived files are stale; run "
@@ -396,9 +445,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     changed = 0
+    for path in orphans:
+        Path(path).unlink()
+        changed += 1
     for path, content in rendered.items():
         if path.is_file() and path.read_text(encoding="utf-8") == content:
             continue
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
         changed += 1
     print(f"Generated {len(rendered)} role metadata file(s) ({changed} changed) under {args.agents_root}")

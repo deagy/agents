@@ -209,8 +209,8 @@
       "description": "agent-suite-governance route; task/files reused verbatim from test_selector.py::test_plugin_packaging_routes_to_agent_suite_governance",
       "task": "Package the Secure Cloud Agentic SDLC provider",
       "changed_files": [
-        "plugins/cadre/provider.json",
-        ".agents/plugins/marketplace.json"
+        "provider/provider.json",
+        "provider/agent-catalog.json"
       ],
       "classification": "internal",
       "task_id": "GOLDEN-AGENT-SUITE-GOV-1",

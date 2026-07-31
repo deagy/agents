@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import atexit
 import json
 import os
 import re
@@ -21,6 +22,44 @@ REPOSITORY_ROOT = ROOT.parent
 # add/remove without updating this constant fails immediately instead of
 # leaving the other assertions below silently pinned to a stale number.
 EXPECTED_ROLE_COUNT = 70
+
+# This repository's register-owned Agentic SDLC provider bundle. Copied
+# verbatim into the plugin package by `cadre generate-plugin`; the pip/pipx
+# distribution vendors it directly (see pyproject.toml).
+PROVIDER_ROOT = REPOSITORY_ROOT / "provider"
+
+_GENERATED_PACKAGE: Path | None = None
+
+
+def generated_package() -> Path:
+    """A freshly generated plugin package, built once and reused.
+
+    The committed package lives in its own repository (deagy/cadre-plugin)
+    since the register/plugin split, so tests about what the *generator*
+    produces build their own copy here instead of reading a checked-in tree.
+    Drift between this generator and that repository's committed content is
+    guarded there, by its validate.yml `generated-content` job, which runs
+    `generate-plugin --check --output` against the register revision pinned in
+    its cadre-ref.txt.
+    """
+    global _GENERATED_PACKAGE
+    if _GENERATED_PACKAGE is None:
+        directory = Path(tempfile.mkdtemp(prefix="cadre-health-package-"))
+        atexit.register(shutil.rmtree, directory, True)
+        target = directory / "cadre-plugin"
+        generated = subprocess.run(
+            [
+                sys.executable,
+                str(REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_global_plugin.py"),
+                "--output",
+                str(target),
+            ],
+            cwd=REPOSITORY_ROOT, check=False, capture_output=True, text=True, encoding="utf-8",
+        )
+        if generated.returncode != 0:  # pragma: no cover - defensive
+            raise AssertionError(f"generate-plugin failed: {generated.stderr}")
+        _GENERATED_PACKAGE = target
+    return _GENERATED_PACKAGE
 
 
 class RepositoryHealthTests(unittest.TestCase):
@@ -271,33 +310,10 @@ class RepositoryHealthTests(unittest.TestCase):
             )
             self.assertEqual(0, checked.returncode, checked.stderr)
 
-    def test_committed_plugin_matches_generator_output(self) -> None:
-        """Guards against drift between catalog/agents/.agents/skills and the
-        committed `plugins/cadre/` distribution. The sibling
-        `test_secure_cloud_agents_plugin_is_generated_and_in_sync` only checks
-        the generator against its own isolated `--output`, so it stays green
-        even when the committed package has drifted; this test is the one
-        that actually exercises the default (no `--output`) target, matching
-        what `AGENTS.md`/`CLAUDE.md` document and what CI's
-        `./bin/cadre generate-plugin --check` runs.
-        """
-        generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_global_plugin.py"
-        checked = subprocess.run(
-            ["python3", str(generator), "--check"],
-            cwd=REPOSITORY_ROOT,
-            check=False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-        )
-        self.assertEqual(0, checked.returncode, checked.stderr)
-
     def test_removed_lifecycle_migration_utility_cannot_ship(self) -> None:
         source_path = ROOT / "orchestration" / "src" / "migrate_execution_summary.py"
         packaged_path = (
-            REPOSITORY_ROOT
-            / "plugins"
-            / "cadre"
+            generated_package()
             / "suite"
             / "agents"
             / "orchestration"
@@ -308,7 +324,7 @@ class RepositoryHealthTests(unittest.TestCase):
         self.assertFalse(packaged_path.exists(), str(packaged_path))
 
     def test_packaged_runtime_has_no_removed_lifecycle_paths(self) -> None:
-        plugin_root = REPOSITORY_ROOT / "plugins" / "cadre"
+        plugin_root = generated_package()
         offenders: list[str] = []
         for path in plugin_root.rglob("*"):
             if not path.is_file():
@@ -337,7 +353,7 @@ class RepositoryHealthTests(unittest.TestCase):
                 current_agent = line.strip()[:-1]
                 catalog_agents[current_agent] = ""
 
-        plugin_root = REPOSITORY_ROOT / "plugins" / "cadre"
+        plugin_root = generated_package()
         for agent_id in catalog_agents:
             with self.subTest(agent=agent_id):
                 md_path = plugin_root / "agents" / f"{agent_id}.md"
@@ -364,14 +380,20 @@ class RepositoryHealthTests(unittest.TestCase):
                 current_agent = line.strip()[:-1]
                 catalog_agents[current_agent] = ""
 
-        export_path = REPOSITORY_ROOT / "plugins" / "cadre" / "agent-catalog.json"
+        export_path = PROVIDER_ROOT / "agent-catalog.json"
         export = json.loads(export_path.read_text(encoding="utf-8"))["agents"]
         self.assertEqual(set(catalog_agents), set(export))
         for agent_id, metadata in export.items():
             with self.subTest(agent=agent_id):
                 self.assertIn(metadata["kind"], {"author", "reviewer", "specialist"})
                 self.assertTrue(metadata["phase"])
-                self.assertTrue((export_path.parent / metadata["definition"]).is_file(), metadata["definition"])
+                # `definition` is package-relative (suite/agents/...) because
+                # provider.json resolves it inside an installed plugin, so it
+                # resolves against a generated package, not against the
+                # register's provider/ directory where the export itself lives.
+                self.assertTrue(
+                    (generated_package() / metadata["definition"]).is_file(), metadata["definition"]
+                )
 
     def test_generated_wrappers_enforce_catalog_capabilities_and_provenance(self) -> None:
         generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_global_plugin.py"
@@ -400,24 +422,6 @@ class RepositoryHealthTests(unittest.TestCase):
                 self.assertIn("tools: Read, Grep, Glob, Bash, Edit, Write", author)
                 self.assertIn('sandbox_mode = "workspace-write"', (plugin_root / "codex-agents" / f"agents-{agent_id}.toml").read_text(encoding="utf-8"))
 
-    def test_plugin_advertised_role_count_matches_generated_catalog(self) -> None:
-        plugin_root = REPOSITORY_ROOT / "plugins" / "cadre"
-        catalog_count = len(
-            json.loads((plugin_root / "agent-catalog.json").read_text(encoding="utf-8"))["agents"]
-        )
-        self.assertEqual(EXPECTED_ROLE_COUNT, catalog_count)
-        for manifest in (
-            plugin_root / ".codex-plugin" / "plugin.json",
-            plugin_root / ".claude-plugin" / "plugin.json",
-        ):
-            content = manifest.read_text(encoding="utf-8")
-            advertised = {int(value) for value in re.findall(r"(\d+) specialist roles", content)}
-            self.assertEqual({catalog_count}, advertised, str(manifest))
-        self.assertEqual(
-            catalog_count,
-            len(list((plugin_root / "codex-agents").glob("agents-*.toml"))),
-        )
-
     def test_repository_profile_and_local_override_policy_stay_current(self) -> None:
         profile = (ROOT / "shared" / "team-profile.yaml").read_text(encoding="utf-8")
         self.assertIn(
@@ -435,75 +439,11 @@ class RepositoryHealthTests(unittest.TestCase):
             )
 
         secure_cloud = json.loads(
-            (
-                REPOSITORY_ROOT
-                / "plugins"
-                / "cadre"
-                / "profiles"
-                / "secure-cloud"
-                / "profile.json"
-            ).read_text(encoding="utf-8")
+            (PROVIDER_ROOT / "profiles" / "secure-cloud" / "profile.json").read_text(encoding="utf-8")
         )
         self.assertEqual(19, len(secure_cloud["agents"]))
-        catalog = json.loads(
-            (
-                REPOSITORY_ROOT
-                / "plugins"
-                / "cadre"
-                / "agent-catalog.json"
-            ).read_text(encoding="utf-8")
-        )
+        catalog = json.loads((PROVIDER_ROOT / "agent-catalog.json").read_text(encoding="utf-8"))
         self.assertEqual(EXPECTED_ROLE_COUNT, len(catalog["agents"]))
-
-    def test_packaged_plugin_manifests_declare_a_matching_semver_version(self) -> None:
-        sys.path.insert(0, str(ROOT / "orchestration" / "src"))
-        try:
-            import plugin_version
-        finally:
-            sys.path.pop(0)
-
-        self.assertEqual([], plugin_version.check_versions())
-        versions = plugin_version.read_versions()
-        self.assertRegex(versions["claude"], r"^\d+\.\d+\.\d+$")
-        self.assertEqual(versions["claude"], versions["codex"])
-
-    def test_plugin_version_set_writes_both_manifests_or_neither(self) -> None:
-        sys.path.insert(0, str(ROOT / "orchestration" / "src"))
-        try:
-            import plugin_version
-        finally:
-            sys.path.pop(0)
-
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            temporary = Path(temporary_directory)
-            claude_manifest = temporary / "claude.json"
-            codex_manifest = temporary / "codex.json"
-            claude_manifest.write_text('{\n  "name": "x",\n  "version": "0.1.0"\n}\n', encoding="utf-8")
-            codex_manifest.write_text('{\n  "name": "x",\n  "version": "0.1.0"\n}\n', encoding="utf-8")
-
-            with mock.patch.object(
-                plugin_version,
-                "MANIFESTS",
-                {"claude": claude_manifest, "codex": codex_manifest},
-            ):
-                plugin_version.set_version("0.2.0")
-                self.assertEqual("0.2.0", plugin_version.read_versions()["claude"])
-                self.assertEqual("0.2.0", plugin_version.read_versions()["codex"])
-
-                # Corrupt only the second manifest so validation must fail partway
-                # through; neither manifest should end up changed by the attempt.
-                codex_manifest.write_text('{\n  "name": "x",\n  "ver_sion": "0.2.0"\n}\n', encoding="utf-8")
-                with self.assertRaisesRegex(SystemExit, 'could not locate a "version" line'):
-                    plugin_version.set_version("0.3.0")
-                self.assertEqual(
-                    '{\n  "name": "x",\n  "version": "0.2.0"\n}\n',
-                    claude_manifest.read_text(encoding="utf-8"),
-                    "claude manifest must be untouched when the codex manifest fails validation",
-                )
-                self.assertEqual(
-                    '{\n  "name": "x",\n  "ver_sion": "0.2.0"\n}\n',
-                    codex_manifest.read_text(encoding="utf-8"),
-                )
 
     def test_codex_bootstrap_preserves_bare_files_and_rejects_unowned_collision(self) -> None:
         script = ROOT / "orchestration" / "src" / "sync_codex_agents.py"
@@ -872,7 +812,7 @@ class RepositoryHealthTests(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform != "win32", "packaged wrapper is a POSIX sh script")
     def test_packaged_selector_targets_callers_git_repository(self) -> None:
-        wrapper = REPOSITORY_ROOT / "plugins" / "cadre" / "bin" / "cadre"
+        wrapper = generated_package() / "bin" / "cadre"
         with tempfile.TemporaryDirectory() as temporary_directory:
             target = Path(temporary_directory) / "unrelated"
             target.mkdir()
@@ -930,7 +870,7 @@ class RepositoryHealthTests(unittest.TestCase):
                     self.assertTrue(target.is_file() or target.is_dir(), f"{path}: {relative}")
 
     def test_secure_cloud_agents_plugin_is_self_contained(self) -> None:
-        plugin_root = REPOSITORY_ROOT / "plugins" / "cadre"
+        plugin_root = generated_package()
         provider = json.loads((plugin_root / "provider.json").read_text(encoding="utf-8"))
         self.assertEqual("cadre", provider["id"])
         self.assertEqual("0.3.0", provider["version"])
@@ -971,7 +911,7 @@ class RepositoryHealthTests(unittest.TestCase):
     def test_secure_cloud_agents_provider_kernel_compatibility_covers_live_sdlc_version(self) -> None:
         self._require_agentic_sdlc()
         provider = json.loads(
-            (REPOSITORY_ROOT / "plugins" / "cadre" / "provider.json").read_text(encoding="utf-8")
+            (PROVIDER_ROOT / "provider.json").read_text(encoding="utf-8")
         )
         minimum = provider["kernel_compatibility"]["minimum"]
         maximum_exclusive = provider["kernel_compatibility"]["maximum_exclusive"]
@@ -1086,7 +1026,7 @@ class RepositoryHealthTests(unittest.TestCase):
 
     def test_secure_cloud_agents_plugin_bin_wrapper_matches_direct_invocation(self) -> None:
         self._require_agentic_sdlc()
-        wrapper = REPOSITORY_ROOT / "plugins" / "cadre" / "bin" / "cadre"
+        wrapper = generated_package() / "bin" / "cadre"
         self.assertTrue(wrapper.is_file(), str(wrapper))
         self.assertTrue(os.access(wrapper, os.X_OK), f"{wrapper} is not executable")
         selector = ROOT / "orchestration" / "src" / "select_agents.py"
@@ -1120,6 +1060,11 @@ class RepositoryHealthTests(unittest.TestCase):
         wrapper_payload.pop("generated_at", None)
         for payload in (direct_payload, wrapper_payload):
             payload.pop("dispatch_fingerprint", None)
+            # Resolved from the *invoking* directory, not --root, and the
+            # packaged wrapper is deliberately run from a non-git temporary
+            # directory here to prove it does not depend on its own location.
+            payload.get("provenance", {}).pop("git_commit_sha", None)
+            payload.get("provenance", {}).pop("git_dirty_paths", None)
             for request in payload.get("knowledge_context", {}).get("requests", []):
                 request["invocation"]["args"][0] = "<packaged-knowledge-cli>"
         self.assertEqual(direct_payload, wrapper_payload)
@@ -1152,7 +1097,7 @@ class RepositoryHealthTests(unittest.TestCase):
     def test_packaged_wrapper_covers_every_non_excluded_subcommand_table_entry(self) -> None:
         """Extends the `select`-only parity check above to every packaged
         subcommand: a bin/subcommands.tsv script-path change must show up in
-        the packaged plugins/cadre/bin/cadre wrapper, not just for `select`.
+        the packaged bin/cadre wrapper, not just for `select`.
         """
         sys.path.insert(0, str(ROOT / "orchestration" / "src"))
         try:
@@ -1162,7 +1107,7 @@ class RepositoryHealthTests(unittest.TestCase):
 
         rows = generate_global_plugin.packaged_subcommands(REPOSITORY_ROOT)
         self.assertTrue(rows)
-        wrapper_source = (REPOSITORY_ROOT / "plugins" / "cadre" / "bin" / "cadre").read_text(encoding="utf-8")
+        wrapper_source = (generated_package() / "bin" / "cadre").read_text(encoding="utf-8")
         for name, script in rows:
             with self.subTest(subcommand=name):
                 self.assertIn(name, wrapper_source)

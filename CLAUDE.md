@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repository is
 
-A runner-neutral **Cadre** suite: 70 specialist subagent role definitions (`agents/<phase>/<role>/AGENT.md`), the machine-readable inventory of them (`agents/catalog.yaml`), deterministic orchestration/routing tooling, a knowledge-store retrieval layer, and a generated Claude Code / Codex CLI plugin (`plugins/cadre/`) packaged from all of the above. It supplies dispatch inputs and role/policy content into projects that adopt the separate, portable [`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc) lifecycle kernel. This repository does not run its own `.agentic-sdlc/` overlay (see boundary note below).
+A runner-neutral **Cadre** suite: 70 specialist subagent role definitions (`agents/<phase>/<role>/AGENT.md`), the machine-readable inventory of them (`agents/catalog.yaml`), deterministic orchestration/routing tooling, a knowledge-store retrieval layer, and the `provider/` bundle contributed to the Agentic SDLC kernel. The installable Claude Code / Codex CLI plugin packaged from all of the above lives in a separate repository, [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin). It supplies dispatch inputs and role/policy content into projects that adopt the separate, portable [`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc) lifecycle kernel. This repository does not run its own `.agentic-sdlc/` overlay (see boundary note below).
 
 Read `AGENTS.md` (repo-wide rules) and `agents/RUNBOOK.md` (the complete operating reference, with worked examples for every workflow) before making product changes.
 
@@ -27,21 +27,27 @@ python3 -m unittest agents.orchestration.test.test_repository_health.SomeTestCas
 AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc \
   python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"
 
-# Regenerate the packaged plugin after editing catalog.yaml, any AGENT.md, or .agents/skills/
-cadre generate-plugin
-# ...then re-run this — it fails the build on catalog/plugin drift
+# Regenerate register-side derived files after editing any AGENT.md or
+# catalog-order.txt: agents/catalog.yaml, routing.yaml's knowledge_focus block,
+# and the generated half of provider/ (--check is the CI drift-guard equivalent)
+cadre generate-role-metadata
+# ...then re-run this — it fails the build on drift
 python3 -m unittest agents.orchestration.test.test_repository_health
+
+# Regenerate the packaged plugin, which lives in its own repository
+# (deagy/cadre-plugin) — commit the diff there, not here
+cadre generate-plugin --output /path/to/cadre-plugin
 
 # Editing agents/authority/aides.yaml or agents/authority/_template.md.tmpl requires
 # this first, to regenerate the 8 agents/authority/*-aide/AGENT.md files, before
-# `cadre generate-plugin` above (--check is the CI drift-guard equivalent)
+# `cadre generate-role-metadata` above (--check is the CI drift-guard equivalent)
 cadre generate-authority-aides
 
 # Produce a deterministic dispatch plan (selection only — no execution, no mutation)
 cadre select --task "..." --files a.tsx,b.go --task-id TASK-42 --classification internal
 ```
 
-`bin/cadre` dispatches every subcommand: `select`, `knowledge`, `sdlc`, `generate-plugin`, `generate-authority-aides`, `bootstrap-codex`, `version`, `resolve-shared`, `mcp-dispatch-server`, `init`. `subcommands.tsv` in `bin/` is the dispatch table.
+`bin/cadre` dispatches every subcommand: `select`, `knowledge`, `sdlc`, `generate-plugin`, `generate-authority-aides`, `bootstrap-codex`, `resolve-shared`, `mcp-dispatch-server`, `init`. `subcommands.tsv` in `bin/` is the dispatch table.
 
 Go and React components referenced in worked examples (e.g. sample services under agent briefs) belong to *consumer* projects, not this repository — there is no Go module or frontend build here to lint/test.
 
@@ -49,7 +55,7 @@ Go and React components referenced in worked examples (e.g. sample services unde
 
 **Two-repo boundary (read this before touching lifecycle-adjacent code):** `deagy/agentic-sdlc` owns lifecycle gate schemas (G1–G10), run-record validation, and gate-authority semantics — that ownership is permanent. This repository owns the Secure Cloud role catalog, role policies, workflows, the knowledge store, and the `secure-cloud` provider profile. Never move lifecycle schemas, run-record validators, or gate-authority logic into this repo, and never have it infer gate approval, risk acceptance, or compliance applicability for *other* projects — `cadre select` emits a plan only (routes, evidence, primary/review/support agents, workflow, a `teams` array, and lifecycle applicability when `agentic-sdlc` is also on `PATH`); it never retrieves knowledge, invokes agents, approves gates, merges, deploys, or mutates infrastructure. This repository does not run its own `.agentic-sdlc/` overlay and has no lifecycle records of its own.
 
-**Source of truth flows one direction:** `agents/catalog.yaml` (role inventory: definition path, phase, capability, `model`/`codex_model` tier) + `agents/<phase>/<role>/AGENT.md` (role authority/policy) + `.agents/skills/` (publishable skills) → `cadre generate-plugin` (`agents/orchestration/src/generate_global_plugin.py`) → `plugins/cadre/` (self-contained generated distribution: Claude Code subagent wrappers, Codex `.toml` wrappers under `plugins/cadre/codex-agents/`, packaged `skills/`/`suite/`). Never hand-edit generated output under `plugins/cadre/` — edit the sources and regenerate. `test_repository_health.py` (`agents/orchestration/test/`) is the drift guard between catalog and generated plugin; it must pass after any role/catalog/skill change.
+**Source of truth flows one direction:** `agents/catalog.yaml` (role inventory: definition path, phase, capability, `model`/`codex_model` tier) + `agents/<phase>/<role>/AGENT.md` (role authority/policy) + `.agents/skills/` (publishable skills) → `cadre generate-plugin` (`agents/orchestration/src/generate_global_plugin.py`) → a self-contained distribution committed in [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) (Claude Code subagent wrappers, packaged `skills/`/`suite/`, and a copy of this repository's `provider/` bundle). Codex `.toml` wrappers and `agent-catalog.json` are register-side generated content under `provider/`, produced by `cadre generate-role-metadata` so the pip/pipx distribution can ship them without a plugin checkout. Never hand-edit generated output — edit the sources and regenerate. `test_repository_health.py` (`agents/orchestration/test/`) is the drift guard on this side (it generates a package into a temp directory rather than reading a committed one); the plugin repository's own `validate.yml` guards drift between the two repositories, using the register revision pinned in its `cadre-ref.txt`.
 
 **Model tier assignment is a fixed heuristic, not per-role discretion** (documented in `catalog.yaml`'s header comment): `opus` for design/architecture/governance/crypto-assurance roles making high-blast-radius, hard-to-reverse judgment calls; `sonnet` as the default for build/review/test/operations/support roles; `haiku` for narrow single-purpose roles (evidence cataloging, knowledge-store stewardship, triage/escalation routing). `codex_model` is the parallel OpenAI-identifier mapping (`opus`→`gpt-5`, `sonnet`→`gpt-5-codex`, `haiku`→`gpt-5-mini`) — re-verify these against current Codex docs before relying on them, since this repo has no live check against Codex's model list.
 

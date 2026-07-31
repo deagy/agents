@@ -14,13 +14,11 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 ├── bin/cadre                 # CLI dispatcher for every Python tool below (bin/cadre.ps1 for PowerShell)
 ├── agents/                   # Agent roles, policies, workflows, orchestration, support, tests
 ├── .agents/skills/           # Publishable skills for this repository (Codex CLI; pointed to from .claude/skills/)
-├── .agents/plugins/          # Codex CLI repository/team marketplace metadata
 ├── .claude/skills/           # Thin pointers to .agents/skills/* for Claude Code discovery
-├── .claude-plugin/           # Claude Code repository/team marketplace metadata
 ├── .clinerules/              # Pointer to AGENTS.md/RUNBOOK.md for Cline CLI discovery
-├── plugins/cadre/            # Self-contained suite and Agentic SDLC provider
-├── plugins/cline/            # Hand-authored Cline CLI plugin source (TypeScript; not generated — see below)
-├── .github/workflows/        # GitHub Actions: validate.yml (tests, bin/cadre smoke test, secret scan) + release.yml (tags/publishes only after a reviewed version-bump merge)
+├── provider/                 # Agentic SDLC provider bundle (contributed to the kernel; copied into the plugin)
+├── packaging/                # Register-owned source for the packaged plugin's own README
+├── .github/workflows/        # GitHub Actions: validate.yml (tests, bin/cadre smoke test, pip package, secret scan)
 ├── docs/                     # Audience-oriented guides and human-readable role index
 ├── IDENTITY.md               # Informational suite identity; never an authority source
 ├── CONTRIBUTING.md           # GitHub contribution and review workflow
@@ -46,7 +44,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 
 Key areas:
 
-- [bin/cadre](bin/cadre) dispatches the suite tools (`cadre select`, `cadre knowledge`, `cadre sdlc`, `cadre generate-plugin`, `cadre bootstrap-codex`, `cadre version`, `cadre resolve-shared`, and `cadre init`). `cadre select` works standalone, deterministically dispatching roles from this suite's own catalog and routing rules; it automatically enriches its plan with lifecycle-gate tracking when the standalone `agentic-sdlc` CLI is also available (or fails fast with `--require-sdlc` if that's required), and lifecycle *validation* itself is always provided by that separate `agentic-sdlc` CLI, never by this suite.
+- [bin/cadre](bin/cadre) dispatches the suite tools (`cadre select`, `cadre knowledge`, `cadre sdlc`, `cadre generate-plugin`, `cadre bootstrap-codex`, `cadre resolve-shared`, and `cadre init`). `cadre select` works standalone, deterministically dispatching roles from this suite's own catalog and routing rules; it automatically enriches its plan with lifecycle-gate tracking when the standalone `agentic-sdlc` CLI is also available (or fails fast with `--require-sdlc` if that's required), and lifecycle *validation* itself is always provided by that separate `agentic-sdlc` CLI, never by this suite.
 - [agents/catalog.yaml](agents/catalog.yaml) is the machine-readable role inventory.
 - [agents/RUNBOOK.md](agents/RUNBOOK.md) explains how to select, dispatch, review, and escalate agent work.
 - [agents/orchestration/](agents/orchestration/) contains routing rules, lifecycle applicability mappings, handoff contracts, escalation policy, selectors, and tests.
@@ -56,7 +54,7 @@ Key areas:
 - [agents/testing/](agents/testing/) and [agents/support/](agents/support/) define black-box testing, end-user testing, support triage, and escalation roles.
 - [.agents/skills/](.agents/skills/) contains this repository's skills, packaged for Codex CLI directly and pointed to from `.claude/skills/` for Claude Code.
 - [deagy/agentic-sdlc](https://github.com/deagy/agentic-sdlc) owns the portable lifecycle kernel, initializer, validator, and lifecycle skills.
-- [plugins/cadre/](plugins/cadre/) packages this suite, its 70 roles, and the external `secure-cloud` provider profile.
+- [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) packages this suite, its 70 roles, and the external `secure-cloud` provider profile as an installable Claude Code / Codex CLI plugin.
 
 The boundary is intentional: Agentic SDLC owns lifecycle state, schemas, gate
 transitions, approval-source policy, and portable commands. This repository
@@ -69,7 +67,7 @@ repository does not run its own `.agentic-sdlc/` overlay.
 
 ## Supported runners
 
-Every role definition and orchestration tool is runner-neutral text and data. Codex CLI and Claude Code wrappers are generated into the self-contained Cadre plugin. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc). [Cline](https://docs.cline.bot) is also recognized, in two complementary ways: it [reads `AGENTS.md` natively](https://docs.cline.bot/customization/cline-rules) as a cross-tool standard, and this repository additionally provides `.clinerules/agents-repository.md`, which points at the same canonical `AGENTS.md` and `agents/RUNBOOK.md` sources — this works for any Cline session with this repository as its working directory, no install required. Separately, [plugins/cline/](plugins/cline/) is a real, installable Cline CLI plugin (`cline plugin install ./plugins/cline`, or a git URL) exposing an `agents_select` tool that wraps `cadre select` and returns its plan directly in conversation. Unlike `plugins/cadre/`, `plugins/cline/` is hand-authored TypeScript source under version control, not generated output from `cadre generate-plugin`. This plugin system currently applies to the Cline CLI, SDK, and Kanban only — not the VSCode/JetBrains extension. **Known limitation**: as of `cline` CLI `3.0.46` (the latest published version at the time this was built), invoking any locally-installed plugin's tool fails with `JSON.stringify cannot serialize cyclic structures` — this was confirmed to be an upstream Cline bug, not specific to this plugin, by reproducing the identical failure with `cline/cline`'s own unmodified example plugin. The plugin installs and uninstalls cleanly; tool invocation should start working once Cline ships a fix. **Second known limitation**: installing via the bare repository URL (`cline plugin install https://github.com/deagy/cadre`, rather than the `./plugins/cline` local-install form) previously failed with `Cannot find module 'vitest'` while Cline's "sync plugin MCP servers" step scanned `plugins/cline/index.test.ts` — because a git-plugin-source with no root `package.json` `cline.plugins` manifest and no root `index.ts`/`index.js` falls back to an unbounded recursive `.ts`/`.js` scan of the whole cloned repository, which can import files whose own dependencies (here, the `vitest` devDependency) were never installed. This repository now declares its plugin location explicitly via the root [`package.json`](package.json)'s `cline.plugins` key so the git-URL install path resolves directly to `plugins/cline/index.ts` without triggering that recursive scan; the underlying scanner behavior is still worth reporting upstream, since Cline's git plugin-source format has no way to select a subdirectory otherwise.
+Every role definition and orchestration tool is runner-neutral text and data. Codex CLI and Claude Code wrappers are generated into the self-contained Cadre plugin. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc). [Cline](https://docs.cline.bot) is also recognized, in two complementary ways: it [reads `AGENTS.md` natively](https://docs.cline.bot/customization/cline-rules) as a cross-tool standard, and this repository additionally provides `.clinerules/agents-repository.md`, which points at the same canonical `AGENTS.md` and `agents/RUNBOOK.md` sources — this works for any Cline session with this repository as its working directory, no install required. Separately, [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin)'s `cline/` is a real, installable Cline CLI plugin (`cline plugin install ./cline` from a checkout of that repository, or a git URL) exposing an `agents_select` tool that wraps `cadre select` and returns its plan directly in conversation. Unlike the packaged Cadre plugin alongside it, that one is hand-authored TypeScript source under version control, not generated output. This plugin system currently applies to the Cline CLI, SDK, and Kanban only — not the VSCode/JetBrains extension. **Known limitation**: as of `cline` CLI `3.0.46` (the latest published version at the time this was built), invoking any locally-installed plugin's tool fails with `JSON.stringify cannot serialize cyclic structures` — this was confirmed to be an upstream Cline bug, not specific to this plugin, by reproducing the identical failure with `cline/cline`'s own unmodified example plugin. The plugin installs and uninstalls cleanly; tool invocation should start working once Cline ships a fix. **Second known limitation**: installing via a bare repository URL, rather than the local-install form, previously failed with `Cannot find module 'vitest'` while Cline's "sync plugin MCP servers" step scanned the plugin's test file — because a git-plugin-source with no root `package.json` `cline.plugins` manifest and no root `index.ts`/`index.js` falls back to an unbounded recursive `.ts`/`.js` scan of the whole cloned repository, which can import files whose own dependencies (here, the `vitest` devDependency) were never installed. [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) declares its plugin location explicitly via its root `package.json`'s `cline.plugins` key so the git-URL install path resolves directly without triggering that recursive scan; the underlying scanner behavior is still worth reporting upstream, since Cline's git plugin-source format has no way to select a subdirectory otherwise.
 
 ## Quick start
 
@@ -187,22 +185,25 @@ onto projects with a different stack, and each project's generated wrappers
 are static files it owns, not a live link back to this checkout. This section
 is for the narrower case of genuinely wanting all 70 roles, the 9 skills, and
 the knowledge store reachable from *every* project on the machine
-unconditionally, via the same global/user-scope plugin install mechanism:
+unconditionally, via the same global/user-scope plugin install mechanism. The
+marketplace and the packaged plugin live in
+[`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin), so install from
+a checkout of that repository rather than this one:
 
 ```sh
-codex plugin marketplace add .
+codex plugin marketplace add /path/to/cadre-plugin
 codex plugin add cadre@cadre-team
 ```
 
 ```text
-/plugin marketplace add .
+/plugin marketplace add /path/to/cadre-plugin
 /plugin install cadre@cadre-team
 ```
 
 The first `run-agent-orchestration` or `knowledge-ingestion` invocation with no
 knowledge-store config anywhere asks whether to create an isolated project-local
 one or use this shared global one — it does not create the global one silently.
-See [plugins/cadre/README.md](plugins/cadre/README.md)
+See [packaging/plugin-README.md](packaging/plugin-README.md)
 for how namespaced Codex subagent wrappers get into `~/.codex/agents/` without
 overwriting bare project/global roles or unowned namespaced files (Codex has no
 plugin-bundled-agent mechanism) and for how to regenerate after adding a role.
@@ -236,7 +237,7 @@ does not replace it, and the checkout path keeps working completely
 unmodified whether or not you ever build or install this package.
 `pyproject.toml` at the repository root packages the CLI (subcommand table,
 dispatch logic, and every resource each subcommand reads: `agents/`,
-`.agents/skills/`, and the parts of `plugins/cadre/` needed for `cadre sdlc`)
+`.agents/skills/`, and `provider/` for `cadre sdlc`/`cadre bootstrap-codex`)
 as an installable `cadre` distribution, so it can run from any directory on
 a machine that has never cloned this repository, no checkout required at
 runtime.
@@ -267,15 +268,14 @@ binary (`AGENTIC_SDLC_BIN` or `PATH`) exactly as the checkout CLI does — this
 package never vendors or bundles the Agentic SDLC kernel; see "Agentic SDLC
 quick start" above for installing it.
 
-**Known limitation**: `cadre generate-plugin`, `cadre generate-authority-aides`,
-and `cadre version` are maintainer-only tools that require a full git
-checkout; they are not available from a pip/pipx install. All three read
-and/or write generated content back into this repository's own tree
-(`plugins/cadre/`'s full tree — `.claude-plugin/`, `.codex-plugin/`,
-`suite/`, `docs/`, etc. for `generate-plugin`/`version`; `agents/authority/*/AGENT.md`
-for `generate-authority-aides`) as part of regenerating this repository's own
-generated artifacts — an operation that only makes sense against a real
-checkout, never against an installed site-packages copy. `cadre
+**Known limitation**: `cadre generate-plugin` and `cadre
+generate-authority-aides` are maintainer-only tools that require a full git
+checkout; they are not available from a pip/pipx install. Both read tracked
+source through this repository's own git index and write generated content
+back to a real checkout (a [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) checkout named by `--output` for
+`generate-plugin`; `agents/authority/*/AGENT.md` for
+`generate-authority-aides`) — an operation that only makes sense against a
+real checkout, never against an installed site-packages copy. `cadre
 generate-role-metadata` is a partial case: it is **read/check-only from a
 pip/pipx install** — `cadre generate-role-metadata --check` works fully
 (it only verifies the installed package's own bundled
@@ -287,7 +287,7 @@ installed package's own vendored copy under site-packages rather than a
 real project. Every other subcommand (`select`, `knowledge`,
 `bootstrap-codex`, `resolve-shared`, `mcp-dispatch-server`, `init`, and
 `sdlc`) works fully from the pip/pipx install. Invoking `generate-plugin`,
-`generate-authority-aides`, `version`, or `generate-role-metadata` without
+`generate-authority-aides`, or `generate-role-metadata` without
 `--check` from an installed distribution fails closed with an explicit
 error message and a non-zero exit code, pointing back at the checkout
 path, instead of silently writing into site-packages or raising a raw
@@ -349,20 +349,19 @@ Start here:
 
 ## Releasing
 
-Git tags follow `vMAJOR.MINOR.PATCH` and always match the packaged plugin's
-own version, declared independently in
-`plugins/cadre/.claude-plugin/plugin.json` and
-`plugins/cadre/.codex-plugin/plugin.json` (`cadre
-generate-plugin` never touches this field, so a release is always a
-deliberate, reviewed action). Tags before `v0.3.0` predate this scheme and
-are a plain incrementing counter; they are left as-is.
+The packaged plugin releases from its own repository, [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin), on its
+own `vMAJOR.MINOR.PATCH` tags — see that repository's README for the flow.
+This repository's tags before `v0.3.0` predate any versioning scheme and are
+a plain incrementing counter; they are left as-is.
 
-To cut a release:
+To ship a register change through to installed plugins:
 
-1. `cadre version --set X.Y.Z` to bump both manifests together (or edit
-   them by hand — either way, `cadre version --check` must pass).
-2. `cadre generate-plugin` to regenerate the packaged plugin.
-3. Open a pull request describing the release; merge it once reviewed.
+1. Merge the change here.
+2. In a [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) checkout, bump `cadre-ref.txt` to the register revision
+   and run `cadre generate-plugin --output /path/to/cadre-plugin`; open a pull request there with
+   the regenerated diff.
+3. Bump that repository's plugin version (`python3 tools/plugin_version.py
+   --set X.Y.Z`) when the change should reach existing installs.
 
 Once the version bump lands on `main`, [`.github/workflows/release.yml`](.github/workflows/release.yml)
 reads the new version and, if no `vX.Y.Z` tag exists for it yet, creates one

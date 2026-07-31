@@ -62,7 +62,7 @@ authoritative for the *why*.
   `.codex/agents/` (project) or `~/.codex/agents/` (global) with `name`,
   `description`, `developer_instructions`, and optional `model` /
   `sandbox_mode` / `mcp_servers` — this repo's
-  `plugins/cadre/codex-agents/agents-*.toml`
+  `provider/codex-agents/agents-*.toml`
   wrappers, safely synced into `~/.codex/agents/` per this skill's bootstrap
   step. Project-local bare role IDs remain preferred overrides.
 - **Known upstream limitation — the model-visible dispatch tool cannot select
@@ -206,11 +206,12 @@ authoritative for the *why*.
 
 ## Cline
 
-`plugins/cline/` (this repo's hand-authored, non-generated Cline CLI plugin —
+`cline/` in [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) (the
+hand-authored, non-generated Cline CLI plugin —
 see `AGENTS.md`'s project-structure note) registers exactly one tool,
 `agents_select`, which shells out to `./bin/cadre select` and returns the
 JSON dispatch plan. It is explicitly documented as "Plan only: never invokes
-agents" and must stay that way (see `plugins/cline/index.ts`'s tool
+agents" and must stay that way (see that repository's `cline/index.ts` tool
 description). **There is currently no
 plugin-registered tool in this repo, and no supported one to add, that
 actually dispatches a named role on Cline** — this is a confirmed gap, not an
@@ -221,7 +222,7 @@ oversight to route around silently:
   `registerCommand`, `registerRule`, `registerMessageBuilder`,
   `registerProvider`, `registerAutomationEventType`, and `registerMcpServer`
   (verified against the installed `@cline/sdk`/`@cline/core` `0.0.65` type
-  declarations under `plugins/cline/node_modules/@cline/core/dist/`, and
+  declarations under that plugin's `node_modules/@cline/core/dist/`, and
   against `docs.cline.bot/sdk/guides/writing-plugins`). None of those let a
   plugin spawn a sub-agent or teammate in the *current* session. The actual
   multi-agent primitives — `createSpawnAgentTool`, `AgentTeamsRuntime`,
@@ -281,8 +282,8 @@ oversight to route around silently:
   `.cline/agents/*.yml` as a reliable per-role dispatch
   path today; this is a documented future option once that stack merges and
   is verified live, not a current substitute for manual injection above.
-  This repo does not generate these files (no `plugins/cadre/cline-agents/`
-  equivalent to `plugins/cadre/codex-agents/*.toml` exists) — adding that
+  This repo does not generate these files (no `cline-agents/` equivalent to
+  `provider/codex-agents/*.toml` exists) — adding that
   generator is out of scope for this fix and would need its own design/review
   since it changes `cadre generate-plugin`'s output surface.
 - **`/team` (interactive) and `cline --team-name <name> "<mission>"` (CLI) are

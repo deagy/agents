@@ -5,7 +5,7 @@ This repository publishes 9 Codex-native skills under
 any supporting `references/`. Claude Code discovers the same skills through
 thin per-skill pointer files under [`.claude/skills/`](../.claude/skills/)
 (see `AGENTS.md`'s project-structure note); `cadre generate-plugin` also
-packages them into `plugins/cadre/skills/`. Do not hand-edit the packaged
+packages them into the plugin package's `skills/`. Do not hand-edit the packaged
 copy — edit the source under `.agents/skills/` and regenerate.
 
 Name and description below are pulled verbatim from each skill's own

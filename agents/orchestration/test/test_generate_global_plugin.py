@@ -157,7 +157,7 @@ class ReasoningEffortPropagationTests(unittest.TestCase):
     catalog.yaml without also adding it to that allowlist produced fully
     passing tests and a "current" `--check` while every generated wrapper
     silently omitted `effort:`/`model_reasoning_effort`. Exercises the real
-    parser plus generate_agent_wrappers() end to end against a real,
+    parser plus both wrapper generators end to end against a real,
     existing role definition (architecture/cloud-architect/AGENT.md) rather
     than mocking either layer, since mocking the parser is exactly what
     would have hidden this bug.
@@ -187,7 +187,10 @@ class ReasoningEffortPropagationTests(unittest.TestCase):
             plugin_root = Path(directory) / "plugin"
             ggp.generate_agent_wrappers(catalog, plugin_root)
             md_text = (plugin_root / "agents" / "cloud-architect.md").read_text(encoding="utf-8")
-            toml_text = (plugin_root / "codex-agents" / "agents-cloud-architect.toml").read_text(encoding="utf-8")
+        # Codex wrappers are register-side content now (provider/codex-agents/,
+        # written by generate-role-metadata), so they come back as content
+        # rather than being written into the package tree.
+        toml_text = ggp.codex_wrapper_contents(catalog)["agents-cloud-architect.toml"]
         self.assertIn("effort: high", md_text)
         self.assertIn('model_reasoning_effort = "high"', toml_text)
 
@@ -205,7 +208,7 @@ class ReasoningEffortPropagationTests(unittest.TestCase):
             plugin_root = Path(directory) / "plugin"
             ggp.generate_agent_wrappers(catalog, plugin_root)
             md_text = (plugin_root / "agents" / "cloud-architect.md").read_text(encoding="utf-8")
-            toml_text = (plugin_root / "codex-agents" / "agents-cloud-architect.toml").read_text(encoding="utf-8")
+        toml_text = ggp.codex_wrapper_contents(catalog)["agents-cloud-architect.toml"]
         self.assertNotIn("effort:", md_text)
         self.assertNotIn("model_reasoning_effort", toml_text)
 

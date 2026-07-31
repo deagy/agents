@@ -48,10 +48,10 @@ evidence/
 # Local Claude Code settings (not portable across contributors).
 .claude/settings.local.json
 
-# Node/TypeScript build artifacts for plugins/cline/ (this repo's Cline CLI plugin).
+# Node/TypeScript build artifacts. This repository has no Node code of its own
+# since the plugin split (see deagy/cadre-plugin); kept so a stray local
+# install under a sample-*/ tree can't be committed by accident.
 node_modules/
-plugins/cline/dist/
-plugins/cline/*.tsbuildinfo
 
 # Build artifacts for the root-level `cadre` pip/pipx distribution
 # (pyproject.toml / cadre_cli/); `python -m build` writes here.

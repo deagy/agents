@@ -28,7 +28,7 @@ Use this index to choose the shortest useful path.
 ## Source of truth
 
 Canonical role definitions, policies, routing, workflows, and orchestration
-contracts live under `agents/`. The `plugins/cadre/` directory is
+contracts live under `agents/`. The packaged plugin ([`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin)) is
 a self-contained distribution and may contain generated copies. Edit canonical
 source files, then regenerate the package when the change requires it.
 
