@@ -79,7 +79,15 @@ cicd:
   runner_trust_model: three tiers (untrusted lint/test, isolated build/package, protected deploy), separated by namespace/node-pool and GitLab protected-runner/protected-environment controls
   protected_production_environment: required
   container_registry: gitlab container registry
-  artifact_signing: cosign keyless (Sigstore OIDC), sign once at build tier, verify before every promotion
+  artifact_signing: >
+    cosign keyless (Sigstore OIDC), sign once at build tier, verify before every
+    promotion. This repository's own published artifact is the Cadre plugin
+    (deagy/cadre-plugin), which meets this through GitHub's hosted Sigstore
+    instance rather than the cosign CLI: its release workflow attests SLSA build
+    provenance for the release tarball and an SBOM, verifiable with `gh
+    attestation verify`. Equivalent trust root (Fulcio/Rekor), no signing key to
+    manage. The pip/pipx wheel is deliberately not published anywhere, so it has
+    no promotion path to verify.
 
 observability:
   platform: prometheus + grafana + loki + tempo, opentelemetry for instrumentation

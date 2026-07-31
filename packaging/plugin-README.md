@@ -126,6 +126,31 @@ Note that the drift check covers only the generated set listed above. The
 hand-authored files — including `cline/`'s own `package.json` and lockfile —
 are outside it and need ordinary review.
 
+## Verifying a release
+
+Installing this plugin puts 70 role-instruction files and a `bin/cadre` onto
+`PATH` at user scope in your agent session, so it is worth checking what you
+are installing came from the build you expect. Cloning gives you commit
+integrity; it says nothing about which workflow produced the content.
+
+Each release attaches a source tarball and an SBOM for the Cline plugin's npm
+dependency tree, both with SLSA build provenance signed through GitHub's
+hosted Sigstore instance. Verify with the GitHub CLI:
+
+```sh
+gh release download v0.13.0 --repo deagy/cadre-plugin
+gh attestation verify cadre-plugin-v0.13.0.tar.gz --repo deagy/cadre-plugin
+```
+
+That confirms the tarball was built by this repository's `release.yml` at the
+tagged commit, and not assembled elsewhere. A failed verification means the
+artifact is not what this repository published — do not install it.
+
+The generated Cadre package itself carries no third-party dependencies (Python
+standard library and Markdown only), which is why the SBOM covers `cline/`
+specifically: that npm tree is the plugin's entire external dependency
+surface.
+
 ## Releasing
 
 The version lives in both plugin manifests and they must always agree. Set
