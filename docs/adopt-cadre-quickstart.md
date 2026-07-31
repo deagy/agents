@@ -26,10 +26,12 @@ python3 -m build
 pipx install dist/cadre-*.whl
 ```
 
-Either way, `cadre` requires Python 3.10+. `cadre generate-plugin`,
-`cadre generate-authority-aides`, and `cadre version` are maintainer-only —
-they need a full git checkout of this repository and are not available from
-the pip/pipx install. Every other subcommand works from either install path.
+Either way, `cadre` requires Python 3.10+. `cadre generate-plugin` and
+`cadre generate-authority-aides` are maintainer-only — they need a full git
+checkout of this repository and are not available from the pip/pipx install.
+`cadre generate-role-metadata --check` works from either path, but its write
+mode is checkout-only for the same reason. Every other subcommand works from
+either install path.
 
 Confirm it resolves (works from either install path):
 

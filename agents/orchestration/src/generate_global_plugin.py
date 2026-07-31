@@ -72,7 +72,6 @@ from routing import parse_catalog_entries  # noqa: E402
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 AGENTS_ROOT = REPOSITORY_ROOT / "agents"
 SKILLS_ROOT = REPOSITORY_ROOT / ".agents" / "skills"
-PLUGIN_ROOT = REPOSITORY_ROOT / "plugins" / "cadre"
 # This repository's Agentic SDLC provider bundle. Register-owned, tracked here,
 # and copied verbatim into the package by generate_provider_copy(): the
 # pip/pipx distribution vendors this directory (see pyproject.toml) so `cadre
@@ -88,6 +87,28 @@ PROVIDER_ROOT = REPOSITORY_ROOT / "provider"
 # at an empty directory and still produce a complete package.
 PACKAGING_README = REPOSITORY_ROOT / "packaging" / "plugin-README.md"
 PROVIDER_BUNDLE = ("provider.json", "agent-catalog.json", "profiles", "extensions", "codex-agents")
+# Register-only member of provider/: verbatim copies of every role's AGENT.md.
+# The kernel resolves agent-catalog.json's `definition` values relative to the
+# directory holding that file and rejects anything escaping it
+# (agentic_sdlc.load_agent_catalog), so role content reachable from
+# provider/agent-catalog.json has to live *under* provider/ -- a relative path
+# back out to agents/ would raise. Without it, `cadre sdlc init --profile
+# secure-cloud` silently falls back to one-line generic role instructions
+# (rich_agent_content() returns None for a missing file), which is what the pip
+# distribution has always done and what a register checkout would otherwise
+# start doing after the plugin split.
+#
+# NOT copied into the package: the package reaches the same content through
+# suite/agents/, and a package-root roles/ would be dead weight. Hence
+# PROVIDER_DEFINITION_PREFIX below.
+PROVIDER_ROLES_DIRNAME = "roles"
+# agent-catalog.json's `definition` values are relative to whichever copy of
+# the file is being read, and the two copies sit in differently shaped trees:
+# provider/roles/... in the register, suite/agents/... in the package. The
+# register spelling is authoritative and generate_provider_copy() rewrites it
+# for the package.
+PROVIDER_DEFINITION_PREFIX = f"{PROVIDER_ROLES_DIRNAME}/"
+PACKAGE_DEFINITION_PREFIX = "suite/agents/"
 # The only files in the plugin package this script does NOT produce. Both
 # carry the package's release version, which is deliberately hand-set in the
 # plugin repository (see its tools/plugin_version.py) so a release stays a
@@ -257,21 +278,23 @@ def write(path: Path, content: str) -> None:
 
 
 def reset_generated_content(plugin_root: Path) -> None:
-    for name in ("skills", "agents", "suite", "profiles", "extensions", "codex-agents"):
+    # Derived from GENERATED_TOP_LEVEL rather than re-listed, so a new member
+    # can never be generated-but-not-reset (which would leave stale files that
+    # files_equal() then reports as drift forever, with no way to regenerate
+    # out of it). bin/ is the one entry not removed wholesale: only bin/cadre
+    # is generated, and the directory may legitimately hold nothing else.
+    for name in sorted(GENERATED_TOP_LEVEL - {"bin"}):
         path = plugin_root / name
-        if path.exists():
+        if path.is_dir():
             shutil.rmtree(path)
-    for path in (
-        plugin_root / "agent-catalog.json",
-        plugin_root / "provider.json",
-        plugin_root / "README.md",
-        plugin_root / "bin" / "cadre",
-    ):
-        if path.exists():
+        elif path.exists():
             path.unlink()
+    cadre_wrapper = plugin_root / "bin" / "cadre"
+    if cadre_wrapper.exists():
+        cadre_wrapper.unlink()
 
 
-def generate_provider_copy(plugin_root: Path) -> list[Path]:
+def generate_provider_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -> list[Path]:
     """Copy this repository's provider/ bundle into the package root.
 
     The bundle is register-owned (see PROVIDER_ROOT): the package receives a
@@ -279,6 +302,28 @@ def generate_provider_copy(plugin_root: Path) -> list[Path]:
     and files_equal() then fails the drift check if the package's copy ever
     diverges from the register's.
     """
+    # The generated members of provider/ are produced by
+    # `cadre generate-role-metadata`, not here, so this generator can only copy
+    # whatever the register last committed. Editing a role's AGENT.md and
+    # running `generate-plugin` alone would refresh the package's Claude Code
+    # wrappers (built live from the catalog) while silently packaging stale
+    # Codex wrappers and a stale catalog export -- and a following --check,
+    # which compares package against the same stale register content, would
+    # call it current. Fail loudly instead.
+    stale = [
+        str(PROVIDER_ROOT / relative)
+        for relative, expected in {
+            "agent-catalog.json": agent_catalog_export_content(catalog),
+            **{f"codex-agents/{name}": body for name, body in codex_wrapper_contents(catalog).items()},
+        }.items()
+        if not (PROVIDER_ROOT / relative).is_file()
+        or (PROVIDER_ROOT / relative).read_text(encoding="utf-8") != expected
+    ]
+    if stale:
+        raise SystemExit(
+            "provider/ is stale; run `cadre generate-role-metadata` before regenerating the "
+            "package: " + ", ".join(sorted(stale)[:5]) + (" ..." if len(stale) > 5 else "")
+        )
     written: list[Path] = []
     for name in PROVIDER_BUNDLE:
         source = PROVIDER_ROOT / name
@@ -289,8 +334,33 @@ def generate_provider_copy(plugin_root: Path) -> list[Path]:
             )
         target = plugin_root / name
         if source.is_dir():
+            # symlinks=False would dereference, silently vendoring out-of-tree
+            # content into a published package; refuse instead, matching
+            # generate_skill_copies()'s stance.
+            for path in sorted(source.rglob("*")):
+                if path.is_symlink():
+                    raise SystemExit(f"{path}: symlinks are not packaged; replace it with a regular file")
             shutil.copytree(source, target)
             written.extend(path for path in sorted(target.rglob("*")) if path.is_file())
+        elif name == "agent-catalog.json":
+            # Re-point `definition` from the register's provider/roles/ tree to
+            # the package's own suite/agents/ copy of the same files. The
+            # kernel resolves these relative to whichever copy it reads and
+            # rejects escapes, so the two trees genuinely need different
+            # spellings -- see PROVIDER_DEFINITION_PREFIX.
+            catalog = json.loads(source.read_text(encoding="utf-8"))
+            for metadata in catalog["agents"].values():
+                definition = metadata["definition"]
+                if not definition.startswith(PROVIDER_DEFINITION_PREFIX):
+                    raise SystemExit(
+                        f"{source}: definition {definition!r} does not start with "
+                        f"{PROVIDER_DEFINITION_PREFIX!r}; run `cadre generate-role-metadata`"
+                    )
+                metadata["definition"] = (
+                    PACKAGE_DEFINITION_PREFIX + definition[len(PROVIDER_DEFINITION_PREFIX):]
+                )
+            write(target, json.dumps(catalog, indent=2) + "\n")
+            written.append(target)
         else:
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
@@ -487,7 +557,7 @@ def agent_catalog_export_content(catalog: dict[str, dict[str, Any]]) -> str:
                 if derive_kind(metadata["definition"]) == "reviewer"
                 else ["author", "dispatch"]
             ),
-            "definition": f"suite/agents/{metadata['definition']}",
+            "definition": f"{PROVIDER_DEFINITION_PREFIX}{metadata['definition']}",
         }
         for agent_id, metadata in sorted(catalog.items())
     }
@@ -751,7 +821,7 @@ def generate_package(catalog: dict[str, dict[str, Any]], plugin_root: Path) -> l
         generate_skill_copies(plugin_root)
         + generate_suite_copy(catalog, plugin_root)
         + generate_agent_wrappers(catalog, plugin_root)
-        + generate_provider_copy(plugin_root)
+        + generate_provider_copy(catalog, plugin_root)
         + [generate_bin_wrapper(plugin_root)]
     )
 
@@ -777,28 +847,25 @@ def files_equal(left: Path, right: Path) -> bool:
 def main() -> int:
     catalog = load_catalog(AGENTS_ROOT / "catalog.yaml")
     arguments = sys.argv[1:]
-    output_root = PLUGIN_ROOT
-    if "--output" in arguments:
-        output_index = arguments.index("--output")
-        try:
-            output_root = Path(arguments[output_index + 1]).resolve()
-        except IndexError as error:
-            raise SystemExit("--output requires a directory") from error
-    if "--check" not in arguments and output_root.exists() and output_root != PLUGIN_ROOT:
+    # The package is written into a checkout of the plugin repository
+    # (deagy/cadre-plugin). This repository has nothing to generate into, so
+    # --output is required rather than defaulting anywhere -- a default would
+    # silently create a stray directory here.
+    if "--output" not in arguments:
+        raise SystemExit(
+            "cadre generate-plugin: --output is required. The packaged plugin lives in "
+            "deagy/cadre-plugin; clone it and pass its root, e.g.\n"
+            "    cadre generate-plugin --output /path/to/cadre-plugin"
+        )
+    output_index = arguments.index("--output")
+    try:
+        output_root = Path(arguments[output_index + 1]).resolve()
+    except IndexError as error:
+        raise SystemExit("--output requires a directory") from error
+    if "--check" not in arguments and output_root.exists():
         marker = output_root / ".codex-plugin" / "plugin.json"
         if any(output_root.iterdir()) and not marker.is_file():
             raise SystemExit("--output must be a new directory or an existing generated plugin")
-    # The generated package is written into a checkout of the plugin repository
-    # (deagy/cadre-plugin), which also supplies the hand-authored assets listed
-    # in PACKAGE_ASSETS. This source repository no longer carries a plugins/
-    # directory, so without --output there is nothing to generate into: say so
-    # instead of silently creating a stray plugins/ directory here.
-    if output_root == PLUGIN_ROOT and not PLUGIN_ROOT.is_dir():
-        raise SystemExit(
-            "cadre generate-plugin: no packaged plugin in this repository. The plugin lives "
-            "in deagy/cadre-plugin; clone it and pass its root, e.g.\n"
-            "    cadre generate-plugin --output /path/to/cadre-plugin"
-        )
     if "--check" in arguments:
         with tempfile.TemporaryDirectory(prefix="cadre-plugin-") as temporary_directory:
             candidate = Path(temporary_directory) / "cadre"

@@ -47,7 +47,7 @@ cadre generate-authority-aides
 cadre select --task "..." --files a.tsx,b.go --task-id TASK-42 --classification internal
 ```
 
-`bin/cadre` dispatches every subcommand: `select`, `knowledge`, `sdlc`, `generate-plugin`, `generate-authority-aides`, `bootstrap-codex`, `resolve-shared`, `mcp-dispatch-server`, `init`. `subcommands.tsv` in `bin/` is the dispatch table.
+`bin/cadre` dispatches every subcommand: `select`, `selection-telemetry`, `knowledge`, `sdlc`, `generate-plugin`, `generate-authority-aides`, `generate-role-metadata`, `bootstrap-codex`, `resolve-shared`, `mcp-dispatch-server`, `init`, `profile`. `subcommands.tsv` in `bin/` is the dispatch table.
 
 Go and React components referenced in worked examples (e.g. sample services under agent briefs) belong to *consumer* projects, not this repository — there is no Go module or frontend build here to lint/test.
 

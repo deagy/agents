@@ -22,7 +22,7 @@ install this repository's own marketplace:
 
 ```sh
 git clone https://github.com/deagy/agentic-sdlc.git
-git -C agentic-sdlc checkout v0.3.0
+git -C agentic-sdlc checkout <current tag>   # see that repo's releases; don't hardcode
 export AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc
 codex plugin marketplace add /path/to/cadre-plugin
 codex plugin add cadre@cadre-team
@@ -96,28 +96,35 @@ Claude Code discovers `agents/*.md` directly from the plugin.
 
 ## Regeneration
 
-Everything under `skills/`, `agents/`, `codex-agents/`, `suite/`,
-`agent-catalog.json`, and `bin/cadre` is **generated** from
-[`deagy/cadre`](https://github.com/deagy/cadre) and must never be hand-edited
-here — edit the role or skill in the register repository and regenerate:
+**Generated — never hand-edit here.** `skills/`, `agents/`, `codex-agents/`,
+`suite/`, `bin/cadre`, `agent-catalog.json`, `provider.json`, `profiles/`,
+`extensions/`, and **`README.md` (this file)** are all produced from
+[`deagy/cadre`](https://github.com/deagy/cadre). Editing any of them here
+breaks this repository's `validate.yml` with a drift failure. Their sources in
+the register are `agents/`, `.agents/skills/`, `provider/`, and
+`packaging/plugin-README.md` — change them there and regenerate:
 
 ```sh
 git clone https://github.com/deagy/cadre.git
-git -C cadre checkout <released-tag>
+git -C cadre checkout "$(grep -v '^[[:space:]]*#' /path/to/cadre-plugin/cadre-ref.txt \
+  | grep -v '^[[:space:]]*$' | head -1)"
 cadre/bin/cadre generate-plugin --output /path/to/cadre-plugin
 ```
 
+Check out exactly the revision `cadre-ref.txt` names, not a release tag:
 `.github/workflows/validate.yml` runs the same command with `--check` against
-the tag pinned in `cadre-ref.txt` and fails on any drift, so this repository's
-committed content always corresponds to exactly one register revision. Picking
-up register changes is a deliberate act: bump `cadre-ref.txt` and commit the
-regenerated diff.
+that revision, so regenerating from anything else produces a diff CI rejects.
+Picking up register changes is a deliberate act: bump `cadre-ref.txt` and
+commit the regenerated diff in the same pull request.
 
-Everything else is hand-authored here and is never touched by regeneration:
-`README.md` (which the generator reads as the source of `suite/README.md`),
-`provider.json`, `profiles/`, `extensions/`, the two plugin manifests under
-`.claude-plugin/` and `.codex-plugin/`, the marketplace manifests, and the
-Cline plugin under `cline/`.
+**Hand-authored here** — the only files regeneration never touches: the two
+plugin manifests under `.claude-plugin/` and `.codex-plugin/` (which carry the
+release version), the marketplace manifests, `cadre-ref.txt`, `tools/`,
+`.github/`, and the Cline plugin under `cline/`.
+
+Note that the drift check covers only the generated set listed above. The
+hand-authored files — including `cline/`'s own `package.json` and lockfile —
+are outside it and need ordinary review.
 
 ## Releasing
 

@@ -387,13 +387,20 @@ class RepositoryHealthTests(unittest.TestCase):
             with self.subTest(agent=agent_id):
                 self.assertIn(metadata["kind"], {"author", "reviewer", "specialist"})
                 self.assertTrue(metadata["phase"])
-                # `definition` is package-relative (suite/agents/...) because
-                # provider.json resolves it inside an installed plugin, so it
-                # resolves against a generated package, not against the
-                # register's provider/ directory where the export itself lives.
-                self.assertTrue(
-                    (generated_package() / metadata["definition"]).is_file(), metadata["definition"]
-                )
+                # The kernel resolves `definition` relative to whichever copy
+                # of agent-catalog.json it reads, and rejects anything escaping
+                # that directory -- so the register's export must resolve
+                # inside PROVIDER_ROOT (roles/...), and the package's rewritten
+                # copy inside the package (suite/agents/...). Both are asserted
+                # here because a path that resolves in neither is exactly the
+                # regression that shipped in the register/plugin split:
+                # `cadre sdlc init` silently degraded to generic role text.
+                definition = metadata["definition"]
+                self.assertTrue((PROVIDER_ROOT / definition).is_file(), definition)
+                packaged = json.loads(
+                    (generated_package() / "agent-catalog.json").read_text(encoding="utf-8")
+                )["agents"][agent_id]["definition"]
+                self.assertTrue((generated_package() / packaged).is_file(), packaged)
 
     def test_generated_wrappers_enforce_catalog_capabilities_and_provenance(self) -> None:
         generator = REPOSITORY_ROOT / "agents" / "orchestration" / "src" / "generate_global_plugin.py"
@@ -421,6 +428,26 @@ class RepositoryHealthTests(unittest.TestCase):
                 author = (plugin_root / "agents" / f"{agent_id}.md").read_text(encoding="utf-8")
                 self.assertIn("tools: Read, Grep, Glob, Bash, Edit, Write", author)
                 self.assertIn('sandbox_mode = "workspace-write"', (plugin_root / "codex-agents" / f"agents-{agent_id}.toml").read_text(encoding="utf-8"))
+
+    def test_advertised_role_count_in_register_owned_prose_matches_the_catalog(self) -> None:
+        """`packaging/plugin-README.md` is register-owned and rendered verbatim
+        into the package (and thence the marketplace listing), so a stale count
+        there advertises the wrong number of roles to installers.
+
+        A drift check cannot catch this: the generator copies the wrong number
+        faithfully, so package and register agree and `--check` passes. The
+        equivalent assertion over the two plugin.json manifests moved to
+        deagy/cadre-plugin with the manifests themselves; this covers the half
+        whose source lives here.
+        """
+        readme = (REPOSITORY_ROOT / "packaging" / "plugin-README.md").read_text(encoding="utf-8")
+        advertised = {int(value) for value in re.findall(r"(\d+)\s*\n?specialist roles", readme)}
+        advertised |= {int(value) for value in re.findall(r"(\d+) specialist roles", readme)}
+        self.assertEqual(
+            {EXPECTED_ROLE_COUNT},
+            advertised,
+            "packaging/plugin-README.md advertises a role count that is not EXPECTED_ROLE_COUNT",
+        )
 
     def test_repository_profile_and_local_override_policy_stay_current(self) -> None:
         profile = (ROOT / "shared" / "team-profile.yaml").read_text(encoding="utf-8")

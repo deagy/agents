@@ -44,7 +44,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 
 Key areas:
 
-- [bin/cadre](bin/cadre) dispatches the suite tools (`cadre select`, `cadre knowledge`, `cadre sdlc`, `cadre generate-plugin`, `cadre bootstrap-codex`, `cadre resolve-shared`, and `cadre init`). `cadre select` works standalone, deterministically dispatching roles from this suite's own catalog and routing rules; it automatically enriches its plan with lifecycle-gate tracking when the standalone `agentic-sdlc` CLI is also available (or fails fast with `--require-sdlc` if that's required), and lifecycle *validation* itself is always provided by that separate `agentic-sdlc` CLI, never by this suite.
+- [bin/cadre](bin/cadre) dispatches the suite tools (`cadre select`, `cadre selection-telemetry`, `cadre knowledge`, `cadre sdlc`, `cadre generate-plugin`, `cadre generate-authority-aides`, `cadre generate-role-metadata`, `cadre bootstrap-codex`, `cadre resolve-shared`, `cadre mcp-dispatch-server`, `cadre profile`, and `cadre init`). `cadre select` works standalone, deterministically dispatching roles from this suite's own catalog and routing rules; it automatically enriches its plan with lifecycle-gate tracking when the standalone `agentic-sdlc` CLI is also available (or fails fast with `--require-sdlc` if that's required), and lifecycle *validation* itself is always provided by that separate `agentic-sdlc` CLI, never by this suite.
 - [agents/catalog.yaml](agents/catalog.yaml) is the machine-readable role inventory.
 - [agents/RUNBOOK.md](agents/RUNBOOK.md) explains how to select, dispatch, review, and escalate agent work.
 - [agents/orchestration/](agents/orchestration/) contains routing rules, lifecycle applicability mappings, handoff contracts, escalation policy, selectors, and tests.
@@ -284,9 +284,9 @@ current, a legitimate installed-mode use case), but its default (no-flag)
 write mode requires a checkout, for the same reason as `generate-plugin`
 above: from an install it would otherwise silently regenerate the
 installed package's own vendored copy under site-packages rather than a
-real project. Every other subcommand (`select`, `knowledge`,
-`bootstrap-codex`, `resolve-shared`, `mcp-dispatch-server`, `init`, and
-`sdlc`) works fully from the pip/pipx install. Invoking `generate-plugin`,
+real project. Every other subcommand (`select`, `selection-telemetry`, `knowledge`,
+`bootstrap-codex`, `resolve-shared`, `mcp-dispatch-server`, `profile`,
+`init`, and `sdlc`) works fully from the pip/pipx install. Invoking `generate-plugin`,
 `generate-authority-aides`, or `generate-role-metadata` without
 `--check` from an installed distribution fails closed with an explicit
 error message and a non-zero exit code, pointing back at the checkout
@@ -363,7 +363,7 @@ To ship a register change through to installed plugins:
 3. Bump that repository's plugin version (`python3 tools/plugin_version.py
    --set X.Y.Z`) when the change should reach existing installs.
 
-Once the version bump lands on `main`, [`.github/workflows/release.yml`](.github/workflows/release.yml)
+Once the version bump lands on `main`, [that repository's `release.yml`](https://github.com/deagy/cadre-plugin/blob/main/.github/workflows/release.yml)
 reads the new version and, if no `vX.Y.Z` tag exists for it yet, creates one
 at that commit and publishes a matching GitHub Release automatically — no
 manual `git tag`/`git push` step. The workflow only ever tags content that

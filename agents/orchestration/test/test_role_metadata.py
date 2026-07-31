@@ -327,7 +327,85 @@ class GeneratorIdentityTests(unittest.TestCase):
             encoding="utf-8",
         )
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertIn("73 role metadata files are current", result.stdout)
+        self.assertIn("143 role metadata files are current", result.stdout)
+
+
+class ProviderOrphanTests(unittest.TestCase):
+    """`generate_role_metadata` deletes files (stale provider wrappers left by
+    a removed role), so its orphan path needs the same coverage
+    test_generate_authority_aides.py gives its own removal logic.
+    """
+
+    def _isolated_provider(self, root: Path) -> Path:
+        """A throwaway copy of the real provider/ tree.
+
+        These tests exercise a code path that *deletes files*, so they must not
+        mutate the repository's own provider/ -- a failure mid-test would leave
+        orphans behind that every later test reading the real tree would then
+        trip over. `--provider-root` with the default `--agents-root` renders
+        the same content into a different directory, which is exactly what that
+        flag combination is for.
+        """
+        target = root / "provider"
+        shutil.copytree(REPOSITORY_ROOT / "provider", target)
+        return target
+
+    def _run(self, *extra: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(ROOT / "src" / "generate_role_metadata.py"), *extra],
+            check=False, capture_output=True, text=True, encoding="utf-8",
+        )
+
+    def _seed_orphans(self, provider: Path) -> list[Path]:
+        orphans = [
+            provider / "codex-agents" / "agents-removed-role.toml",
+            provider / "roles" / "review" / "removed-role" / "AGENT.md",
+        ]
+        for orphan in orphans:
+            orphan.parent.mkdir(parents=True, exist_ok=True)
+            orphan.write_text("# left behind by a removed role\n", encoding="utf-8")
+        return orphans
+
+    def test_check_reports_orphans_and_does_not_delete_them(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            provider = self._isolated_provider(Path(directory))
+            orphans = self._seed_orphans(provider)
+            result = self._run("--check", "--provider-root", str(provider))
+            self.assertEqual(1, result.returncode, result.stdout)
+            self.assertIn("orphaned", result.stderr)
+            for orphan in orphans:
+                self.assertTrue(orphan.is_file(), f"--check must not delete {orphan}")
+
+    def test_write_mode_removes_orphans(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            provider = self._isolated_provider(Path(directory))
+            orphans = self._seed_orphans(provider)
+            result = self._run("--provider-root", str(provider))
+            self.assertEqual(0, result.returncode, result.stderr)
+            for orphan in orphans:
+                self.assertFalse(orphan.exists(), f"write mode must remove {orphan}")
+            self.assertEqual(0, self._run("--check", "--provider-root", str(provider)).returncode)
+
+    def test_non_default_agents_root_rejects_a_provider_root_it_would_ignore(self) -> None:
+        """Provider content is only rendered for this repository's own agents/
+        tree, so silently accepting --provider-root alongside a fixture root
+        would look like it targeted something it never touched.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _build_two_role_fixture(root)
+            agents_root, catalog_path, routing_path, order_path, header_path = _paths(root)
+            result = self._run(
+                "--check",
+                "--agents-root", str(agents_root),
+                "--catalog", str(catalog_path),
+                "--routing", str(routing_path),
+                "--order", str(order_path),
+                "--header-template", str(header_path),
+                "--provider-root", str(root / "provider"),
+            )
+            self.assertEqual(1, result.returncode)
+            self.assertIn("silently ignored", result.stderr)
 
 
 class CheckModeFixtureTests(unittest.TestCase):

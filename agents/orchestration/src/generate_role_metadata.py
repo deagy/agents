@@ -45,6 +45,7 @@ from generate_global_plugin import (  # noqa: E402
     ALLOWED_REASONING_EFFORTS,
     CAPABILITY_PROFILES,
     MODEL_TIERS,
+    PROVIDER_ROLES_DIRNAME,
     PROVIDER_ROOT,
     agent_catalog_export_content,
     codex_wrapper_contents,
@@ -369,13 +370,32 @@ def generate(
     # role definitions and agents/shared/ policy resolved from the real
     # REPOSITORY_ROOT, so rendering them for an arbitrary fixture root (as the
     # generator's own tests use) would reach outside that root and fail.
-    if agents_root == DEFAULT_AGENTS_ROOT:
+    if renders_provider_content(agents_root):
         catalog_entries = load_catalog_content(catalog_content)
         rendered[provider_root / "agent-catalog.json"] = agent_catalog_export_content(catalog_entries)
         for filename, content in codex_wrapper_contents(catalog_entries).items():
             rendered[provider_root / "codex-agents" / filename] = content
+        # Verbatim role copies the kernel can reach from provider/, so
+        # `cadre sdlc init --profile secure-cloud` renders full role content
+        # instead of silently degrading to generic instructions. See
+        # generate_global_plugin.PROVIDER_ROLES_DIRNAME.
+        for metadata in catalog_entries.values():
+            definition = metadata["definition"]
+            source = agents_root / definition
+            rendered[provider_root / PROVIDER_ROLES_DIRNAME / definition] = source.read_text(encoding="utf-8")
 
     return rendered
+
+
+def renders_provider_content(agents_root: Path) -> bool:
+    """True when generating against this repository's own agents/ tree.
+
+    Resolved on both sides: argparse's `type=Path` does not normalise, so a
+    relative (`--agents-root agents`) or symlinked spelling of the very same
+    tree would otherwise compare unequal and silently skip every provider
+    artifact while still reporting "current".
+    """
+    return agents_root.resolve() == DEFAULT_AGENTS_ROOT.resolve()
 
 
 def load_catalog_content(catalog_content: str) -> dict[str, dict[str, str]]:
@@ -422,10 +442,21 @@ def main(argv: list[str] | None = None) -> int:
 
     # Orphans: a removed role leaves a stale wrapper that no rendered entry
     # covers, so content comparison alone would call the tree current.
-    wrapper_dir = args.provider_root / "codex-agents"
-    scan_for_orphans = args.agents_root == DEFAULT_AGENTS_ROOT and wrapper_dir.is_dir()
+    renders_provider = renders_provider_content(args.agents_root)
+    if not renders_provider and args.provider_root != PROVIDER_ROOT:
+        raise SystemExit(
+            "generate_role_metadata: --provider-root was supplied but provider content is not "
+            "rendered for a non-default --agents-root; the flag would be silently ignored"
+        )
+    orphan_dirs = (
+        (args.provider_root / "codex-agents", "*.toml"),
+        (args.provider_root / PROVIDER_ROLES_DIRNAME, "**/AGENT.md"),
+    )
     orphans = sorted(
-        str(path) for path in (wrapper_dir.glob("*.toml") if scan_for_orphans else []) if path not in rendered
+        str(path)
+        for directory, pattern in orphan_dirs
+        for path in (directory.glob(pattern) if renders_provider and directory.is_dir() else [])
+        if path not in rendered
     )
 
     if args.check:
