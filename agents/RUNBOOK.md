@@ -724,10 +724,12 @@ The report classifies each of the two artifacts independently into one of five s
 Install it with:
 
 ```sh
-# from a deagy/cadre-plugin checkout:
-cline plugin install ./cline
-# or, from anywhere, against the git URL:
-cline plugin install https://github.com/deagy/cadre-plugin.git
+# Clone at a release tag, then install from that checkout. The bare git-URL
+# form (`cline plugin install https://github.com/deagy/cadre-plugin.git`)
+# installs whatever is on `main` at that moment, with no way to pin a ref --
+# prefer the checkout so you control the revision.
+git clone --branch v0.13.0 https://github.com/deagy/cadre-plugin.git
+cd cadre-plugin && cline plugin install ./cline
 ```
 
 It registers one tool, `agents_select`, wrapping `cadre select` (see §"Select Agents" above) — a Cline conversation can call it directly to get the same deterministic, plan-only dispatch plan a human would get from the CLI, without shelling out manually. It carries the same invariants as the CLI it wraps: plan-only, never invokes agents, retrieves knowledge, merges, deploys, or mutates infrastructure or approvals.
@@ -738,18 +740,35 @@ This plugin system currently applies to the Cline CLI, SDK, and Kanban only, not
 
 Most projects want §16's `cadre sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 70 roles, 9 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
 
-The marketplace lives in the plugin repository, so point the install at a
-checkout of [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin)
-rather than at this one:
+The marketplace lives in [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin),
+not here. Claude Code adds it straight from GitHub, pinned to a release —
+check [the releases](https://github.com/deagy/cadre-plugin/releases) for the
+current tag rather than trusting the one written here:
+
+```text
+/plugin marketplace add deagy/cadre-plugin@v0.13.0
+/plugin install cadre@cadre-team
+```
+
+Always pin: without `@<tag>` you track that repository's `main`. A marketplace
+source accepts a branch or tag but not a commit SHA, so the pin is only as
+immutable as the tag. `owner/repo` shorthand clones over SSH by default; set
+`CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` for HTTPS.
+
+Codex installs from a local checkout, so clone at the tag first:
 
 ```sh
+git clone --branch v0.13.0 https://github.com/deagy/cadre-plugin.git
 codex plugin marketplace add /path/to/cadre-plugin
 codex plugin add cadre@cadre-team
 ```
 
-```text
-/plugin marketplace add /path/to/cadre-plugin
-/plugin install cadre@cadre-team
+Each release also carries a signed provenance attestation, so you can check
+what you are installing before it reaches your `PATH`:
+
+```sh
+gh release download v0.13.0 --repo deagy/cadre-plugin
+gh attestation verify cadre-plugin-v0.13.0.tar.gz --repo deagy/cadre-plugin
 ```
 
 Codex has no plugin-bundled-subagent mechanism, so its 70 namespaced `agents-<role>.toml` wrappers are staged under `provider/codex-agents/` rather than loaded from the plugin directly. The bootstrap step installs only those namespaced files and refuses unowned collisions; it leaves legacy bare global files untouched. Project-local bare role overrides remain preferred. See `../packaging/plugin-README.md`; legacy bare global files can be removed manually after confirming they are unused. Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
