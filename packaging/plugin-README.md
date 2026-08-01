@@ -15,24 +15,53 @@ This repository is one of three:
 | `deagy/cadre-plugin` (this repository) | The **plugin implementations** — the generated distribution above, plus the hand-authored package assets and the Cline plugin under `cline/`. |
 | [`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc) | The **lifecycle kernel** — G1–G10 gate schemas, run-record validation, gate authority. |
 
+## Installing
+
+**Claude Code** adds this marketplace straight from GitHub — no clone of your
+own. Pin to a release; check [the
+releases](https://github.com/deagy/cadre-plugin/releases) for the current tag
+rather than trusting the one written here:
+
+```text
+/plugin marketplace add deagy/cadre-plugin@v0.13.0
+/plugin install cadre@cadre-team
+```
+
+Without `@<tag>` you track `main`, which moves. A *marketplace* source accepts
+a branch or tag but not a commit SHA, so the pin is only as immutable as the
+tag itself. `owner/repo` shorthand clones over SSH by default; set
+`CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` for HTTPS.
+
+**Codex** installs from a local checkout, so clone at the tag first:
+
+```sh
+git clone --branch v0.13.0 https://github.com/deagy/cadre-plugin.git
+codex plugin marketplace add /path/to/cadre-plugin
+codex plugin add cadre@cadre-team
+```
+
+**Verify before installing** (optional, recommended for anything you did not
+build yourself — this drops 70 role-instruction files and a `bin/cadre` onto
+your `PATH` at user scope). See [Verifying a
+release](#verifying-a-release):
+
+```sh
+gh release download v0.13.0 --repo deagy/cadre-plugin
+gh attestation verify cadre-plugin-v0.13.0.tar.gz --repo deagy/cadre-plugin
+tar xzf cadre-plugin-v0.13.0.tar.gz
+codex plugin marketplace add ./cadre-plugin   # or /plugin marketplace add ./cadre-plugin
+```
+
+### The lifecycle kernel
+
 This repository does not contain the lifecycle kernel; that remains a
-separately versioned dependency. It is not installed as a Claude Code/Codex
-plugin — clone it and put its CLI on `PATH` (or set `AGENTIC_SDLC_BIN`), then
-install this repository's own marketplace:
+separately versioned dependency, and it is not installed as a plugin. Clone it
+and put its CLI on `PATH` (or set `AGENTIC_SDLC_BIN`):
 
 ```sh
 git clone https://github.com/deagy/agentic-sdlc.git
 git -C agentic-sdlc checkout <current tag>   # see that repo's releases; don't hardcode
 export AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc
-codex plugin marketplace add /path/to/cadre-plugin
-codex plugin add cadre@cadre-team
-```
-
-For Claude Code:
-
-```text
-/plugin marketplace add /path/to/cadre-plugin
-/plugin install cadre@cadre-team
 ```
 
 `provider.json` contributes the `secure-cloud` profile, package-relative role

@@ -187,17 +187,42 @@ is for the narrower case of genuinely wanting all 70 roles, the 9 skills, and
 the knowledge store reachable from *every* project on the machine
 unconditionally, via the same global/user-scope plugin install mechanism. The
 marketplace and the packaged plugin live in
-[`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin), so install from
-a checkout of that repository rather than this one:
+[`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin), not in this
+repository.
+
+Claude Code can add that marketplace straight from GitHub, pinned to a
+release, with no clone of your own — check
+[the releases](https://github.com/deagy/cadre-plugin/releases) for the current
+tag rather than trusting the one written here:
+
+```text
+/plugin marketplace add deagy/cadre-plugin@v0.13.0
+/plugin install cadre@cadre-team
+```
+
+Pin the tag. Without `@<tag>` you track that repository's `main`, which moves.
+Note that a *marketplace* source accepts a branch or tag but not a commit SHA,
+so the pin is only as immutable as the tag: it protects you from `main`
+moving, not from a tag being moved. `owner/repo` shorthand clones over SSH by
+default; set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` to use HTTPS instead.
+
+Codex installs from a local checkout, so clone at the tag first:
 
 ```sh
+git clone --branch v0.13.0 https://github.com/deagy/cadre-plugin.git
 codex plugin marketplace add /path/to/cadre-plugin
 codex plugin add cadre@cadre-team
 ```
 
-```text
-/plugin marketplace add /path/to/cadre-plugin
-/plugin install cadre@cadre-team
+To check what you are installing before installing it, every release carries a
+signed provenance attestation — see
+[Verifying a release](https://github.com/deagy/cadre-plugin#verifying-a-release):
+
+```sh
+gh release download v0.13.0 --repo deagy/cadre-plugin
+gh attestation verify cadre-plugin-v0.13.0.tar.gz --repo deagy/cadre-plugin
+tar xzf cadre-plugin-v0.13.0.tar.gz
+codex plugin marketplace add ./cadre-plugin   # or /plugin marketplace add ./cadre-plugin
 ```
 
 The first `run-agent-orchestration` or `knowledge-ingestion` invocation with no
