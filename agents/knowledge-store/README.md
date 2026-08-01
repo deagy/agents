@@ -122,6 +122,14 @@ Citations are point-in-time references, not immutable or permanently stable iden
 
 The demo has no retention or deletion commands. Its ingestion response reports only run ID, message count, and chunk count; redaction and embedding summaries require supplemental steward records until implemented.
 
+## Running against a small-context local model
+
+`cadre select --context-profile local-small` lowers the effective default `--top` from 5 to 3 when the caller doesn't pass `--top` explicitly, reducing worst-case retrieval payload size for a constrained-context runner. An explicit `--top` always overrides the profile. This affects retrieval budget only.
+
+Chunk size (`chunking.max_characters`/`overlap_characters`, default 2400/240 characters) is fixed at ingestion time in `agents/knowledge-store/src/config.py`'s `DEFAULTS` and stored per-chunk in the database -- it is **not** retrieval-time-adjustable, so no CLI flag can shrink it after the fact. A local-LLM deployment that also needs smaller chunks must create its own project-local `.agents/knowledge-store/config.json` with a lower `chunking.max_characters` and re-ingest content into that store.
+
+See also `cadre generate-plugin --context-profile compact` (`agents/orchestration/src/generate_global_plugin.py`), which shrinks each dispatched agent's fixed system-prompt footprint by referencing shared policy files by path instead of embedding their full text -- the other major source of fixed context cost per dispatch, independent of retrieval.
+
 ## Compatibility
 
 The Python implementation retains the existing SQLite tables, indexes, identifiers, SHA-256 hashes, JSON vector encoding, hashing-vector algorithm, and provider/model selection. Existing databases are opened in place. Rows whose stored embedding dimension does not match the configured dimension are excluded rather than scored; re-ingest after changing provider, model, or dimensions. Back up the database before any runtime migration and never mix implementations against one database concurrently.

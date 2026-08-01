@@ -139,6 +139,17 @@ SHARED_OVERRIDE_NOTE = (
     "shared file's effective content instead of trusting the embedded text "
     "alone (see agents/shared/README.md in the source suite)."
 )
+# Used only when generate_package(..., compact=True) -- an opt-in,
+# package-only build for constrained-context (e.g. small local-model)
+# runners; never part of the default/committed distribution. Replaces the
+# inlined SHARED_POLICIES text with a pointer to their paths, trading
+# guaranteed-visible policy content for a smaller fixed prompt footprint.
+COMPACT_SHARED_NOTE = (
+    "Shared policy files (not embedded in this compact wrapper, to save "
+    "context budget): {paths}. Read each one with your Read tool before "
+    "relying on policy content -- their absence here does not mean no "
+    "policy applies."
+)
 
 RUNNER_CAPABILITIES_PATH = REPOSITORY_ROOT / "agents" / "runner-capabilities.json"
 
@@ -406,21 +417,31 @@ def generate_skill_copies(plugin_root: Path) -> list[Path]:
     return written
 
 
-def role_wrapper_inputs(agent_id: str, metadata: dict[str, Any]) -> dict[str, Any]:
+def role_wrapper_inputs(
+    agent_id: str, metadata: dict[str, Any], *, compact: bool = False
+) -> dict[str, Any]:
     """The wrapper content both runners derive from one role.
 
     Shared by generate_agent_wrappers() (Claude Code, package-only) and
     generate_codex_wrappers() (Codex, register-side under provider/), which
     write to different repositories but must embed byte-identical role and
     shared-policy instructions.
+
+    `compact=True` is an opt-in, package-only mode (see generate_package())
+    for constrained-context runners: it swaps the fully inlined SHARED_POLICIES
+    text for a short pointer to their paths instead. Default False preserves
+    today's output byte-for-byte.
     """
     definition = metadata["definition"]
     phase = metadata.get("phase", "unknown")
     profile = CAPABILITY_PROFILES[metadata["capability"]]
-    shared_content = "\n\n".join(
-        f"# Shared policy: {relative}\n\n{(REPOSITORY_ROOT / relative).read_text(encoding='utf-8').strip()}"
-        for relative in SHARED_POLICIES
-    )
+    if compact:
+        shared_content = COMPACT_SHARED_NOTE.format(paths=", ".join(SHARED_POLICIES))
+    else:
+        shared_content = "\n\n".join(
+            f"# Shared policy: {relative}\n\n{(REPOSITORY_ROOT / relative).read_text(encoding='utf-8').strip()}"
+            for relative in SHARED_POLICIES
+        )
     # A migrated role's AGENT.md carries `---`-delimited frontmatter
     # ahead of its prose body (see role_metadata.py); that frontmatter
     # is generated-file bookkeeping for catalog.yaml/routing.yaml, not
@@ -441,14 +462,16 @@ def role_wrapper_inputs(agent_id: str, metadata: dict[str, Any]) -> dict[str, An
     }
 
 
-def generate_agent_wrappers(catalog: dict[str, dict[str, Any]], plugin_root: Path) -> list[Path]:
+def generate_agent_wrappers(
+    catalog: dict[str, dict[str, Any]], plugin_root: Path, *, compact: bool = False
+) -> list[Path]:
     """Claude Code plugin-bundled subagent wrappers. Package-only: Claude Code
     auto-discovers these from the installed plugin's agents/ directory, so they
     have no meaning outside it (unlike the Codex wrappers below).
     """
     written = []
     for agent_id, metadata in sorted(catalog.items()):
-        inputs = role_wrapper_inputs(agent_id, metadata)
+        inputs = role_wrapper_inputs(agent_id, metadata, compact=compact)
         definition = inputs["definition"]
         description = inputs["description"]
         profile = inputs["profile"]
@@ -480,7 +503,9 @@ def generate_agent_wrappers(catalog: dict[str, dict[str, Any]], plugin_root: Pat
     return written
 
 
-def codex_wrapper_contents(catalog: dict[str, dict[str, Any]]) -> dict[str, str]:
+def codex_wrapper_contents(
+    catalog: dict[str, dict[str, Any]], *, compact: bool = False
+) -> dict[str, str]:
     """Codex role wrappers as {filename: content}, for provider/codex-agents/.
 
     Codex has no plugin-bundled-agent mechanism: it discovers custom agents
@@ -496,10 +521,16 @@ def codex_wrapper_contents(catalog: dict[str, dict[str, Any]]) -> dict[str, str]
     Returns content rather than writing, so generate_role_metadata.py can fold
     these into the same rendered-content map it uses for catalog.yaml and
     routing.yaml and get --check for free.
+
+    `compact=True` must only ever be used for generate_package()'s package-only
+    post-processing step. generate_role_metadata.py and
+    generate_provider_copy()'s own staleness check always call this with the
+    default False -- the register's committed provider/codex-agents/ content
+    must never become compact.
     """
     contents: dict[str, str] = {}
     for agent_id, metadata in sorted(catalog.items()):
-        inputs = role_wrapper_inputs(agent_id, metadata)
+        inputs = role_wrapper_inputs(agent_id, metadata, compact=compact)
         definition = inputs["definition"]
         description = inputs["description"]
         profile = inputs["profile"]
@@ -844,15 +875,33 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
     return written
 
 
-def generate_package(catalog: dict[str, dict[str, Any]], plugin_root: Path) -> list[Path]:
+def generate_package(
+    catalog: dict[str, dict[str, Any]], plugin_root: Path, *, compact: bool = False
+) -> list[Path]:
+    """Generate the full package. `compact=True` is an opt-in, package-only
+    build for constrained-context (e.g. small local-model) runners: default
+    False reproduces today's output byte-for-byte, which is what --check and
+    every existing caller (register generation, deagy/cadre-plugin's CI) rely
+    on.
+
+    generate_provider_copy() always performs its normal non-compact staleness
+    check and verbatim register copy first, regardless of `compact` -- the
+    committed provider/codex-agents/ tree in this repository is never
+    affected. When compact, the package's own codex-agents/*.toml are then
+    overwritten in place with compact content, after that copy.
+    """
     reset_generated_content(plugin_root)
-    return (
+    written = (
         generate_skill_copies(plugin_root)
         + generate_suite_copy(catalog, plugin_root)
-        + generate_agent_wrappers(catalog, plugin_root)
+        + generate_agent_wrappers(catalog, plugin_root, compact=compact)
         + generate_provider_copy(catalog, plugin_root)
         + [generate_bin_wrapper(plugin_root)]
     )
+    if compact:
+        for name, body in codex_wrapper_contents(catalog, compact=True).items():
+            write(plugin_root / "codex-agents" / name, body)
+    return written
 
 
 def files_equal(left: Path, right: Path) -> bool:
@@ -891,6 +940,26 @@ def main() -> int:
         output_root = Path(arguments[output_index + 1]).resolve()
     except IndexError as error:
         raise SystemExit("--output requires a directory") from error
+    # --context-profile compact is an opt-in, package-only build for
+    # constrained-context (e.g. small local-model) runners -- never part of
+    # the default/committed deagy/cadre-plugin distribution or its CI. --check
+    # exists to validate that committed default distribution, so the two are
+    # mutually exclusive rather than silently compared against each other.
+    context_profile = "default"
+    if "--context-profile" in arguments:
+        profile_index = arguments.index("--context-profile")
+        try:
+            context_profile = arguments[profile_index + 1]
+        except IndexError as error:
+            raise SystemExit("--context-profile requires a value: default or compact") from error
+        if context_profile not in ("default", "compact"):
+            raise SystemExit(f"--context-profile must be 'default' or 'compact', got {context_profile!r}")
+    compact = context_profile == "compact"
+    if compact and "--check" in arguments:
+        raise SystemExit(
+            "--context-profile compact cannot be combined with --check: --check validates "
+            "the committed default distribution only. Run the compact build without --check."
+        )
     if "--check" not in arguments and output_root.exists():
         marker = output_root / ".codex-plugin" / "plugin.json"
         if any(output_root.iterdir()) and not marker.is_file():
@@ -913,8 +982,8 @@ def main() -> int:
                 return 1
         print(f"Generated plugin is current under {output_root}")
         return 0
-    written = generate_package(catalog, output_root)
-    print(f"Generated {len(written)} self-contained files under {output_root}")
+    written = generate_package(catalog, output_root, compact=compact)
+    print(f"Generated {len(written)} self-contained files under {output_root}" + (" (compact)" if compact else ""))
     return 0
 
 

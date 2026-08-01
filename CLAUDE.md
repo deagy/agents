@@ -37,6 +37,10 @@ python3 -m unittest agents.orchestration.test.test_repository_health
 # Regenerate the packaged plugin, which lives in its own repository
 # (deagy/cadre-plugin) — commit the diff there, not here
 cadre generate-plugin --output /path/to/cadre-plugin
+# --context-profile compact produces an opt-in, package-only build for
+# constrained-context (e.g. small local-model) runners — never part of the
+# committed deagy/cadre-plugin distribution or its CI, and incompatible with --check
+cadre generate-plugin --output /path/to/local-plugin --context-profile compact
 
 # Editing agents/authority/aides.yaml or agents/authority/_template.md.tmpl requires
 # this first, to regenerate the 8 agents/authority/*-aide/AGENT.md files, before
@@ -45,6 +49,9 @@ cadre generate-authority-aides
 
 # Produce a deterministic dispatch plan (selection only — no execution, no mutation)
 cadre select --task "..." --files a.tsx,b.go --task-id TASK-42 --classification internal
+# --context-profile local-small lowers the default --top from 5 to 3 (unless
+# --top is passed explicitly) for a constrained-context runner's retrieval budget
+cadre select --task "..." --classification internal --context-profile local-small
 ```
 
 `bin/cadre` dispatches every subcommand: `select`, `selection-telemetry`, `knowledge`, `sdlc`, `generate-plugin`, `generate-authority-aides`, `generate-role-metadata`, `bootstrap-codex`, `resolve-shared`, `mcp-dispatch-server`, `init`, `profile`. `subcommands.tsv` in `bin/` is the dispatch table.

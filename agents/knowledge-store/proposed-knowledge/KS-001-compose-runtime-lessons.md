@@ -1,6 +1,6 @@
 # Proposed Knowledge: Compose Runtime Lessons
 
-Status: proposed for knowledge-store-steward review
+Status: ingested 2026-07-31 — see `KS-001-steward-record.md` for approval and evidence
 Classification: internal
 Source task: local compose troubleshooting on 2026-07-21
 
@@ -19,4 +19,4 @@ Retrieve this note for backend, infrastructure, test, code-review, and documenta
 
 ## Steward Notes
 
-Do not ingest until the steward verifies scope, classification, and whether this should be represented as operational knowledge, a decision overlay, or both.
+Verified and ingested as operational knowledge (this project's own troubleshooting note, no third-party chat export). See `KS-001-steward-record.md` for the recorded review, redaction check, and retrieval evaluation.

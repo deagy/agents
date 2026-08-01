@@ -41,7 +41,18 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--task-id", help="Stable caller-supplied task identifier")
     parser.add_argument("--classification", help="Authorized knowledge classification")
     parser.add_argument("--source", help="Optional knowledge-store source filter")
-    parser.add_argument("--top", help="Maximum knowledge results per agent", default="5")
+    parser.add_argument("--top", help="Maximum knowledge results per agent", default=None)
+    parser.add_argument(
+        "--context-profile",
+        choices=["default", "local-small"],
+        default="default",
+        help=(
+            "Opt-in retrieval-budget preset for constrained-context runners. "
+            "'local-small' lowers the effective --top default to 3 when --top "
+            "is not explicitly supplied; does not affect knowledge-store chunk "
+            "size (see agents/knowledge-store/README.md)."
+        ),
+    )
     parser.add_argument("--output", help="Write the JSON plan to this path")
     parser.add_argument(
         "--require-sdlc",
@@ -179,6 +190,9 @@ def main(argv: list[str] | None = None) -> int:
         else discover_changed_files(options.base, repository_root)
     )
     source = options.source or resolve_knowledge_source(repository_root)
+    effective_top = options.top
+    if effective_top is None:
+        effective_top = "3" if options.context_profile == "local-small" else "5"
     catalog_path = AGENTS_ROOT / "catalog.yaml"
     routing_path = ORCHESTRATION_ROOT / "routing.yaml"
     config = load_routing(routing_path)
@@ -195,7 +209,7 @@ def main(argv: list[str] | None = None) -> int:
             "changed_file_source": changes["source"],
             "classification": options.classification,
             "source": source,
-            "top": options.top,
+            "top": effective_top,
         },
         require_sdlc=options.require_sdlc,
         catalog_path=catalog_path,

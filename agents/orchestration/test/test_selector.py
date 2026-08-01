@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT / "src"))
 import agentic_sdlc_contracts  # noqa: E402
 from build_dispatch_plan import build_dispatch_plan  # noqa: E402
 from routing import glob_to_regex, load_catalog, load_routing  # noqa: E402
+import select_agents  # noqa: E402
 from select_agents import (  # noqa: E402
     _origin_slug,
     discover_changed_files,
@@ -1467,6 +1468,57 @@ class SelectorTests(unittest.TestCase):
             self.assertRaisesRegex(RuntimeError, "timed out"),
         ):
             agentic_sdlc_contracts.try_lifecycle_contract()
+
+
+class ContextProfileCliTests(unittest.TestCase):
+    """`select_agents.main()`-level tests for --context-profile / --top resolution.
+
+    `plan()`/`build_dispatch_plan()` above take an already-resolved `top` value;
+    the default/local-small resolution logic lives in `select_agents.main()`
+    itself, so it needs its own argv-level coverage.
+    """
+
+    def _run(self, *extra_args: str) -> dict[str, object]:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_path = Path(tmp) / "plan.json"
+            select_agents.main(
+                [
+                    "--task",
+                    "Update the React navigation",
+                    "--files",
+                    "frontend/src/Nav.tsx",
+                    "--classification",
+                    "internal",
+                    "--task-id",
+                    "UI-CTX-1",
+                    "--source",
+                    "example/repository",
+                    "--output",
+                    str(output_path),
+                    *extra_args,
+                ]
+            )
+            return json.loads(output_path.read_text(encoding="utf-8"))
+
+    @staticmethod
+    def _top_arg(result: dict[str, object]) -> str:
+        request = result["knowledge_context"]["requests"][0]
+        args = request["invocation"]["args"]
+        return args[args.index("--top") + 1]
+
+    def test_default_profile_without_explicit_top_stays_five(self) -> None:
+        self.assertEqual(self._top_arg(self._run()), "5")
+
+    def test_local_small_profile_without_explicit_top_lowers_to_three(self) -> None:
+        self.assertEqual(
+            self._top_arg(self._run("--context-profile", "local-small")), "3"
+        )
+
+    def test_explicit_top_overrides_local_small_profile(self) -> None:
+        self.assertEqual(
+            self._top_arg(self._run("--context-profile", "local-small", "--top", "7")),
+            "7",
+        )
 
 
 if __name__ == "__main__":

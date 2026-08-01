@@ -337,5 +337,89 @@ class ProviderCopyTests(unittest.TestCase):
                     ggp.generate_provider_copy(catalog, plugin_root)
 
 
+class CompactProfileTests(unittest.TestCase):
+    """`compact=True` is an opt-in, package-only build for constrained-context
+    (e.g. small local-model) runners -- see generate_global_plugin.py's
+    role_wrapper_inputs()/generate_package(). Exercises the real cloud-architect
+    role definition end to end, matching ReasoningEffortPropagationTests'
+    approach, since mocking role_wrapper_inputs itself would hide regressions
+    in what it actually embeds.
+    """
+
+    CATALOG = {
+        "cloud-architect": {
+            "definition": "architecture/cloud-architect/AGENT.md",
+            "phase": "design",
+            "capability": "document_author",
+            "model": "opus",
+            "codex_model": "gpt-5.6-sol",
+        }
+    }
+
+    def test_compact_role_wrapper_omits_embedded_shared_policy_text(self) -> None:
+        default_inputs = ggp.role_wrapper_inputs("cloud-architect", self.CATALOG["cloud-architect"])
+        compact_inputs = ggp.role_wrapper_inputs(
+            "cloud-architect", self.CATALOG["cloud-architect"], compact=True
+        )
+        for relative in ggp.SHARED_POLICIES:
+            body = (ggp.REPOSITORY_ROOT / relative).read_text(encoding="utf-8").strip()
+            self.assertIn(body, default_inputs["instructions"])
+            self.assertNotIn(body, compact_inputs["instructions"])
+            self.assertIn(relative, compact_inputs["instructions"])
+        self.assertLess(len(compact_inputs["instructions"]), len(default_inputs["instructions"]))
+
+    def test_compact_generate_agent_wrappers_shrinks_the_claude_code_wrapper(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            default_root = Path(directory) / "default"
+            compact_root = Path(directory) / "compact"
+            ggp.generate_agent_wrappers(self.CATALOG, default_root)
+            ggp.generate_agent_wrappers(self.CATALOG, compact_root, compact=True)
+            default_text = (default_root / "agents" / "cloud-architect.md").read_text(encoding="utf-8")
+            compact_text = (compact_root / "agents" / "cloud-architect.md").read_text(encoding="utf-8")
+        self.assertLess(len(compact_text), len(default_text))
+        # The role's own instructions must survive unshortened -- only the
+        # inlined shared-policy block is dropped.
+        self.assertIn("Design secure, resilient", default_text)
+        self.assertIn("Design secure, resilient", compact_text)
+
+    def test_compact_package_overwrites_only_the_packages_codex_wrappers_not_the_register(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            provider = root / "provider"
+            (provider / "profiles" / "secure-cloud").mkdir(parents=True)
+            (provider / "extensions").mkdir(parents=True)
+            (provider / "codex-agents").mkdir(parents=True)
+            (provider / "roles" / "architecture" / "cloud-architect").mkdir(parents=True)
+            (provider / "provider.json").write_text('{"id": "cadre"}\n', encoding="utf-8")
+            (provider / "profiles" / "secure-cloud" / "profile.json").write_text("{}\n", encoding="utf-8")
+            (provider / "roles" / "architecture" / "cloud-architect" / "AGENT.md").write_text(
+                (ggp.AGENTS_ROOT / "architecture" / "cloud-architect" / "AGENT.md").read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+            (provider / "agent-catalog.json").write_text(
+                ggp.agent_catalog_export_content(self.CATALOG), encoding="utf-8"
+            )
+            register_codex = ggp.codex_wrapper_contents(self.CATALOG)
+            for name, body in register_codex.items():
+                (provider / "codex-agents" / name).write_text(body, encoding="utf-8")
+
+            plugin_root = root / "package"
+            plugin_root.mkdir()
+            with mock.patch.object(ggp, "PROVIDER_ROOT", provider):
+                ggp.generate_package(self.CATALOG, plugin_root, compact=True)
+
+            # Register untouched by the package-only compact overwrite.
+            self.assertEqual(
+                (provider / "codex-agents" / "agents-cloud-architect.toml").read_text(encoding="utf-8"),
+                register_codex["agents-cloud-architect.toml"],
+            )
+            # Package's own copy was overwritten with compact content.
+            package_toml = (plugin_root / "codex-agents" / "agents-cloud-architect.toml").read_text(
+                encoding="utf-8"
+            )
+            self.assertNotEqual(package_toml, register_codex["agents-cloud-architect.toml"])
+            self.assertIn("agents/shared/operating-principles.md", package_toml)
+
+
 if __name__ == "__main__":
     unittest.main()
