@@ -172,7 +172,7 @@ but it drives a live terminal prompt loop meant for a human typing
 directly at it — you cannot reliably drive it as an agent through
 non-interactive command execution. Instead, build the `--answers` file
 yourself from the conversation (see `cadre init --help` and
-`agents/shared/src/init_project.py` for the answer-file's `schema_version:
+`roster/shared/src/init_project.py` for the answer-file's `schema_version:
 1` shape and required `field_decisions` entries per touched field),
 translating whatever it validates against into plain questions for the
 human rather than showing them the file. Run once with `--dry-run` (which
@@ -214,5 +214,5 @@ something broken.
   for their own audit-trail reference).
 - Summarize progress and next steps in prose after each step.
 - If the human seems to want engineer-level detail instead, point them at
-  `docs/lifecycle-and-plugin-operations.md` and `agents/RUNBOOK.md` §16 for
+  `docs/lifecycle-and-plugin-operations.md` and `roster/RUNBOOK.md` §16 for
   the direct CLI reference and stop running this conversational flow.

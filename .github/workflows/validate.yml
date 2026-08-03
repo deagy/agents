@@ -34,12 +34,12 @@ jobs:
         with:
           python-version: "3.14"
       - run: pip install --no-cache-dir --require-hashes -r .github/requirements-validation.lock
-      - run: python -B -m unittest discover -s agents/orchestration/test -p "test_*.py"
-      - run: python -B -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
-      - run: python -B -m unittest discover -s agents/shared/test -p "test_*.py"
+      - run: python -B -m unittest discover -s roster/orchestration/test -p "test_*.py"
+      - run: python -B -m unittest discover -s roster/knowledge-store/test -p "test_*.py"
+      - run: python -B -m unittest discover -s roster/shared/test -p "test_*.py"
       - run: ./bin/cadre help
       - run: ./bin/cadre select --task "CI wrapper smoke test" --files README.md --classification internal --task-id CI-SMOKE-1 >/dev/null
-      - run: python agents/orchestration/src/schema_validate.py
+      - run: python roster/orchestration/src/schema_validate.py
       - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc --version
       - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc provider list
       - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc profile list

@@ -1,2 +1,0 @@
-# YAML parsing for agents/shared/src/resolve.py; JSON-only overlays work without it.
-PyYAML==6.0.3

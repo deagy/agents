@@ -149,12 +149,12 @@ Claude Code discovers `agents/*.md` directly from the plugin.
 
 ## Regeneration
 
-**Generated — never hand-edit here.** `skills/`, `agents/`, `codex-agents/`,
+**Generated — never hand-edit here.** `skills/`, `roster/`, `codex-agents/`,
 `suite/`, `bin/cadre`, `agent-catalog.json`, `provider.json`, `profiles/`,
 `extensions/`, and **`README.md` (this file)** are all produced from
 [`deagy/cadre`](https://github.com/deagy/cadre). Editing any of them here
 breaks this repository's `validate.yml` with a drift failure. Their sources in
-the register are `agents/`, `.agents/skills/`, `provider/`, and
+the register are `roster/`, `.agents/skills/`, `provider/`, and
 `packaging/plugin-README.md` — change them there and regenerate:
 
 ```sh

@@ -3,7 +3,7 @@
 A concrete, copy-pasteable walkthrough for a new project adopting this suite.
 For background and full detail, see [Getting started](getting-started.md),
 [Lifecycle and plugin operations](lifecycle-and-plugin-operations.md), and
-[agents/RUNBOOK.md](../agents/RUNBOOK.md). See [CHANGELOG.md](../CHANGELOG.md)
+[roster/RUNBOOK.md](../roster/RUNBOOK.md). See [CHANGELOG.md](../CHANGELOG.md)
 for what's changed in the suite recently.
 
 ## 1. Get `cadre` on `PATH`
@@ -121,15 +121,15 @@ kept isolated instead, create a project-local config at your project's
 
 ```sh
 mkdir -p /path/to/your-project/.agents/knowledge-store
-cp /path/to/cadre-checkout/agents/knowledge-store/config.example.json \
+cp /path/to/cadre-checkout/roster/knowledge-store/config.example.json \
    /path/to/your-project/.agents/knowledge-store/config.json
 ```
 
 Nothing else changes — every `cadre knowledge ...` command works identically
 once the file exists; it just resolves to your project's own store instead of
 the shared default. See
-[agents/knowledge-store/README.md](../agents/knowledge-store/README.md) and
-`agents/knowledge-store/SECURITY.md` before ingesting real content: retrieved
+[roster/knowledge-store/README.md](../roster/knowledge-store/README.md) and
+`roster/knowledge-store/SECURITY.md` before ingesting real content: retrieved
 text is always untrusted reference data, never executable instruction.
 
 ## 5. Add a project-local routing overlay (optional)
@@ -161,8 +161,8 @@ carries gating semantics an ordinary policy overlay doesn't:
 Validate and materialize the effective (merged) configuration:
 
 ```sh
-python3 agents/orchestration/src/routing_overlay.py --check
-python3 agents/orchestration/src/routing_overlay.py --out /tmp/effective-routing.json
+python3 roster/orchestration/src/routing_overlay.py --check
+python3 roster/orchestration/src/routing_overlay.py --out /tmp/effective-routing.json
 ```
 
 The materialized file is plain `routing.yaml`-shaped JSON, so you can also

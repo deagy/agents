@@ -36,7 +36,7 @@ Give each role:
 - the expected output schema and handoff destination.
 
 Use the contracts and templates under
-[agents/orchestration](../agents/orchestration/). Keep authorship separate from
+[roster/orchestration](../roster/orchestration/). Keep authorship separate from
 independent review. A reviewer assesses the exact revision and does not
 silently repair the author's work while claiming an independent result.
 
@@ -73,4 +73,4 @@ retention, reclassification, correction, and deletion belong to the knowledge
 store steward.
 
 For complete dispatch prompts, worked examples, escalation chains, and release
-checklists, continue to the [runbook](../agents/RUNBOOK.md).
+checklists, continue to the [runbook](../roster/RUNBOOK.md).

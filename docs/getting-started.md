@@ -33,7 +33,7 @@ push changes.
 Run the suite-only check with:
 
 ```sh
-python3 -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
+python3 -m unittest discover -s roster/knowledge-store/test -p "test_*.py"
 ```
 
 The orchestration tests use the standalone lifecycle contract. After installing
@@ -41,7 +41,7 @@ the pinned Agentic SDLC executable, run them with:
 
 ```sh
 AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc \
-  python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"
+  python3 -m unittest discover -s roster/orchestration/test -p "test_*.py"
 ```
 
 See the [lifecycle guide](lifecycle-and-plugin-operations.md) for installation
@@ -52,5 +52,5 @@ and version-lock guidance.
 - Need roles for a task? Read [Orchestration](orchestration.md).
 - Need a target-project overlay or gate record? Read [Lifecycle and plugin operations](lifecycle-and-plugin-operations.md).
 - Need a role's purpose and handoff? Read the [role index](role-index.md).
-- Need a complete worked example? Read the [runbook](../agents/RUNBOOK.md),
+- Need a complete worked example? Read the [runbook](../roster/RUNBOOK.md),
   starting with its section index.

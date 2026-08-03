@@ -23,12 +23,12 @@ Use this index to choose the shortest useful path.
 | Browse this repository's skills | [Skills catalog](skills-catalog.md) |
 | Determine which runner (Claude Code / Codex CLI / Cline) is hosting a session | [Which runner am I in?](which-runner-am-i-in.md) |
 | Contribute to this GitHub repository | [Contributing](../CONTRIBUTING.md) |
-| Follow the complete operating model | [Runbook](../agents/RUNBOOK.md) |
+| Follow the complete operating model | [Runbook](../roster/RUNBOOK.md) |
 
 ## Source of truth
 
 Canonical role definitions, policies, routing, workflows, and orchestration
-contracts live under `agents/`. The packaged plugin ([`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin)) is
+contracts live under `roster/`. The packaged plugin ([`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin)) is
 a self-contained distribution and may contain generated copies. Edit canonical
 source files, then regenerate the package when the change requires it.
 

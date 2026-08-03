@@ -9,7 +9,7 @@ Use this skill for review or bounded repository edits to GitLab CI/CD artifacts.
 
 ## Review steps
 
-1. Read `.gitlab-ci.yml`, included CI templates, `agents/shared/technology-standards.md`, and relevant workflow docs.
+1. Read `.gitlab-ci.yml`, included CI templates, `roster/shared/technology-standards.md`, and relevant workflow docs.
 2. Identify all stages, jobs, images, services, variables, caches, artifacts, rules, dependencies, and protected-environment assumptions.
 3. Verify untrusted merge requests and forks cannot read secrets, mint credentials, modify deployment targets, poison caches, or package unreviewed artifacts.
 4. Check images/tools are pinned, runners are appropriate for trust level, artifacts have checksums/SBOMs when required, and failures are fail-closed.

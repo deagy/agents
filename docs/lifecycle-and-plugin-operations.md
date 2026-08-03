@@ -72,4 +72,4 @@ from source and inspect the complete generated diff. Generated output is a
 distribution artifact; it does not become a new source of authority.
 
 For detailed lifecycle commands and evidence rules, use the standalone
-project's documentation and the repository [runbook](../agents/RUNBOOK.md).
+project's documentation and the repository [runbook](../roster/RUNBOOK.md).

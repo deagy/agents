@@ -9,7 +9,7 @@ session, then read the row of the second table that applies.
 
 The facts below are grounded in this repository's runner capability data —
 primarily [`.agents/skills/run-agent-orchestration/references/runner-adapters.md`](../.agents/skills/run-agent-orchestration/references/runner-adapters.md)
-(on `main`), cross-checked against the structured `agents/runner-capabilities.json`
+(on `main`), cross-checked against the structured `roster/runner-capabilities.json`
 manifest introduced by the not-yet-merged `feature/idea-6-8-routing-overlay-capability-manifest`
 branch (PR #50). That manifest is not yet part of this checkout; treat any
 fact below sourced from it as a preview of an upcoming structured

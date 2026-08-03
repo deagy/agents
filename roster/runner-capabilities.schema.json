@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/cadre-runner-capabilities.schema.json",
+  "title": "Cadre runner capability manifest (roster/runner-capabilities.json)",
+  "description": "Declarative, build-time source of truth for the data idea #8 (REQ-CADRE-BACKLOG-8) found hardcoded across generate_global_plugin.py's CAPABILITY_PROFILES/ALLOWED_MODELS/ALLOWED_CODEX_MODELS/ALLOWED_REASONING_EFFORTS, generate_role_metadata.py's TIER_MAP, and eight structural runner-divergence facts from .agents/skills/run-agent-orchestration/references/runner-adapters.md (CM-FR-1..8). Consumed at build time only (roster/orchestration/src/generate_global_plugin.py and generate_role_metadata.py load capability_tiers/model_tiers/allowed_reasoning_efforts directly with stdlib json, so those Python constants can never drift from this file); there is no dispatch-time runtime consumer (see requirements.md OD-2 disposition). This schema validates the manifest's own shape/type/enum content in isolation, matching roster/catalog.schema.json's precedent (Draft 2020-12, validated by a jsonschema-guarded standalone check, never a required runtime dependency of the generators themselves).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "capability_tiers", "model_tiers", "allowed_reasoning_efforts", "runners"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+    "capability_tiers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["read_only", "document_author", "code_author", "test_author", "environment_operator"],
+      "properties": {
+        "read_only": { "$ref": "#/$defs/capability_tier" },
+        "document_author": { "$ref": "#/$defs/capability_tier" },
+        "code_author": { "$ref": "#/$defs/capability_tier" },
+        "test_author": { "$ref": "#/$defs/capability_tier" },
+        "environment_operator": { "$ref": "#/$defs/capability_tier" }
+      }
+    },
+    "model_tiers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["opus", "sonnet", "haiku"],
+      "properties": {
+        "opus": { "$ref": "#/$defs/model_tier" },
+        "sonnet": { "$ref": "#/$defs/model_tier" },
+        "haiku": { "$ref": "#/$defs/model_tier" }
+      }
+    },
+    "allowed_reasoning_efforts": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["low", "medium", "high", "xhigh"] }
+    },
+    "runners": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claude-code", "codex", "cline"],
+      "properties": {
+        "claude-code": { "$ref": "#/$defs/runner" },
+        "codex": { "$ref": "#/$defs/runner" },
+        "cline": { "$ref": "#/$defs/runner" }
+      }
+    }
+  },
+  "$defs": {
+    "capability_tier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tools", "sandbox_mode"],
+      "properties": {
+        "tools": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "sandbox_mode": { "type": "string", "minLength": 1 }
+      }
+    },
+    "model_tier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["codex_model", "reasoning_effort"],
+      "properties": {
+        "codex_model": { "enum": ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol"] },
+        "reasoning_effort": { "enum": ["low", "medium", "high", "xhigh"] }
+      }
+    },
+    "runner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "has_generated_wrapper",
+        "dispatch_naming",
+        "communication_mode_peer_support",
+        "peer_support_gate",
+        "nested_teams_supported",
+        "team_size_guidance",
+        "named_agent_dispatch_supported",
+        "named_agent_dispatch_workaround",
+        "concurrency_bound_config_key"
+      ],
+      "properties": {
+        "has_generated_wrapper": { "type": "boolean" },
+        "dispatch_naming": { "type": ["string", "null"] },
+        "communication_mode_peer_support": { "enum": ["yes", "no", "gated", "best_effort"] },
+        "peer_support_gate": { "type": ["string", "null"] },
+        "nested_teams_supported": { "enum": [true, false, "not_applicable"] },
+        "team_size_guidance": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["minimum", "maximum", "note"],
+          "properties": {
+            "minimum": { "type": "integer", "minimum": 1 },
+            "maximum": { "type": "integer", "minimum": 1 },
+            "note": { "type": "string" }
+          }
+        },
+        "named_agent_dispatch_supported": { "type": "boolean" },
+        "named_agent_dispatch_workaround": { "type": ["string", "null"] },
+        "concurrency_bound_config_key": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

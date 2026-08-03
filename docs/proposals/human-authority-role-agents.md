@@ -4,7 +4,7 @@ Status: **Part A APPROVED (scoped) — Part B BACKBURNERED, not approved.**
 Task ID: `human-role-agents-2026-07-28`
 Classification: internal
 Author role: governance-planner (Cadre suite)
-Requested by: repository owner / declared Product Owner (`agents/shared/team-profile.yaml`)
+Requested by: repository owner / declared Product Owner (`roster/shared/team-profile.yaml`)
 Required approver: Product Owner, explicitly and in writing, plus the
 `deagy/agentic-sdlc` kernel maintainer for anything in Part B.
 Reviewed by: three independent fresh review passes (code-reviewer,
@@ -23,7 +23,7 @@ context, and treat the PR's actual review approval as the evidence.
 The Product Owner reviewed this document's headline recommendation
 conversationally in the same chat session that requested this feature (not as
 a separate written sign-off artifact — recorded here as context per
-`agents/shared/operating-principles.md`, and superseded as authoritative
+`roster/shared/operating-principles.md`, and superseded as authoritative
 evidence by GitHub PR #42's own review record per the note above) and
 decided:
 
@@ -66,9 +66,9 @@ they conflict with what shipped.
 > readiness for its own work, accept risk, grant policy exceptions, set
 > organizational policy, or authorize implementation. Everything below is a
 > recommendation for a human decision. Producing this document does not
-> authorize any change to `agents/catalog.yaml`,
-> `agents/shared/agent-autonomy.yaml`, `agents/shared/operating-principles.md`,
-> `AGENTS.md`, `CLAUDE.md`, `agents/RUNBOOK.md`, or any `AGENT.md`.
+> authorize any change to `roster/catalog.yaml`,
+> `roster/shared/agent-autonomy.yaml`, `roster/shared/operating-principles.md`,
+> `AGENTS.md`, `CLAUDE.md`, `roster/RUNBOOK.md`, or any `AGENT.md`.
 
 ---
 
@@ -83,7 +83,7 @@ Rationale, offered as a recommendation rather than an assumption:
   `docs/README.md`. This document is an unapproved proposal; filing it flat in
   `docs/` risks it being read as current policy, which would itself be a
   weakening of the invariant it discusses.
-- `agents/orchestration/` holds *enforced* contracts consumed by code
+- `roster/orchestration/` holds *enforced* contracts consumed by code
   (`routing.yaml`, `escalation-policy.md`, `handoff-contracts.md`,
   `selection.schema.json`). A speculative delegation design placed there could
   be mistaken for an operative contract.
@@ -110,19 +110,19 @@ architecture forces them apart:
 breaking a structural invariant that is currently enforced *in code*, not just
 in prose. Specifically:
 
-1. `agents/shared/src/resolve.py` enforces a **narrowing-only** merge for
+1. `roster/shared/src/resolve.py` enforces a **narrowing-only** merge for
    `agent-autonomy.yaml` (`_AUTONOMY_RESTRICTIVENESS_RANK`, with `never` at
    rank 10, the maximum). A project overlay **cannot** loosen a `never`; the
    resolver raises. Therefore a project **cannot** opt into delegation via the
    normal per-project override path. The only way to enable delegation would be
-   to weaken the *global default* in `agents/shared/agent-autonomy.yaml` — which
+   to weaken the *global default* in `roster/shared/agent-autonomy.yaml` — which
    changes the default posture of **every** consuming project simultaneously.
    That is precisely the "silent weakening" the request asks to avoid, and it is
    the strongest single argument against Part B living here.
 2. The kernel already binds gate approval to an **externally attested human
    identity**: `approve_from_github` / `approve_from_gitlab` (referenced from
    this repo's `agents sdlc approve-from-github-pr` launcher in
-   `agents/RUNBOOK.md`) verify that the reviewer login matches the assigned
+   `roster/RUNBOOK.md`) verify that the reviewer login matches the assigned
    authority's identity (`authority_github_login` / `authority_gitlab_username`)
    and fail closed on mismatch. This logic lives in the external
    `deagy/agentic-sdlc` kernel repository, not in this checkout — this
@@ -208,7 +208,7 @@ a preparer, not an approver.
 
 ### 3.2 Why Part A needs no policy change
 
-Every never-clause in `agents/shared/agent-autonomy.yaml` `governance:` block
+Every never-clause in `roster/shared/agent-autonomy.yaml` `governance:` block
 stays untouched and unconditional:
 
 ```
@@ -260,8 +260,8 @@ Mitigations to bake into the role definitions:
 
 ### 4.1 The narrowing-only wall (decisive)
 
-`agents/shared/README.md` §"Merge rule by file type" and
-`agents/shared/src/resolve.py` make `agent-autonomy.yaml` narrowing-only:
+`roster/shared/README.md` §"Merge rule by file type" and
+`roster/shared/src/resolve.py` make `agent-autonomy.yaml` narrowing-only:
 resolving raises if an overlay tries to loosen a `never` default. So the
 request's own framing — "the default (no delegation configured) must remain
 exactly as strict as today" — is satisfiable *only* if delegation is expressed
@@ -336,7 +336,7 @@ rejected if absent, malformed, or unverifiable.
 - `environment_ceiling` — e.g. non-production only; **production must never be
   in scope** (see §6)
 - `risk_ceiling` — void when any unresolved critical/high finding exists, per
-  `agents/orchestration/escalation-policy.md`
+  `roster/orchestration/escalation-policy.md`
 - `excluded_actions` — always includes risk acceptance, policy exception,
   privileged identity/key change, destructive action, public exposure, and
   production authorization, per RUNBOOK rule 8. These are non-negotiable
@@ -521,7 +521,7 @@ the safe default under the heuristic is `opus` for all 13, at higher cost. I
 lean `opus` for all 13 and flag the cost tradeoff rather than optimizing a
 governance control for token spend.
 
-Definitions would live at `agents/authority/<role>/AGENT.md`.
+Definitions would live at `roster/authority/<role>/AGENT.md`.
 
 ### 8.3 `AGENT.md` skeleton (following the existing house structure)
 
@@ -607,14 +607,14 @@ owners, and no disposition has been asserted or implied.
 
 For the human's planning only:
 
-1. 13 (or 3) new `agents/authority/<role>/AGENT.md` definitions.
-2. 13 (or 3) new `agents/catalog.yaml` entries, plus a new `phase` value.
-3. `agents/orchestration/routing.yaml` rules — likely gate-triggered rather
+1. 13 (or 3) new `roster/authority/<role>/AGENT.md` definitions.
+2. 13 (or 3) new `roster/catalog.yaml` entries, plus a new `phase` value.
+3. `roster/orchestration/routing.yaml` rules — likely gate-triggered rather
    than path/keyword-triggered, which may need a new rule kind. **This deserves
    its own design pass**; I have not designed it, because routing is
    deterministic by construction and inventing a new trigger class casually
    would be the wrong move.
-4. `docs/role-index.md` and `agents/RUNBOOK.md` §2 selection table entries.
+4. `docs/role-index.md` and `roster/RUNBOOK.md` §2 selection table entries.
 5. `agents generate-plugin`, then `test_repository_health.py`.
 6. No change to `agent-autonomy.yaml`, `operating-principles.md`, `AGENTS.md`,
    `CLAUDE.md`, or RUNBOOK rules 5 and 8.

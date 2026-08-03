@@ -18,8 +18,8 @@ return a blocking question in its result instead of prompting directly.**
 
 ## Establish Scope
 
-1. Locate the repository root containing `agents/catalog.yaml` and `agents/orchestration/src/select_agents.py`.
-2. Read the repository `AGENTS.md`, `agents/shared/operating-principles.md`, `team-profile.yaml`, `technology-standards.md`, `library-standards.yaml`, `knowledge-use-policy.md`, and `agent-autonomy.yaml`.
+1. Locate the repository root containing `roster/catalog.yaml` and `roster/orchestration/src/select_agents.py`.
+2. Read the repository `AGENTS.md`, `roster/shared/operating-principles.md`, `team-profile.yaml`, `technology-standards.md`, `library-standards.yaml`, `knowledge-use-policy.md`, and `agent-autonomy.yaml`.
 3. Extract the objective from the prompt. Derive the rest rather than requiring the caller to supply them, and ask the human only when derivation genuinely fails:
    - **task ID**: a slug from the objective plus today's date, unless the prompt names one or the run needs durable cross-session tracking with no discoverable convention.
    - **classification**: the most conservative classification already declared for this repository/task family, unless a matched risk rule is classification-sensitive and remains genuinely ambiguous.
@@ -31,15 +31,15 @@ return a blocking question in its result instead of prompting directly.**
 ## Bootstrap Local Setup
 
 Before the first dispatch this session, use the project-local suite when it
-contains `agents/catalog.yaml`; otherwise use the self-contained suite under
-`../../suite/agents/` relative to this packaged skill:
+contains `roster/catalog.yaml`; otherwise use the self-contained suite under
+`../../suite/roster/` relative to this packaged skill:
 
 - **Codex CLI only, no question needed**: run `cadre bootstrap-codex`. It installs generated `agents-<role>.toml` wrappers, never touches legacy bare global role files, and fails if an existing namespaced file lacks this generator's provenance marker. Mention in your final report that wrappers were synced, so it isn't a silent write. Claude Code needs no equivalent step: its plugin-bundled `agents/*.md` wrappers are auto-discovered once the plugin is installed.
 - **Both runners, ask first**: if none of the three knowledge-store config tiers resolve yet (no explicit `--config`, no project-local `.agents/knowledge-store/config.json`, and no `~/.agents/knowledge-store/config.json` — i.e. this is genuinely the first knowledge-store use anywhere on this machine, or the first use in a project that hasn't opted in either way), this is a real decision, not plumbing: ask the human once, before creating anything —
 
   > No knowledge-store config found. Create an isolated store for this project only (`.agents/knowledge-store/config.json`, recommended — keeps this project's content separate from every other project), or use the shared store across every project on this machine (`~/.agents/knowledge-store/config.json`)?
 
-  Suggest project-local as the default if the human doesn't have a preference. Create only the one chosen — an empty `{}` is sufficient, since `agents/knowledge-store/src/config.py`'s `load_config()` fills every other setting from built-in defaults. Skip asking (and skip creating anything) once a tier already resolves; this is a first-use question, not a repeated one.
+  Suggest project-local as the default if the human doesn't have a preference. Create only the one chosen — an empty `{}` is sufficient, since `roster/knowledge-store/src/config.py`'s `load_config()` fills every other setting from built-in defaults. Skip asking (and skip creating anything) once a tier already resolves; this is a first-use question, not a repeated one.
 - **Both runners, ask if relevant**: if `cadre` doesn't resolve as a bare command, this only matters for the human's own terminal use (an orchestrating Claude Code agent already has it on the Bash tool's PATH via the installed plugin's `bin/` directory, no action needed there) — ask once whether to show the exact `PATH` setup command from `README.md` "Put `cadre` on `PATH`" rather than assuming the human has already read it.
 
 ## Select Agents
@@ -50,7 +50,7 @@ The internal tools require Python 3.10 or newer; this is not an organization-wid
 cadre select --root "<target-repository>" --task "<objective>" --task-id "<id>" --classification "<level>" --files "<comma-separated paths>"
 ```
 
-`--root` defaults to the caller's working directory. Omit `--files` to use Git status in that target, including staged, unstaged, and untracked paths. Alternatively, use `--base <ref>` for committed `<ref>...HEAD` changes; that mode excludes dirty worktree changes. Non-Git targets require explicit `--files`. Review the emitted `inputs.repository_root` and `inputs.changed_files` before dispatch. `--output <path>` creates parent directories and overwrites the file, so use it only when run-artifact writes are authorized. Do not invent changed paths. Schema version 3 emits lifecycle `required_quality_gates` separately from mutation-oriented `human_gates`; attach both to each applicable brief. If the selector returns `needs-triage`, stop dispatch and request the missing scope. Validate every selected role against `agents/catalog.yaml`.
+`--root` defaults to the caller's working directory. Omit `--files` to use Git status in that target, including staged, unstaged, and untracked paths. Alternatively, use `--base <ref>` for committed `<ref>...HEAD` changes; that mode excludes dirty worktree changes. Non-Git targets require explicit `--files`. Review the emitted `inputs.repository_root` and `inputs.changed_files` before dispatch. `--output <path>` creates parent directories and overwrites the file, so use it only when run-artifact writes are authorized. Do not invent changed paths. Schema version 3 emits lifecycle `required_quality_gates` separately from mutation-oriented `human_gates`; attach both to each applicable brief. If the selector returns `needs-triage`, stop dispatch and request the missing scope. Validate every selected role against `roster/catalog.yaml`.
 
 ### Operating modes
 
@@ -59,7 +59,7 @@ Check the emitted `lifecycle_tracking.status` field:
 - **`standalone`** (default whenever `agentic-sdlc`/`AGENTIC_SDLC_BIN` doesn't resolve): `agents.primary/reviewers/support` team dispatch, routing, and risk-driven human gates are fully deterministic and unaffected. There is no lifecycle-contract-derived gate enrichment, and no `.agentic-sdlc/` run record is written. This is the right mode for a small, single project that just wants specialist roles dispatched directly — no lifecycle-gate tracking overhead.
 - **`integrated`** (when `agentic-sdlc`/`AGENTIC_SDLC_BIN` resolves, or the caller passes `--require-sdlc` to fail fast instead of degrading): the plan additionally carries contract-derived, gate-augmented `required_quality_gates`/`support` agents (schema v3 dropped the `gate_dispatch` field — it only ever emitted a hardcoded default `["code-reviewer"]` since the kernel's own lifecycle-gates contract carries no per-gate agent bindings; the LangGraph engine is the one place per-gate author/reviewer fan-out is actually derived, from the real provider profile). Record lifecycle gate state in the target project's `.agentic-sdlc/` record using the standalone Agentic SDLC kernel; the suite still only contributes dispatch plans and agent evidence, never validates lifecycle records itself. Use `--require-sdlc` for a larger or multi-project effort that must compose with and track Agentic SDLC's G1-G10 lifecycle gates — it fails loudly instead of silently falling back to standalone if Agentic SDLC isn't actually available.
 
-Read the selected workflow under `agents/workflows/` plus `agents/orchestration/escalation-policy.md` and `agents/orchestration/handoff-contracts.md`. Use the detailed contract in [references/dispatch-contract.md](references/dispatch-contract.md).
+Read the selected workflow under `roster/workflows/` plus `roster/orchestration/escalation-policy.md` and `roster/orchestration/handoff-contracts.md`. Use the detailed contract in [references/dispatch-contract.md](references/dispatch-contract.md).
 
 ## Retrieve Agent Context
 
@@ -86,7 +86,7 @@ Adapt waves to the selector plan, required quality gates, and workflow dependenc
 
 ## Consolidate Results
 
-Wait for each dispatched agent's final response. Check its scope, evidence, disposition, unresolved risks, and receiver. Save run artifacts only when repository edits are authorized, using `agents/orchestration/runs/<task-id>/` unless the user specifies another location.
+Wait for each dispatched agent's final response. Check its scope, evidence, disposition, unresolved risks, and receiver. Save run artifacts only when repository edits are authorized, using `roster/orchestration/runs/<task-id>/` unless the user specifies another location.
 
 For every `team_recipes` entry actually dispatched this run, perform an
 explicit **Reconcile Team Findings** pass before folding its members' results
