@@ -1,21 +1,14 @@
+# NOTE: files under roster/shared/ are embedded verbatim into every generated
+# role wrapper (Claude Code + Codex, 71+ files) by generate_global_plugin.py,
+# including into a separately published public repository. Never add personal
+# names, emails, or other individual-identifying data here. Named human
+# approval/escalation authority belongs in a consuming project's own
+# local/untracked config or its agentic-sdlc lifecycle records, never here.
+# This file is optional: a project may have no team-profile.yaml at all (or an
+# emptied one), and roles should proceed on task-brief judgment when it's
+# absent rather than treating that as a defect.
 profile_version: 1
 status: active
-
-roles:
-  product_owner:
-    name: Daniel Eagy
-    scope: this repository's feature intake in general (G1 Intent Gate approval, product/mission-objective authority)
-    confirmed: 2026-08-03
-    note: >
-      Every product-intent.md under roster/orchestration/runs/ prior to this
-      date logged "no Product Owner named for this repository's feature
-      intake" as a blocking open item (see e.g. idea #10's OD-1, and
-      cadre-feature-team-dispatch-tooling-2026-08-03's OD-2) because this
-      profile previously only named a Product Owner for one specific,
-      already-resolved out-of-scope-standards decision (see
-      out_of_scope_standards below), not for feature intake generally. This
-      entry closes that repeated gap. A future product-intent-agent dispatch
-      should read this field directly rather than re-logging the gap.
 
 platform:
   hosting_model: self-hosted
@@ -149,7 +142,7 @@ version_policy:
 out_of_scope_standards:
   - description: compliance frameworks and evidence retention
     decision: no compliance framework currently applies to this internal tooling; explicitly declared out of scope by Product Owner (2026-07-26) rather than resolved
-    owner: Product Owner (Daniel Eagy)
+    owner: Product Owner
     review_by: 2027-01-26
     scope_note: >
       This exception covers named regulatory/accreditation frameworks only

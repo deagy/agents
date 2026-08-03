@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from resolve import (  # noqa: E402
     OverlayError,
+    _load_structured,
     deep_merge,
     find_project_overlay,
     resolve_shared_config,
@@ -198,6 +199,40 @@ class ResolveSharedConfigTests(unittest.TestCase):
         self._write_overlay("library-standards.yaml", "not: [valid, yaml, :::\n")
         with self.assertRaises(Exception):
             resolve_shared_config("library-standards.yaml", start=self.project)
+
+    def test_emptied_overlay_resolves_as_no_op_rather_than_failing_closed(self) -> None:
+        # A project may intentionally clear an overlay back to "no override"
+        # by emptying the file rather than deleting it. That must behave
+        # like no overlay at all, not raise OverlayError("root must be a
+        # mapping") -- yaml.safe_load("") returns None, not {}.
+        self._write_overlay("library-standards.yaml", "   \n")
+        resolved = resolve_shared_config("library-standards.yaml", start=self.project)
+        self.assertTrue(resolved["selection_rules"]["require_pinned_versions_in_go_mod_or_tool_definition"])
+
+
+class LoadStructuredTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory(prefix="load-structured-")
+        self.root = Path(self.temporary.name)
+
+    def tearDown(self) -> None:
+        self.temporary.cleanup()
+
+    def test_empty_yaml_file_loads_as_empty_mapping(self) -> None:
+        path = self.root / "empty.yaml"
+        path.write_text("   \n", encoding="utf-8")
+        self.assertEqual({}, _load_structured(path))
+
+    def test_truly_empty_yaml_file_loads_as_empty_mapping(self) -> None:
+        path = self.root / "empty.yaml"
+        path.write_text("", encoding="utf-8")
+        self.assertEqual({}, _load_structured(path))
+
+    def test_non_mapping_yaml_content_still_fails_closed(self) -> None:
+        path = self.root / "list.yaml"
+        path.write_text("- one\n- two\n", encoding="utf-8")
+        with self.assertRaises(OverlayError):
+            _load_structured(path)
 
 
 if __name__ == "__main__":

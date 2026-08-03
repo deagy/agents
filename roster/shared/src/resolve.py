@@ -158,6 +158,13 @@ def _require_yaml():
 
 def _load_structured(path: Path) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8")
+    if not text.strip():
+        # An emptied structured file is a deliberate "no content recorded"
+        # state (e.g. a project intentionally clearing a shared default),
+        # not malformed input -- treat it the same as an absent file rather
+        # than raising, matching build_structured_overlay()'s own empty-file
+        # handling below.
+        return {}
     if path.suffix.lower() == ".json":
         loaded = json.loads(text)
     else:

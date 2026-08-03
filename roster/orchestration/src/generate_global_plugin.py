@@ -417,16 +417,31 @@ def role_wrapper_inputs(agent_id: str, metadata: dict[str, Any]) -> dict[str, An
     definition = metadata["definition"]
     phase = metadata.get("phase", "unknown")
     profile = CAPABILITY_PROFILES[metadata["capability"]]
-    shared_content = "\n\n".join(
-        f"# Shared policy: {relative}\n\n{(REPOSITORY_ROOT / relative).read_text(encoding='utf-8').strip()}"
-        for relative in SHARED_POLICIES
-    )
+    # Shared policy files are optional: a project (or this repository) may not
+    # have every one of them, or may have emptied one, and neither state is a
+    # defect. Skip missing or emptied files rather than failing, and don't
+    # leave a stray blank section behind.
+    shared_sections = []
+    for relative in SHARED_POLICIES:
+        path = REPOSITORY_ROOT / relative
+        if not path.is_file():
+            continue
+        body = path.read_text(encoding="utf-8").strip()
+        if not body:
+            continue
+        shared_sections.append(f"# Shared policy: {relative}\n\n{body}")
+    shared_content = "\n\n".join(shared_sections)
     # A migrated role's AGENT.md carries `---`-delimited frontmatter
     # ahead of its prose body (see role_metadata.py); that frontmatter
     # is generated-file bookkeeping for catalog.yaml/routing.yaml, not
     # role instructions, so it must never be embedded into the wrapper.
     role_body = strip_frontmatter((AGENTS_ROOT / definition).read_text(encoding="utf-8")).strip()
     description = f"Secure cloud agent suite role for the {phase} phase ({agent_id})."
+    instructions_parts = [f"# Role: {agent_id}\n\n{role_body}"]
+    if shared_content:
+        instructions_parts.append(shared_content)
+    instructions_parts.append(SHARED_OVERRIDE_NOTE)
+    instructions_parts.append(ASK_HUMAN_RULE)
     return {
         "definition": definition,
         "description": description,
@@ -434,10 +449,7 @@ def role_wrapper_inputs(agent_id: str, metadata: dict[str, Any]) -> dict[str, An
         "model": metadata.get("model"),
         "codex_model": metadata.get("codex_model"),
         "reasoning_effort": metadata.get("reasoning_effort"),
-        "instructions": (
-            f"# Role: {agent_id}\n\n{role_body}"
-            f"\n\n{shared_content}\n\n{SHARED_OVERRIDE_NOTE}\n\n{ASK_HUMAN_RULE}"
-        ),
+        "instructions": "\n\n".join(instructions_parts),
     }
 
 

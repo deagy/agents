@@ -8,6 +8,25 @@ repository's **global defaults**. A project using these agents can extend or,
 where it makes sense, override them without editing this checkout, by
 placing a same-named file at `.agents/shared/<filename>` in its own tree.
 
+## Optionality and PII
+
+Every file in this directory is optional as a global default: a project (or
+this repository itself) may have no `team-profile.yaml` at all, or an emptied
+one, and nothing should crash or hard-fail because of that -- roles proceed on
+task-brief judgment when a shared file is absent, and
+`generate_global_plugin.py` simply omits an absent file's section from the
+generated wrappers rather than failing.
+
+`generate_global_plugin.py` embeds these files **verbatim** into every one of
+the 71+ generated role wrappers (both the Codex `.toml` wrappers committed in
+this repository and the Claude Code wrappers written into the separately
+published public `cadre-plugin` repository). Because of that, files under
+`roster/shared/` must never contain personal names, emails, or other
+individual-identifying data. Named human approval or escalation-contact
+information (who is a project's Product Owner, on-call contact, etc.) belongs
+in a consuming project's own local/untracked config or its `agentic-sdlc`
+lifecycle records -- never here.
+
 ## Precedence
 
 1. Explicit task instructions from the human or orchestrator (unchanged —
