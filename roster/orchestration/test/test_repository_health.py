@@ -475,11 +475,28 @@ class RepositoryHealthTests(unittest.TestCase):
         )
 
     def test_repository_profile_and_local_override_policy_stay_current(self) -> None:
-        profile = (ROOT / "shared" / "team-profile.yaml").read_text(encoding="utf-8")
-        self.assertIn(
-            "source_control:\n  platform: github\n  change_model: pull_request",
-            profile,
-        )
+        # team-profile.yaml is optional: absence is not a defect, so this test
+        # only asserts something when the file is actually present. What it
+        # asserts is deliberately about content *shape* (no PII), not exact
+        # prose -- generate_global_plugin.py embeds this file verbatim into
+        # every generated role wrapper (71+ files, including a separately
+        # published public repo), so a personal name here would leak broadly.
+        profile_path = ROOT / "shared" / "team-profile.yaml"
+        if profile_path.is_file():
+            profile = profile_path.read_text(encoding="utf-8")
+            self.assertNotRegex(
+                profile,
+                r"[\w.+-]+@[\w-]+\.[\w.-]+|Daniel Eagy",
+                "roster/shared/team-profile.yaml must not contain personal names or "
+                "emails -- it is embedded verbatim into every generated role wrapper",
+            )
+            self.assertNotIn(
+                "\nroles:",
+                profile,
+                "roster/shared/team-profile.yaml must not carry a 'roles' block naming "
+                "individuals -- named authority belongs in a consuming project's own "
+                "local/untracked config or its agentic-sdlc lifecycle records",
+            )
 
         for local_root in (
             REPOSITORY_ROOT / ".claude" / "agents",

@@ -641,7 +641,8 @@ def existing_team_profile_deferrals() -> dict[str, dict[str, Any]]:
     (version_policy.components_needing_pins, out_of_scope_standards) so a
     field touching them is shown its existing rationale/owner rather than
     being silently re-deferred (A-006 rev 2)."""
-    base = _load_structured(SHARED_DEFAULTS_DIR / TEAM_PROFILE_FILENAME)
+    path = SHARED_DEFAULTS_DIR / TEAM_PROFILE_FILENAME
+    base = _load_structured(path) if path.is_file() else {}
     deferrals: dict[str, dict[str, Any]] = {}
     for component in base.get("version_policy", {}).get("components_needing_pins", []):
         deferrals[f"version_policy.components_needing_pins[{component}]"] = {

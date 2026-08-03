@@ -116,7 +116,12 @@ def collect_stack_answers(
     the preset's own fragment so an accepted (unmodified) preset default is
     not lost just because it never became an "overridden" leaf here."""
     print("\n=== RG-A: stack & tooling opinions (team-profile.yaml / library-standards.yaml) ===")
-    team_profile_base = _load_structured(SHARED_DEFAULTS_DIR / "team-profile.yaml")
+    team_profile_path = SHARED_DEFAULTS_DIR / "team-profile.yaml"
+    if team_profile_path.is_file():
+        team_profile_base = _load_structured(team_profile_path)
+    else:
+        print("(no shared team-profile.yaml recorded -- skipping stack-opinion prompts)")
+        team_profile_base = {}
     deferrals = existing_team_profile_deferrals()
     preset_stack = (preset or {}).get("rg_a_stack") or {}
     fragment: dict[str, Any] = {}

@@ -417,9 +417,13 @@ def role_wrapper_inputs(agent_id: str, metadata: dict[str, Any]) -> dict[str, An
     definition = metadata["definition"]
     phase = metadata.get("phase", "unknown")
     profile = CAPABILITY_PROFILES[metadata["capability"]]
+    # Shared policy files are optional: a project (or this repository) may not
+    # have every one of them, and absence is not a defect. Skip missing files
+    # rather than failing, and don't leave a stray blank section behind.
     shared_content = "\n\n".join(
         f"# Shared policy: {relative}\n\n{(REPOSITORY_ROOT / relative).read_text(encoding='utf-8').strip()}"
         for relative in SHARED_POLICIES
+        if (REPOSITORY_ROOT / relative).is_file()
     )
     # A migrated role's AGENT.md carries `---`-delimited frontmatter
     # ahead of its prose body (see role_metadata.py); that frontmatter
@@ -427,6 +431,11 @@ def role_wrapper_inputs(agent_id: str, metadata: dict[str, Any]) -> dict[str, An
     # role instructions, so it must never be embedded into the wrapper.
     role_body = strip_frontmatter((AGENTS_ROOT / definition).read_text(encoding="utf-8")).strip()
     description = f"Secure cloud agent suite role for the {phase} phase ({agent_id})."
+    instructions_parts = [f"# Role: {agent_id}\n\n{role_body}"]
+    if shared_content:
+        instructions_parts.append(shared_content)
+    instructions_parts.append(SHARED_OVERRIDE_NOTE)
+    instructions_parts.append(ASK_HUMAN_RULE)
     return {
         "definition": definition,
         "description": description,
@@ -434,10 +443,7 @@ def role_wrapper_inputs(agent_id: str, metadata: dict[str, Any]) -> dict[str, An
         "model": metadata.get("model"),
         "codex_model": metadata.get("codex_model"),
         "reasoning_effort": metadata.get("reasoning_effort"),
-        "instructions": (
-            f"# Role: {agent_id}\n\n{role_body}"
-            f"\n\n{shared_content}\n\n{SHARED_OVERRIDE_NOTE}\n\n{ASK_HUMAN_RULE}"
-        ),
+        "instructions": "\n\n".join(instructions_parts),
     }
 
 

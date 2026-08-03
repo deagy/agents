@@ -642,17 +642,17 @@ Use `workflows/production-release.md`. Invoke `workflows/rollback.md` or inciden
 
 The active provider profile currently centers on self-hosted Proxmox, OpenTofu, Talos, Kubernetes, Helm, Go/Python/PostgreSQL backends, React/TypeScript frontends, Gherkin integration/regression behavior, and GitLab for VCS and CI/CD. Those stack choices specialize this Secure Cloud provider; they do not change that agent selection and review boundaries stay capability-first. Preferred Go dependencies are Gorilla Mux, Viper, pgx, cenkalti/backoff, Godog, Mockery with Testify mocks, and Testify `require`/`assert`; the exact paths and constraints are in `shared/library-standards.yaml`. The default autonomy policy permits scoped repository edits and local validation, but requires explicit authorization for shared-system reads and human approval for persistent environment mutations.
 
-As of 2026-07-26, `shared/team-profile.yaml` records resolved decisions for all of the below except supported tool and language versions (policy resolved; exact pins deferred to a future version manifest) and compliance frameworks/evidence retention (explicitly out of scope for now) — see that file's `resolved_standards_2026_07_26` and `out_of_scope_standards` blocks for the authoritative, current record rather than duplicating it here:
+`shared/team-profile.yaml` is optional (see `roster/shared/README.md`) and must never carry personal names, emails, or other individual-identifying data — it is embedded verbatim into every generated role wrapper (71+ files, including a separately published public repo). As of 2026-07-26 it records resolved decisions for all of the below except supported tool and language versions (policy resolved; exact pins deferred to a future version manifest) and compliance frameworks/evidence retention (explicitly out of scope for now) — see that file's `resolved_standards_2026_07_26` and `out_of_scope_standards` blocks for the authoritative, current record rather than duplicating it here:
 
 - Supported tool and language versions.
 - Proxmox OpenTofu provider, state backend, and recovery process.
 - GitLab runner placement, isolation, trust tiers, registry, and signing implementation.
 - Kubernetes policy-as-code, secrets management, and observability platforms.
 - Compliance frameworks, control owners, and evidence retention rules.
-- Named support escalation levels, human owner groups, customer communication expectations, and emergency contacts.
 - Data classifications, tenant boundaries, approved embedding services, and knowledge-store retention/deletion procedures.
 - Authoritative definitions and owners for platform impact categories and any required CBOM, QBOM, AI-BOM, Trust-BOM, or Time-BOM formats.
-- Named human approval groups and emergency escalation contacts.
+
+Named support escalation levels, human owner groups, customer communication expectations, emergency contacts, and named human approval groups are deliberately **not** tracked in `shared/team-profile.yaml` — record that in a consuming project's own local/untracked config or its `agentic-sdlc` lifecycle records instead.
 
 Keep organization-wide requirements under `shared/`; keep role authority in each `AGENT.md`; keep change-specific facts in task briefs.
 
