@@ -52,6 +52,30 @@ tar xzf cadre-plugin-v0.13.0.tar.gz
 codex plugin marketplace add ./cadre-plugin   # or /plugin marketplace add ./cadre-plugin
 ```
 
+**Cline** installs the hand-authored `cline/` plugin (the single `agents_select`
+tool; see that directory's own notes on what it can and can't do) from a git
+source:
+
+```sh
+cline plugin install --git https://github.com/deagy/cadre-plugin --force
+```
+
+or from a local checkout for development:
+
+```sh
+git clone --branch v0.13.0 https://github.com/deagy/cadre-plugin.git
+cline plugin install /path/to/cadre-plugin --force
+```
+
+If `agents_select` doesn't show up in a session after installing or updating
+the plugin, it is very likely **not** a plugin problem: Cline's local `cline
+hub` daemon enumerates installed plugins once, at its own startup, and does
+not notice plugins installed or changed afterward. Check for this with
+`cline doctor` (an `agents_select`-less session alongside a `hub uptime`
+older than the plugin's install time is the signature) and clear it with
+`cline doctor fix`, which restarts the daemon so it re-scans
+`~/.cline/plugins/_installed/`.
+
 ### The lifecycle kernel
 
 This repository does not contain the lifecycle kernel; that remains a
