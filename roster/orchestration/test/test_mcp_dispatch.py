@@ -21,6 +21,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -68,6 +69,27 @@ def _write_wrapper(
     if extra_lines:
         lines.extend(extra_lines)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _write_claude_wrapper(
+    path: Path,
+    *,
+    body: str = "Do the thing.",
+    model: str | None = "sonnet",
+    effort: str | None = "medium",
+) -> None:
+    """Matches generate_global_plugin.py's real Claude Code wrapper shape
+    (verified directly against an installed plugin's generated
+    agents/code-reviewer.md in this session): --- delimited frontmatter,
+    then the role body."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = ["---", "name: test-role", "description: Test role."]
+    if model is not None:
+        lines.append(f"model: {model}")
+    if effort is not None:
+        lines.append(f"effort: {effort}")
+    lines += ["generated: true", "canonical_source: roster/engineering/application-engineer/AGENT.md", "---", ""]
+    path.write_text("\n".join(lines) + body + "\n", encoding="utf-8")
 
 
 def _run_git(args: list[str], cwd: Path) -> subprocess.CompletedProcess:
@@ -218,6 +240,259 @@ class ResolutionOrderTests(unittest.TestCase):
         _write_wrapper(self.layout.global_file("application-engineer"), developer_instructions="global")
         with self.assertRaises(core.DispatchDenied):
             self.layout.resolve("application-engineer")
+
+
+class MarkdownFrontmatterTests(unittest.TestCase):
+    """_extract_markdown_frontmatter(): targeted parser for the Claude Code
+    wrapper's --- delimited frontmatter, verified against a real installed
+    plugin's generated agents/code-reviewer.md in this session."""
+
+    def test_extracts_target_keys_and_body(self) -> None:
+        text = "---\nname: x\ndescription: y\ntools: Read, Grep\nmodel: sonnet\neffort: medium\n---\n\nBody text.\n"
+        fields, body = core._extract_markdown_frontmatter(text, Path("/tmp/x.md"))
+        self.assertEqual(fields["model"], "sonnet")
+        self.assertEqual(fields["effort"], "medium")
+        self.assertEqual(body.strip(), "Body text.")
+
+    def test_missing_opening_delimiter_is_denied(self) -> None:
+        with self.assertRaises(core.DispatchDenied):
+            core._extract_markdown_frontmatter("no frontmatter here", Path("/tmp/x.md"))
+
+    def test_missing_closing_delimiter_is_denied(self) -> None:
+        with self.assertRaises(core.DispatchDenied):
+            core._extract_markdown_frontmatter("---\nmodel: sonnet\n", Path("/tmp/x.md"))
+
+    def test_ignores_unrecognized_frontmatter_keys(self) -> None:
+        text = "---\nsome_future_field: 1\nmodel: sonnet\n---\nBody\n"
+        fields, _body = core._extract_markdown_frontmatter(text, Path("/tmp/x.md"))
+        self.assertNotIn("some_future_field", fields)
+        self.assertEqual(fields["model"], "sonnet")
+
+    def test_matches_a_real_installed_generated_wrapper(self) -> None:
+        # Not synthetic: this is the exact shape generate_global_plugin.py
+        # produces, verified directly against a real installed plugin's
+        # agents/code-reviewer.md in this session.
+        real = (
+            "---\n"
+            "name: code-reviewer\n"
+            "description: Secure cloud agent suite role for the review phase (code-reviewer).\n"
+            "tools: Read, Grep, Glob\n"
+            "model: sonnet\n"
+            "effort: medium\n"
+            "generated: true\n"
+            "canonical_source: roster/review/code-reviewer/AGENT.md\n"
+            "---\n"
+            "\n# Role: code-reviewer\n\n# Code Reviewer\n\n## Role\n\nIndependently review...\n"
+        )
+        fields, body = core._extract_markdown_frontmatter(real, Path("/tmp/code-reviewer.md"))
+        self.assertEqual(fields["model"], "sonnet")
+        self.assertEqual(fields["effort"], "medium")
+        self.assertIn("# Code Reviewer", body)
+
+
+class ClaudeCodeRunnerTests(unittest.TestCase):
+    """resolve_claude_role_file()/build_claude_child_argv(): the Claude
+    Code analogue of ResolutionOrderTests/SandboxNarrowingTests above."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory(prefix="mcp-dispatch-claude-test-")
+        self.addCleanup(self.tmp.cleanup)
+        root = Path(self.tmp.name)
+        self.project_root = root / "project"
+        self.plugin_search_root = root / "claude-plugin-cache"
+        self.catalog_path = root / "catalog.yaml"
+        self.project_root.mkdir(parents=True, exist_ok=True)
+        self.plugin_search_root.mkdir(parents=True, exist_ok=True)
+        _write_catalog(self.catalog_path, ["application-engineer", "backend-engineer"])
+
+    def project_file(self, role_id: str) -> Path:
+        return self.project_root / ".claude" / "agents" / f"{role_id}.md"
+
+    def plugin_file(self, marketplace: str, plugin: str, version: str, role_id: str) -> Path:
+        return self.plugin_search_root / marketplace / plugin / version / "agents" / f"{role_id}.md"
+
+    def resolve(self, role_id: str, **overrides):
+        kwargs = dict(
+            project_root=self.project_root,
+            plugin_search_root=self.plugin_search_root,
+            catalog_path=self.catalog_path,
+        )
+        kwargs.update(overrides)
+        return core.resolve_claude_role_file(role_id, **kwargs)
+
+    def test_project_tier_wins_over_plugin_tier(self) -> None:
+        _write_claude_wrapper(self.project_file("application-engineer"), body="project")
+        _write_claude_wrapper(self.plugin_file("m", "p", "1.0.0", "application-engineer"), body="plugin")
+        role = self.resolve("application-engineer")
+        self.assertEqual(role.tier, "project")
+        self.assertEqual(role.developer_instructions, "project")
+
+    def test_plugin_tier_used_when_project_absent(self) -> None:
+        _write_claude_wrapper(self.plugin_file("m", "p", "1.0.0", "application-engineer"), body="plugin")
+        role = self.resolve("application-engineer")
+        self.assertEqual(role.tier, "plugin")
+        self.assertEqual(role.developer_instructions, "plugin")
+        self.assertIsNone(role.sandbox_mode)
+
+    def test_multiple_installed_versions_is_denied_as_ambiguous(self) -> None:
+        _write_claude_wrapper(self.plugin_file("m", "p", "1.0.0", "application-engineer"))
+        _write_claude_wrapper(self.plugin_file("m", "p", "2.0.0", "application-engineer"))
+        with self.assertRaises(core.DispatchDenied):
+            self.resolve("application-engineer")
+
+    def test_none_present_is_unavailable(self) -> None:
+        with self.assertRaises(core.DispatchUnavailable):
+            self.resolve("application-engineer")
+
+    def test_missing_model_is_denied(self) -> None:
+        _write_claude_wrapper(self.plugin_file("m", "p", "1.0.0", "application-engineer"), model=None)
+        with self.assertRaises(core.DispatchDenied):
+            self.resolve("application-engineer")
+
+    def test_effective_sandbox_is_always_read_only_regardless_of_mode(self) -> None:
+        # Documented scoping fact, not a bug: no Claude Code wrapper field
+        # exists yet to declare write-capability, so compute_effective_sandbox
+        # always narrows to read-only for this runner in this increment.
+        _write_claude_wrapper(self.plugin_file("m", "p", "1.0.0", "application-engineer"))
+        role = self.resolve("application-engineer", mode="scoped-repository-edit")
+        effective_sandbox, _decision = core.compute_effective_sandbox("scoped-repository-edit", role.sandbox_mode)
+        self.assertEqual(effective_sandbox, core.READ_ONLY_SANDBOX)
+
+    def test_argv_maps_permission_mode_by_effective_sandbox(self) -> None:
+        _write_claude_wrapper(self.plugin_file("m", "p", "1.0.0", "application-engineer"))
+        role = self.resolve("application-engineer")
+
+        for effective_sandbox, expected_mode in (
+            ("read-only", "plan"),
+            ("workspace-write", "acceptEdits"),
+            ("danger-full-access", "bypassPermissions"),
+        ):
+            argv = core.build_claude_child_argv(role, effective_sandbox, self.project_root)
+            self.assertIn("-p", argv)
+            self.assertIn("--permission-mode", argv)
+            self.assertEqual(argv[argv.index("--permission-mode") + 1], expected_mode)
+            self.assertIn("--strict-mcp-config", argv)
+            self.assertEqual(argv[argv.index("--model") + 1], role.model)
+            self.assertEqual(argv[argv.index("--effort") + 1], role.model_reasoning_effort)
+
+    def test_argv_omits_effort_flag_when_role_has_none(self) -> None:
+        _write_claude_wrapper(self.plugin_file("m", "p", "1.0.0", "application-engineer"), effort=None)
+        role = self.resolve("application-engineer")
+        argv = core.build_claude_child_argv(role, "read-only", self.project_root)
+        self.assertNotIn("--effort", argv)
+
+    def test_unknown_runner_is_denied_without_touching_role_resolution(self) -> None:
+        with self.assertRaises(core.DispatchDenied):
+            core.build_child_argv_for_runner("some-other-cli", None, "read-only", self.project_root)
+
+
+class DispatchWithClaudeCodeRunnerTests(unittest.TestCase):
+    """End-to-end dispatch_secure_cloud_role()/dispatch_team() with
+    runner="claude-code" -- confirms the runner threads through without
+    disturbing the (unchanged, default) Codex path."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory(prefix="mcp-dispatch-claude-e2e-")
+        self.addCleanup(self.tmp.cleanup)
+        root = Path(self.tmp.name)
+        self.project_root = root / "project"
+        self.plugin_search_root = root / "claude-plugin-cache"
+        self.catalog_path = root / "catalog.yaml"
+        self.project_root.mkdir(parents=True, exist_ok=True)
+        self.plugin_search_root.mkdir(parents=True, exist_ok=True)
+        _write_catalog(self.catalog_path, ["application-engineer", "backend-engineer"])
+        self.audit_dir = tempfile.TemporaryDirectory(prefix="mcp-dispatch-claude-e2e-audit-")
+        self.addCleanup(self.audit_dir.cleanup)
+        self.audit_path = Path(self.audit_dir.name) / "audit.jsonl"
+
+    def plugin_file(self, role_id: str) -> Path:
+        return self.plugin_search_root / "m" / "p" / "1.0.0" / "agents" / f"{role_id}.md"
+
+    def test_single_role_dispatch_with_claude_code_runner(self) -> None:
+        _write_claude_wrapper(self.plugin_file("application-engineer"))
+        fake_result = {
+            "pid": 1,
+            "exit_code": 0,
+            "timed_out": False,
+            "duration_seconds": 0.01,
+            "stdout_truncated": False,
+            "stdout_text": "ok",
+        }
+        result = core.dispatch_secure_cloud_role(
+            role_id="application-engineer",
+            brief="do it",
+            mode="planning-review-only",
+            classification="internal",
+            project_root=self.project_root,
+            claude_plugin_search_root=self.plugin_search_root,
+            catalog_path=self.catalog_path,
+            parent_classification="internal",
+            audit_path=self.audit_path,
+            limiter=core.ConcurrencyLimiter(),
+            gate=core.ConfirmationGate(),
+            runner="claude-code",
+            child_runner=lambda *a, **k: fake_result,
+        )
+        self.assertEqual(result["status"], "dispatched")
+        self.assertEqual(result["resolution_tier"], "plugin")
+
+    def test_team_dispatch_with_claude_code_runner(self) -> None:
+        _write_claude_wrapper(self.plugin_file("application-engineer"))
+        _write_claude_wrapper(self.plugin_file("backend-engineer"))
+        fake_result = {
+            "pid": 1,
+            "exit_code": 0,
+            "timed_out": False,
+            "duration_seconds": 0.01,
+            "stdout_truncated": False,
+            "stdout_text": "ok",
+        }
+        result = core.dispatch_team(
+            members=[
+                {"role_id": "application-engineer", "brief": "a"},
+                {"role_id": "backend-engineer", "brief": "b"},
+            ],
+            mode="planning-review-only",
+            classification="internal",
+            project_root=self.project_root,
+            claude_plugin_search_root=self.plugin_search_root,
+            catalog_path=self.catalog_path,
+            parent_classification="internal",
+            audit_path=self.audit_path,
+            limiter=core.ConcurrencyLimiter(),
+            gate=core.TeamConfirmationGate(),
+            runner="claude-code",
+            child_runner=lambda *a, **k: fake_result,
+        )
+        self.assertEqual(result["status"], "team_dispatched")
+        self.assertTrue(all(member["status"] == "dispatched" for member in result["members"]))
+
+    def test_unknown_runner_is_denied_for_single_role_dispatch(self) -> None:
+        result = core.dispatch_secure_cloud_role(
+            role_id="application-engineer",
+            brief="x",
+            mode="planning-review-only",
+            classification="internal",
+            project_root=self.project_root,
+            catalog_path=self.catalog_path,
+            parent_classification="internal",
+            audit_path=self.audit_path,
+            runner="some-other-cli",
+        )
+        self.assertEqual(result["status"], "denied")
+
+    def test_unknown_runner_is_denied_for_team_dispatch(self) -> None:
+        result = core.dispatch_team(
+            members=[{"role_id": "application-engineer", "brief": "x"}],
+            mode="planning-review-only",
+            classification="internal",
+            project_root=self.project_root,
+            catalog_path=self.catalog_path,
+            parent_classification="internal",
+            audit_path=self.audit_path,
+            runner="some-other-cli",
+        )
+        self.assertEqual(result["status"], "denied")
 
 
 class ProjectTierGitCleanTests(unittest.TestCase):
@@ -1006,7 +1281,7 @@ class DispatchServerSchemaTests(unittest.TestCase):
         server = module.build_server()
         tool = server.tools["dispatch_secure_cloud_role"]
         params = list(inspect.signature(tool).parameters)
-        self.assertEqual(params, ["role_id", "brief", "mode", "classification", "confirmation_token"])
+        self.assertEqual(params, ["role_id", "brief", "mode", "classification", "confirmation_token", "runner"])
         for forbidden in ("developer_instructions", "instructions", "system_prompt", "prompt_override"):
             self.assertNotIn(forbidden, params)
 
@@ -1037,8 +1312,522 @@ class DispatchServerSchemaTests(unittest.TestCase):
         self.assertEqual(result["status"], "denied")
         self.assertEqual(captured["brief"], "hello")
         self.assertEqual(captured["role_id"], "application-engineer")
+        self.assertEqual(captured["runner"], "codex")
         self.assertEqual(captured["parent_classification"], "internal")
         self.assertNotIn("developer_instructions", captured)
+
+    def test_tool_passes_through_claude_code_runner(self) -> None:
+        module = _load_dispatch_server_module()
+        server = module.build_server()
+        tool = server.tools["dispatch_secure_cloud_role"]
+
+        captured = {}
+
+        def fake_dispatch(**kwargs):
+            captured.update(kwargs)
+            return {"status": "denied", "reason": "stub"}
+
+        with mock.patch.object(module.core, "dispatch_secure_cloud_role", side_effect=fake_dispatch):
+            with mock.patch.dict(os.environ, {core.PARENT_CLASSIFICATION_ENV_VAR: "internal"}):
+                tool(role_id="application-engineer", brief="hello", classification="internal", runner="claude-code")
+
+        self.assertEqual(captured["runner"], "claude-code")
+
+    def test_team_tool_passes_through_claude_code_runner(self) -> None:
+        module = _load_dispatch_server_module()
+        server = module.build_server()
+        tool = server.tools["dispatch_team"]
+
+        captured = {}
+
+        def fake_dispatch(**kwargs):
+            captured.update(kwargs)
+            return {"status": "denied", "reason": "stub"}
+
+        with mock.patch.object(module.core, "dispatch_team", side_effect=fake_dispatch):
+            with mock.patch.dict(os.environ, {core.PARENT_CLASSIFICATION_ENV_VAR: "internal"}):
+                tool(members=[{"role_id": "application-engineer", "brief": "x"}], runner="claude-code")
+
+        self.assertEqual(captured["runner"], "claude-code")
+
+    def test_recipe_tool_schema_has_no_parameter_that_contributes_to_instructions(self) -> None:
+        import inspect
+
+        module = _load_dispatch_server_module()
+        server = module.build_server()
+        tool = server.tools["dispatch_team_recipe"]
+        params = list(inspect.signature(tool).parameters)
+        self.assertIn("recipe_id", params)
+        self.assertIn("matched_route_ids", params)
+        self.assertIn("selected_agent_ids", params)
+        for forbidden in ("developer_instructions", "instructions", "system_prompt", "prompt_override"):
+            self.assertNotIn(forbidden, params)
+
+    def test_recipe_tool_denies_a_recipe_that_would_not_fire_without_dispatching_anything(self) -> None:
+        module = _load_dispatch_server_module()
+        server = module.build_server()
+        tool = server.tools["dispatch_team_recipe"]
+
+        with mock.patch.object(module.core, "dispatch_team") as fake_dispatch_team:
+            result = tool(
+                recipe_id="parallel-review",
+                matched_route_ids=[],
+                selected_agent_ids=[],
+                shared_brief="x",
+            )
+
+        self.assertEqual(result["status"], "denied")
+        fake_dispatch_team.assert_not_called()
+
+    def test_recipe_tool_unknown_recipe_id_is_denied_without_dispatching_anything(self) -> None:
+        module = _load_dispatch_server_module()
+        server = module.build_server()
+        tool = server.tools["dispatch_team_recipe"]
+
+        with mock.patch.object(module.core, "dispatch_team") as fake_dispatch_team:
+            result = tool(
+                recipe_id="not-a-real-recipe",
+                matched_route_ids=[],
+                selected_agent_ids=[],
+                shared_brief="x",
+            )
+
+        self.assertEqual(result["status"], "denied")
+        fake_dispatch_team.assert_not_called()
+
+    def test_recipe_tool_expands_and_delegates_to_dispatch_team(self) -> None:
+        module = _load_dispatch_server_module()
+        server = module.build_server()
+        tool = server.tools["dispatch_team_recipe"]
+
+        captured = {}
+
+        def fake_dispatch_team(**kwargs):
+            captured.update(kwargs)
+            return {"status": "team_dispatched", "team_id": "t", "members": []}
+
+        recipe = next(r for r in module._ROUTING_CONFIG["team_recipes"] if r["type"] == "fixed")
+        matched_route_ids = recipe["route_ids"][: recipe["minimum_matches"]]
+        minimum_members = recipe.get("minimum_members_selected", 2)
+        selected_agent_ids = recipe["members"][:minimum_members]
+
+        with mock.patch.object(module.core, "dispatch_team", side_effect=fake_dispatch_team):
+            with mock.patch.dict(os.environ, {core.PARENT_CLASSIFICATION_ENV_VAR: "internal"}):
+                result = tool(
+                    recipe_id=recipe["id"],
+                    matched_route_ids=matched_route_ids,
+                    selected_agent_ids=selected_agent_ids,
+                    shared_brief="do it",
+                )
+
+        self.assertEqual(result["status"], "team_dispatched")
+        self.assertEqual(len(captured["members"]), minimum_members)
+        self.assertTrue(all(member["brief"] == "do it" for member in captured["members"]))
+        self.assertEqual(captured["parent_classification"], "internal")
+
+
+class ConcurrencyLimiterBlockingAcquireTests(unittest.TestCase):
+    """acquire() is the team-dispatch-only blocking variant; try_acquire()'s
+    existing non-blocking behavior (asserted above in
+    ConcurrencyLimiterTests) must stay exactly as it was."""
+
+    def test_acquires_immediately_when_a_slot_is_free(self) -> None:
+        limiter = core.ConcurrencyLimiter(max_concurrent=1)
+        self.assertTrue(limiter.acquire(timeout=1))
+        self.assertEqual(limiter.active, 1)
+
+    def test_waits_for_a_released_slot_instead_of_failing(self) -> None:
+        limiter = core.ConcurrencyLimiter(max_concurrent=1)
+        self.assertTrue(limiter.try_acquire())
+
+        released = threading.Event()
+
+        def _release_soon() -> None:
+            time.sleep(0.05)
+            released.set()
+            limiter.release()
+
+        threading.Thread(target=_release_soon, daemon=True).start()
+        start = time.monotonic()
+        self.assertTrue(limiter.acquire(timeout=2))
+        self.assertTrue(released.is_set())
+        self.assertGreaterEqual(time.monotonic() - start, 0.04)
+
+    def test_times_out_when_no_slot_frees(self) -> None:
+        limiter = core.ConcurrencyLimiter(max_concurrent=1)
+        self.assertTrue(limiter.try_acquire())
+        self.assertFalse(limiter.acquire(timeout=0.05))
+        self.assertEqual(limiter.active, 1)
+
+    def test_try_acquire_still_fails_immediately_unchanged(self) -> None:
+        limiter = core.ConcurrencyLimiter(max_concurrent=1)
+        self.assertTrue(limiter.try_acquire())
+        self.assertFalse(limiter.try_acquire())
+
+
+class TeamConfirmationGateTests(unittest.TestCase):
+    def _subject(self) -> tuple:
+        return (core._member_subject_tuple("a", "brief-a", "scoped-repository-edit", "internal", "workspace-write"),)
+
+    def test_matching_subject_succeeds(self) -> None:
+        gate = core.TeamConfirmationGate()
+        subject = self._subject()
+        token = gate.request(subject)
+        gate.consume(token, subject)
+
+    def test_token_is_single_use(self) -> None:
+        gate = core.TeamConfirmationGate()
+        subject = self._subject()
+        token = gate.request(subject)
+        gate.consume(token, subject)
+        with self.assertRaises(core.DispatchDenied):
+            gate.consume(token, subject)
+
+    def test_altering_any_member_invalidates_the_token(self) -> None:
+        gate = core.TeamConfirmationGate()
+        subject = self._subject()
+        token = gate.request(subject)
+        tampered = (core._member_subject_tuple("a", "different brief", "scoped-repository-edit", "internal", "workspace-write"),)
+        with self.assertRaises(core.DispatchDenied):
+            gate.consume(token, tampered)
+
+    def test_missing_token_is_denied(self) -> None:
+        gate = core.TeamConfirmationGate()
+        with self.assertRaises(core.DispatchDenied):
+            gate.consume(None, self._subject())
+
+    def test_expired_token_is_denied(self) -> None:
+        gate = core.TeamConfirmationGate(ttl_seconds=0.01)
+        subject = self._subject()
+        token = gate.request(subject)
+        time.sleep(0.05)
+        with self.assertRaises(core.DispatchDenied):
+            gate.consume(token, subject)
+
+
+class DispatchTeamTests(unittest.TestCase):
+    """dispatch_team(): the team-aware generalization of
+    dispatch_secure_cloud_role(). Reuses TempLayout/_write_wrapper exactly
+    as the single-role tests above do."""
+
+    def setUp(self) -> None:
+        self.layout = TempLayout(role_ids=["application-engineer", "backend-engineer"])
+        self.addCleanup(self.layout.close)
+        self.audit_dir = tempfile.TemporaryDirectory(prefix="mcp-dispatch-team-audit-")
+        self.addCleanup(self.audit_dir.cleanup)
+        self.audit_path = Path(self.audit_dir.name) / "audit.jsonl"
+
+    def _dispatch(self, members, **overrides):
+        kwargs = dict(
+            members=members,
+            mode="planning-review-only",
+            classification="internal",
+            project_root=self.layout.project_root,
+            global_agents_root=self.layout.global_root,
+            plugin_agents_root=self.layout.plugin_root,
+            catalog_path=self.layout.catalog_path,
+            parent_classification="internal",
+            audit_path=self.audit_path,
+            limiter=core.ConcurrencyLimiter(),
+            gate=core.TeamConfirmationGate(),
+        )
+        kwargs.update(overrides)
+        return core.dispatch_team(**kwargs)
+
+    def _fake_result(self, text: str) -> dict:
+        return {
+            "pid": 1,
+            "exit_code": 0,
+            "timed_out": False,
+            "duration_seconds": 0.01,
+            "stdout_truncated": False,
+            "stdout_text": text,
+        }
+
+    def test_empty_team_is_denied(self) -> None:
+        result = self._dispatch([])
+        self.assertEqual(result["status"], "denied")
+
+    def test_team_over_max_size_is_denied(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        members = [{"role_id": "application-engineer", "brief": "x"} for _ in range(core.MAX_TEAM_SIZE + 1)]
+        result = self._dispatch(members)
+        self.assertEqual(result["status"], "denied")
+
+    def test_malformed_member_is_denied(self) -> None:
+        result = self._dispatch([{"role_id": "application-engineer"}])
+        self.assertEqual(result["status"], "denied")
+
+    def test_unknown_role_in_team_is_denied_and_names_the_member(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        result = self._dispatch(
+            [
+                {"role_id": "application-engineer", "brief": "ok"},
+                {"role_id": "ghost-role", "brief": "bad"},
+            ]
+        )
+        self.assertEqual(result["status"], "denied")
+
+    def test_missing_parent_classification_is_denied(self) -> None:
+        result = self._dispatch(
+            [{"role_id": "application-engineer", "brief": "x"}], parent_classification=None
+        )
+        self.assertEqual(result["status"], "denied")
+
+    def test_read_only_team_dispatches_without_confirmation_and_waits_for_all(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        _write_wrapper(self.layout.plugin_file("backend-engineer"), sandbox_mode="read-only")
+
+        started = []
+        release_second = threading.Event()
+
+        def fake_runner(argv, *, prompt, cwd, env, timeout_seconds):
+            started.append(prompt)
+            if len(started) == 1:
+                # First member spawned blocks until the second has also
+                # started, proving dispatch_team does not serialize members
+                # or return before the slower one finishes.
+                release_second.wait(timeout=5)
+                return self._fake_result("first")
+            release_second.set()
+            return self._fake_result("second")
+
+        result = self._dispatch(
+            [
+                {"role_id": "application-engineer", "brief": "task one"},
+                {"role_id": "backend-engineer", "brief": "task two"},
+            ],
+            child_runner=fake_runner,
+        )
+        self.assertEqual(result["status"], "team_dispatched")
+        self.assertEqual(len(result["members"]), 2)
+        statuses = {member["role_id"]: member["status"] for member in result["members"]}
+        self.assertEqual(statuses, {"application-engineer": "dispatched", "backend-engineer": "dispatched"})
+        # Both members' distinct outputs are individually recoverable.
+        outputs = {member["role_id"]: member["output"] for member in result["members"]}
+        self.assertIn("first", outputs["application-engineer"])
+        self.assertIn("second", outputs["backend-engineer"])
+
+    def test_duplicate_role_ids_in_one_team_are_allowed_and_distinguishable(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        calls = {"n": 0}
+
+        def fake_runner(argv, *, prompt, cwd, env, timeout_seconds):
+            calls["n"] += 1
+            return self._fake_result(f"hypothesis-{calls['n']}")
+
+        result = self._dispatch(
+            [
+                {"role_id": "application-engineer", "brief": "hypothesis A"},
+                {"role_id": "application-engineer", "brief": "hypothesis B"},
+            ],
+            child_runner=fake_runner,
+        )
+        self.assertEqual(result["status"], "team_dispatched")
+        self.assertEqual([m["member_index"] for m in result["members"]], [0, 1])
+        self.assertEqual([m["role_id"] for m in result["members"]], ["application-engineer", "application-engineer"])
+
+    def test_write_capable_member_requires_one_team_wide_confirmation(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        _write_wrapper(self.layout.plugin_file("backend-engineer"), sandbox_mode="workspace-write")
+        members = [
+            {"role_id": "application-engineer", "brief": "read task"},
+            {"role_id": "backend-engineer", "brief": "write task"},
+        ]
+
+        first = self._dispatch(members, mode="scoped-repository-edit")
+        self.assertEqual(first["status"], "confirmation_required")
+        self.assertEqual(len(first["write_capable_members"]), 1)
+        self.assertEqual(first["write_capable_members"][0]["role_id"], "backend-engineer")
+
+        gate = core.TeamConfirmationGate()
+        # Re-derive the same gate instance's pending token by dispatching
+        # through the same gate object rather than the throwaway one from
+        # _dispatch's default kwargs.
+        second_probe = self._dispatch(members, mode="scoped-repository-edit", gate=gate)
+        self.assertEqual(second_probe["status"], "confirmation_required")
+
+        confirmed = self._dispatch(
+            members,
+            mode="scoped-repository-edit",
+            gate=gate,
+            confirmation_token=second_probe["confirmation_token"],
+            child_runner=lambda *a, **k: self._fake_result("done"),
+        )
+        self.assertEqual(confirmed["status"], "team_dispatched")
+        statuses = {member["role_id"]: member["status"] for member in confirmed["members"]}
+        self.assertEqual(statuses, {"application-engineer": "dispatched", "backend-engineer": "dispatched"})
+
+    def test_tampering_with_a_member_after_confirmation_request_invalidates_it(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="workspace-write")
+        gate = core.TeamConfirmationGate()
+        members = [{"role_id": "application-engineer", "brief": "original brief"}]
+        first = self._dispatch(members, mode="scoped-repository-edit", gate=gate)
+        self.assertEqual(first["status"], "confirmation_required")
+
+        tampered_members = [{"role_id": "application-engineer", "brief": "swapped brief"}]
+        result = self._dispatch(
+            tampered_members,
+            mode="scoped-repository-edit",
+            gate=gate,
+            confirmation_token=first["confirmation_token"],
+            child_runner=lambda *a, **k: self.fail("must not run against a tampered team"),
+        )
+        self.assertEqual(result["status"], "denied")
+
+    def test_team_larger_than_the_concurrency_cap_still_completes_by_waiting(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        limiter = core.ConcurrencyLimiter(max_concurrent=1)
+        members = [{"role_id": "application-engineer", "brief": f"task {i}"} for i in range(3)]
+
+        def fake_runner(argv, *, prompt, cwd, env, timeout_seconds):
+            time.sleep(0.02)
+            return self._fake_result("ok")
+
+        result = self._dispatch(members, limiter=limiter, child_runner=fake_runner)
+        self.assertEqual(result["status"], "team_dispatched")
+        self.assertEqual(len(result["members"]), 3)
+        self.assertTrue(all(member["status"] == "dispatched" for member in result["members"]))
+        self.assertEqual(limiter.active, 0)
+
+    def test_single_role_dispatch_is_unaffected_by_team_support(self) -> None:
+        # SC-4 from INTENT-CADRE-TEAM-DISPATCH-001: team support must be
+        # additive. Spot-check here (the full single-role suite above
+        # already covers this exhaustively and passes unmodified).
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        result = core.dispatch_secure_cloud_role(
+            role_id="application-engineer",
+            brief="solo",
+            mode="planning-review-only",
+            classification="internal",
+            project_root=self.layout.project_root,
+            global_agents_root=self.layout.global_root,
+            plugin_agents_root=self.layout.plugin_root,
+            catalog_path=self.layout.catalog_path,
+            parent_classification="internal",
+            audit_path=self.audit_path,
+            limiter=core.ConcurrencyLimiter(),
+            gate=core.ConfirmationGate(),
+            child_runner=lambda *a, **k: self._fake_result("solo-output"),
+        )
+        self.assertEqual(result["status"], "dispatched")
+
+    def test_audit_records_carry_a_shared_team_id_across_members(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        _write_wrapper(self.layout.plugin_file("backend-engineer"), sandbox_mode="read-only")
+        result = self._dispatch(
+            [
+                {"role_id": "application-engineer", "brief": "a"},
+                {"role_id": "backend-engineer", "brief": "b"},
+            ],
+            child_runner=lambda *a, **k: self._fake_result("ok"),
+        )
+        lines = [json.loads(line) for line in self.audit_path.read_text(encoding="utf-8").splitlines()]
+        team_ids = {entry["team_id"] for entry in lines if "team_id" in entry}
+        self.assertEqual(len(team_ids), 1)
+        self.assertEqual(team_ids.pop(), result["team_id"])
+        decisions = [entry["decision"] for entry in lines]
+        self.assertIn("dispatched", decisions)
+        self.assertIn("team-completed", decisions)
+        # Forbidden keys never leak into any of this team's audit records either.
+        for entry in lines:
+            self.assertTrue(core._FORBIDDEN_AUDIT_KEYS.isdisjoint(entry.keys()))
+
+    def test_unexpected_exception_in_one_member_never_crashes_the_team_or_drops_siblings(self) -> None:
+        # Security review finding on PR #85: a child_runner raising anything
+        # other than DispatchUnavailable used to propagate out of a
+        # background thread uncaught (swallowed by threading.Thread,
+        # printed to stderr, thread just dies), leaving results[index] as
+        # None and crashing dispatch_team()'s own aggregation loop --
+        # losing every sibling member's already-completed result and
+        # skipping the team-completed audit record entirely.
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        _write_wrapper(self.layout.plugin_file("backend-engineer"), sandbox_mode="read-only")
+
+        def flaky_runner(argv, *, prompt, cwd, env, timeout_seconds):
+            if "explode" in prompt:
+                raise RuntimeError("boom: unexpected bug in this child_runner")
+            return self._fake_result("fine")
+
+        result = self._dispatch(
+            [
+                {"role_id": "application-engineer", "brief": "please explode"},
+                {"role_id": "backend-engineer", "brief": "please succeed"},
+            ],
+            child_runner=flaky_runner,
+        )
+
+        self.assertEqual(result["status"], "team_dispatched")
+        statuses = {member["role_id"]: member["status"] for member in result["members"]}
+        self.assertEqual(statuses["application-engineer"], "unavailable")
+        self.assertIn("boom", result["members"][0]["reason"])
+        self.assertEqual(statuses["backend-engineer"], "dispatched")
+
+        lines = [json.loads(line) for line in self.audit_path.read_text(encoding="utf-8").splitlines()]
+        decisions = [entry["decision"] for entry in lines]
+        self.assertIn("team-completed", decisions)
+        self.assertIn("unavailable", decisions)
+        self.assertIn("dispatched", decisions)
+
+    def test_reordering_members_after_confirmation_invalidates_the_token(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="workspace-write")
+        _write_wrapper(self.layout.plugin_file("backend-engineer"), sandbox_mode="workspace-write")
+        gate = core.TeamConfirmationGate()
+        members = [
+            {"role_id": "application-engineer", "brief": "a"},
+            {"role_id": "backend-engineer", "brief": "b"},
+        ]
+        first = self._dispatch(members, mode="scoped-repository-edit", gate=gate)
+        self.assertEqual(first["status"], "confirmation_required")
+
+        reordered = [members[1], members[0]]
+        result = self._dispatch(
+            reordered,
+            mode="scoped-repository-edit",
+            gate=gate,
+            confirmation_token=first["confirmation_token"],
+            child_runner=lambda *a, **k: self.fail("must not run against a reordered team"),
+        )
+        self.assertEqual(result["status"], "denied")
+
+    def test_adding_a_member_after_confirmation_invalidates_the_token(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="workspace-write")
+        _write_wrapper(self.layout.plugin_file("backend-engineer"), sandbox_mode="workspace-write")
+        gate = core.TeamConfirmationGate()
+        members = [{"role_id": "application-engineer", "brief": "a"}]
+        first = self._dispatch(members, mode="scoped-repository-edit", gate=gate)
+        self.assertEqual(first["status"], "confirmation_required")
+
+        expanded = members + [{"role_id": "backend-engineer", "brief": "b"}]
+        result = self._dispatch(
+            expanded,
+            mode="scoped-repository-edit",
+            gate=gate,
+            confirmation_token=first["confirmation_token"],
+            child_runner=lambda *a, **k: self.fail("must not run against an expanded team"),
+        )
+        self.assertEqual(result["status"], "denied")
+
+    def test_removing_a_member_after_confirmation_invalidates_the_token(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="workspace-write")
+        _write_wrapper(self.layout.plugin_file("backend-engineer"), sandbox_mode="workspace-write")
+        gate = core.TeamConfirmationGate()
+        members = [
+            {"role_id": "application-engineer", "brief": "a"},
+            {"role_id": "backend-engineer", "brief": "b"},
+        ]
+        first = self._dispatch(members, mode="scoped-repository-edit", gate=gate)
+        self.assertEqual(first["status"], "confirmation_required")
+
+        shrunk = members[:1]
+        result = self._dispatch(
+            shrunk,
+            mode="scoped-repository-edit",
+            gate=gate,
+            confirmation_token=first["confirmation_token"],
+            child_runner=lambda *a, **k: self.fail("must not run against a shrunk team"),
+        )
+        self.assertEqual(result["status"], "denied")
 
 
 if __name__ == "__main__":
