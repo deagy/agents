@@ -337,5 +337,68 @@ class ProviderCopyTests(unittest.TestCase):
                     ggp.generate_provider_copy(catalog, plugin_root)
 
 
+class SharedPolicyOptionalityTests(unittest.TestCase):
+    """roster/shared/team-profile.yaml (and any SHARED_POLICIES file) is
+    documented as safe to be either missing or emptied. Exercises
+    role_wrapper_inputs() directly against a fabricated tree so the
+    "no PII in team-profile.yaml" fix's absence-handling claim is actually
+    verified by an executed test, not just by code inspection."""
+
+    def _fake_role_tree(self, root: Path) -> None:
+        _write(
+            root / "roster" / "sample-role" / "AGENT.md",
+            "# Sample Role\n\nBody text.\n",
+        )
+
+    def _metadata(self) -> dict:
+        return {
+            "definition": "sample-role/AGENT.md",
+            "phase": "build",
+            "capability": "code_author",
+            "model": "sonnet",
+            "codex_model": "gpt-5.6-terra",
+        }
+
+    def test_missing_shared_policy_file_is_skipped_without_crashing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._fake_role_tree(root)
+            # Deliberately do not create roster/shared/team-profile.yaml.
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(
+                ggp, "AGENTS_ROOT", root / "roster"
+            ), mock.patch.object(ggp, "SHARED_POLICIES", ["roster/shared/team-profile.yaml"]):
+                inputs = ggp.role_wrapper_inputs("sample-role", self._metadata())
+
+        self.assertNotIn("Shared policy: roster/shared/team-profile.yaml", inputs["instructions"])
+        # No dangling blank section between the role body and the fixed notes.
+        self.assertNotIn("\n\n\n\n", inputs["instructions"])
+
+    def test_emptied_shared_policy_file_is_skipped_without_crashing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._fake_role_tree(root)
+            _write(root / "roster" / "shared" / "team-profile.yaml", "   \n")
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(
+                ggp, "AGENTS_ROOT", root / "roster"
+            ), mock.patch.object(ggp, "SHARED_POLICIES", ["roster/shared/team-profile.yaml"]):
+                inputs = ggp.role_wrapper_inputs("sample-role", self._metadata())
+
+        self.assertNotIn("Shared policy: roster/shared/team-profile.yaml", inputs["instructions"])
+        self.assertNotIn("\n\n\n\n", inputs["instructions"])
+
+    def test_present_shared_policy_file_is_still_embedded(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._fake_role_tree(root)
+            _write(root / "roster" / "shared" / "team-profile.yaml", "status: active\n")
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(
+                ggp, "AGENTS_ROOT", root / "roster"
+            ), mock.patch.object(ggp, "SHARED_POLICIES", ["roster/shared/team-profile.yaml"]):
+                inputs = ggp.role_wrapper_inputs("sample-role", self._metadata())
+
+        self.assertIn("Shared policy: roster/shared/team-profile.yaml", inputs["instructions"])
+        self.assertIn("status: active", inputs["instructions"])
+
+
 if __name__ == "__main__":
     unittest.main()

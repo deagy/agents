@@ -654,6 +654,8 @@ The active provider profile currently centers on self-hosted Proxmox, OpenTofu, 
 
 Named support escalation levels, human owner groups, customer communication expectations, emergency contacts, and named human approval groups are deliberately **not** tracked in `shared/team-profile.yaml` — record that in a consuming project's own local/untracked config or its `agentic-sdlc` lifecycle records instead.
 
+**This repository's own case:** this repository runs no `.agentic-sdlc/` overlay of its own (see the two-repo boundary in `CLAUDE.md`), so it has no lifecycle records to redirect to. This repository's own Product Owner / G1 Intent Gate approval authority, and any other repository-level approval authority, is instead recorded in `.github/CODEOWNERS` (a GitHub handle, not a name) — a file that is never read or embedded by `generate_global_plugin.py`, so it carries no risk of propagating into generated role wrappers or the public `cadre-plugin` repo. A `product-intent-agent` dispatch against this repository's own backlog should resolve the Product Owner from `.github/CODEOWNERS` rather than re-logging its absence as a blocking gap.
+
 Keep organization-wide requirements under `shared/`; keep role authority in each `AGENT.md`; keep change-specific facts in task briefs.
 
 ## 16. Use the portable plugin in another project

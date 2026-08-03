@@ -418,13 +418,19 @@ def role_wrapper_inputs(agent_id: str, metadata: dict[str, Any]) -> dict[str, An
     phase = metadata.get("phase", "unknown")
     profile = CAPABILITY_PROFILES[metadata["capability"]]
     # Shared policy files are optional: a project (or this repository) may not
-    # have every one of them, and absence is not a defect. Skip missing files
-    # rather than failing, and don't leave a stray blank section behind.
-    shared_content = "\n\n".join(
-        f"# Shared policy: {relative}\n\n{(REPOSITORY_ROOT / relative).read_text(encoding='utf-8').strip()}"
-        for relative in SHARED_POLICIES
-        if (REPOSITORY_ROOT / relative).is_file()
-    )
+    # have every one of them, or may have emptied one, and neither state is a
+    # defect. Skip missing or emptied files rather than failing, and don't
+    # leave a stray blank section behind.
+    shared_sections = []
+    for relative in SHARED_POLICIES:
+        path = REPOSITORY_ROOT / relative
+        if not path.is_file():
+            continue
+        body = path.read_text(encoding="utf-8").strip()
+        if not body:
+            continue
+        shared_sections.append(f"# Shared policy: {relative}\n\n{body}")
+    shared_content = "\n\n".join(shared_sections)
     # A migrated role's AGENT.md carries `---`-delimited frontmatter
     # ahead of its prose body (see role_metadata.py); that frontmatter
     # is generated-file bookkeeping for catalog.yaml/routing.yaml, not

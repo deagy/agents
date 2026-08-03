@@ -1,0 +1,7 @@
+# This repository's own repository-level ownership and approval authority
+# (e.g. this repository's Product Owner for G1 Intent Gate purposes) is
+# recorded here as a GitHub handle, not in roster/shared/team-profile.yaml --
+# see roster/RUNBOOK.md section 15 for why. This file is never embedded by
+# generate_global_plugin.py into generated role wrappers.
+
+* @deagy
