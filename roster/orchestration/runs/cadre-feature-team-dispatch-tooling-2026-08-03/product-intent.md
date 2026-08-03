@@ -153,4 +153,20 @@ Still open, unaffected by this implementation: **OD-2** (no Product Owner named 
 
 Also found and fixed during implementation, not anticipated by this record: a genuine pre-existing race condition in `_ensure_audit_log_path()` (a TOCTOU gap between `os.path.lexists()` and an `O_CREAT|O_EXCL` open), which predates team dispatch but was never exercised by a test until team dispatch's concurrent multi-threaded audit writes made it fail intermittently during this feature's own test development. Fixed and documented in `SECURITY-CONTROLS.md`.
 
+## Closeout addendum (2026-08-03, later the same day)
+
+Both blocking G1 items are now resolved, superseding parts of the addendum above:
+
+- **OD-1: explicitly confirmed by the human Product Owner**, not just an engineering judgment call anymore. Asked directly during a `/plan`-mode Q&A ("should the closeout plan proceed on [Reading A], or do you want to reconsider it first?"); answered "Confirm Reading A." `cadre select` remains untouched.
+- **OD-2: resolved.** The Product Owner identified themselves directly ("I am the product owner") and confirmed this applies to this repository's feature intake generally, not only the prior narrow 2026-07-26 out-of-scope-standards decision. Recorded durably in `roster/shared/team-profile.yaml`'s new `roles.product_owner` field (Daniel Eagy, confirmed 2026-08-03) so future `product-intent-agent` dispatches can read it directly instead of re-logging this gap, as every prior intent record (including the addendum above) had to.
+
+Two items the addendum above marked "deferred"/"not done here" were, in fact, subsequently built in the same closeout effort — noted here rather than silently edited above, since that addendum was accurate as of when it was written:
+
+- **OD-4 (Claude Code support): implemented**, not deferred. `dispatch_secure_cloud_role()`/`dispatch_team()` gained a `runner` parameter (`"codex"` default, unchanged; `"claude-code"` new), with markdown-frontmatter role resolution and `claude` CLI argv construction, verified against a real installed `claude --help`/`--version` and a live stdin-prompt smoke test. Honestly scoped: this runner can only ever dispatch read-only in this increment (no wrapper field yet declares write-capability), and the `--permission-mode`↔`--sandbox` mapping is flagged in `SECURITY-CONTROLS.md` as an unreviewed design choice, not a confirmed equivalent.
+- **OD-6 (team_recipes wiring): implemented**, not left manual. `expand_recipe_to_members()` (`team_recipe_dryrun.py`) expands a `routing.yaml` team recipe into concrete dispatch members automatically, reusing `explain_fixed_recipe`/`explain_dynamic_recipe` rather than re-deriving `_build_teams()`'s logic; a new `dispatch_team_recipe` MCP tool wraps this end to end.
+
+Also closed: an independent `security-reviewer` dispatch on the resulting PR found and this same effort fixed a High-severity bug (an uncaught exception in one team member's thread could silently drop that member's result and every sibling's, and skip the team-completed audit record entirely) before merge.
+
+**Remaining open, by design, not oversight:** OD-3/OD-7 (entry-point shape beyond what was actually built) and OD-5's finer-grained control choices are recorded as implemented defaults in `SECURITY-CONTROLS.md`, not re-litigated here — a future revision to any of them is a normal engineering change, not a gate this record blocks. Nothing further is pending G1 approval.
+
 Delivered: `dispatch_team()` and `TeamConfirmationGate` in `dispatch_core.py`; a blocking `ConcurrencyLimiter.acquire()` alongside the unchanged `try_acquire()`; a `dispatch_team` MCP tool in `dispatch_server.py`; 21 new tests in `test_mcp_dispatch.py` (all passing, including 15 consecutive clean runs to rule out the concurrency flakiness found and fixed along the way); a new "Team dispatch" section in `SECURITY-CONTROLS.md`; a short addition to `runner-adapters.md` pointing at the new tool. All 94 pre-existing single-role tests pass unmodified (SC-4). Full test suite (roster/orchestration, knowledge-store, shared): 676 tests, all passing.
