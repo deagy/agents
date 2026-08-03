@@ -1,6 +1,6 @@
 # Cadre plugin
 
-The installable Claude Code / Codex CLI distribution of **Cadre**: 70
+The installable Claude Code / Codex CLI distribution of **Cadre**: 71
 specialist roles, nine suite skills, the orchestration runtime, the
 knowledge-store runtime, and an external Agentic SDLC provider
 (`provider.json` is the versioned source of truth — see `version` and
@@ -41,7 +41,7 @@ codex plugin add cadre@cadre-team
 ```
 
 **Verify before installing** (optional, recommended for anything you did not
-build yourself — this drops 70 role-instruction files and a `bin/cadre` onto
+build yourself — this drops 71 role-instruction files and a `bin/cadre` onto
 your `PATH` at user scope). See [Verifying a
 release](#verifying-a-release):
 
@@ -157,7 +157,7 @@ are outside it and need ordinary review.
 
 ## Verifying a release
 
-Installing this plugin puts 70 role-instruction files and a `bin/cadre` onto
+Installing this plugin puts 71 role-instruction files and a `bin/cadre` onto
 `PATH` at user scope in your agent session, so it is worth checking what you
 are installing came from the build you expect. Cloning gives you commit
 integrity; it says nothing about which workflow produced the content.

@@ -179,6 +179,15 @@
       "quality_gates": ["G5", "G7"]
     },
     {
+      "id": "quantum-timing-assurance",
+      "paths": ["security/quantum-timing/**", "quantum-timing/**", "platform/quantum/**", "platform/timing/**"],
+      "keywords": ["entanglement fidelity", "timing stratum", "timing strata", "physical trust threshold", "physical measurement validity"],
+      "primary": ["quantum-timing-assurance-engineer"],
+      "reviewers": ["cryptographic-assurance-engineer"],
+      "support": ["threat-modeler"],
+      "quality_gates": ["G5", "G7"]
+    },
+    {
       "id": "runtime-assurance",
       "paths": ["runtime-assurance/**", "assurance/runtime/**"],
       "keywords": ["runtime conformance", "runtime assurance", "deployed behavior conformance", "production runtime observation", "observe production runtime"],
@@ -676,6 +685,7 @@
     "decision-record": "prior decision records, rejected alternatives, and their downstream consequences",
     "ip-provenance-agent": "the current IP rule version, counsel guidance history, and prior provenance determinations",
     "agent-performance-evaluator": "prior agent-output defects, human corrections, and per-role evaluation history",
-    "agent-version-control": "agent-definition change history and prior provenance records"
+    "agent-version-control": "agent-definition change history and prior provenance records",
+    "quantum-timing-assurance-engineer": "QKD segment telemetry, entanglement fidelity data, timing source readings, strata tolerances, and physical-trust equipment specifications"
   }
 }

@@ -39,7 +39,7 @@ May independently approve pipeline security posture when the reviewer is not the
 
 ## Escalate when
 
-Privileged or persistent runners are exposed to untrusted code, static deployment keys are required, third-party code is mutable, artifacts lack provenance, or protections can be bypassed.
+Privileged or persistent runners are exposed to untrusted code, static deployment keys are required, third-party code is mutable, artifacts lack provenance, or protections can be bypassed. An unreviewed artifact reaching a protected environment through this pipeline is a Halt Authority trigger (`../../review/halt-authority/AGENT.md`) -- escalate there, not only to the pipeline owner.
 
 ## Completion criteria
 

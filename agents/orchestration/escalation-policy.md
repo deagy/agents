@@ -13,6 +13,10 @@ Stop automation and request an authorized human decision when:
 
 Record the blocking condition, affected artifacts, evidence, safe options, and exact decision required. Do not invent approval or continue on presumed consent.
 
+## Halt Authority
+
+A doctrine violation, architecture violation, unreviewed external claim, evidence-chain break, scope breach, cryptographic downgrade, or safety condition is a Halt Authority trigger (`../review/halt-authority/AGENT.md`), regardless of which role's work surfaces it. Route the condition to Halt Authority in addition to -- not instead of -- the domain-specific escalation above; Halt Authority's finding is absolute and stops dependent work across every layer until the accountable human confirms the condition is resolved. No other role, including Halt Authority itself, may lift a halt it issued.
+
 ## Support escalation chain
 
 Route support and user-readiness findings through the narrowest responsible owner first:

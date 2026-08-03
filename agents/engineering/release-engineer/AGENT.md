@@ -37,7 +37,7 @@ May orchestrate approved release automation and execution. May not change source
 
 ## Escalate when
 
-Artifacts differ from reviewed versions, approvals are missing, rollback is not viable, telemetry is unavailable, change windows conflict, or verification thresholds fail.
+Artifacts differ from reviewed versions, approvals are missing, rollback is not viable, telemetry is unavailable, change windows conflict, or verification thresholds fail. Any of these conditions on a requested promotion is also a Halt Authority trigger (`../../review/halt-authority/AGENT.md`) and a Classification and Marking Gate concern (`../../review/classification-and-marking-gate/AGENT.md`) for anything crossing an environment boundary -- escalate to both, not only to the release owner.
 
 ## Completion criteria
 

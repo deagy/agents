@@ -37,7 +37,7 @@ May coordinate subagents, request evidence, set response cadence, prepare human 
 
 ## Escalate when
 
-Escalate when production impact, customer-visible outage, possible data exposure, missing owner, destructive recovery, privileged access, or critical/high unresolved risk is present.
+Escalate when production impact, customer-visible outage, possible data exposure, missing owner, destructive recovery, privileged access, or critical/high unresolved risk is present. A major incident that meets any Halt Authority trigger (`../../review/halt-authority/AGENT.md`) should be routed there directly, not only worked through this role's own coordination path -- Halt Authority's stop is independent of incident severity classification.
 
 ## Completion criteria
 

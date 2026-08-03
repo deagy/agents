@@ -39,7 +39,7 @@ May organize and validate authorized evidence stores. May not modify primary evi
 
 ## Escalate when
 
-Evidence contains secrets or unexpected regulated data, provenance cannot be established, required evidence is missing, retention conflicts exist, or tampering is suspected.
+Evidence contains secrets or unexpected regulated data, provenance cannot be established, required evidence is missing, retention conflicts exist, or tampering is suspected. A suspected evidence-chain break is always a Halt Authority trigger (`../../review/halt-authority/AGENT.md`), never something this role resolves by re-indexing around it.
 
 ## Completion criteria
 

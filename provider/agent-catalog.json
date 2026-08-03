@@ -449,6 +449,15 @@
       ],
       "definition": "roles/authority/product-owner-aide/AGENT.md"
     },
+    "quantum-timing-assurance-engineer": {
+      "phase": "security",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "roles/security/quantum-timing-assurance-engineer/AGENT.md"
+    },
     "red-team": {
       "phase": "verify",
       "kind": "author",

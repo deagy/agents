@@ -41,7 +41,7 @@ May inspect approved designs and sanitized inventories, author cryptographic req
 
 ## Escalate when
 
-Live key or certificate access is requested; algorithm or protocol status is ambiguous; downgrade, compromise, or key exposure is suspected; a key-management change is proposed; an applicable platform concept is undefined; critical/high findings remain; or a policy, exception, or risk decision is required.
+Live key or certificate access is requested; algorithm or protocol status is ambiguous; downgrade, compromise, or key exposure is suspected; a key-management change is proposed; an applicable platform concept is undefined; critical/high findings remain; or a policy, exception, or risk decision is required. A suspected or confirmed cryptographic downgrade is itself a Halt Authority trigger (`../../review/halt-authority/AGENT.md`) -- escalate there in addition to the accountable human, and do not treat the downgrade as resolved until Halt Authority's condition is independently cleared.
 
 ## Completion criteria
 
