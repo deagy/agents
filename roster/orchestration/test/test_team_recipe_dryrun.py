@@ -22,6 +22,7 @@ from build_dispatch_plan import build_dispatch_plan  # noqa: E402
 from routing import load_catalog, load_routing  # noqa: E402
 from team_recipe_dryrun import (  # noqa: E402
     _resolve_synthetic_mode_signals,
+    expand_recipe_to_members,
     explain_dynamic_recipe,
     explain_fixed_recipe,
     explain_recipes,
@@ -150,6 +151,167 @@ class DynamicRecipeExplanationTests(unittest.TestCase):
 
         self.assertFalse(explanation["fires"])
         self.assertFalse(explanation["keywords"]["satisfied"])
+
+
+class ExpandRecipeToMembersTests(unittest.TestCase):
+    """expand_recipe_to_members(): the piece explain_fixed_recipe/
+    explain_dynamic_recipe deliberately stop short of -- turning a fired
+    recipe into a concrete [{role_id, brief}, ...] list ready for
+    dispatch_team() (roster/orchestration/mcp/dispatch_core.py)."""
+
+    def test_fixed_recipe_with_shared_brief(self) -> None:
+        matched_route_ids = set(FIXED_RECIPE["route_ids"][: FIXED_RECIPE["minimum_matches"]])
+        minimum_members = FIXED_RECIPE.get("minimum_members_selected", 2)
+        selected_agents = set(FIXED_RECIPE["members"][:minimum_members])
+
+        members = expand_recipe_to_members(
+            CONFIG, FIXED_RECIPE["id"], matched_route_ids, selected_agents, shared_brief="do it"
+        )
+
+        self.assertEqual(len(members), minimum_members)
+        for member in members:
+            self.assertEqual(member["brief"], "do it")
+            self.assertIn(member["role_id"], FIXED_RECIPE["members"])
+
+    def test_fixed_recipe_per_member_brief_overrides_shared(self) -> None:
+        matched_route_ids = set(FIXED_RECIPE["route_ids"][: FIXED_RECIPE["minimum_matches"]])
+        minimum_members = FIXED_RECIPE.get("minimum_members_selected", 2)
+        selected_members = FIXED_RECIPE["members"][:minimum_members]
+        selected_agents = set(selected_members)
+        override_role = selected_members[0]
+
+        members = expand_recipe_to_members(
+            CONFIG,
+            FIXED_RECIPE["id"],
+            matched_route_ids,
+            selected_agents,
+            shared_brief="default brief",
+            member_briefs={override_role: "special brief"},
+        )
+
+        briefs = {member["role_id"]: member["brief"] for member in members}
+        self.assertEqual(briefs[override_role], "special brief")
+        for role_id, brief in briefs.items():
+            if role_id != override_role:
+                self.assertEqual(brief, "default brief")
+
+    def test_fixed_recipe_missing_brief_for_a_member_raises(self) -> None:
+        matched_route_ids = set(FIXED_RECIPE["route_ids"][: FIXED_RECIPE["minimum_matches"]])
+        minimum_members = FIXED_RECIPE.get("minimum_members_selected", 2)
+        selected_agents = set(FIXED_RECIPE["members"][:minimum_members])
+
+        with self.assertRaises(ValueError):
+            expand_recipe_to_members(CONFIG, FIXED_RECIPE["id"], matched_route_ids, selected_agents)
+
+    def test_recipe_that_does_not_fire_is_refused(self) -> None:
+        # One fewer than minimum_matches -- mirrors
+        # FixedRecipeExplanationTests.test_does_not_fire_when_too_few_routes_match.
+        matched_route_ids = set(FIXED_RECIPE["route_ids"][: FIXED_RECIPE["minimum_matches"] - 1])
+        selected_agents = set(FIXED_RECIPE["members"])
+
+        with self.assertRaises(ValueError):
+            expand_recipe_to_members(
+                CONFIG, FIXED_RECIPE["id"], matched_route_ids, selected_agents, shared_brief="x"
+            )
+
+    def test_unknown_recipe_id_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            expand_recipe_to_members(CONFIG, "not-a-real-recipe", set(), set(), shared_brief="x")
+
+    def _dynamic_signals(self) -> tuple[set[str], set[str], str]:
+        role = DYNAMIC_RECIPE["role"]
+        requires_route = DYNAMIC_RECIPE.get("requires_route")
+        matched_route_ids = {requires_route} if requires_route else set()
+        keyword = DYNAMIC_RECIPE["keywords"][0]
+        return matched_route_ids, {role}, f"debugging this: {keyword} behavior"
+
+    def test_dynamic_recipe_with_correctly_sized_instance_briefs(self) -> None:
+        matched_route_ids, selected_agents, task_text = self._dynamic_signals()
+        count = DYNAMIC_RECIPE["instances"]["min"]
+        briefs = [f"hypothesis {i}" for i in range(count)]
+
+        members = expand_recipe_to_members(
+            CONFIG,
+            DYNAMIC_RECIPE["id"],
+            matched_route_ids,
+            selected_agents,
+            task_text,
+            instance_count=count,
+            instance_briefs=briefs,
+        )
+
+        self.assertEqual(len(members), count)
+        self.assertTrue(all(member["role_id"] == DYNAMIC_RECIPE["role"] for member in members))
+        self.assertEqual([member["brief"] for member in members], briefs)
+
+    def test_dynamic_recipe_instance_count_below_minimum_raises(self) -> None:
+        matched_route_ids, selected_agents, task_text = self._dynamic_signals()
+        below_min = DYNAMIC_RECIPE["instances"]["min"] - 1
+
+        with self.assertRaises(ValueError):
+            expand_recipe_to_members(
+                CONFIG,
+                DYNAMIC_RECIPE["id"],
+                matched_route_ids,
+                selected_agents,
+                task_text,
+                instance_count=below_min,
+                instance_briefs=[f"h{i}" for i in range(max(below_min, 0))],
+            )
+
+    def test_dynamic_recipe_instance_count_above_maximum_raises(self) -> None:
+        matched_route_ids, selected_agents, task_text = self._dynamic_signals()
+        above_max = DYNAMIC_RECIPE["instances"]["max"] + 1
+
+        with self.assertRaises(ValueError):
+            expand_recipe_to_members(
+                CONFIG,
+                DYNAMIC_RECIPE["id"],
+                matched_route_ids,
+                selected_agents,
+                task_text,
+                instance_count=above_max,
+                instance_briefs=[f"h{i}" for i in range(above_max)],
+            )
+
+    def test_dynamic_recipe_missing_instance_briefs_raises(self) -> None:
+        matched_route_ids, selected_agents, task_text = self._dynamic_signals()
+
+        with self.assertRaises(ValueError):
+            expand_recipe_to_members(
+                CONFIG, DYNAMIC_RECIPE["id"], matched_route_ids, selected_agents, task_text
+            )
+
+    def test_dynamic_recipe_mismatched_instance_briefs_count_raises(self) -> None:
+        matched_route_ids, selected_agents, task_text = self._dynamic_signals()
+        count = DYNAMIC_RECIPE["instances"]["min"]
+
+        with self.assertRaises(ValueError):
+            expand_recipe_to_members(
+                CONFIG,
+                DYNAMIC_RECIPE["id"],
+                matched_route_ids,
+                selected_agents,
+                task_text,
+                instance_count=count,
+                instance_briefs=["only one brief"],
+            )
+
+    def test_dynamic_recipe_that_does_not_fire_is_refused(self) -> None:
+        role = DYNAMIC_RECIPE["role"]
+        requires_route = DYNAMIC_RECIPE.get("requires_route")
+        matched_route_ids = {requires_route} if requires_route else set()
+
+        with self.assertRaises(ValueError):
+            expand_recipe_to_members(
+                CONFIG,
+                DYNAMIC_RECIPE["id"],
+                matched_route_ids,
+                {role},
+                "plain unrelated task text with no signal",
+                instance_count=DYNAMIC_RECIPE["instances"]["min"],
+                instance_briefs=[f"h{i}" for i in range(DYNAMIC_RECIPE["instances"]["min"])],
+            )
 
 
 class SyntheticModeSignalTests(unittest.TestCase):

@@ -238,6 +238,25 @@ support is additive, verified by
 `DispatchTeamTests.test_single_role_dispatch_is_unaffected_by_team_support`
 and the full pre-existing single-role suite passing unmodified.
 
+**`dispatch_team_recipe` (in `dispatch_server.py`) is a convenience wrapper,
+not a new control surface.** It expands a `routing.yaml` `team_recipes[]`
+entry into concrete `{role_id, brief}` members
+(`expand_recipe_to_members()` in `roster/orchestration/src/team_recipe_dryrun.py`)
+and then calls `dispatch_team()` exactly as a caller who built the members
+list by hand would -- every control below applies identically regardless of
+which of the two tools produced the `members` list. The one thing this
+wrapper adds is a refusal to expand a recipe that would not actually have
+fired for the caller-supplied `matched_route_ids`/`selected_agent_ids` (or a
+dynamic recipe's `instance_count` outside its declared min/max, or a member
+left without a brief) -- `expand_recipe_to_members()` raises `ValueError` in
+each case, which the tool surfaces as `status: "denied"` before
+`dispatch_team()` is ever called. Tested by
+`ExpandRecipeToMembersTests` (`test_team_recipe_dryrun.py`) and
+`DispatchServerSchemaTests.test_recipe_tool_denies_a_recipe_that_would_not_fire_without_dispatching_anything`
+/ `test_recipe_tool_unknown_recipe_id_is_denied_without_dispatching_anything`
+(`test_mcp_dispatch.py`), both asserting `dispatch_team()` is never invoked
+on a refused expansion.
+
 - **Classification/sandbox narrowing: mechanically enforced, per member
   independently.** Each member is resolved and narrowed against the same
   caller-declared `parent_classification` exactly as a single dispatch would
@@ -288,6 +307,35 @@ and the full pre-existing single-role suite passing unmodified.
   unchanged. Tested by `ConcurrencyLimiterBlockingAcquireTests` (waits for a
   released slot; times out when none frees) and
   `DispatchTeamTests.test_team_larger_than_the_concurrency_cap_still_completes_by_waiting`.
+
+  **Two honest limits, found by independent security review, not fixed in
+  this increment:**
+  1. *Worst-case latency compounds, it isn't bounded by `timeout_seconds`
+     alone.* `_run_member()` calls `limiter.acquire(timeout=timeout_seconds)`
+     to wait for a slot, then passes that same `timeout_seconds` to
+     `child_runner(...)` for the child's own execution timeout. A member that
+     waits nearly the full timeout for a slot, then runs for nearly the full
+     timeout again, can take up to ~2x `timeout_seconds` (up to ~20 minutes
+     at the `DEFAULT_TIMEOUT_SECONDS = 600s` default) before its result is
+     known, and `dispatch_team()` blocks on every member via `thread.join()`
+     -- so a single slow member can hold up the whole tool call for that
+     long. Not a security bypass, but "blocks until a slot frees, or the
+     dispatch timeout elapses" understates real worst-case latency; treat
+     `timeout_seconds` as a per-phase budget (queuing, then execution), not a
+     total-call bound.
+  2. *`try_acquire()` traffic can repeatedly out-race a parked team waiter.*
+     `release()` only calls `notify()` once; a woken `acquire()` waiter must
+     re-acquire the condition's lock and re-check before it can claim the
+     freed slot, and a concurrent `try_acquire()` call (never blocks, checks
+     and claims in one step) can win that race first. Under sustained
+     ordinary single-role dispatch traffic sharing the same limiter, an
+     oversized team's overflow members can be systematically passed over
+     until they hit their own `acquire()` timeout, rather than eventually
+     getting a slot as "blocks until a slot frees" implies. This fails safe
+     (the member is denied via timeout, not left hanging forever) but is a
+     real fairness gap, not just a theoretical one. Fixing this would need a
+     FIFO-ordered wait queue instead of a bare condition variable; deferred
+     as a follow-up, not done here.
 - **Audit logging: mechanically enforced, one record per member plus one
   team-summary record, correlated by `team_id`.** Every member's audit
   record (`decision="dispatched"`/`"denied"`/`"unavailable"`) carries
@@ -296,6 +344,18 @@ and the full pre-existing single-role suite passing unmodified.
   `decision="team-completed"` (or `"team-denied"`/`"team-unavailable"` for a
   whole-team-level failure before any member is resolved) is written once
   every member reaches a terminal state, with a `status_counts` summary.
+  **`_run_member()`'s body is wrapped in a catch-all `except Exception`**
+  (added after independent security review found the gap): without it, any
+  exception other than the anticipated `DispatchUnavailable` from
+  `child_runner(...)` -- a bug in a custom `child_runner`, a malformed
+  result dict, etc. -- would propagate out of the background thread
+  uncaught (`threading.Thread` swallows it, prints to stderr, the thread
+  just dies), leaving that member's `results[index]` as `None` and crashing
+  `dispatch_team()`'s own aggregation loop, which would lose every sibling
+  member's already-completed result and skip the team-completed record
+  entirely. The catch-all guarantees a result and an audit record are always
+  written for every member, however it fails. Tested by
+  `DispatchTeamTests.test_unexpected_exception_in_one_member_never_crashes_the_team_or_drops_siblings`.
   `_FORBIDDEN_AUDIT_KEYS`'s redaction assertion applies identically -- team
   support introduces no new audit fields that could carry secret-shaped
   content. Tested by
@@ -318,6 +378,94 @@ and the full pre-existing single-role suite passing unmodified.
   writes made it happen routinely; the single-role test suite gained no new
   regression coverage for it specifically because the fix is in the shared
   `_ensure_audit_log_path()` path both call.
+
+## Claude Code runner (`runner="claude-code"`)
+
+Implements OD-4 of `INTENT-CADRE-TEAM-DISPATCH-001`. Both
+`dispatch_secure_cloud_role()` and `dispatch_team()` now accept a `runner`
+parameter (`"codex"`, the default and the only runner covered by every
+control above unchanged, or `"claude-code"`); every existing caller that
+never passes `runner` gets exactly the pre-existing Codex behavior, byte for
+byte -- confirmed by the full pre-existing single-role and team test suites
+passing unmodified.
+
+- **Role-file resolution: two tiers, not three, and the plugin tier's path
+  is unverified.** `resolve_claude_role_file()` checks a project-tier
+  `.claude/agents/<role_id>.md` override (a real, documented convention --
+  `runner-adapters.md`) first, then falls back to an installed plugin's own
+  generated `agents/<role_id>.md`. There is no Claude Code equivalent of
+  `sync_codex_agents.py`'s `~/.codex/agents/` global-sync tier. The plugin
+  tier's search path
+  (`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/agents/<role>.md`)
+  was *observed*, not documented, in the session that wrote this code --
+  `_find_claude_plugin_role_file()` glob-searches every
+  marketplace/plugin/version combination under the search root rather than
+  assuming a single fixed path, and **mechanically refuses (denies) rather
+  than guesses** when more than one installed copy matches, asking for a
+  project-tier override to disambiguate instead. This was confirmed to be a
+  real, not theoretical, scenario in this session's own environment: eight
+  distinct installed marketplace/plugin/version combinations of
+  `code-reviewer.md` existed simultaneously in the actual plugin cache used
+  to test this. Tested by `ClaudeCodeRunnerTests`.
+- **Frontmatter parsing: mechanically enforced, targeted, not a general
+  parser.** `_extract_markdown_frontmatter()` only extracts the fixed keys
+  this tool needs (`model`, `effort`); any other declared field
+  (`name`/`description`/`tools`/`generated`/`canonical_source`) is ignored,
+  matching `_extract_toml_fields()`'s discipline for the Codex format.
+  Verified directly against a real installed plugin's generated
+  `agents/code-reviewer.md` in the same session, not only synthetic
+  fixtures. Tested by `MarkdownFrontmatterTests`.
+- **Sandbox narrowing: this runner can only ever produce `read-only` in this
+  increment -- a scoping fact, not a gap someone forgot to close.** No field
+  in the Claude Code wrapper format declares write-capability (unlike
+  Codex's `.toml` `sandbox_mode` field); `ResolvedRole.sandbox_mode` is
+  therefore always `None` for this runner, and
+  `compute_effective_sandbox()`'s existing behavior (already tested for the
+  Codex path) narrows a `None` file-declared sandbox to `read-only`
+  regardless of `mode`. Extending this to write-capable Claude Code dispatch
+  needs a new wrapper-format field and generator support -- tracked as
+  follow-up, not done here. Tested by
+  `ClaudeCodeRunnerTests.test_effective_sandbox_is_always_read_only_regardless_of_mode`.
+- **`--permission-mode` mapping: an unreviewed design choice, not a proven
+  equivalent to Codex's `--sandbox`, and this is the single most important
+  open risk in this section.** `build_claude_child_argv()` maps
+  `read-only`/`workspace-write`/`danger-full-access` to Claude Code's
+  `plan`/`acceptEdits`/`bypassPermissions` permission modes (flag and
+  choices VERIFIED 2026-08-03 against a real installed `claude --help`).
+  But Codex's `--sandbox` is (believed to be) an OS-enforced execution
+  boundary, while Claude Code's `--permission-mode` governs whether Claude
+  Code's own tool-dispatch layer auto-approves or blocks a tool call --
+  a different enforcement mechanism with a different trust boundary (it
+  trusts the Claude Code binary's own tool-gating logic to be correct,
+  rather than relying on OS-level sandboxing independent of that binary).
+  Because sandbox narrowing above means `workspace-write`/
+  `danger-full-access` are currently unreachable in practice (this runner
+  can only ever resolve to `read-only`), only the `plan` mapping is
+  exercised in production today -- but this mapping must be re-examined by
+  the accountable Security Lead specifically when write-capability is added
+  for this runner, not assumed correct because it "looks" analogous to the
+  Codex mapping.
+- **Prompt delivery: verified empirically, reuses the existing pipeline
+  unchanged.** A live `echo "..." | claude -p --model haiku` call in the
+  session that wrote this code confirmed that omitting the positional
+  `prompt` argument and piping stdin instead is read as the prompt exactly
+  like Codex's trailing `-` convention -- so `compose_prompt()`'s existing
+  untrusted-brief-fencing output (already covered by
+  `ComposePromptTests`/the audit-redaction tests) is fed to a Claude Code
+  child on stdin completely unchanged, via the same `spawn_and_wait()` both
+  runners share. No `--system-prompt` flag is used, avoiding a decision
+  about whether to duplicate `developer_instructions` between a flag and
+  stdin.
+- **Everything else (env allowlist, output caps, timeout/group-kill,
+  confirmation gating, audit logging, depth guard) is runner-agnostic** --
+  none of those controls inspect `runner` at all, so their existing
+  enforcement/test coverage applies identically to a Claude Code dispatch.
+- **Not verified: live, authenticated end-to-end execution of a real role
+  dispatch.** The one live `claude` invocation in this session was a
+  trivial smoke test of stdin-piping behavior with `--model haiku`, not a
+  full role dispatch through `dispatch_secure_cloud_role()`/`dispatch_team()`
+  against a real installed Claude Code CLI. Do this before relying on the
+  Claude Code runner for anything beyond local development.
 
 ## Not covered above
 

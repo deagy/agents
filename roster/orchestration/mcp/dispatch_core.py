@@ -80,6 +80,15 @@ MAX_DISPATCH_DEPTH = 1
 DEPTH_ENV_VAR = "SECURE_CLOUD_AGENTS_DISPATCH_DEPTH"
 PARENT_CLASSIFICATION_ENV_VAR = "SECURE_CLOUD_AGENTS_PARENT_CLASSIFICATION"
 CODEX_BIN_ENV_VAR = "SECURE_CLOUD_AGENTS_CODEX_BIN"
+CLAUDE_BIN_ENV_VAR = "SECURE_CLOUD_AGENTS_CLAUDE_BIN"
+
+# Runner abstraction (OD-4 from INTENT-CADRE-TEAM-DISPATCH-001). "codex" is
+# the original, fully-verified runner (see build_child_argv's own VERIFIED
+# comment); "claude-code" is new and carries its own, separately-dated
+# VERIFIED/NOT VERIFIED markers throughout this module -- see
+# build_claude_child_argv's docstring before trusting any flag in it.
+RUNNERS = {"codex", "claude-code"}
+DEFAULT_RUNNER = "codex"
 
 AUDIT_LOG_DIR = Path.home() / ".agents" / "mcp-dispatch"
 AUDIT_LOG_PATH = AUDIT_LOG_DIR / "audit.jsonl"
@@ -475,6 +484,284 @@ def resolve_role_file(
         )
 
     raise DispatchUnavailable(f"No .toml file found for role_id {role_id!r} at any resolution tier")
+
+
+# ---------------------------------------------------------------------------
+# Claude Code runner: role resolution (markdown frontmatter, not TOML) and
+# argv construction. Added for OD-4 of INTENT-CADRE-TEAM-DISPATCH-001. The
+# Codex functions above are completely untouched by any of this -- every
+# existing caller that doesn't pass runner="claude-code" keeps using them
+# exactly as before.
+# ---------------------------------------------------------------------------
+
+_MD_FRONTMATTER_KEYS = ("name", "description", "tools", "model", "effort")
+
+
+def _extract_markdown_frontmatter(text: str, source: Path) -> tuple[dict[str, str], str]:
+    """Targeted parser for this suite's generated Claude Code subagent
+    wrapper `.md` files (see `generate_global_plugin.py`'s wrapper writer,
+    which emits `name`/`description`/`tools`/`model`/`effort`/`generated`/
+    `canonical_source` as `---`-delimited flat `key: value` scalar lines,
+    followed by the role's instructions as the file body). Deliberately not
+    a general YAML/frontmatter parser -- only the fixed keys this dispatch
+    tool actually needs (`model`, `effort`) are extracted; any other
+    declared field is ignored, matching `_extract_toml_fields`'s "not a
+    general parser" discipline for the Codex `.toml` format. A field
+    present in a shape this can't match (e.g. a multi-line or quoted value)
+    is silently not extracted, not an error -- unlike the TOML parser, this
+    format has no fixed required-key list to validate against here, since
+    the human-readable prose fields (`name`/`description`) aren't used by
+    this dispatch tool at all.
+    """
+    if not text.startswith("---\n"):
+        raise DispatchDenied(f"{source}: expected a `---`-delimited frontmatter block at the start of the file")
+    closing = text.find("\n---", 4)
+    if closing == -1:
+        raise DispatchDenied(f"{source}: frontmatter is missing its closing `---` delimiter")
+    frontmatter_text = text[4:closing]
+    body = text[closing + len("\n---") :].lstrip("\n")
+
+    fields: dict[str, str] = {}
+    for line in frontmatter_text.splitlines():
+        if not line.strip():
+            continue
+        match = re.match(r"^(?P<key>[a-zA-Z_]+):\s*(?P<value>.*)$", line)
+        if match and match.group("key") in _MD_FRONTMATTER_KEYS:
+            fields[match.group("key")] = match.group("value").strip()
+    return fields, body
+
+
+DEFAULT_CLAUDE_PLUGIN_CACHE_ROOT = Path.home() / ".claude" / "plugins" / "cache"
+
+
+def _find_claude_plugin_role_file(role_id: str, plugin_search_root: Path) -> Path | None:
+    """Best-effort discovery of an installed Claude Code plugin's own
+    generated `agents/<role_id>.md` wrapper.
+
+    UNVERIFIED path shape: this session's own observed cache layout is
+    `<plugin_search_root>/<marketplace>/<plugin>/<version>/agents/<role>.md`
+    (e.g. `~/.claude/plugins/cache/cadre-team/cadre/0.11.0/agents/...`), but
+    Claude Code's actual guarantee about this layout -- stable across
+    versions? a "current" pointer instead of enumerating version
+    directories? -- has not been confirmed against Claude Code's own
+    documentation, only observed in this one session. Glob-searching every
+    marketplace/plugin/version combination and refusing on ambiguity is a
+    defensive response to that uncertainty, not a confirmed-correct
+    resolution strategy; re-verify this against a real Claude Code install
+    (and its docs, if any exist for this layout) before trusting it as
+    stable.
+
+    Returns None if no match; raises DispatchDenied if more than one
+    installed plugin/version has a matching file -- ambiguous, and safer to
+    force a project-tier `.claude/agents/<role_id>.md` override than to
+    guess which one the caller meant.
+    """
+    if not os.path.lexists(plugin_search_root):
+        return None
+    matches = sorted(plugin_search_root.glob(f"*/*/*/agents/{role_id}.md"))
+    if not matches:
+        return None
+    if len(matches) > 1:
+        raise DispatchDenied(
+            f"multiple installed plugin copies of {role_id!r} found under {plugin_search_root} "
+            f"({[str(match) for match in matches]}); use a project-tier "
+            f".claude/agents/{role_id}.md override to disambiguate"
+        )
+    return matches[0]
+
+
+def resolve_claude_role_file(
+    role_id: str,
+    *,
+    project_root: Path,
+    plugin_search_root: Path = DEFAULT_CLAUDE_PLUGIN_CACHE_ROOT,
+    catalog_path: Path = CATALOG_PATH,
+    mode: str = "planning-review-only",
+) -> ResolvedRole:
+    """Claude Code analogue of `resolve_role_file()`. Two tiers, not three:
+    there is no separate "global sync" tier for Claude Code in this repo
+    (unlike `sync_codex_agents.py`'s `~/.codex/agents/` for Codex) -- an
+    installed Claude Code plugin *is* the only non-project tier. Project
+    tier (`.claude/agents/<role_id>.md`) is a real, documented convention
+    (see `runner-adapters.md`); plugin tier is best-effort and
+    path-unverified (see `_find_claude_plugin_role_file`'s docstring).
+    """
+    validate_role_id(role_id)
+    known_ids = load_known_role_ids(catalog_path)
+    if role_id not in known_ids:
+        raise DispatchDenied(f"role_id is not present in {catalog_path}: {role_id!r}")
+
+    project_tier_root = project_root / ".claude" / "agents"
+    project_candidate = project_tier_root / f"{role_id}.md"
+
+    if os.path.lexists(project_tier_root) and os.path.lexists(project_candidate):
+        _ensure_contained(project_candidate, project_tier_root)
+        tier, candidate = "project", project_candidate
+    else:
+        plugin_candidate = _find_claude_plugin_role_file(role_id, plugin_search_root)
+        if plugin_candidate is None:
+            raise DispatchUnavailable(f"No .md file found for role_id {role_id!r} at any Claude Code resolution tier")
+        tier, candidate = "plugin", plugin_candidate
+
+    project_tier_git_clean: bool | None = None
+    if tier == "project" and mode == "scoped-repository-edit":
+        project_tier_git_clean = _is_project_tier_git_clean(candidate, project_root)
+        if not project_tier_git_clean:
+            raise ProjectTierNotGitCleanError(
+                "project-tier role file is not git-clean; commit it or use "
+                f"mode=planning-review-only: {candidate}"
+            )
+
+    try:
+        content_bytes = _read_role_file_capped(candidate, MAX_ROLE_FILE_BYTES)
+    except OSError as error:
+        raise DispatchDenied(f"Refusing to read {tier}-tier role file {candidate}: {error}") from error
+
+    try:
+        text = content_bytes.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise DispatchDenied(f"{tier}-tier role file is not valid UTF-8: {candidate}") from error
+
+    fields, body = _extract_markdown_frontmatter(text, candidate)
+    developer_instructions = body.strip()
+    if not developer_instructions:
+        raise DispatchDenied(f"{tier}-tier role file has no body to use as developer_instructions: {candidate}")
+    model = fields.get("model")
+    if not model:
+        raise DispatchDenied(f"{tier}-tier role file is missing required model: {candidate}")
+    model_reasoning_effort = fields.get("effort")
+
+    digest = hashlib.sha256(developer_instructions.encode("utf-8")).hexdigest()
+    return ResolvedRole(
+        role_id=role_id,
+        tier=tier,
+        path=candidate,
+        developer_instructions=developer_instructions,
+        model=model,
+        # Claude Code wrappers never declare a sandbox_mode field (confirmed
+        # absent from generate_global_plugin.py's frontmatter writer) -- so
+        # this is always None, and compute_effective_sandbox() already
+        # treats a None file_sandbox_mode as read-only by default. This is a
+        # real scoping fact, not a bug: in this increment, the Claude Code
+        # runner can only ever dispatch read-only, regardless of `mode`,
+        # because there is no mechanism yet for a Claude Code role to
+        # declare write-capability the way a Codex .toml wrapper's
+        # sandbox_mode field does. Extending this needs a new field in the
+        # wrapper format and its generator -- tracked as follow-up, not done
+        # here. See SECURITY-CONTROLS.md's "Claude Code runner" section.
+        sandbox_mode=None,
+        model_reasoning_effort=model_reasoning_effort,
+        instructions_sha256=digest,
+        project_tier_git_clean=project_tier_git_clean,
+    )
+
+
+def build_claude_child_argv(role: ResolvedRole, effective_sandbox: str, project_root: Path) -> list[str]:
+    """Build the dispatched Claude Code child's argv.
+
+    VERIFIED 2026-08-03 against `claude --help` from a real installed
+    Claude Code CLI (`claude --version` reported `2.1.220 (Claude Code)` in
+    this session): `-p`/`--print` (headless, exits after one turn),
+    `--model`, `--permission-mode` (choices: `acceptEdits`, `auto`,
+    `bypassPermissions`, `manual`, `dontAsk`, `plan`), `--effort` (choices:
+    `low`, `medium`, `high`, `xhigh`, `max` -- matches this suite's own
+    `effort:` wrapper field exactly), and `--strict-mcp-config` (restricts
+    the child to no MCP servers, since none is passed via `--mcp-config` --
+    deliberate hardening so a dispatched child doesn't inherit whatever MCP
+    servers happen to be configured on the host, matching this module's
+    existing deny-by-default philosophy). Also empirically confirmed by a
+    live `echo "..." | claude -p --model haiku` invocation in this same
+    session: omitting the positional `prompt` argument and piping stdin
+    instead is read as the prompt, exactly like Codex's trailing `-`
+    convention -- so `compose_prompt()`'s existing output is fed on stdin
+    completely unchanged, with no separate `--system-prompt` flag needed
+    (that flag exists but is optional; using it would require deciding
+    whether to duplicate `developer_instructions` between the flag and
+    stdin, which this design avoids by relying on stdin alone, matching the
+    Codex runner's behavior exactly). There is no Claude Code equivalent of
+    Codex's `--cd`; the child's working directory is set the same way for
+    both runners, via `subprocess.Popen(cwd=...)` in `spawn_and_wait()`, not
+    a CLI flag.
+
+    NOT verified: live, authenticated end-to-end execution (this sandbox's
+    one live smoke-test call above used `--model haiku` for a trivial
+    prompt, not a full role dispatch); and, most importantly, the
+    `--permission-mode` mapping below is a first-pass design choice, not a
+    confirmed-equivalent one -- see SECURITY-CONTROLS.md's "Claude Code
+    runner" section for why this must not be treated as an established
+    fact until reviewed. As noted on `ResolvedRole.sandbox_mode`'s Claude
+    Code path, `effective_sandbox` can in practice only ever be
+    `read-only` in this increment (no wrapper field exists yet to declare
+    otherwise), so `acceptEdits`/`bypassPermissions` below are currently
+    unreachable in production, present only for forward-compatibility once
+    a write-capable declaration mechanism exists.
+    """
+    claude_bin = os.environ.get(CLAUDE_BIN_ENV_VAR, "claude")
+    permission_mode = {
+        READ_ONLY_SANDBOX: "plan",
+        "workspace-write": "acceptEdits",
+        "danger-full-access": "bypassPermissions",
+    }.get(effective_sandbox)
+    if permission_mode is None:
+        raise DispatchDenied(f"Unknown sandbox_mode for the Claude Code runner: {effective_sandbox!r}")
+    argv = [
+        claude_bin,
+        "-p",
+        "--model",
+        role.model,
+        "--permission-mode",
+        permission_mode,
+        "--strict-mcp-config",
+    ]
+    if role.model_reasoning_effort:
+        argv += ["--effort", role.model_reasoning_effort]
+    return argv
+
+
+def build_child_argv_for_runner(
+    runner: str, role: ResolvedRole, effective_sandbox: str, project_root: Path
+) -> list[str]:
+    if runner == "codex":
+        return build_child_argv(role, effective_sandbox, project_root)
+    if runner == "claude-code":
+        return build_claude_child_argv(role, effective_sandbox, project_root)
+    raise DispatchDenied(f"runner must be one of {sorted(RUNNERS)}: {runner!r}")
+
+
+def resolve_role_file_for_runner(
+    runner: str,
+    role_id: str,
+    *,
+    project_root: Path,
+    global_agents_root: Path | None,
+    plugin_agents_root: Path,
+    claude_plugin_search_root: Path,
+    catalog_path: Path,
+    mode: str,
+) -> ResolvedRole:
+    """Single entry point `dispatch_secure_cloud_role()`/`dispatch_team()`
+    call instead of `resolve_role_file()` directly, so the runner switch
+    lives in exactly one place. For `runner="codex"` (the default, and
+    every pre-existing caller's behavior) this calls `resolve_role_file()`
+    with the exact same arguments as before -- zero behavior change."""
+    if runner == "codex":
+        return resolve_role_file(
+            role_id,
+            project_root=project_root,
+            global_root=global_agents_root,
+            plugin_root=plugin_agents_root,
+            catalog_path=catalog_path,
+            mode=mode,
+        )
+    if runner == "claude-code":
+        return resolve_claude_role_file(
+            role_id,
+            project_root=project_root,
+            plugin_search_root=claude_plugin_search_root,
+            catalog_path=catalog_path,
+            mode=mode,
+        )
+    raise DispatchDenied(f"runner must be one of {sorted(RUNNERS)}: {runner!r}")
 
 
 # ---------------------------------------------------------------------------
@@ -930,6 +1217,7 @@ def dispatch_secure_cloud_role(
     project_root: Path | None = None,
     global_agents_root: Path | None = None,
     plugin_agents_root: Path = PLUGIN_CODEX_AGENTS_ROOT,
+    claude_plugin_search_root: Path = DEFAULT_CLAUDE_PLUGIN_CACHE_ROOT,
     catalog_path: Path = CATALOG_PATH,
     parent_classification: str | None = None,
     limiter: ConcurrencyLimiter | None = None,
@@ -937,11 +1225,17 @@ def dispatch_secure_cloud_role(
     audit_path: Path | None = None,
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
     child_runner: ChildRunner = spawn_and_wait,
+    runner: str = DEFAULT_RUNNER,
 ) -> dict[str, Any]:
     """Resolve, authorize, and (on a second confirmed call, if write-capable)
-    dispatch `role_id` as a Codex CLI child process. See module docstring and
-    ConfirmationGate for the exact confirmation mechanism.
+    dispatch `role_id` as a child process of the given `runner` ("codex",
+    the default and only fully-verified option, or "claude-code" -- see
+    `build_claude_child_argv`'s docstring for what is and isn't verified
+    about that path). See module docstring and ConfirmationGate for the
+    exact confirmation mechanism.
     """
+    if runner not in RUNNERS:
+        return {"status": "denied", "reason": f"runner must be one of {sorted(RUNNERS)}: {runner!r}"}
     limiter = limiter or _DEFAULT_LIMITER
     gate = gate or _DEFAULT_GATE
     resolved_project_root = (project_root or Path.cwd()).resolve()
@@ -977,11 +1271,13 @@ def dispatch_secure_cloud_role(
             return _deny(str(error))
 
         try:
-            role = resolve_role_file(
+            role = resolve_role_file_for_runner(
+                runner,
                 role_id,
                 project_root=resolved_project_root,
-                global_root=global_agents_root,
-                plugin_root=plugin_agents_root,
+                global_agents_root=global_agents_root,
+                plugin_agents_root=plugin_agents_root,
+                claude_plugin_search_root=claude_plugin_search_root,
                 catalog_path=catalog_path,
                 mode=mode,
             )
@@ -1046,7 +1342,7 @@ def dispatch_secure_cloud_role(
         try:
             depth = current_dispatch_depth() + 1
             child_env = build_child_env(depth)
-            argv = build_child_argv(role, effective_sandbox, resolved_project_root)
+            argv = build_child_argv_for_runner(runner, role, effective_sandbox, resolved_project_root)
             prompt = compose_prompt(role.developer_instructions, brief)
             try:
                 result = child_runner(
@@ -1216,7 +1512,9 @@ def _resolve_member_for_team(
     project_root: Path,
     global_agents_root: Path | None,
     plugin_agents_root: Path,
+    claude_plugin_search_root: Path,
     catalog_path: Path,
+    runner: str,
 ) -> tuple[ResolvedRole, str, str]:
     """Resolve one team member's role file and effective sandbox without
     spawning, gating, or auditing -- used only to build the team-wide
@@ -1227,11 +1525,13 @@ def _resolve_member_for_team(
     if not isinstance(brief, str) or len(brief.encode("utf-8")) > MAX_BRIEF_BYTES:
         raise DispatchDenied(f"brief must be a string within a {MAX_BRIEF_BYTES}-byte cap for role_id {role_id!r}")
     classification = validate_classification(classification, parent_classification)
-    role = resolve_role_file(
+    role = resolve_role_file_for_runner(
+        runner,
         role_id,
         project_root=project_root,
-        global_root=global_agents_root,
-        plugin_root=plugin_agents_root,
+        global_agents_root=global_agents_root,
+        plugin_agents_root=plugin_agents_root,
+        claude_plugin_search_root=claude_plugin_search_root,
         catalog_path=catalog_path,
         mode=mode,
     )
@@ -1254,6 +1554,7 @@ def dispatch_team(
     project_root: Path | None = None,
     global_agents_root: Path | None = None,
     plugin_agents_root: Path = PLUGIN_CODEX_AGENTS_ROOT,
+    claude_plugin_search_root: Path = DEFAULT_CLAUDE_PLUGIN_CACHE_ROOT,
     catalog_path: Path = CATALOG_PATH,
     parent_classification: str | None = None,
     limiter: ConcurrencyLimiter | None = None,
@@ -1262,15 +1563,30 @@ def dispatch_team(
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
     child_runner: ChildRunner = spawn_and_wait,
     max_team_size: int = MAX_TEAM_SIZE,
+    runner: str = DEFAULT_RUNNER,
 ) -> dict[str, Any]:
     """Dispatch every member of `members` (each `{"role_id": str, "brief": str}`,
     duplicates of the same role_id allowed -- e.g. several debugging-engineer
     instances pursuing distinct hypotheses, matching routing.yaml's
     `competing-hypotheses-debugging` team recipe shape) and return only once
     every member has reached a terminal state (dispatched, denied,
-    unavailable). See module-level comment above for the exact team-aware
-    behavior of each single-role safety control.
+    unavailable). `runner` applies to every member identically -- a team
+    cannot mix runners in this increment. See module-level comment above for
+    the exact team-aware behavior of each single-role safety control.
     """
+    if runner not in RUNNERS:
+        team_id = secrets.token_hex(8)
+        write_audit_record(
+            build_audit_record(
+                task_id=task_id,
+                session_id=session_id,
+                team_id=team_id,
+                decision="team-denied",
+                reason=f"runner must be one of {sorted(RUNNERS)}: {runner!r}",
+            ),
+            path=audit_path,
+        )
+        return {"status": "denied", "team_id": team_id, "reason": f"runner must be one of {sorted(RUNNERS)}: {runner!r}"}
     limiter = limiter or _DEFAULT_TEAM_LIMITER
     gate = gate or _DEFAULT_TEAM_GATE
     resolved_project_root = (project_root or Path.cwd()).resolve()
@@ -1328,7 +1644,9 @@ def dispatch_team(
                 project_root=resolved_project_root,
                 global_agents_root=global_agents_root,
                 plugin_agents_root=plugin_agents_root,
+                claude_plugin_search_root=claude_plugin_search_root,
                 catalog_path=catalog_path,
+                runner=runner,
             )
         except DispatchDenied as error:
             return _team_deny(str(error), member_index=index, role_id=role_id)
@@ -1389,27 +1707,40 @@ def dispatch_team(
             "team_size": len(resolved_members),
             "team_member_index": index,
         }
-        acquired = limiter.acquire(timeout=timeout_seconds)
-        if not acquired:
-            write_audit_record(
-                build_audit_record(
-                    **member_audit_base,
-                    decision="denied",
-                    reason=f"timed out waiting for a concurrency slot (limit {MAX_CONCURRENT_CHILDREN})",
-                ),
-                path=audit_path,
-            )
-            results[index] = {
-                "member_index": index,
-                "role_id": member.role_id,
-                "status": "denied",
-                "reason": f"timed out waiting for a concurrency slot (limit {MAX_CONCURRENT_CHILDREN})",
-            }
-            return
+        # Security review finding (PR #85): this whole body used to leave
+        # results[index] as None if anything other than DispatchUnavailable
+        # escaped child_runner() -- an uncaught exception in a background
+        # thread is swallowed by threading.Thread (printed to stderr, thread
+        # just dies), so dispatch_team()'s aggregation loop below would
+        # crash on the None entry, losing every sibling member's already-
+        # completed results and skipping the team-completed audit record
+        # entirely. This outer try/except is the fix: no matter what goes
+        # wrong for this one member, results[index] and an audit record are
+        # always written, so one member's failure can never corrupt the
+        # team-wide response or suppress the team-completed summary.
+        acquired = False
         try:
+            acquired = limiter.acquire(timeout=timeout_seconds)
+            if not acquired:
+                write_audit_record(
+                    build_audit_record(
+                        **member_audit_base,
+                        decision="denied",
+                        reason=f"timed out waiting for a concurrency slot (limit {MAX_CONCURRENT_CHILDREN})",
+                    ),
+                    path=audit_path,
+                )
+                results[index] = {
+                    "member_index": index,
+                    "role_id": member.role_id,
+                    "status": "denied",
+                    "reason": f"timed out waiting for a concurrency slot (limit {MAX_CONCURRENT_CHILDREN})",
+                }
+                return
+
             depth = current_dispatch_depth() + 1
             child_env = build_child_env(depth)
-            argv = build_child_argv(role, effective_sandbox, resolved_project_root)
+            argv = build_child_argv_for_runner(runner, role, effective_sandbox, resolved_project_root)
             prompt = compose_prompt(role.developer_instructions, member.brief)
             try:
                 result = child_runner(
@@ -1431,42 +1762,54 @@ def dispatch_team(
                     "reason": str(error),
                 }
                 return
-        finally:
-            limiter.release()
 
-        write_audit_record(
-            build_audit_record(
-                **member_audit_base,
-                decision="dispatched",
-                resolved_path=str(role.path),
-                resolution_tier=role.tier,
-                model=role.model,
-                instructions_sha256=role.instructions_sha256,
-                mode=mode,
-                effective_sandbox=effective_sandbox,
-                child_pid=result["pid"],
-                exit_status=result["exit_code"],
-                timed_out=result["timed_out"],
-                duration_seconds=result["duration_seconds"],
-                stdout_truncated=result["stdout_truncated"],
-                project_tier_git_clean=role.project_tier_git_clean,
-            ),
-            path=audit_path,
-        )
-        results[index] = {
-            "member_index": index,
-            "role_id": member.role_id,
-            "status": "dispatched",
-            "resolution_tier": role.tier,
-            "model": role.model,
-            "effective_sandbox": effective_sandbox,
-            "child_pid": result["pid"],
-            "exit_status": result["exit_code"],
-            "timed_out": result["timed_out"],
-            "duration_seconds": result["duration_seconds"],
-            "stdout_truncated": result["stdout_truncated"],
-            "output": wrap_untrusted_output(result.get("stdout_text", "")),
-        }
+            write_audit_record(
+                build_audit_record(
+                    **member_audit_base,
+                    decision="dispatched",
+                    resolved_path=str(role.path),
+                    resolution_tier=role.tier,
+                    model=role.model,
+                    instructions_sha256=role.instructions_sha256,
+                    mode=mode,
+                    effective_sandbox=effective_sandbox,
+                    child_pid=result["pid"],
+                    exit_status=result["exit_code"],
+                    timed_out=result["timed_out"],
+                    duration_seconds=result["duration_seconds"],
+                    stdout_truncated=result["stdout_truncated"],
+                    project_tier_git_clean=role.project_tier_git_clean,
+                ),
+                path=audit_path,
+            )
+            results[index] = {
+                "member_index": index,
+                "role_id": member.role_id,
+                "status": "dispatched",
+                "resolution_tier": role.tier,
+                "model": role.model,
+                "effective_sandbox": effective_sandbox,
+                "child_pid": result["pid"],
+                "exit_status": result["exit_code"],
+                "timed_out": result["timed_out"],
+                "duration_seconds": result["duration_seconds"],
+                "stdout_truncated": result["stdout_truncated"],
+                "output": wrap_untrusted_output(result.get("stdout_text", "")),
+            }
+        except Exception as error:  # noqa: BLE001 -- deliberately catch-all, see comment above
+            write_audit_record(
+                build_audit_record(**member_audit_base, decision="unavailable", reason=f"unexpected error: {error}"),
+                path=audit_path,
+            )
+            results[index] = {
+                "member_index": index,
+                "role_id": member.role_id,
+                "status": "unavailable",
+                "reason": f"unexpected error: {error}",
+            }
+        finally:
+            if acquired:
+                limiter.release()
 
     for index, (member, role, _classification, effective_sandbox) in enumerate(resolved_members):
         thread = threading.Thread(target=_run_member, args=(index, member, role, effective_sandbox), daemon=True)

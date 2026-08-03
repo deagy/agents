@@ -141,6 +141,18 @@ authoritative for the *why*.
        section for exactly how each single-role control (classification/
        sandbox narrowing, the depth guard, confirmation gating, the
        concurrency limiter, audit logging) generalizes to a team.
+    5. `dispatch_secure_cloud_role`/`dispatch_team`/`dispatch_team_recipe` all
+       accept an optional `runner` parameter (`"codex"`, the default and the
+       only fully-verified option, or `"claude-code"`) for dispatching a
+       role as a Claude Code child process instead of a Codex one. This is
+       newer and only partially verified — read
+       `roster/orchestration/mcp/SECURITY-CONTROLS.md`'s "Claude Code
+       runner" section before relying on it: in particular, a Claude Code
+       role can currently only ever be dispatched read-only (there's no
+       wrapper-format field yet to declare write-capability the way a Codex
+       `.toml` wrapper's `sandbox_mode` does), and the `--permission-mode`
+       mapping this uses is a first-pass design choice, not a confirmed
+       equivalent to Codex's `--sandbox`.
   - **Fallback (only when the MCP server above is not registered): manual
     per-file injection instead of naming the custom agent to
     `spawn_agent`.** Read the target role's `.toml` file directly — project

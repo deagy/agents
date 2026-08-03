@@ -31,6 +31,21 @@ if str(_MODULE_DIR) not in sys.path:
 
 import dispatch_core as core  # noqa: E402  (sys.path set above)
 
+# dispatch_team_recipe below needs routing.yaml/catalog.yaml loading and the
+# recipe-expansion helper, both of which live in src/ alongside dispatch_core's
+# own SRC_ROOT. dispatch_core.py deliberately never imports these (it stays
+# import-light so it's testable without `mcp`); this module already depends
+# on more than the standard library (the `mcp` package itself) so pulling
+# these in here, rather than into dispatch_core.py, keeps that boundary.
+_SRC_DIR = _MODULE_DIR.parent / "src"
+if str(_SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(_SRC_DIR))
+
+from routing import load_routing  # noqa: E402
+from team_recipe_dryrun import expand_recipe_to_members  # noqa: E402
+
+_ROUTING_CONFIG = load_routing(core.REPOSITORY_ROOT / "roster" / "orchestration" / "routing.yaml")
+
 MCP_INSTALL_MESSAGE = (
     "The 'mcp' package is required to run the agents MCP dispatch "
     "server; install it with `pip install -r "
@@ -76,8 +91,10 @@ def build_server():
         mode: str = "planning-review-only",
         classification: str = "internal",
         confirmation_token: str | None = None,
+        runner: str = "codex",
     ) -> dict[str, Any]:
-        """Dispatch a named agents role as a Codex CLI child process.
+        """Dispatch a named agents role as a child process of the given
+        runner.
 
         role_id: catalog role identifier, e.g. "application-engineer"; must
             match ^[a-z0-9-]+$ and exist in roster/catalog.yaml.
@@ -90,6 +107,11 @@ def build_server():
         confirmation_token: required on a second call to actually dispatch
             when the effective sandbox is write-capable; omit on the first
             call and the tool returns a confirmation_token to replay.
+        runner: "codex" (default, fully verified) or "claude-code" (newer,
+            partially unverified -- see SECURITY-CONTROLS.md's "Claude Code
+            runner" section; in this increment it can only ever resolve to
+            a read-only sandbox, regardless of mode, since no Claude Code
+            wrapper field exists yet to declare write-capability).
         """
         return core.dispatch_secure_cloud_role(
             role_id=role_id,
@@ -100,6 +122,7 @@ def build_server():
             task_id=_task_id(),
             session_id=_session_id(),
             parent_classification=_parent_classification(),
+            runner=runner,
         )
 
     @server.tool()
@@ -108,6 +131,7 @@ def build_server():
         mode: str = "planning-review-only",
         classification: str = "internal",
         confirmation_token: str | None = None,
+        runner: str = "codex",
     ) -> dict[str, Any]:
         """Dispatch more than one agents role at once and wait for every
         member to reach a terminal state before returning.
@@ -122,6 +146,9 @@ def build_server():
         confirmation_token: required on a second call, covering the *whole*
             team, if any member's effective sandbox is write-capable; the
             first call's response lists which members those are.
+        runner: applies to every member identically -- a team cannot mix
+            runners in this increment. See dispatch_secure_cloud_role's
+            runner parameter for the same "codex" vs "claude-code" caveats.
 
         Returns {"status": "team_dispatched", "team_id": ..., "members": [...]}
         once every member has finished, denied, or been marked unavailable --
@@ -136,6 +163,76 @@ def build_server():
             task_id=_task_id(),
             session_id=_session_id(),
             parent_classification=_parent_classification(),
+            runner=runner,
+        )
+
+    @server.tool()
+    def dispatch_team_recipe(
+        recipe_id: str,
+        matched_route_ids: list[str],
+        selected_agent_ids: list[str],
+        mode: str = "planning-review-only",
+        classification: str = "internal",
+        confirmation_token: str | None = None,
+        task_text: str = "",
+        shared_brief: str | None = None,
+        member_briefs: dict[str, str] | None = None,
+        instance_briefs: list[str] | None = None,
+        instance_count: int | None = None,
+        runner: str = "codex",
+    ) -> dict[str, Any]:
+        """Expand a `routing.yaml` team_recipes[] entry into concrete members
+        and dispatch them as a team (see dispatch_team above) -- for when
+        the calling session already has a real `cadre select` plan and
+        wants to dispatch one of its `teams[]` entries without hand-building
+        the members list itself.
+
+        recipe_id: a `team_recipes[].id` value, e.g. "parallel-review" or
+            "competing-hypotheses-debugging".
+        matched_route_ids / selected_agent_ids: exactly the `matched_routes`
+            and the union of `agents.primary`/`agents.reviewers`/`agents.support`
+            from a real `cadre select` plan -- this tool does not re-run
+            route/agent matching itself, only checks whether this recipe
+            would fire given those already-computed signals.
+        task_text: only needed for a "dynamic" recipe's keyword condition;
+            ignored for "fixed" recipes.
+        shared_brief / member_briefs: for a "fixed" recipe -- shared_brief
+            applies to every selected member unless member_briefs overrides
+            it for a specific role_id. At least one of the two must cover
+            every member or this call is denied.
+        instance_briefs / instance_count: for a "dynamic" recipe (e.g.
+            competing-hypotheses-debugging) -- instance_count must fall
+            within the recipe's declared min/max (defaults to min), and
+            instance_briefs must supply exactly that many distinct briefs
+            (one per instance/hypothesis; a single shared brief is refused,
+            since it would defeat the point of a dynamic recipe).
+        Everything else matches dispatch_team exactly, including the
+        team-wide confirmation_token round trip.
+        """
+        try:
+            members = expand_recipe_to_members(
+                _ROUTING_CONFIG,
+                recipe_id,
+                set(matched_route_ids),
+                set(selected_agent_ids),
+                task_text,
+                shared_brief=shared_brief,
+                member_briefs=member_briefs,
+                instance_briefs=instance_briefs,
+                instance_count=instance_count,
+            )
+        except ValueError as error:
+            return {"status": "denied", "reason": str(error)}
+
+        return core.dispatch_team(
+            members=members,
+            mode=mode,
+            classification=classification,
+            confirmation_token=confirmation_token,
+            task_id=_task_id(),
+            session_id=_session_id(),
+            parent_classification=_parent_classification(),
+            runner=runner,
         )
 
     return server

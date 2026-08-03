@@ -203,6 +203,89 @@ def explain_recipes(
     return explanations
 
 
+def expand_recipe_to_members(
+    config: dict[str, Any],
+    recipe_id: str,
+    matched_route_ids: set[str],
+    selected_agents: set[str],
+    task_text: str = "",
+    *,
+    shared_brief: str | None = None,
+    member_briefs: dict[str, str] | None = None,
+    instance_briefs: list[str] | None = None,
+    instance_count: int | None = None,
+) -> list[dict[str, str]]:
+    """Expand a `team_recipes[]` entry into a concrete `[{"role_id", "brief"},
+    ...]` list ready to hand to `dispatch_team()`
+    (`roster/orchestration/mcp/dispatch_core.py`) -- the piece
+    `explain_fixed_recipe`/`explain_dynamic_recipe` deliberately stop short
+    of (they report pass/fail and the same primitive fields
+    `_build_teams()` uses, never briefs).
+
+    Reuses `explain_fixed_recipe`/`explain_dynamic_recipe` for the "does this
+    recipe actually fire" check rather than reimplementing `_build_teams()`'s
+    condition logic a third time; raises `ValueError` (never silently
+    expands) if the recipe wouldn't actually have fired for this
+    matched_route_ids/selected_agents/task_text signal set, if the recipe id
+    or type is unrecognized, or if the caller-supplied briefs don't cover
+    every member this recipe would actually produce.
+    """
+    matching = [recipe for recipe in config.get("team_recipes", []) if recipe["id"] == recipe_id]
+    if not matching:
+        known = sorted(recipe["id"] for recipe in config.get("team_recipes", []))
+        raise ValueError(f"Unknown team recipe id {recipe_id!r}; known ids: {known}")
+    recipe = matching[0]
+
+    if recipe["type"] == "fixed":
+        explanation = explain_fixed_recipe(recipe, matched_route_ids, selected_agents)
+        if not explanation["fires"]:
+            raise ValueError(
+                f"team recipe {recipe_id!r} did not fire for this matched_route_ids/selected_agents "
+                "signal set; refusing to expand a recipe that would not actually have triggered"
+            )
+        role_ids = explanation["members"]["selected_members"]
+        member_briefs = member_briefs or {}
+        members: list[dict[str, str]] = []
+        for role_id in role_ids:
+            brief = member_briefs.get(role_id, shared_brief)
+            if brief is None:
+                raise ValueError(
+                    f"team recipe {recipe_id!r} member {role_id!r} has no brief: supply it in "
+                    "member_briefs or provide shared_brief"
+                )
+            members.append({"role_id": role_id, "brief": brief})
+        return members
+
+    if recipe["type"] == "dynamic":
+        explanation = explain_dynamic_recipe(recipe, matched_route_ids, selected_agents, task_text)
+        if not explanation["fires"]:
+            raise ValueError(
+                f"team recipe {recipe_id!r} did not fire for this matched_route_ids/selected_agents/task_text "
+                "signal set; refusing to expand a recipe that would not actually have triggered"
+            )
+        instances = recipe["instances"]
+        minimum, maximum = instances["min"], instances["max"]
+        count = instance_count if instance_count is not None else minimum
+        if not (minimum <= count <= maximum):
+            raise ValueError(
+                f"team recipe {recipe_id!r} instance_count {count} is outside its declared "
+                f"[{minimum}, {maximum}] range"
+            )
+        # A shared identical brief across instances defeats the point of a
+        # dynamic recipe like competing-hypotheses-debugging (distinct
+        # hypotheses per instance) -- require one brief per instance rather
+        # than silently falling back to shared_brief for every member.
+        if instance_briefs is None or len(instance_briefs) != count:
+            raise ValueError(
+                f"team recipe {recipe_id!r} requires exactly {count} instance_briefs entries "
+                f"(one per instance); got {0 if instance_briefs is None else len(instance_briefs)}"
+            )
+        role_id = recipe["role"]
+        return [{"role_id": role_id, "brief": brief} for brief in instance_briefs]
+
+    raise ValueError(f"{recipe_id!r}: unknown team recipe type {recipe['type']!r}")
+
+
 def _resolve_task_mode_signals(
     config: dict[str, Any],
     catalog: list[str],
