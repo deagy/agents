@@ -2,7 +2,7 @@
 
 Three team compositions drawn from signals already present in this repo — not
 invented groupings. Each is now also a deterministic entry in
-`agents/orchestration/routing.yaml`'s `team_recipes` list: `cadre select`
+`roster/orchestration/routing.yaml`'s `team_recipes` list: `cadre select`
 evaluates the same trigger described here and, when it matches, emits the
 team in its `teams` field with a members/role list already intersected with
 whichever agents routing actually selected — no team recipe ever pulls in an
@@ -27,7 +27,7 @@ not always all four.
 
 **When**: a change touches multiple review-relevant surfaces at once
 (application code, infrastructure, pipeline, dependencies). This is exactly
-the group `agents/RUNBOOK.md`'s own implementation/review sequence already
+the group `roster/RUNBOOK.md`'s own implementation/review sequence already
 lists together ("Code reviewer + Infrastructure reviewer + Pipeline security
 reviewer + Supply chain security reviewer") — today dispatched as an ordinary
 parallel wave; a team lets them challenge each other's findings before you see
@@ -104,7 +104,7 @@ A plain "debug this and find the root cause" task without that signal does
 not trigger this recipe; it dispatches a single `debugging-engineer` as
 usual.
 
-**When**: `agents/workflows/debugging.md`'s root-cause loop hasn't converged
+**When**: `roster/workflows/debugging.md`'s root-cause loop hasn't converged
 on one explanation from a single investigation, or the failure is
 intermittent/environment-dependent enough that more than one theory is
 plausible.

@@ -6,7 +6,7 @@ is hosting this skill. Read this before dispatching the first agent of a
 session, and again before proposing anything beyond an ordinary parallel
 wave — see [team-recipes.md](team-recipes.md) for when that's warranted.
 
-`agents/runner-capabilities.json` (validated by `agents/runner-capabilities.schema.json`)
+`roster/runner-capabilities.json` (validated by `roster/runner-capabilities.schema.json`)
 is the machine-readable, build-time source of truth for eight closed-value
 structural facts drawn from this file — generated-wrapper existence and
 dispatch naming, `communication_mode: "peer"` support/gating and nested-team
@@ -52,7 +52,7 @@ authoritative for the *why*.
     blocking question rather than message the human directly — the same rule
     ordinary subagents follow, applied per-teammate.
   - Keep teams small (3–5 teammates) with disjoint file ownership per
-    teammate — see `agents/shared/operating-principles.md`.
+    teammate — see `roster/shared/operating-principles.md`.
   - No nested teams: only the lead manages the team; a teammate cannot spawn
     its own teammates. This is a runner limitation, not a repo policy choice.
 
@@ -89,29 +89,29 @@ authoritative for the *why*.
   confirmed root cause. What this repo *can* confirm and control:
   `dispatch_secure_cloud_role` below spawns a real, isolated child process
   and explicitly waits on it
-  (`agents/orchestration/mcp/dispatch_core.py`'s `spawn_and_wait()`), which
+  (`roster/orchestration/mcp/dispatch_core.py`'s `spawn_and_wait()`), which
   is a verified fix for the process-lifecycle question regardless of the
   above, not just for role selection.
   - **Preferred: register this repo's MCP dispatch server.**
-    `agents/orchestration/mcp/dispatch_server.py` exposes a real
+    `roster/orchestration/mcp/dispatch_server.py` exposes a real
     `dispatch_secure_cloud_role` tool that resolves `role_id` to its `.toml`
     wrapper, extracts `developer_instructions`/`model`/`sandbox_mode`/
     `model_reasoning_effort` itself,
     enforces sandbox narrowing and a human confirmation gate for
     write-capable dispatch, and spawns the child in its own process group
     with an explicit wait/timeout/group-kill and a bounded concurrency
-    limiter (see `agents/orchestration/mcp/SECURITY-CONTROLS.md` for exactly
+    limiter (see `roster/orchestration/mcp/SECURITY-CONTROLS.md` for exactly
     which of those guarantees are mechanically enforced and tested). Once
     registered, call it directly instead of `spawn_agent` — no per-file
     reading or manual `developer_instructions` injection needed. Setup:
-    1. `pip install -r agents/orchestration/mcp/requirements-mcp.txt` (installs
+    1. `pip install -r roster/orchestration/mcp/requirements-mcp.txt` (installs
        the official `mcp` SDK; stdio transport only — do not add a networked
        extra).
     2. Add a server entry to Codex CLI's `config.toml` (global
        `~/.codex/config.toml` or project-local `.codex/config.toml`) pointing
        at `cadre mcp-dispatch-server` (repository-root `bin/cadre`, resolves
        a Python 3.10+ interpreter the same way every other subcommand does) or
-       directly at `python3 <repo>/agents/orchestration/mcp/dispatch_server.py`
+       directly at `python3 <repo>/roster/orchestration/mcp/dispatch_server.py`
        if `cadre` isn't on `PATH`. The `[mcp_servers]` table syntax below
        (`command`/`args` keys) is verified against Codex CLI's live
        `config-reference` docs (2026-07-28) — `mcp_servers.<id>.command` and
@@ -173,7 +173,7 @@ authoritative for the *why*.
     `dispatch_secure_cloud_role` (the preferred MCP path above) currently
     always passes the wrapper's `model` value to `codex exec` as an explicit
     `--model` flag with no fallback if the account rejects it
-    (`agents/orchestration/mcp/dispatch_core.py`'s `build_child_argv`), so a
+    (`roster/orchestration/mcp/dispatch_core.py`'s `build_child_argv`), so a
     ChatGPT-authenticated session hitting this would fail identically
     through the MCP path too — a code-level opt-out for that path is tracked
     as follow-up work, not yet implemented, since there is no confirmed exact
@@ -241,14 +241,14 @@ oversight to route around silently:
 - **Ordinary single-role dispatch today: manual injection, same shape as
   Codex's fallback below.** There is no Cline-native generated wrapper for
   this repo's roles yet — `.clinerules/` here holds one general pointer file
-  to `AGENTS.md`/`agents/RUNBOOK.md`, not per-role definitions (see
+  to `AGENTS.md`/`roster/RUNBOOK.md`, not per-role definitions (see
   `AGENTS.md`'s project-structure note), and this repo does not generate
-  `.cline/agents/*.yml` profiles (see "Cline's own native persona mechanism"
+  `.cline/roster/*.yml` profiles (see "Cline's own native persona mechanism"
   below for why not, yet). Until that changes, an orchestrating Cline session
   must read the target role's definition itself — its plugin-generated Codex
   wrapper (`.codex/agents/<role-id>.toml`'s `developer_instructions`, or the
   global synced copy `~/.codex/agents/agents-<role-id>.toml`) is the most
-  convenient already-flattened source, or `agents/<phase>/<role>/AGENT.md`
+  convenient already-flattened source, or `roster/<phase>/<role>/AGENT.md`
   directly for the canonical text — and inject that content as the task/system
   framing for a fresh chat turn or a spawned sub-agent
   (`use_subagents`/`enableSpawnAgent`, if the host session has that enabled).
@@ -257,7 +257,7 @@ oversight to route around silently:
   the role directly.
 - **Cline's own native persona mechanism exists but is not yet usable as a
   clean fix.** Cline has an in-progress "agent profiles" feature:
-  `.cline/agents/*.yml` (workspace) or `~/.cline/agents/` (global) files with
+  `.cline/roster/*.yml` (workspace) or `~/.cline/roster/` (global) files with
   `name`/`description` frontmatter (plus, once the stack below lands,
   `tools`/`skills`/`providerId`/`modelId`/`plugins`) and a body used as the
   persona/system prompt. The installed `@cline/core@0.0.65` already contains
@@ -279,10 +279,10 @@ oversight to route around silently:
   and there is no `docs.cline.bot` page for "agent profiles" yet (checked
   `/llms.txt`'s full index, not independently re-verified here). Re-check PR
   state before relying on this in production; it will go stale. Do not treat
-  `.cline/agents/*.yml` as a reliable per-role dispatch
+  `.cline/roster/*.yml` as a reliable per-role dispatch
   path today; this is a documented future option once that stack merges and
   is verified live, not a current substitute for manual injection above.
-  This repo does not generate these files (no `cline-agents/` equivalent to
+  This repo does not generate these files (no `cline-roster/` equivalent to
   `provider/codex-agents/*.toml` exists) — adding that
   generator is out of scope for this fix and would need its own design/review
   since it changes `cadre generate-plugin`'s output surface.
@@ -322,7 +322,7 @@ oversight to route around silently:
 
 `cadre select` deterministically emits a `teams` array in its plan (see
 [team-recipes.md](team-recipes.md) for the named recipes and
-`agents/orchestration/routing.yaml`'s `team_recipes` for the trigger rules).
+`roster/orchestration/routing.yaml`'s `team_recipes` for the trigger rules).
 Every team entry carries `communication_mode: "peer"` and
 `fallback: "orchestrator-relayed"` — this is not a choice made per dispatch,
 it's a fixed statement of what's actually possible:

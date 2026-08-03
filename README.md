@@ -12,7 +12,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 .
 ├── AGENTS.md                 # Repository-wide contributor and safety rules
 ├── bin/cadre                 # CLI dispatcher for every Python tool below (bin/cadre.ps1 for PowerShell)
-├── agents/                   # Agent roles, policies, workflows, orchestration, support, tests
+├── roster/                   # Agent roles, policies, workflows, orchestration, support, tests
 ├── .agents/skills/           # Publishable skills for this repository (Codex CLI; pointed to from .claude/skills/)
 ├── .claude/skills/           # Thin pointers to .agents/skills/* for Claude Code discovery
 ├── .clinerules/              # Pointer to AGENTS.md/RUNBOOK.md for Cline CLI discovery
@@ -40,18 +40,18 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 | Find the right specialist | [Role index](docs/role-index.md), or ask an agent to run the `role-discovery` skill for a guided conversation |
 | See what changed recently | [CHANGELOG.md](CHANGELOG.md) |
 | Contribute here | [CONTRIBUTING.md](CONTRIBUTING.md) |
-| Operate the full system | [agents/RUNBOOK.md](agents/RUNBOOK.md) |
+| Operate the full system | [roster/RUNBOOK.md](roster/RUNBOOK.md) |
 
 Key areas:
 
 - [bin/cadre](bin/cadre) dispatches the suite tools (`cadre select`, `cadre selection-telemetry`, `cadre knowledge`, `cadre sdlc`, `cadre generate-plugin`, `cadre generate-authority-aides`, `cadre generate-role-metadata`, `cadre bootstrap-codex`, `cadre resolve-shared`, `cadre mcp-dispatch-server`, `cadre profile`, and `cadre init`). `cadre select` works standalone, deterministically dispatching roles from this suite's own catalog and routing rules; it automatically enriches its plan with lifecycle-gate tracking when the standalone `agentic-sdlc` CLI is also available (or fails fast with `--require-sdlc` if that's required), and lifecycle *validation* itself is always provided by that separate `agentic-sdlc` CLI, never by this suite.
-- [agents/catalog.yaml](agents/catalog.yaml) is the machine-readable role inventory.
-- [agents/RUNBOOK.md](agents/RUNBOOK.md) explains how to select, dispatch, review, and escalate agent work.
-- [agents/orchestration/](agents/orchestration/) contains routing rules, lifecycle applicability mappings, handoff contracts, escalation policy, selectors, and tests.
-- [agents/shared/](agents/shared/) contains operating principles, autonomy policy, technology standards, library standards, knowledge-store rules, and risk guidance — these are global defaults; a project can extend or override them per-project the same way it can isolate its own knowledge store below, see [agents/shared/README.md](agents/shared/README.md).
-- [agents/workflows/](agents/workflows/) defines workflows for new services, infrastructure, CI/CD, releases, rollback, knowledge ingestion, and support escalation.
-- [agents/knowledge-store/](agents/knowledge-store/) contains the retrieval layer for approved historical context.
-- [agents/testing/](agents/testing/) and [agents/support/](agents/support/) define black-box testing, end-user testing, support triage, and escalation roles.
+- [roster/catalog.yaml](roster/catalog.yaml) is the machine-readable role inventory.
+- [roster/RUNBOOK.md](roster/RUNBOOK.md) explains how to select, dispatch, review, and escalate agent work.
+- [roster/orchestration/](roster/orchestration/) contains routing rules, lifecycle applicability mappings, handoff contracts, escalation policy, selectors, and tests.
+- [roster/shared/](roster/shared/) contains operating principles, autonomy policy, technology standards, library standards, knowledge-store rules, and risk guidance — these are global defaults; a project can extend or override them per-project the same way it can isolate its own knowledge store below, see [roster/shared/README.md](roster/shared/README.md).
+- [roster/workflows/](roster/workflows/) defines workflows for new services, infrastructure, CI/CD, releases, rollback, knowledge ingestion, and support escalation.
+- [roster/knowledge-store/](roster/knowledge-store/) contains the retrieval layer for approved historical context.
+- [roster/testing/](roster/testing/) and [roster/support/](roster/support/) define black-box testing, end-user testing, support triage, and escalation roles.
 - [.agents/skills/](.agents/skills/) contains this repository's skills, packaged for Codex CLI directly and pointed to from `.claude/skills/` for Claude Code.
 - [deagy/agentic-sdlc](https://github.com/deagy/agentic-sdlc) owns the portable lifecycle kernel, initializer, validator, and lifecycle skills.
 - [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) packages this suite, its 71 roles, and the external `secure-cloud` provider profile as an installable Claude Code / Codex CLI plugin.
@@ -67,17 +67,17 @@ repository does not run its own `.agentic-sdlc/` overlay.
 
 ## Supported runners
 
-Every role definition and orchestration tool is runner-neutral text and data. Codex CLI and Claude Code wrappers are generated into the self-contained Cadre plugin. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc). [Cline](https://docs.cline.bot) is also recognized, in two complementary ways: it [reads `AGENTS.md` natively](https://docs.cline.bot/customization/cline-rules) as a cross-tool standard, and this repository additionally provides `.clinerules/agents-repository.md`, which points at the same canonical `AGENTS.md` and `agents/RUNBOOK.md` sources — this works for any Cline session with this repository as its working directory, no install required. Separately, [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin)'s `cline/` is a real, installable Cline CLI plugin (`cline plugin install ./cline` from a checkout of that repository, or a git URL) exposing an `agents_select` tool that wraps `cadre select` and returns its plan directly in conversation. Unlike the packaged Cadre plugin alongside it, that one is hand-authored TypeScript source under version control, not generated output. This plugin system currently applies to the Cline CLI, SDK, and Kanban only — not the VSCode/JetBrains extension. **Known limitation**: as of `cline` CLI `3.0.46` (the latest published version at the time this was built), invoking any locally-installed plugin's tool fails with `JSON.stringify cannot serialize cyclic structures` — this was confirmed to be an upstream Cline bug, not specific to this plugin, by reproducing the identical failure with `cline/cline`'s own unmodified example plugin. The plugin installs and uninstalls cleanly; tool invocation should start working once Cline ships a fix. **Second known limitation**: installing via a bare repository URL, rather than the local-install form, previously failed with `Cannot find module 'vitest'` while Cline's "sync plugin MCP servers" step scanned the plugin's test file — because a git-plugin-source with no root `package.json` `cline.plugins` manifest and no root `index.ts`/`index.js` falls back to an unbounded recursive `.ts`/`.js` scan of the whole cloned repository, which can import files whose own dependencies (here, the `vitest` devDependency) were never installed. [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) declares its plugin location explicitly via its root `package.json`'s `cline.plugins` key so the git-URL install path resolves directly without triggering that recursive scan; the underlying scanner behavior is still worth reporting upstream, since Cline's git plugin-source format has no way to select a subdirectory otherwise.
+Every role definition and orchestration tool is runner-neutral text and data. Codex CLI and Claude Code wrappers are generated into the self-contained Cadre plugin. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc). [Cline](https://docs.cline.bot) is also recognized, in two complementary ways: it [reads `AGENTS.md` natively](https://docs.cline.bot/customization/cline-rules) as a cross-tool standard, and this repository additionally provides `.clinerules/agents-repository.md`, which points at the same canonical `AGENTS.md` and `roster/RUNBOOK.md` sources — this works for any Cline session with this repository as its working directory, no install required. Separately, [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin)'s `cline/` is a real, installable Cline CLI plugin (`cline plugin install ./cline` from a checkout of that repository, or a git URL) exposing an `agents_select` tool that wraps `cadre select` and returns its plan directly in conversation. Unlike the packaged Cadre plugin alongside it, that one is hand-authored TypeScript source under version control, not generated output. This plugin system currently applies to the Cline CLI, SDK, and Kanban only — not the VSCode/JetBrains extension. **Known limitation**: as of `cline` CLI `3.0.46` (the latest published version at the time this was built), invoking any locally-installed plugin's tool fails with `JSON.stringify cannot serialize cyclic structures` — this was confirmed to be an upstream Cline bug, not specific to this plugin, by reproducing the identical failure with `cline/cline`'s own unmodified example plugin. The plugin installs and uninstalls cleanly; tool invocation should start working once Cline ships a fix. **Second known limitation**: installing via a bare repository URL, rather than the local-install form, previously failed with `Cannot find module 'vitest'` while Cline's "sync plugin MCP servers" step scanned the plugin's test file — because a git-plugin-source with no root `package.json` `cline.plugins` manifest and no root `index.ts`/`index.js` falls back to an unbounded recursive `.ts`/`.js` scan of the whole cloned repository, which can import files whose own dependencies (here, the `vitest` devDependency) were never installed. [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) declares its plugin location explicitly via its root `package.json`'s `cline.plugins` key so the git-URL install path resolves directly without triggering that recursive scan; the underlying scanner behavior is still worth reporting upstream, since Cline's git plugin-source format has no way to select a subdirectory otherwise.
 
 ## Quick start
 
 Read [AGENTS.md](AGENTS.md) first, then use the [getting-started guide](docs/getting-started.md). `bin/cadre` resolves a Python 3.10+ interpreter for you (checks `python3`/`python`; `.\bin\cadre.ps1` also checks `py -3` in PowerShell) — see "Put `cadre` on `PATH`" to put it on `PATH`, or run it as `./bin/cadre` (`.\bin\cadre.ps1` in PowerShell) from the repository root. Then validate the suite-only component and the orchestration tools (most of these run standalone; a handful of lifecycle-contract-specific tests only run when the standalone lifecycle executable is also available):
 
 ```sh
-python3 -m unittest discover -s agents/knowledge-store/test -p "test_*.py"
-python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"
+python3 -m unittest discover -s roster/knowledge-store/test -p "test_*.py"
+python3 -m unittest discover -s roster/orchestration/test -p "test_*.py"
 # AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc \
-#   python3 -m unittest discover -s agents/orchestration/test -p "test_*.py"  # also runs the lifecycle-contract-specific tests
+#   python3 -m unittest discover -s roster/orchestration/test -p "test_*.py"  # also runs the lifecycle-contract-specific tests
 ```
 
 Generate a reviewable dispatch plan:
@@ -236,7 +236,7 @@ plugin-bundled-agent mechanism) and for how to regenerate after adding a role.
 ## Put `cadre` on `PATH`
 
 Optional, and useful regardless of which path above you took: put `bin/cadre`
-on `PATH` so the `cadre` command in this README and `agents/RUNBOOK.md` works
+on `PATH` so the `cadre` command in this README and `roster/RUNBOOK.md` works
 from any directory, not just this checkout (an orchestrating Claude Code agent
 doesn't need this — the installed plugins already put `bin/cadre` on the Bash
 tool's PATH for it). Symlink it (a copy would break its reach-back into this
@@ -261,7 +261,7 @@ checkout path above (`./bin/cadre` / `bin/cadre.py` / `bin/cadre.ps1`) — it
 does not replace it, and the checkout path keeps working completely
 unmodified whether or not you ever build or install this package.
 `pyproject.toml` at the repository root packages the CLI (subcommand table,
-dispatch logic, and every resource each subcommand reads: `agents/`,
+dispatch logic, and every resource each subcommand reads: `roster/`,
 `.agents/skills/`, and `provider/` for `cadre sdlc`/`cadre bootstrap-codex`)
 as an installable `cadre` distribution, so it can run from any directory on
 a machine that has never cloned this repository, no checkout required at
@@ -300,13 +300,13 @@ generate-authority-aides` are maintainer-only tools that require a full git
 checkout; they are not available from a pip/pipx install. Both read tracked
 source through this repository's own git index and write generated content
 back to a real checkout (a [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) checkout named by `--output` for
-`generate-plugin`; `agents/authority/*/AGENT.md` for
+`generate-plugin`; `roster/authority/*/AGENT.md` for
 `generate-authority-aides`) — an operation that only makes sense against a
 real checkout, never against an installed site-packages copy. `cadre
 generate-role-metadata` is a partial case: it is **read/check-only from a
 pip/pipx install** — `cadre generate-role-metadata --check` works fully
 (it only verifies the installed package's own bundled
-`agents/catalog.yaml`/`agents/orchestration/routing.yaml` are internally
+`roster/catalog.yaml`/`roster/orchestration/routing.yaml` are internally
 current, a legitimate installed-mode use case), but its default (no-flag)
 write mode requires a checkout, for the same reason as `generate-plugin`
 above: from an install it would otherwise silently regenerate the
@@ -322,7 +322,7 @@ traceback.
 
 ## Agent orchestration
 
-Use [agents/RUNBOOK.md](agents/RUNBOOK.md) for the full operating model. A typical secure delivery sequence is:
+Use [roster/RUNBOOK.md](roster/RUNBOOK.md) for the full operating model. A typical secure delivery sequence is:
 
 ```text
 architecture -> threat model -> implementation -> testing -> independent review
@@ -348,7 +348,7 @@ Component-level checks should run from the relevant project directory and may in
 
 The knowledge store is for approved historical context and retrieval evidence. Treat retrieved content as untrusted reference material, cite it when used, and record whether retrieval was completed, unavailable, empty, or blocked.
 
-By default a project without its own `.agents/knowledge-store/config.json` resolves to a single store shared across every other such project on the machine (`~/.agents/knowledge-store/`, overridable per call with `--config` or globally with `$KNOWLEDGE_STORE_HOME`), so `--source` is what keeps different projects' content distinguishable there. Selection derives the default from the target repository's normalized origin slug or a canonical-path hash fallback; explicit `--source` still wins. See [agents/knowledge-store/README.md](agents/knowledge-store/README.md) and [agents/knowledge-store/SECURITY.md](agents/knowledge-store/SECURITY.md). Ordinary agents may retrieve authorized context but may not ingest, reclassify, correct, retain, or delete knowledge-store content unless acting as the knowledge-store steward.
+By default a project without its own `.agents/knowledge-store/config.json` resolves to a single store shared across every other such project on the machine (`~/.agents/knowledge-store/`, overridable per call with `--config` or globally with `$KNOWLEDGE_STORE_HOME`), so `--source` is what keeps different projects' content distinguishable there. Selection derives the default from the target repository's normalized origin slug or a canonical-path hash fallback; explicit `--source` still wins. See [roster/knowledge-store/README.md](roster/knowledge-store/README.md) and [roster/knowledge-store/SECURITY.md](roster/knowledge-store/SECURITY.md). Ordinary agents may retrieve authorized context but may not ingest, reclassify, correct, retain, or delete knowledge-store content unless acting as the knowledge-store steward.
 
 ## Safety model
 
@@ -365,14 +365,14 @@ Use short, focused changes and GitHub pull requests for this repository.
 Document scope, validation, security implications, affected decisions, and
 linked issues. The Secure Cloud target profile may use GitLab for delivery, but
 that does not change this repository's contribution workflow. Keep role
-definitions and [agents/catalog.yaml](agents/catalog.yaml) synchronized when
+definitions and [roster/catalog.yaml](roster/catalog.yaml) synchronized when
 adding or changing agents; regenerate the packaged plugin before review.
 
 Start here:
 
 - [AGENTS.md](AGENTS.md) for repository rules
-- [agents/README.md](agents/README.md) for the agent-suite overview
-- [agents/RUNBOOK.md](agents/RUNBOOK.md) for orchestration examples
+- [roster/README.md](roster/README.md) for the agent-suite overview
+- [roster/RUNBOOK.md](roster/RUNBOOK.md) for orchestration examples
 
 ## Releasing
 

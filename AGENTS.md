@@ -2,9 +2,9 @@
 
 ## Project Structure & Module Organization
 
-Agent roles, policies, workflows, orchestration, testing, support/escalation, and the knowledge store live under `agents/`; publishable repository skills live under `.agents/skills/`, with thin per-skill pointer files under `.claude/skills/` (Claude Code). A single general pointer file under `.clinerules/` (Cline CLI) references `AGENTS.md`/`agents/RUNBOOK.md` directly — it is unrelated to the per-skill pointer mechanism. The installable plugin distributions live in a separate repository, [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin): the packaged Claude Code / Codex plugin generated from `agents/catalog.yaml`, `agents/`, `.agents/skills/` and this repository's `provider/` bundle, plus a hand-authored TypeScript Cline CLI plugin under its `cline/`. The portable lifecycle kernel is maintained separately at `github.com/deagy/agentic-sdlc`.
+Agent roles, policies, workflows, orchestration, testing, support/escalation, and the knowledge store live under `roster/`; publishable repository skills live under `.agents/skills/`, with thin per-skill pointer files under `.claude/skills/` (Claude Code). A single general pointer file under `.clinerules/` (Cline CLI) references `AGENTS.md`/`roster/RUNBOOK.md` directly — it is unrelated to the per-skill pointer mechanism. The installable plugin distributions live in a separate repository, [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin): the packaged Claude Code / Codex plugin generated from `roster/catalog.yaml`, `roster/`, `.agents/skills/` and this repository's `provider/` bundle, plus a hand-authored TypeScript Cline CLI plugin under its `cline/`. The portable lifecycle kernel is maintained separately at `github.com/deagy/agentic-sdlc`.
 
-Read `agents/RUNBOOK.md` for orchestration and any project-local `AGENTS.md` before product changes. Keep role definitions and `agents/catalog.yaml` synchronized.
+Read `roster/RUNBOOK.md` for orchestration and any project-local `AGENTS.md` before product changes. Keep role definitions and `roster/catalog.yaml` synchronized.
 
 ## Build, Test, and Development Commands
 
@@ -14,7 +14,7 @@ Resolve Python 3.10+ as documented in the runbook. From each internal-tool compo
 <python> -B -m unittest discover -s test -p "test_*.py"
 ```
 
-After changing `agents/catalog.yaml`, `agents/`, or `.agents/skills/`, run `cadre generate-role-metadata` (it regenerates `agents/catalog.yaml`, routing's `knowledge_focus` block, and the generated half of `provider/`) and re-run `agents/orchestration/test/test_repository_health.py`, which fails on drift. Regenerating the packaged plugin itself is a change to [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) (`cadre generate-plugin --output /path/to/cadre-plugin`), guarded there by its own CI. Run lifecycle integration tests against the pinned standalone Agentic SDLC executable.
+After changing `roster/catalog.yaml`, `roster/`, or `.agents/skills/`, run `cadre generate-role-metadata` (it regenerates `roster/catalog.yaml`, routing's `knowledge_focus` block, and the generated half of `provider/`) and re-run `roster/orchestration/test/test_repository_health.py`, which fails on drift. Regenerating the packaged plugin itself is a change to [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) (`cadre generate-plugin --output /path/to/cadre-plugin`), guarded there by its own CI. Run lifecycle integration tests against the pinned standalone Agentic SDLC executable.
 
 For Go services, use `gofmt`, `go tool goimports`, `go vet ./...`, `go test ./...`, `go test -race ./...`, and `go tool golangci-lint run ./...`. For React frontends, use the project-pinned package manager for install, test, typecheck, and build commands. Podman, PostgreSQL migrations, Helm, and OpenTofu remain disposable or validation-only unless a project has explicit production approval; follow the component README and never target a persistent environment without approval.
 
@@ -22,7 +22,7 @@ This repository has no Node/TypeScript source of its own; the Cline CLI plugin m
 
 ## Coding Style & Naming Conventions
 
-Use four-space indentation and snake_case for Python. Format Go with `gofmt` and `goimports`; lint with the committed `golangci-lint` config. Keep Go packages lowercase and errors safe for callers. Use two spaces, strict TypeScript, semantic React markup, CSS Modules, and lowercase kebab-case directories. Prefer the Go libraries and tools in `agents/shared/library-standards.yaml`; pin and justify every added dependency.
+Use four-space indentation and snake_case for Python. Format Go with `gofmt` and `goimports`; lint with the committed `golangci-lint` config. Keep Go packages lowercase and errors safe for callers. Use two spaces, strict TypeScript, semantic React markup, CSS Modules, and lowercase kebab-case directories. Prefer the Go libraries and tools in `roster/shared/library-standards.yaml`; pin and justify every added dependency.
 
 ## Testing Guidelines
 

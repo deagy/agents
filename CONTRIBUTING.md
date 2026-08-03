@@ -11,18 +11,18 @@ Read:
 
 1. [AGENTS.md](AGENTS.md) for repository rules.
 2. [IDENTITY.md](IDENTITY.md) for the suite's informational orientation.
-3. [agents/README.md](agents/README.md) for the source layout.
-4. [agents/RUNBOOK.md](agents/RUNBOOK.md) for orchestration and handoffs.
+3. [roster/README.md](roster/README.md) for the source layout.
+4. [roster/RUNBOOK.md](roster/RUNBOOK.md) for orchestration and handoffs.
 
-Keep role definitions and `agents/catalog.yaml` synchronized. Preserve the
+Keep role definitions and `roster/catalog.yaml` synchronized. Preserve the
 separation between authors, independent reviewers, human approvers, evidence
 curators, and release operators.
 
 Every role's metadata (`phase`, `capability`, `model`, `codex_model`,
 `reasoning_effort`, `knowledge_focus`) lives in its own `AGENT.md`'s
-`---`-delimited frontmatter (see `agents/orchestration/src/role_metadata.py`
-and the `agent-authoring` skill). `agents/catalog.yaml` and
-`agents/orchestration/routing.yaml`'s `knowledge_focus` block are purely
+`---`-delimited frontmatter (see `roster/orchestration/src/role_metadata.py`
+and the `agent-authoring` skill). `roster/catalog.yaml` and
+`roster/orchestration/routing.yaml`'s `knowledge_focus` block are purely
 generated output derived from that frontmatter -- never hand-edit them.
 Edit a role's frontmatter, then regenerate both files with
 `cadre generate-role-metadata` (`... --check` to validate without writing).
@@ -55,7 +55,7 @@ For documentation-only work:
 - avoid documenting proposals as current behavior;
 - check local Markdown links and command names before opening the PR.
 
-Edit canonical role and policy documentation under `agents/`. Files under
+Edit canonical role and policy documentation under `roster/`. Files under
 `provider/` may be generated artifacts. When a source change
 requires regeneration, follow the repository command in `AGENTS.md`, inspect
 the generated diff, and include the reason in the pull request.

@@ -48,7 +48,7 @@ bundled into a version-bumped, tagged release. They are grouped under
     paths escaping that directory — so the register and the package need
     different spellings. `provider/roles/` holds register-side copies of every
     role's `AGENT.md`, and the package's catalog is rewritten to point at its
-    own `suite/agents/`. Without this the kernel falls back silently to
+    own `suite/roster/`. Without this the kernel falls back silently to
     one-line generic role instructions. This also fixes the pip/pipx
     distribution, which never shipped resolvable definitions at all.
 
@@ -59,7 +59,7 @@ bundled into a version-bumped, tagged release. They are grouped under
     distribution vendors them directly, so both keep working from an install
     with no plugin checkout. The last two are generated: `cadre
     generate-role-metadata` now writes and drift-checks them alongside
-    `agents/catalog.yaml`.
+    `roster/catalog.yaml`.
 
 ### Added
 
@@ -72,7 +72,7 @@ bundled into a version-bumped, tagged release. They are grouped under
   copy drift from upstream?" from a manual diff into a scriptable check —
   without ever re-syncing your project or reading/interpreting your
   project's `.agentic-sdlc/` gate-approval state. See
-  [agents/RUNBOOK.md](agents/RUNBOOK.md) §16.1 and the
+  [roster/RUNBOOK.md](roster/RUNBOOK.md) §16.1 and the
   [quickstart](docs/adopt-cadre-quickstart.md#6-check-for-drift-against-this-suites-canonical-profile-later).
 
 - **Project-local routing overlay** (idea #6): a consuming project can now
@@ -81,18 +81,18 @@ bundled into a version-bumped, tagged release. They are grouped under
   without forking `orchestration/routing.yaml`. Every safety-relevant field
   on an existing base entry (`human_gate`, `reviewers`, `quality_gates`,
   `primary`, `support`) stays immutable; new entries are additive-only. Run
-  `python3 agents/orchestration/src/routing_overlay.py --check` to validate,
+  `python3 roster/orchestration/src/routing_overlay.py --check` to validate,
   or `--out <path>` to materialize the effective merged configuration. See
   the [quickstart](docs/adopt-cadre-quickstart.md#5-add-a-project-local-routing-overlay-optional).
 
-- **Declarative runner capability manifest** (idea #8): `agents/runner-capabilities.json`
-  (validated by `agents/runner-capabilities.schema.json`) is now the single
+- **Declarative runner capability manifest** (idea #8): `roster/runner-capabilities.json`
+  (validated by `roster/runner-capabilities.schema.json`) is now the single
   source of truth for per-runner (Claude Code, Codex, Cline) capability
   tiers, model-tier mappings, and structural divergence facts, generated
   into the packaged plugin instead of hand-duplicated across three
   generator files. Consumers reading `plugins/cadre/` output get the same
   data, now guaranteed consistent by construction. Validate with
-  `python3 agents/orchestration/src/validate_runner_capabilities.py`.
+  `python3 roster/orchestration/src/validate_runner_capabilities.py`.
 
 - **`provenance` field on dispatch plans** (idea #7): `cadre select`'s
   emitted plan now optionally carries a `provenance` object — `sha256`
@@ -109,13 +109,13 @@ bundled into a version-bumped, tagged release. They are grouped under
 
 - **`cadre profile diff` and the routing overlay build on two already-shipped
   features they depend on**: strict JSON Schema validation of
-  `catalog.yaml`/`routing.yaml` (idea #10, `agents/catalog.schema.json`,
-  `agents/orchestration/routing.schema.json`, run via
-  `python3 agents/orchestration/src/schema_validate.py`) and the routing
+  `catalog.yaml`/`routing.yaml` (idea #10, `roster/catalog.schema.json`,
+  `roster/orchestration/routing.schema.json`, run via
+  `python3 roster/orchestration/src/schema_validate.py`) and the routing
   coverage/orphan linter, selection golden-corpus regression harness, and
   full migration of role metadata to `AGENT.md` YAML frontmatter (ideas
   #1-#3). The frontmatter migration (idea #3) is the more consequential
-  change for consumers who parse role metadata directly: `agents/catalog.yaml`
+  change for consumers who parse role metadata directly: `roster/catalog.yaml`
   and `orchestration/routing.yaml`'s `knowledge_focus` block are now fully
   *generated* output (`cadre generate-role-metadata`, `--check` for drift
   detection) derived from each role's `AGENT.md` frontmatter — their
@@ -156,11 +156,11 @@ bundled into a version-bumped, tagged release. They are grouped under
 
 ### Fixed
 
-- **pip wheel was missing `agents/runner-capabilities.json`**: `cadre
+- **pip wheel was missing `roster/runner-capabilities.json`**: `cadre
   generate-role-metadata --check` (an installed-must-work subcommand)
   crashed with a raw traceback from a pip/pipx install, because
   `pyproject.toml`'s wheel `force-include` list never vendored this
-  manifest (only the sdist's `agents/**` wildcard covered it). Every other
+  manifest (only the sdist's `roster/**` wildcard covered it). Every other
   pip-installed subcommand was unaffected.
 
 ### Changed

@@ -21,14 +21,14 @@ dependencies = []
 [project.optional-dependencies]
 # `cadre resolve-shared` / `cadre init` can resolve YAML shared-config
 # overlays; JSON-only overlays work without this (see
-# agents/shared/requirements-validation.txt / agents/shared/src/resolve.py's
+# roster/shared/requirements-validation.txt / roster/shared/src/resolve.py's
 # _require_yaml()). Not a core dependency so a plain `pip install cadre`
 # stays dependency-light for callers who only use JSON overlays.
 yaml = [
     "PyYAML==6.0.3",
 ]
 # `cadre mcp-dispatch-server` requires the official MCP Python SDK (stdio
-# transport only -- see agents/orchestration/mcp/requirements-mcp.txt /
+# transport only -- see roster/orchestration/mcp/requirements-mcp.txt /
 # dispatch_server.py's _require_mcp()). Not a core dependency: every other
 # subcommand works without it, and it fails closed with an install pointer
 # if invoked without this extra installed.
@@ -49,7 +49,7 @@ pattern = "VERSION = \"(?P<version>[^\"]+)\""
 [tool.hatch.build.targets.wheel]
 packages = ["cadre_cli"]
 
-# agents/, .agents/skills/, and bin/cadre.py + bin/subcommands.tsv stay a
+# roster/, .agents/skills/, and bin/cadre.py + bin/subcommands.tsv stay a
 # single source of truth at their existing top-level checkout locations
 # (not duplicated under cadre_cli/ in the source tree) -- hatchling's
 # force-include copies each of them into the built wheel only, at build
@@ -60,7 +60,7 @@ packages = ["cadre_cli"]
 #
 # hatchling's force-include does not honor [tool.hatch.build] exclude
 # patterns (verified empirically), so each subtree below is listed
-# individually rather than force-including the whole `agents/` directory
+# individually rather than force-including the whole `roster/` directory
 # and trying to exclude `test/`, `examples/`, `runs/`, `data/`, and
 # `proposed-knowledge/` afterward -- those are dev-only/generated-at-runtime
 # paths that no dispatched script reads as a packaged resource, so they are
@@ -70,7 +70,7 @@ packages = ["cadre_cli"]
 "bin/cadre.py" = "cadre_cli/_vendor/bin/cadre.py"
 "bin/subcommands.tsv" = "cadre_cli/_vendor/bin/subcommands.tsv"
 
-"agents/catalog.yaml" = "cadre_cli/_vendor/agents/catalog.yaml"
+"roster/catalog.yaml" = "cadre_cli/_vendor/roster/catalog.yaml"
 # Idea #8's runner/capability/model-tier manifest: generate_global_plugin.py
 # loads it unconditionally at import time (module-level _RUNNER_CAPABILITIES
 # = _load_runner_capabilities()), and generate_role_metadata.py imports that
@@ -82,56 +82,56 @@ packages = ["cadre_cli"]
 # test_runner_capabilities.py) that no installed subcommand reads, so it is
 # deliberately not vendored here -- same precedent as catalog.yaml above
 # being vendored without catalog.schema.json.
-"agents/runner-capabilities.json" = "cadre_cli/_vendor/agents/runner-capabilities.json"
-"agents/architecture" = "cadre_cli/_vendor/agents/architecture"
-"agents/authority" = "cadre_cli/_vendor/agents/authority"
-"agents/data" = "cadre_cli/_vendor/agents/data"
-"agents/documentation" = "cadre_cli/_vendor/agents/documentation"
-"agents/engineering" = "cadre_cli/_vendor/agents/engineering"
-"agents/governance" = "cadre_cli/_vendor/agents/governance"
-"agents/operations" = "cadre_cli/_vendor/agents/operations"
-"agents/planning" = "cadre_cli/_vendor/agents/planning"
-"agents/review" = "cadre_cli/_vendor/agents/review"
-"agents/security" = "cadre_cli/_vendor/agents/security"
-"agents/support" = "cadre_cli/_vendor/agents/support"
-"agents/testing" = "cadre_cli/_vendor/agents/testing"
-"agents/workflows" = "cadre_cli/_vendor/agents/workflows"
+"roster/runner-capabilities.json" = "cadre_cli/_vendor/roster/runner-capabilities.json"
+"roster/architecture" = "cadre_cli/_vendor/roster/architecture"
+"roster/authority" = "cadre_cli/_vendor/roster/authority"
+"roster/data" = "cadre_cli/_vendor/roster/data"
+"roster/documentation" = "cadre_cli/_vendor/roster/documentation"
+"roster/engineering" = "cadre_cli/_vendor/roster/engineering"
+"roster/governance" = "cadre_cli/_vendor/roster/governance"
+"roster/operations" = "cadre_cli/_vendor/roster/operations"
+"roster/planning" = "cadre_cli/_vendor/roster/planning"
+"roster/review" = "cadre_cli/_vendor/roster/review"
+"roster/security" = "cadre_cli/_vendor/roster/security"
+"roster/support" = "cadre_cli/_vendor/roster/support"
+"roster/testing" = "cadre_cli/_vendor/roster/testing"
+"roster/workflows" = "cadre_cli/_vendor/roster/workflows"
 
-"agents/knowledge-store/AGENT.md" = "cadre_cli/_vendor/agents/knowledge-store/AGENT.md"
-"agents/knowledge-store/README.md" = "cadre_cli/_vendor/agents/knowledge-store/README.md"
-"agents/knowledge-store/SECURITY.md" = "cadre_cli/_vendor/agents/knowledge-store/SECURITY.md"
-"agents/knowledge-store/agent-context.schema.json" = "cadre_cli/_vendor/agents/knowledge-store/agent-context.schema.json"
-"agents/knowledge-store/canonical-message.schema.json" = "cadre_cli/_vendor/agents/knowledge-store/canonical-message.schema.json"
-"agents/knowledge-store/config.example.json" = "cadre_cli/_vendor/agents/knowledge-store/config.example.json"
-"agents/knowledge-store/src" = "cadre_cli/_vendor/agents/knowledge-store/src"
+"roster/knowledge-store/AGENT.md" = "cadre_cli/_vendor/roster/knowledge-store/AGENT.md"
+"roster/knowledge-store/README.md" = "cadre_cli/_vendor/roster/knowledge-store/README.md"
+"roster/knowledge-store/SECURITY.md" = "cadre_cli/_vendor/roster/knowledge-store/SECURITY.md"
+"roster/knowledge-store/agent-context.schema.json" = "cadre_cli/_vendor/roster/knowledge-store/agent-context.schema.json"
+"roster/knowledge-store/canonical-message.schema.json" = "cadre_cli/_vendor/roster/knowledge-store/canonical-message.schema.json"
+"roster/knowledge-store/config.example.json" = "cadre_cli/_vendor/roster/knowledge-store/config.example.json"
+"roster/knowledge-store/src" = "cadre_cli/_vendor/roster/knowledge-store/src"
 
-"agents/orchestration/escalation-policy.md" = "cadre_cli/_vendor/agents/orchestration/escalation-policy.md"
-"agents/orchestration/handoff-contracts.md" = "cadre_cli/_vendor/agents/orchestration/handoff-contracts.md"
-"agents/orchestration/knowledge-retrieval-policy.yaml" = "cadre_cli/_vendor/agents/orchestration/knowledge-retrieval-policy.yaml"
-"agents/orchestration/review-response-template.md" = "cadre_cli/_vendor/agents/orchestration/review-response-template.md"
-"agents/orchestration/routing.yaml" = "cadre_cli/_vendor/agents/orchestration/routing.yaml"
-"agents/orchestration/selection.schema.json" = "cadre_cli/_vendor/agents/orchestration/selection.schema.json"
-"agents/orchestration/task-brief-template.md" = "cadre_cli/_vendor/agents/orchestration/task-brief-template.md"
-"agents/orchestration/src" = "cadre_cli/_vendor/agents/orchestration/src"
-"agents/orchestration/mcp" = "cadre_cli/_vendor/agents/orchestration/mcp"
+"roster/orchestration/escalation-policy.md" = "cadre_cli/_vendor/roster/orchestration/escalation-policy.md"
+"roster/orchestration/handoff-contracts.md" = "cadre_cli/_vendor/roster/orchestration/handoff-contracts.md"
+"roster/orchestration/knowledge-retrieval-policy.yaml" = "cadre_cli/_vendor/roster/orchestration/knowledge-retrieval-policy.yaml"
+"roster/orchestration/review-response-template.md" = "cadre_cli/_vendor/roster/orchestration/review-response-template.md"
+"roster/orchestration/routing.yaml" = "cadre_cli/_vendor/roster/orchestration/routing.yaml"
+"roster/orchestration/selection.schema.json" = "cadre_cli/_vendor/roster/orchestration/selection.schema.json"
+"roster/orchestration/task-brief-template.md" = "cadre_cli/_vendor/roster/orchestration/task-brief-template.md"
+"roster/orchestration/src" = "cadre_cli/_vendor/roster/orchestration/src"
+"roster/orchestration/mcp" = "cadre_cli/_vendor/roster/orchestration/mcp"
 
-"agents/shared/README.md" = "cadre_cli/_vendor/agents/shared/README.md"
-"agents/shared/agent-autonomy.yaml" = "cadre_cli/_vendor/agents/shared/agent-autonomy.yaml"
-"agents/shared/cloud-guardrails.md" = "cadre_cli/_vendor/agents/shared/cloud-guardrails.md"
-"agents/shared/control-mapping-template.yaml" = "cadre_cli/_vendor/agents/shared/control-mapping-template.yaml"
-"agents/shared/definition-of-done.md" = "cadre_cli/_vendor/agents/shared/definition-of-done.md"
-"agents/shared/knowledge-use-policy.md" = "cadre_cli/_vendor/agents/shared/knowledge-use-policy.md"
-"agents/shared/library-standards.yaml" = "cadre_cli/_vendor/agents/shared/library-standards.yaml"
-"agents/shared/operating-principles.md" = "cadre_cli/_vendor/agents/shared/operating-principles.md"
-"agents/shared/platform-impact-profile.yaml" = "cadre_cli/_vendor/agents/shared/platform-impact-profile.yaml"
-"agents/shared/requirements-validation.txt" = "cadre_cli/_vendor/agents/shared/requirements-validation.txt"
-"agents/shared/risk-severity-model.md" = "cadre_cli/_vendor/agents/shared/risk-severity-model.md"
-"agents/shared/secure-development-policy.md" = "cadre_cli/_vendor/agents/shared/secure-development-policy.md"
-"agents/shared/team-profile.yaml" = "cadre_cli/_vendor/agents/shared/team-profile.yaml"
-"agents/shared/technology-standards.md" = "cadre_cli/_vendor/agents/shared/technology-standards.md"
-"agents/shared/init-presets" = "cadre_cli/_vendor/agents/shared/init-presets"
-"agents/shared/output-schemas" = "cadre_cli/_vendor/agents/shared/output-schemas"
-"agents/shared/src" = "cadre_cli/_vendor/agents/shared/src"
+"roster/shared/README.md" = "cadre_cli/_vendor/roster/shared/README.md"
+"roster/shared/agent-autonomy.yaml" = "cadre_cli/_vendor/roster/shared/agent-autonomy.yaml"
+"roster/shared/cloud-guardrails.md" = "cadre_cli/_vendor/roster/shared/cloud-guardrails.md"
+"roster/shared/control-mapping-template.yaml" = "cadre_cli/_vendor/roster/shared/control-mapping-template.yaml"
+"roster/shared/definition-of-done.md" = "cadre_cli/_vendor/roster/shared/definition-of-done.md"
+"roster/shared/knowledge-use-policy.md" = "cadre_cli/_vendor/roster/shared/knowledge-use-policy.md"
+"roster/shared/library-standards.yaml" = "cadre_cli/_vendor/roster/shared/library-standards.yaml"
+"roster/shared/operating-principles.md" = "cadre_cli/_vendor/roster/shared/operating-principles.md"
+"roster/shared/platform-impact-profile.yaml" = "cadre_cli/_vendor/roster/shared/platform-impact-profile.yaml"
+"roster/shared/requirements-validation.txt" = "cadre_cli/_vendor/roster/shared/requirements-validation.txt"
+"roster/shared/risk-severity-model.md" = "cadre_cli/_vendor/roster/shared/risk-severity-model.md"
+"roster/shared/secure-development-policy.md" = "cadre_cli/_vendor/roster/shared/secure-development-policy.md"
+"roster/shared/team-profile.yaml" = "cadre_cli/_vendor/roster/shared/team-profile.yaml"
+"roster/shared/technology-standards.md" = "cadre_cli/_vendor/roster/shared/technology-standards.md"
+"roster/shared/init-presets" = "cadre_cli/_vendor/roster/shared/init-presets"
+"roster/shared/output-schemas" = "cadre_cli/_vendor/roster/shared/output-schemas"
+"roster/shared/src" = "cadre_cli/_vendor/roster/shared/src"
 
 ".agents/skills" = "cadre_cli/_vendor/.agents/skills"
 
@@ -152,29 +152,29 @@ packages = ["cadre_cli"]
 "provider" = "cadre_cli/_vendor/provider"
 
 # `cadre generate-role-metadata` (generate_role_metadata.py) reads these two
-# top-level agents/ files as its source of truth for dispatch-precedence
+# top-level roster/ files as its source of truth for dispatch-precedence
 # order and the generated-file header template.
-"agents/catalog-order.txt" = "cadre_cli/_vendor/agents/catalog-order.txt"
-"agents/_catalog_header.yaml.tmpl" = "cadre_cli/_vendor/agents/_catalog_header.yaml.tmpl"
+"roster/catalog-order.txt" = "cadre_cli/_vendor/roster/catalog-order.txt"
+"roster/_catalog_header.yaml.tmpl" = "cadre_cli/_vendor/roster/_catalog_header.yaml.tmpl"
 
 [tool.hatch.build.targets.sdist]
 include = [
     "cadre_cli/**",
     "bin/cadre.py",
     "bin/subcommands.tsv",
-    "agents/**",
+    "roster/**",
     ".agents/skills/**",
     "provider/**",
     "README.md",
     "LICENSE",
 ]
 exclude = [
-    "agents/*/test/**",
-    "agents/orchestration/examples/**",
-    "agents/orchestration/runs/**",
-    "agents/knowledge-store/examples/**",
-    "agents/knowledge-store/proposed-knowledge/**",
-    "agents/knowledge-store/data/**",
+    "roster/*/test/**",
+    "roster/orchestration/examples/**",
+    "roster/orchestration/runs/**",
+    "roster/knowledge-store/examples/**",
+    "roster/knowledge-store/proposed-knowledge/**",
+    "roster/knowledge-store/data/**",
     "**/__pycache__/**",
     "**/*.pyc",
 ]

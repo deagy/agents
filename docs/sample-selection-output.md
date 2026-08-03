@@ -2,7 +2,7 @@
 
 This walks through one real, committed `cadre select` plan so a reader can see
 what the selector actually produces before running it themselves. The
-authoritative shape is [`agents/orchestration/selection.schema.json`](../agents/orchestration/selection.schema.json)
+authoritative shape is [`roster/orchestration/selection.schema.json`](../roster/orchestration/selection.schema.json)
 (`schema_version: 3`); if this page and the schema ever disagree, the schema
 wins.
 
@@ -11,7 +11,7 @@ See the [glossary](terminology.md) for definitions of the terms used below
 knowledge focus, provenance, ...).
 
 The example below is `GOLDEN-CROSS-STACK-1` from the golden-corpus regression
-fixtures ([`agents/orchestration/test/fixtures/selection_golden_corpus.json`](../agents/orchestration/test/fixtures/selection_golden_corpus.json),
+fixtures ([`roster/orchestration/test/fixtures/selection_golden_corpus.json`](../roster/orchestration/test/fixtures/selection_golden_corpus.json),
 case id `CROSS-STACK-1`). It was chosen because it is a realistic, non-edge-case
 task that touches two stacks at once (frontend and backend) and triggers a
 named team recipe, which exercises most of the fields a reader will encounter
@@ -42,7 +42,7 @@ standalone Agentic SDLC executable was present on `PATH` when it ran; without
 one, `lifecycle_tracking.status` reads `"standalone"` with a `reason`, and
 every `required_quality_gates[].reason` instead reads "Required by routing
 configuration (Agentic SDLC unavailable; gate detail omitted)." (see
-`agents/orchestration/src/build_dispatch_plan.py`). `matched_routes`,
+`roster/orchestration/src/build_dispatch_plan.py`). `matched_routes`,
 `agents`, `teams`, the *set* of gate ids in `required_quality_gates`, and
 `human_gates` stay identical either way, and are pinned byte-for-byte by the
 golden-corpus test referenced above (that test forces standalone mode so the
@@ -192,7 +192,7 @@ comment).
             "resolution": "runner-probed"
           },
           "args": [
-            "/path/to/your/checkout/agents/knowledge-store/src/cli.py",
+            "/path/to/your/checkout/roster/knowledge-store/src/cli.py",
             "context",
             "--agent",
             "interaction-designer",
@@ -219,7 +219,7 @@ comment).
             "resolution": "runner-probed"
           },
           "args": [
-            "/path/to/your/checkout/agents/knowledge-store/src/cli.py",
+            "/path/to/your/checkout/roster/knowledge-store/src/cli.py",
             "context",
             "--agent",
             "frontend-engineer",
@@ -246,7 +246,7 @@ comment).
             "resolution": "runner-probed"
           },
           "args": [
-            "/path/to/your/checkout/agents/knowledge-store/src/cli.py",
+            "/path/to/your/checkout/roster/knowledge-store/src/cli.py",
             "context",
             "--agent",
             "backend-engineer",
@@ -273,7 +273,7 @@ comment).
             "resolution": "runner-probed"
           },
           "args": [
-            "/path/to/your/checkout/agents/knowledge-store/src/cli.py",
+            "/path/to/your/checkout/roster/knowledge-store/src/cli.py",
             "context",
             "--agent",
             "test-engineer",
@@ -300,7 +300,7 @@ comment).
             "resolution": "runner-probed"
           },
           "args": [
-            "/path/to/your/checkout/agents/knowledge-store/src/cli.py",
+            "/path/to/your/checkout/roster/knowledge-store/src/cli.py",
             "context",
             "--agent",
             "code-reviewer",
@@ -327,7 +327,7 @@ comment).
             "resolution": "runner-probed"
           },
           "args": [
-            "/path/to/your/checkout/agents/knowledge-store/src/cli.py",
+            "/path/to/your/checkout/roster/knowledge-store/src/cli.py",
             "context",
             "--agent",
             "accessibility-reviewer",
@@ -357,7 +357,7 @@ comment).
   should not be treated as reviewable guidance. `workflow` is the single
   matched high-level shape (here `new-service`, since this task combines the
   `frontend` and `backend` routes).
-- **`matched_routes`** — the `agents/orchestration/routing.yaml` route ids
+- **`matched_routes`** — the `roster/orchestration/routing.yaml` route ids
   whose paths or keywords matched this task's files/description. Each route
   carries its own primary/reviewer/support role list; `agents.*` below is the
   union across every matched route.

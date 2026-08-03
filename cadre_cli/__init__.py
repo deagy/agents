@@ -8,20 +8,20 @@ replace the checkout path, which stays completely unmodified.
 
 Rather than duplicating `bin/cadre.py`'s subcommand table and dispatch logic
 (REQ-PIP: prefer reuse over duplication), this module vendors a byte-for-byte
-build-time copy of the real `bin/` and `agents/` (plus `.agents/skills/` and
+build-time copy of the real `bin/` and `roster/` (plus `.agents/skills/` and
 `provider/`) trees
 under `cadre_cli/_vendor/` (see the wheel's
 `[tool.hatch.build.targets.wheel.force-include]` table) and then *loads and
 calls* the vendored `bin/cadre.py`'s own `main()` function in-process.
 
 Why this works with zero changes to `bin/cadre.py`: every dispatched script
-under `agents/` resolves its own resource roots (agents/catalog.yaml,
-agents/orchestration/routing.yaml, role AGENT.md files, etc.) purely from its
+under `roster/` resolves its own resource roots (roster/catalog.yaml,
+roster/orchestration/routing.yaml, role AGENT.md files, etc.) purely from its
 own `Path(__file__).resolve()` position, walking a fixed number of parents —
 never from an environment variable or the caller's cwd. `bin/cadre.py` itself
 computes `REPO_ROOT = Path(__file__).resolve().parent.parent` the same way.
 As long as the vendored copy preserves the exact relative directory layout
-the checkout has (`<root>/bin/cadre.py` next to `<root>/agents/...`), loading
+the checkout has (`<root>/bin/cadre.py` next to `<root>/roster/...`), loading
 the vendored `bin/cadre.py` from its vendored location makes every one of
 those `__file__`-relative computations land inside the vendored tree
 automatically, with no branching logic here and no edits to any dispatched
@@ -44,7 +44,7 @@ from types import ModuleType
 _PACKAGE_DIR = Path(__file__).resolve().parent
 
 # Bundled (built wheel / installed package): resources live under
-# cadre_cli/_vendor/{bin,agents,.agents,plugins}, copied in at build time by
+# cadre_cli/_vendor/{bin,roster,.agents,plugins}, copied in at build time by
 # hatchling's force-include (see pyproject.toml). Editable/development
 # install (`pip install -e .` from this checkout): no _vendor/ directory
 # exists, so fall back to the real checkout root next to this package
@@ -57,15 +57,15 @@ else:
 
 _VENDORED_CADRE_PY = VENDOR_ROOT / "bin" / "cadre.py"
 
-# `generate-plugin` (generate_global_plugin.py) reads agents/README.md,
-# agents/RUNBOOK.md, the plugin repository's README.md, and the whole docs/
+# `generate-plugin` (generate_global_plugin.py) reads roster/README.md,
+# roster/RUNBOOK.md, the plugin repository's README.md, and the whole docs/
 # tree, then *writes* regenerated output into a checkout of the plugin
 # repository (deagy/cadre-plugin) named by --output -- a maintainer/
 # regeneration operation driven from this repository's own tracked source
 # (it reads this repository's git index), not something that makes sense
 # pointed at an installed site-packages copy.
 # `generate-authority-aides` (generate_authority_aides.py) is the same class
-# of operation: it *writes* regenerated agents/authority/*/AGENT.md files
+# of operation: it *writes* regenerated roster/authority/*/AGENT.md files
 # back into this repository's own tree, so pointed at an installed
 # distribution it would silently write into site-packages instead of
 # failing -- same rationale, same fix.
@@ -81,7 +81,7 @@ _VENDORED_CADRE_PY = VENDOR_ROOT / "bin" / "cadre.py"
 # its default (write) mode has the exact same "writes back into this
 # repository's own tree" problem -- from an installed distribution it would
 # silently regenerate the *installed package's own vendored copy* of
-# agents/catalog.yaml / agents/orchestration/routing.yaml under
+# roster/catalog.yaml / roster/orchestration/routing.yaml under
 # site-packages, never a real user project, which is pointless/misleading
 # even though it doesn't crash. Its `--check` mode is different: it only
 # reads, verifying the installed package's own bundled metadata is
@@ -159,7 +159,7 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 "cadre generate-role-metadata (without --check) requires a "
                 "full repository checkout (it writes regenerated "
-                "agents/catalog.yaml / agents/orchestration/routing.yaml back "
+                "roster/catalog.yaml / roster/orchestration/routing.yaml back "
                 "into a real project tree, not this installed package's own "
                 "site-packages copy); use --check from an installed "
                 "distribution to verify the installed metadata is current, "
