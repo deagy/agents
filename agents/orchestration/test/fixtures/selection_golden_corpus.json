@@ -485,6 +485,32 @@
       }
     },
     {
+      "id": "QUANTUM-TIMING-ASSURANCE-2",
+      "description": "bare 'qkd' phrasing; both cryptographic-assurance and quantum-timing-assurance match because both routes' keywords include 'qkd', a genuine overlap in routing.yaml -- a plain QKD question must reach both the crypto-posture role and the physical-trust role, not just one",
+      "task": "Assess whether our QKD hardware readings are trustworthy",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-QUANTUM-TIMING-ASSURANCE-2",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "cryptographic-assurance-engineer",
+          "quantum-timing-assurance-engineer"
+        ],
+        "reviewers": [
+          "security-reviewer"
+        ],
+        "support": [
+          "threat-modeler",
+          "secrets-identity-engineer"
+        ],
+        "matched_routes": [
+          "cryptographic-assurance",
+          "quantum-timing-assurance"
+        ]
+      }
+    },
+    {
       "id": "RUNTIME-ASSURANCE-1",
       "description": "runtime-assurance route; authored to isolate the route",
       "task": "Observe production runtime conformance for deployed behavior",

@@ -181,7 +181,7 @@
     {
       "id": "quantum-timing-assurance",
       "paths": ["security/quantum-timing/**", "quantum-timing/**", "platform/quantum/**", "platform/timing/**"],
-      "keywords": ["entanglement fidelity", "timing stratum", "timing strata", "physical trust threshold", "physical measurement validity"],
+      "keywords": ["entanglement fidelity", "timing stratum", "timing strata", "physical trust threshold", "physical measurement validity", "qkd", "quantum key distribution"],
       "primary": ["quantum-timing-assurance-engineer"],
       "reviewers": ["cryptographic-assurance-engineer"],
       "support": ["threat-modeler"],

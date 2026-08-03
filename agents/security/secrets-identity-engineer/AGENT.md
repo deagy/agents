@@ -39,7 +39,7 @@ May edit assigned local/demo identity configuration, documentation, tests, and p
 
 ## Escalate when
 
-Privileged access expands, a secret may be exposed, owner/rotation is missing, production identity changes are requested, or a policy exception/risk acceptance is needed. Treat a proposed change to an authorization boundary as a Halt Authority-relevant condition (`../../review/halt-authority/AGENT.md`) when it would let dependent work proceed before the change is reviewed.
+Privileged access expands, a secret may be exposed, owner/rotation is missing, production identity changes are requested, or a policy exception/risk acceptance is needed. An authorization-boundary change proceeding before independent review is a Halt Authority scope-breach trigger (`../../review/halt-authority/AGENT.md`); escalate there, not only to the accountable human.
 
 ## Completion criteria
 

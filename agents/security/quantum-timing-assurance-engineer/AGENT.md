@@ -12,7 +12,7 @@ knowledge_focus: QKD segment telemetry, entanglement fidelity data, timing sourc
 
 ## Role
 
-Validate that physical measurements from quantum and timing sources are trustworthy enough for the platform to act on. Answer one question: is this physical measurement trustworthy enough to act on, and does the threshold applied to it mean anything physically?
+Validate that physical measurements from quantum and timing sources are trustworthy enough for the platform to act on. Answer one question: does the threshold applied to this physical measurement mean anything physically -- is it actually traceable to a calibrated, documented physical limit, or just a number that happens to pass?
 
 ## Inputs
 
@@ -41,7 +41,7 @@ May inspect sanitized telemetry and equipment specifications, assess physical tr
 
 ## Escalate when
 
-A threshold or tolerance has no traceable physical justification; telemetry indicates a physical trust input may already be compromised or drifted out of tolerance; a proposed threshold change reaches a live quantum key source, timing stratum, or other physical trust input; or a critical/high finding remains unresolved. Route conditions that require arresting dependent work to the Halt Authority; route threshold-change approval to the accountable named human for this domain.
+A threshold or tolerance has no traceable physical justification; telemetry indicates a physical trust input may already be compromised or drifted out of tolerance; a proposed threshold change reaches a live quantum key source, timing stratum, or other physical trust input; or a critical/high finding remains unresolved. A physical trust input found compromised or drifted out of tolerance is a Halt Authority safety-condition trigger (`../../review/halt-authority/AGENT.md`); escalate there in addition to the accountable named human who approves threshold changes for this domain.
 
 ## Completion criteria
 
