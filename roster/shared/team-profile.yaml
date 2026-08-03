@@ -1,6 +1,22 @@
 profile_version: 1
 status: active
 
+roles:
+  product_owner:
+    name: Daniel Eagy
+    scope: this repository's feature intake in general (G1 Intent Gate approval, product/mission-objective authority)
+    confirmed: 2026-08-03
+    note: >
+      Every product-intent.md under roster/orchestration/runs/ prior to this
+      date logged "no Product Owner named for this repository's feature
+      intake" as a blocking open item (see e.g. idea #10's OD-1, and
+      cadre-feature-team-dispatch-tooling-2026-08-03's OD-2) because this
+      profile previously only named a Product Owner for one specific,
+      already-resolved out-of-scope-standards decision (see
+      out_of_scope_standards below), not for feature intake generally. This
+      entry closes that repeated gap. A future product-intent-agent dispatch
+      should read this field directly rather than re-logging the gap.
+
 platform:
   hosting_model: self-hosted
   virtualization: proxmox
