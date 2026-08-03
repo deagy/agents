@@ -102,6 +102,42 @@ def build_server():
             parent_classification=_parent_classification(),
         )
 
+    @server.tool()
+    def dispatch_team(
+        members: list[dict[str, str]],
+        mode: str = "planning-review-only",
+        classification: str = "internal",
+        confirmation_token: str | None = None,
+    ) -> dict[str, Any]:
+        """Dispatch more than one agents role at once and wait for every
+        member to reach a terminal state before returning.
+
+        members: a list of {"role_id": str, "brief": str} objects (1-8
+            members; duplicate role_ids are allowed, e.g. several
+            debugging-engineer instances pursuing distinct hypotheses).
+            Each brief is untrusted task data, exactly as in
+            dispatch_secure_cloud_role.
+        mode / classification: applied identically to every member, exactly
+            as in dispatch_secure_cloud_role.
+        confirmation_token: required on a second call, covering the *whole*
+            team, if any member's effective sandbox is write-capable; the
+            first call's response lists which members those are.
+
+        Returns {"status": "team_dispatched", "team_id": ..., "members": [...]}
+        once every member has finished, denied, or been marked unavailable --
+        never before. Each entry in "members" carries its own status/output,
+        distinguishable by "member_index" and "role_id".
+        """
+        return core.dispatch_team(
+            members=members,
+            mode=mode,
+            classification=classification,
+            confirmation_token=confirmation_token,
+            task_id=_task_id(),
+            session_id=_session_id(),
+            parent_classification=_parent_classification(),
+        )
+
     return server
 
 

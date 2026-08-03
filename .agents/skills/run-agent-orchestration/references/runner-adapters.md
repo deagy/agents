@@ -128,6 +128,19 @@ authoritative for the *why*.
     3. This server only ever spawns `codex exec` child processes for
        whichever role you dispatch; it does not itself replace or wrap your
        interactive Codex session.
+    4. The same server also exposes `dispatch_team` for more than one role at
+       once — call it with a `members` list (`{"role_id", "brief"}` per
+       entry; duplicates of the same `role_id` are fine, e.g. several
+       `debugging-engineer` instances pursuing distinct hypotheses) instead
+       of looping `dispatch_secure_cloud_role` yourself. It returns only once
+       every member has reached a terminal state, with each member's result
+       distinguishable by `member_index`/`role_id`; a single team-wide
+       `confirmation_required` round trip covers every write-capable member
+       at once rather than one per member. See
+       `roster/orchestration/mcp/SECURITY-CONTROLS.md`'s "Team dispatch"
+       section for exactly how each single-role control (classification/
+       sandbox narrowing, the depth guard, confirmation gating, the
+       concurrency limiter, audit logging) generalizes to a team.
   - **Fallback (only when the MCP server above is not registered): manual
     per-file injection instead of naming the custom agent to
     `spawn_agent`.** Read the target role's `.toml` file directly — project

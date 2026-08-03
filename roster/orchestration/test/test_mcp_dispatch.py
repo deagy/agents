@@ -21,6 +21,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -1039,6 +1040,314 @@ class DispatchServerSchemaTests(unittest.TestCase):
         self.assertEqual(captured["role_id"], "application-engineer")
         self.assertEqual(captured["parent_classification"], "internal")
         self.assertNotIn("developer_instructions", captured)
+
+
+class ConcurrencyLimiterBlockingAcquireTests(unittest.TestCase):
+    """acquire() is the team-dispatch-only blocking variant; try_acquire()'s
+    existing non-blocking behavior (asserted above in
+    ConcurrencyLimiterTests) must stay exactly as it was."""
+
+    def test_acquires_immediately_when_a_slot_is_free(self) -> None:
+        limiter = core.ConcurrencyLimiter(max_concurrent=1)
+        self.assertTrue(limiter.acquire(timeout=1))
+        self.assertEqual(limiter.active, 1)
+
+    def test_waits_for_a_released_slot_instead_of_failing(self) -> None:
+        limiter = core.ConcurrencyLimiter(max_concurrent=1)
+        self.assertTrue(limiter.try_acquire())
+
+        released = threading.Event()
+
+        def _release_soon() -> None:
+            time.sleep(0.05)
+            released.set()
+            limiter.release()
+
+        threading.Thread(target=_release_soon, daemon=True).start()
+        start = time.monotonic()
+        self.assertTrue(limiter.acquire(timeout=2))
+        self.assertTrue(released.is_set())
+        self.assertGreaterEqual(time.monotonic() - start, 0.04)
+
+    def test_times_out_when_no_slot_frees(self) -> None:
+        limiter = core.ConcurrencyLimiter(max_concurrent=1)
+        self.assertTrue(limiter.try_acquire())
+        self.assertFalse(limiter.acquire(timeout=0.05))
+        self.assertEqual(limiter.active, 1)
+
+    def test_try_acquire_still_fails_immediately_unchanged(self) -> None:
+        limiter = core.ConcurrencyLimiter(max_concurrent=1)
+        self.assertTrue(limiter.try_acquire())
+        self.assertFalse(limiter.try_acquire())
+
+
+class TeamConfirmationGateTests(unittest.TestCase):
+    def _subject(self) -> tuple:
+        return (core._member_subject_tuple("a", "brief-a", "scoped-repository-edit", "internal", "workspace-write"),)
+
+    def test_matching_subject_succeeds(self) -> None:
+        gate = core.TeamConfirmationGate()
+        subject = self._subject()
+        token = gate.request(subject)
+        gate.consume(token, subject)
+
+    def test_token_is_single_use(self) -> None:
+        gate = core.TeamConfirmationGate()
+        subject = self._subject()
+        token = gate.request(subject)
+        gate.consume(token, subject)
+        with self.assertRaises(core.DispatchDenied):
+            gate.consume(token, subject)
+
+    def test_altering_any_member_invalidates_the_token(self) -> None:
+        gate = core.TeamConfirmationGate()
+        subject = self._subject()
+        token = gate.request(subject)
+        tampered = (core._member_subject_tuple("a", "different brief", "scoped-repository-edit", "internal", "workspace-write"),)
+        with self.assertRaises(core.DispatchDenied):
+            gate.consume(token, tampered)
+
+    def test_missing_token_is_denied(self) -> None:
+        gate = core.TeamConfirmationGate()
+        with self.assertRaises(core.DispatchDenied):
+            gate.consume(None, self._subject())
+
+    def test_expired_token_is_denied(self) -> None:
+        gate = core.TeamConfirmationGate(ttl_seconds=0.01)
+        subject = self._subject()
+        token = gate.request(subject)
+        time.sleep(0.05)
+        with self.assertRaises(core.DispatchDenied):
+            gate.consume(token, subject)
+
+
+class DispatchTeamTests(unittest.TestCase):
+    """dispatch_team(): the team-aware generalization of
+    dispatch_secure_cloud_role(). Reuses TempLayout/_write_wrapper exactly
+    as the single-role tests above do."""
+
+    def setUp(self) -> None:
+        self.layout = TempLayout(role_ids=["application-engineer", "backend-engineer"])
+        self.addCleanup(self.layout.close)
+        self.audit_dir = tempfile.TemporaryDirectory(prefix="mcp-dispatch-team-audit-")
+        self.addCleanup(self.audit_dir.cleanup)
+        self.audit_path = Path(self.audit_dir.name) / "audit.jsonl"
+
+    def _dispatch(self, members, **overrides):
+        kwargs = dict(
+            members=members,
+            mode="planning-review-only",
+            classification="internal",
+            project_root=self.layout.project_root,
+            global_agents_root=self.layout.global_root,
+            plugin_agents_root=self.layout.plugin_root,
+            catalog_path=self.layout.catalog_path,
+            parent_classification="internal",
+            audit_path=self.audit_path,
+            limiter=core.ConcurrencyLimiter(),
+            gate=core.TeamConfirmationGate(),
+        )
+        kwargs.update(overrides)
+        return core.dispatch_team(**kwargs)
+
+    def _fake_result(self, text: str) -> dict:
+        return {
+            "pid": 1,
+            "exit_code": 0,
+            "timed_out": False,
+            "duration_seconds": 0.01,
+            "stdout_truncated": False,
+            "stdout_text": text,
+        }
+
+    def test_empty_team_is_denied(self) -> None:
+        result = self._dispatch([])
+        self.assertEqual(result["status"], "denied")
+
+    def test_team_over_max_size_is_denied(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        members = [{"role_id": "application-engineer", "brief": "x"} for _ in range(core.MAX_TEAM_SIZE + 1)]
+        result = self._dispatch(members)
+        self.assertEqual(result["status"], "denied")
+
+    def test_malformed_member_is_denied(self) -> None:
+        result = self._dispatch([{"role_id": "application-engineer"}])
+        self.assertEqual(result["status"], "denied")
+
+    def test_unknown_role_in_team_is_denied_and_names_the_member(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        result = self._dispatch(
+            [
+                {"role_id": "application-engineer", "brief": "ok"},
+                {"role_id": "ghost-role", "brief": "bad"},
+            ]
+        )
+        self.assertEqual(result["status"], "denied")
+
+    def test_missing_parent_classification_is_denied(self) -> None:
+        result = self._dispatch(
+            [{"role_id": "application-engineer", "brief": "x"}], parent_classification=None
+        )
+        self.assertEqual(result["status"], "denied")
+
+    def test_read_only_team_dispatches_without_confirmation_and_waits_for_all(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        _write_wrapper(self.layout.plugin_file("backend-engineer"), sandbox_mode="read-only")
+
+        started = []
+        release_second = threading.Event()
+
+        def fake_runner(argv, *, prompt, cwd, env, timeout_seconds):
+            started.append(prompt)
+            if len(started) == 1:
+                # First member spawned blocks until the second has also
+                # started, proving dispatch_team does not serialize members
+                # or return before the slower one finishes.
+                release_second.wait(timeout=5)
+                return self._fake_result("first")
+            release_second.set()
+            return self._fake_result("second")
+
+        result = self._dispatch(
+            [
+                {"role_id": "application-engineer", "brief": "task one"},
+                {"role_id": "backend-engineer", "brief": "task two"},
+            ],
+            child_runner=fake_runner,
+        )
+        self.assertEqual(result["status"], "team_dispatched")
+        self.assertEqual(len(result["members"]), 2)
+        statuses = {member["role_id"]: member["status"] for member in result["members"]}
+        self.assertEqual(statuses, {"application-engineer": "dispatched", "backend-engineer": "dispatched"})
+        # Both members' distinct outputs are individually recoverable.
+        outputs = {member["role_id"]: member["output"] for member in result["members"]}
+        self.assertIn("first", outputs["application-engineer"])
+        self.assertIn("second", outputs["backend-engineer"])
+
+    def test_duplicate_role_ids_in_one_team_are_allowed_and_distinguishable(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        calls = {"n": 0}
+
+        def fake_runner(argv, *, prompt, cwd, env, timeout_seconds):
+            calls["n"] += 1
+            return self._fake_result(f"hypothesis-{calls['n']}")
+
+        result = self._dispatch(
+            [
+                {"role_id": "application-engineer", "brief": "hypothesis A"},
+                {"role_id": "application-engineer", "brief": "hypothesis B"},
+            ],
+            child_runner=fake_runner,
+        )
+        self.assertEqual(result["status"], "team_dispatched")
+        self.assertEqual([m["member_index"] for m in result["members"]], [0, 1])
+        self.assertEqual([m["role_id"] for m in result["members"]], ["application-engineer", "application-engineer"])
+
+    def test_write_capable_member_requires_one_team_wide_confirmation(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        _write_wrapper(self.layout.plugin_file("backend-engineer"), sandbox_mode="workspace-write")
+        members = [
+            {"role_id": "application-engineer", "brief": "read task"},
+            {"role_id": "backend-engineer", "brief": "write task"},
+        ]
+
+        first = self._dispatch(members, mode="scoped-repository-edit")
+        self.assertEqual(first["status"], "confirmation_required")
+        self.assertEqual(len(first["write_capable_members"]), 1)
+        self.assertEqual(first["write_capable_members"][0]["role_id"], "backend-engineer")
+
+        gate = core.TeamConfirmationGate()
+        # Re-derive the same gate instance's pending token by dispatching
+        # through the same gate object rather than the throwaway one from
+        # _dispatch's default kwargs.
+        second_probe = self._dispatch(members, mode="scoped-repository-edit", gate=gate)
+        self.assertEqual(second_probe["status"], "confirmation_required")
+
+        confirmed = self._dispatch(
+            members,
+            mode="scoped-repository-edit",
+            gate=gate,
+            confirmation_token=second_probe["confirmation_token"],
+            child_runner=lambda *a, **k: self._fake_result("done"),
+        )
+        self.assertEqual(confirmed["status"], "team_dispatched")
+        statuses = {member["role_id"]: member["status"] for member in confirmed["members"]}
+        self.assertEqual(statuses, {"application-engineer": "dispatched", "backend-engineer": "dispatched"})
+
+    def test_tampering_with_a_member_after_confirmation_request_invalidates_it(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="workspace-write")
+        gate = core.TeamConfirmationGate()
+        members = [{"role_id": "application-engineer", "brief": "original brief"}]
+        first = self._dispatch(members, mode="scoped-repository-edit", gate=gate)
+        self.assertEqual(first["status"], "confirmation_required")
+
+        tampered_members = [{"role_id": "application-engineer", "brief": "swapped brief"}]
+        result = self._dispatch(
+            tampered_members,
+            mode="scoped-repository-edit",
+            gate=gate,
+            confirmation_token=first["confirmation_token"],
+            child_runner=lambda *a, **k: self.fail("must not run against a tampered team"),
+        )
+        self.assertEqual(result["status"], "denied")
+
+    def test_team_larger_than_the_concurrency_cap_still_completes_by_waiting(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        limiter = core.ConcurrencyLimiter(max_concurrent=1)
+        members = [{"role_id": "application-engineer", "brief": f"task {i}"} for i in range(3)]
+
+        def fake_runner(argv, *, prompt, cwd, env, timeout_seconds):
+            time.sleep(0.02)
+            return self._fake_result("ok")
+
+        result = self._dispatch(members, limiter=limiter, child_runner=fake_runner)
+        self.assertEqual(result["status"], "team_dispatched")
+        self.assertEqual(len(result["members"]), 3)
+        self.assertTrue(all(member["status"] == "dispatched" for member in result["members"]))
+        self.assertEqual(limiter.active, 0)
+
+    def test_single_role_dispatch_is_unaffected_by_team_support(self) -> None:
+        # SC-4 from INTENT-CADRE-TEAM-DISPATCH-001: team support must be
+        # additive. Spot-check here (the full single-role suite above
+        # already covers this exhaustively and passes unmodified).
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        result = core.dispatch_secure_cloud_role(
+            role_id="application-engineer",
+            brief="solo",
+            mode="planning-review-only",
+            classification="internal",
+            project_root=self.layout.project_root,
+            global_agents_root=self.layout.global_root,
+            plugin_agents_root=self.layout.plugin_root,
+            catalog_path=self.layout.catalog_path,
+            parent_classification="internal",
+            audit_path=self.audit_path,
+            limiter=core.ConcurrencyLimiter(),
+            gate=core.ConfirmationGate(),
+            child_runner=lambda *a, **k: self._fake_result("solo-output"),
+        )
+        self.assertEqual(result["status"], "dispatched")
+
+    def test_audit_records_carry_a_shared_team_id_across_members(self) -> None:
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        _write_wrapper(self.layout.plugin_file("backend-engineer"), sandbox_mode="read-only")
+        result = self._dispatch(
+            [
+                {"role_id": "application-engineer", "brief": "a"},
+                {"role_id": "backend-engineer", "brief": "b"},
+            ],
+            child_runner=lambda *a, **k: self._fake_result("ok"),
+        )
+        lines = [json.loads(line) for line in self.audit_path.read_text(encoding="utf-8").splitlines()]
+        team_ids = {entry["team_id"] for entry in lines if "team_id" in entry}
+        self.assertEqual(len(team_ids), 1)
+        self.assertEqual(team_ids.pop(), result["team_id"])
+        decisions = [entry["decision"] for entry in lines]
+        self.assertIn("dispatched", decisions)
+        self.assertIn("team-completed", decisions)
+        # Forbidden keys never leak into any of this team's audit records either.
+        for entry in lines:
+            self.assertTrue(core._FORBIDDEN_AUDIT_KEYS.isdisjoint(entry.keys()))
 
 
 if __name__ == "__main__":

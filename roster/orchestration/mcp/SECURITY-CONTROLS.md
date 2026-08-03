@@ -225,6 +225,100 @@ asserts neither marker appears anywhere in the raw audit file contents.
   exactly this shape) and by `RoleIdValidationTests.test_rejects_path_traversal_shapes`
   for the `role_id` input side of the same defense-in-depth boundary.
 
+## Team dispatch (`dispatch_team`)
+
+Generalizes the single-role mechanism above to more than one member per call,
+waiting for every member to reach a terminal state before returning
+(implements `INTENT-CADRE-TEAM-DISPATCH-001`). Every control above still
+applies per member exactly as documented; this section covers only the
+team-specific additions and how each answers the intent record's OD-5
+questions. `dispatch_secure_cloud_role()` itself, `ConfirmationGate`, and
+`ConcurrencyLimiter.try_acquire()` are untouched by any of this -- team
+support is additive, verified by
+`DispatchTeamTests.test_single_role_dispatch_is_unaffected_by_team_support`
+and the full pre-existing single-role suite passing unmodified.
+
+- **Classification/sandbox narrowing: mechanically enforced, per member
+  independently.** Each member is resolved and narrowed against the same
+  caller-declared `parent_classification` exactly as a single dispatch would
+  be -- there is no team-wide ceiling distinct from each member's own check,
+  and no member can use another member's classification or sandbox as
+  cover. Tested by `DispatchTeamTests.test_missing_parent_classification_is_denied`
+  and the shared `validate_classification()`/`compute_effective_sandbox()`
+  code path (same functions the single-role tests already cover).
+- **Team size cap: mechanically enforced.** `MAX_TEAM_SIZE = 8`; a team
+  larger than this is denied entirely before any member is resolved. This is
+  a conservative v1 constant, not derived from a load test -- revisit if a
+  real team recipe needs more. Tested by
+  `DispatchTeamTests.test_team_over_max_size_is_denied`.
+- **Dispatch-depth guard: same advisory limit as single-role, checked once
+  per team.** `current_dispatch_depth() >= MAX_DISPATCH_DEPTH` denies the
+  *entire* team before any member is resolved, exactly like a single
+  dispatch; each spawned child still receives `depth + 1` in its own
+  environment. This does **not** add a separate total-fan-out cap beyond
+  `MAX_TEAM_SIZE` -- a team dispatch at depth 0 can cause up to 8 children to
+  run, same honest limitation as the single-role depth guard above (advisory
+  against a well-behaved child, not enforceable against one with its own
+  code-execution authority).
+- **Confirmation gating: mechanically enforced, one team-wide token covering
+  every member.** `TeamConfirmationGate` mirrors `ConfirmationGate`'s
+  single-use, TTL-bound, exact-match mechanism, but its bound subject is the
+  ordered tuple of *every* member's `(role_id, brief_hash, mode,
+  classification, effective_sandbox)` -- not only the write-capable ones --
+  so altering any member (including a read-only one) after the first call
+  invalidates the token. The `confirmation_required` response explicitly
+  lists which members are write-capable (`write_capable_members`), so a
+  human reviewing it sees exactly what they're approving rather than an
+  opaque "this team needs confirmation." Tested by
+  `TeamConfirmationGateTests` and
+  `DispatchTeamTests.test_write_capable_member_requires_one_team_wide_confirmation`
+  / `test_tampering_with_a_member_after_confirmation_request_invalidates_it`.
+  Same honest limit as the single-role gate: this proves the two calls
+  matched, not that a human actually read the intermediate response.
+- **Concurrency: mechanically enforced, shared with single-role dispatch,
+  blocking instead of immediate-deny.** Team members acquire the *same*
+  `ConcurrencyLimiter` instance/pool single-role dispatch uses -- there is no
+  separate team-scoped cap -- but via a new `acquire(timeout=...)` method
+  that blocks until a slot frees (or the dispatch timeout elapses), rather
+  than `try_acquire()`'s immediate denial. This is deliberate: a team can
+  exceed `MAX_CONCURRENT_CHILDREN` by design (`routing.yaml`'s
+  `competing-hypotheses-debugging` recipe allows up to 4 instances against a
+  default cap of 3), and immediate denial would make dispatching any such
+  team larger than the global cap unusable. `try_acquire()` itself is
+  unchanged. Tested by `ConcurrencyLimiterBlockingAcquireTests` (waits for a
+  released slot; times out when none frees) and
+  `DispatchTeamTests.test_team_larger_than_the_concurrency_cap_still_completes_by_waiting`.
+- **Audit logging: mechanically enforced, one record per member plus one
+  team-summary record, correlated by `team_id`.** Every member's audit
+  record (`decision="dispatched"`/`"denied"`/`"unavailable"`) carries
+  `team_id`, `team_size`, and `team_member_index` alongside the same fields a
+  single dispatch's record would have; one additional record with
+  `decision="team-completed"` (or `"team-denied"`/`"team-unavailable"` for a
+  whole-team-level failure before any member is resolved) is written once
+  every member reaches a terminal state, with a `status_counts` summary.
+  `_FORBIDDEN_AUDIT_KEYS`'s redaction assertion applies identically -- team
+  support introduces no new audit fields that could carry secret-shaped
+  content. Tested by
+  `DispatchTeamTests.test_audit_records_carry_a_shared_team_id_across_members`.
+- **A concurrency bug found and fixed while building this feature:**
+  `_ensure_audit_log_path()`'s `os.path.lexists()` check followed by an
+  `O_CREAT | O_EXCL` open was not itself race-safe -- two threads (team
+  members write audit records concurrently) could both observe the file
+  absent and both attempt the exclusive create, and the loser raised
+  `FileExistsError` uncaught, silently killing that member's thread before
+  it recorded a result (surfaced as an intermittent `None` entry in
+  `dispatch_team`'s results list during this feature's own test
+  development). Fixed by catching `FileExistsError` from the losing thread's
+  create attempt and treating it as success (the file exists with the
+  correct mode either way); still `O_EXCL`, not `O_CREAT` alone, so a
+  pre-placed symlink at this path is refused exactly as before. This bug
+  predates team dispatch (the same race was always theoretically reachable
+  from concurrent single-role dispatches sharing one audit path) but was
+  never exercised by a test until team dispatch's genuine multi-threaded
+  writes made it happen routinely; the single-role test suite gained no new
+  regression coverage for it specifically because the fix is in the shared
+  `_ensure_audit_log_path()` path both call.
+
 ## Not covered above
 
 M-2 (hash-pinning the `mcp` dependency in `requirements-mcp.txt`) and M-3

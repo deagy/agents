@@ -45,7 +45,7 @@ if str(SRC_ROOT) not in sys.path:
 
 from routing import parse_catalog_entries  # noqa: E402  (sys.path set above, matching test_selector.py's convention)
 
-CATALOG_PATH = REPOSITORY_ROOT / "agents" / "catalog.yaml"
+CATALOG_PATH = REPOSITORY_ROOT / "roster" / "catalog.yaml"
 PLUGIN_CODEX_AGENTS_ROOT = REPOSITORY_ROOT / "plugins" / "cadre" / "codex-agents"
 
 ROLE_ID_PATTERN = re.compile(r"^[a-z0-9-]+$")
@@ -618,23 +618,48 @@ class ConfirmationGate:
 class ConcurrencyLimiter:
     def __init__(self, max_concurrent: int = MAX_CONCURRENT_CHILDREN) -> None:
         self._max = max_concurrent
-        self._lock = threading.Lock()
+        self._condition = threading.Condition()
         self._active = 0
 
     def try_acquire(self) -> bool:
-        with self._lock:
+        """Non-blocking: used by single-role dispatch, unchanged from before
+        team support existed. Immediate denial on a full pool is correct
+        there because a single dispatch has no "wait" semantics to offer."""
+        with self._condition:
             if self._active >= self._max:
                 return False
             self._active += 1
             return True
 
+    def acquire(self, timeout: float | None = None) -> bool:
+        """Blocking variant used only by team dispatch: waits for a free
+        slot in the same shared pool `try_acquire()` guards, instead of
+        failing immediately. A team of N members can exceed
+        MAX_CONCURRENT_CHILDREN by design (e.g. routing.yaml's
+        `competing-hypotheses-debugging` team recipe allows up to 4
+        instances against a default cap of 3) -- immediate denial would make
+        dispatching any such team larger than the global cap unusable.
+        Returns False if no slot freed within `timeout` seconds (None waits
+        indefinitely). Single-role dispatch never calls this.
+        """
+        deadline = None if timeout is None else time.monotonic() + timeout
+        with self._condition:
+            while self._active >= self._max:
+                remaining = None if deadline is None else deadline - time.monotonic()
+                if remaining is not None and remaining <= 0:
+                    return False
+                self._condition.wait(timeout=remaining)
+            self._active += 1
+            return True
+
     def release(self) -> None:
-        with self._lock:
+        with self._condition:
             self._active = max(0, self._active - 1)
+            self._condition.notify()
 
     @property
     def active(self) -> int:
-        with self._lock:
+        with self._condition:
             return self._active
 
 
@@ -851,8 +876,20 @@ def _ensure_audit_log_path(path: Path = AUDIT_LOG_PATH) -> Path:
     except OSError:
         pass
     if not os.path.lexists(path):
-        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | _nofollow_flag(), 0o600)
-        os.close(descriptor)
+        try:
+            descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | _nofollow_flag(), 0o600)
+        except FileExistsError:
+            # Two threads (team dispatch writes audit records concurrently
+            # from multiple members) can both observe lexists() == False and
+            # both attempt the O_CREAT|O_EXCL open; the loser here lost only
+            # the race to create the file, not a real error -- the file
+            # exists with the right mode either way, created by whichever
+            # thread won. Still O_EXCL (not O_CREAT alone) so a symlink an
+            # attacker pre-placed at this path is refused exactly as before,
+            # never silently followed.
+            pass
+        else:
+            os.close(descriptor)
     return path
 
 
@@ -1062,3 +1099,399 @@ def dispatch_secure_cloud_role(
         return _deny(str(error))
     except DispatchUnavailable as error:
         return _unavailable(str(error))
+
+
+# ---------------------------------------------------------------------------
+# Team dispatch: more than one role at a time, one wait-for-all response.
+#
+# Generalizes the single-role mechanism above rather than replacing it --
+# dispatch_secure_cloud_role() and everything it depends on (ConfirmationGate,
+# the non-blocking ConcurrencyLimiter.try_acquire(), single-role audit shape)
+# is untouched by anything below, so existing single-role behavior and tests
+# cannot regress as a side effect of adding team support.
+#
+# Design decisions made explicit here because they were left open in the
+# product-intent record this feature implements (INTENT-CADRE-TEAM-DISPATCH-001,
+# OD-5) -- these are v1 answers, not the only defensible ones, and should be
+# revisited by SECURITY-CONTROLS.md review, not assumed permanent:
+#   - Classification/sandbox: each member is narrowed independently against
+#     the same caller-declared parent_classification (no team-wide ceiling
+#     distinct from each member's own check).
+#   - Dispatch-depth guard: checked once for the whole team at entry (a team
+#     dispatch from an already-at-max-depth child is denied entirely, before
+#     any member is resolved); each spawned child still gets depth+1 in its
+#     own environment exactly as a single dispatch does, so no member can
+#     itself re-dispatch. This does not add a separate total-fan-out cap
+#     beyond MAX_TEAM_SIZE below.
+#   - Confirmation gating: ONE team-wide confirmation, bound to every
+#     member's (role_id, brief_hash, mode, classification, effective_sandbox)
+#     tuple in order (not just the write-capable ones), so a human approves
+#     the whole team as a reviewed unit and any post-request tampering with
+#     any member -- including a read-only one -- invalidates the token. The
+#     confirmation_required response lists exactly which members are
+#     write-capable, addressing the intent record's concern that a single
+#     opaque team token could mask which members actually need write access.
+#   - Concurrency: team members share the *same* global ConcurrencyLimiter
+#     instance/pool as single-role dispatch (no separate team-scoped cap),
+#     but acquire it via the new blocking acquire() rather than try_acquire(),
+#     so a team larger than MAX_CONCURRENT_CHILDREN queues instead of failing.
+#   - Audit: one record per member (same shape as a single dispatch, plus
+#     team_id/team_size/team_member_index for correlation), plus one
+#     team-level summary record once every member reaches a terminal state.
+# ---------------------------------------------------------------------------
+
+MAX_TEAM_SIZE = 8
+
+
+@dataclasses.dataclass(frozen=True)
+class TeamMember:
+    role_id: str
+    brief: str
+
+
+def _member_subject_tuple(
+    role_id: str, brief: str, mode: str, classification: str, effective_sandbox: str
+) -> tuple[str, str, str, str, str]:
+    return (role_id, hashlib.sha256(brief.encode("utf-8")).hexdigest(), mode, classification, effective_sandbox)
+
+
+@dataclasses.dataclass
+class _PendingTeamConfirmation:
+    subject: tuple[tuple[str, str, str, str, str], ...]
+    created_monotonic: float
+
+
+class TeamConfirmationGate:
+    """Same single-use, TTL-bound token mechanism as ConfirmationGate
+    (see its docstring for the exact two-call mechanism), but the subject
+    is the whole ordered team rather than one role. Kept as a distinct class
+    -- rather than generalizing ConfirmationGate itself -- so the existing
+    single-role gate's tested behavior is provably untouched by team support.
+    """
+
+    def __init__(self, ttl_seconds: float = CONFIRMATION_TTL_SECONDS) -> None:
+        self._ttl = ttl_seconds
+        self._lock = threading.Lock()
+        self._pending: dict[str, _PendingTeamConfirmation] = {}
+
+    def _purge_expired_locked(self) -> None:
+        now = time.monotonic()
+        expired = [token for token, pending in self._pending.items() if now - pending.created_monotonic > self._ttl]
+        for token in expired:
+            del self._pending[token]
+
+    def request(self, subject: tuple[tuple[str, str, str, str, str], ...]) -> str:
+        with self._lock:
+            self._purge_expired_locked()
+            token = secrets.token_urlsafe(32)
+            self._pending[token] = _PendingTeamConfirmation(subject=subject, created_monotonic=time.monotonic())
+            return token
+
+    def consume(self, token: str | None, subject: tuple[tuple[str, str, str, str, str], ...]) -> None:
+        if not token:
+            raise DispatchDenied(
+                "confirmation_token is required for a team dispatch with at least one write-capable member"
+            )
+        with self._lock:
+            self._purge_expired_locked()
+            pending = self._pending.pop(token, None)
+        if pending is None:
+            raise DispatchDenied("confirmation_token is unknown, expired, or already used")
+        if pending.subject != subject:
+            raise DispatchDenied("confirmation_token does not match the confirmed team's members")
+
+    def pending_count(self) -> int:
+        with self._lock:
+            self._purge_expired_locked()
+            return len(self._pending)
+
+
+def _resolve_member_for_team(
+    role_id: str,
+    brief: str,
+    mode: str,
+    classification: str,
+    parent_classification: str,
+    *,
+    project_root: Path,
+    global_agents_root: Path | None,
+    plugin_agents_root: Path,
+    catalog_path: Path,
+) -> tuple[ResolvedRole, str, str]:
+    """Resolve one team member's role file and effective sandbox without
+    spawning, gating, or auditing -- used only to build the team-wide
+    write-capability picture before the single team confirmation decision.
+    Raises DispatchDenied/DispatchUnavailable exactly like the single-role
+    path's equivalent checks. Returns (role, classification, effective_sandbox).
+    """
+    if not isinstance(brief, str) or len(brief.encode("utf-8")) > MAX_BRIEF_BYTES:
+        raise DispatchDenied(f"brief must be a string within a {MAX_BRIEF_BYTES}-byte cap for role_id {role_id!r}")
+    classification = validate_classification(classification, parent_classification)
+    role = resolve_role_file(
+        role_id,
+        project_root=project_root,
+        global_root=global_agents_root,
+        plugin_root=plugin_agents_root,
+        catalog_path=catalog_path,
+        mode=mode,
+    )
+    effective_sandbox, _decision = compute_effective_sandbox(mode, role.sandbox_mode)
+    return role, classification, effective_sandbox
+
+
+_DEFAULT_TEAM_LIMITER = _DEFAULT_LIMITER
+_DEFAULT_TEAM_GATE = TeamConfirmationGate()
+
+
+def dispatch_team(
+    members: list[dict[str, Any]],
+    mode: str,
+    classification: str,
+    confirmation_token: str | None = None,
+    *,
+    task_id: str | None = None,
+    session_id: str | None = None,
+    project_root: Path | None = None,
+    global_agents_root: Path | None = None,
+    plugin_agents_root: Path = PLUGIN_CODEX_AGENTS_ROOT,
+    catalog_path: Path = CATALOG_PATH,
+    parent_classification: str | None = None,
+    limiter: ConcurrencyLimiter | None = None,
+    gate: TeamConfirmationGate | None = None,
+    audit_path: Path | None = None,
+    timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
+    child_runner: ChildRunner = spawn_and_wait,
+    max_team_size: int = MAX_TEAM_SIZE,
+) -> dict[str, Any]:
+    """Dispatch every member of `members` (each `{"role_id": str, "brief": str}`,
+    duplicates of the same role_id allowed -- e.g. several debugging-engineer
+    instances pursuing distinct hypotheses, matching routing.yaml's
+    `competing-hypotheses-debugging` team recipe shape) and return only once
+    every member has reached a terminal state (dispatched, denied,
+    unavailable). See module-level comment above for the exact team-aware
+    behavior of each single-role safety control.
+    """
+    limiter = limiter or _DEFAULT_TEAM_LIMITER
+    gate = gate or _DEFAULT_TEAM_GATE
+    resolved_project_root = (project_root or Path.cwd()).resolve()
+    team_id = secrets.token_hex(8)
+
+    team_audit_base: dict[str, Any] = {"task_id": task_id, "session_id": session_id, "team_id": team_id}
+
+    def _team_deny(message: str, **extra: Any) -> dict[str, Any]:
+        write_audit_record(
+            build_audit_record(**team_audit_base, decision="team-denied", reason=message, **extra), path=audit_path
+        )
+        return {"status": "denied", "team_id": team_id, "reason": message}
+
+    def _team_unavailable(message: str, **extra: Any) -> dict[str, Any]:
+        write_audit_record(
+            build_audit_record(**team_audit_base, decision="team-unavailable", reason=message, **extra),
+            path=audit_path,
+        )
+        return {"status": "unavailable", "team_id": team_id, "reason": message}
+
+    if current_dispatch_depth() >= MAX_DISPATCH_DEPTH:
+        return _team_deny("maximum dispatch depth exceeded; a child spawned by this tool may not re-dispatch")
+
+    if not members:
+        return _team_deny("a team dispatch requires at least one member")
+    if len(members) > max_team_size:
+        return _team_deny(f"team of {len(members)} members exceeds the {max_team_size}-member cap")
+    for entry in members:
+        if not isinstance(entry, dict) or not isinstance(entry.get("role_id"), str) or not isinstance(
+            entry.get("brief"), str
+        ):
+            return _team_deny("every team member must be a {\"role_id\": str, \"brief\": str} object")
+
+    if parent_classification is None:
+        return _team_deny(
+            "parent classification is not available to this server; the caller "
+            f"must set {PARENT_CLASSIFICATION_ENV_VAR} before dispatch is usable"
+        )
+
+    resolved_members: list[tuple[TeamMember, ResolvedRole, str, str]] = []
+    for index, entry in enumerate(members):
+        role_id = entry["role_id"]
+        brief = entry["brief"]
+        try:
+            validate_role_id(role_id)
+            known_ids = load_known_role_ids(catalog_path)
+            if role_id not in known_ids:
+                raise DispatchDenied(f"role_id is not present in {catalog_path}: {role_id!r}")
+            role, member_classification, effective_sandbox = _resolve_member_for_team(
+                role_id,
+                brief,
+                mode,
+                classification,
+                parent_classification,
+                project_root=resolved_project_root,
+                global_agents_root=global_agents_root,
+                plugin_agents_root=plugin_agents_root,
+                catalog_path=catalog_path,
+            )
+        except DispatchDenied as error:
+            return _team_deny(str(error), member_index=index, role_id=role_id)
+        except DispatchUnavailable as error:
+            return _team_unavailable(str(error), member_index=index, role_id=role_id)
+        resolved_members.append((TeamMember(role_id=role_id, brief=brief), role, member_classification, effective_sandbox))
+
+    subject = tuple(
+        _member_subject_tuple(member.role_id, member.brief, mode, member_classification, effective_sandbox)
+        for member, _role, member_classification, effective_sandbox in resolved_members
+    )
+    write_capable_indices = [
+        index
+        for index, (_member, _role, _classification, effective_sandbox) in enumerate(resolved_members)
+        if effective_sandbox in WRITE_CAPABLE_SANDBOX_MODES
+    ]
+
+    if write_capable_indices and confirmation_token is None:
+        token = gate.request(subject)
+        write_audit_record(
+            build_audit_record(
+                **team_audit_base,
+                decision="team-confirmation-required",
+                team_size=len(resolved_members),
+                write_capable_role_ids=[resolved_members[i][0].role_id for i in write_capable_indices],
+            ),
+            path=audit_path,
+        )
+        return {
+            "status": "confirmation_required",
+            "team_id": team_id,
+            "confirmation_token": token,
+            "expires_in_seconds": CONFIRMATION_TTL_SECONDS,
+            "write_capable_members": [
+                {"member_index": i, "role_id": resolved_members[i][0].role_id} for i in write_capable_indices
+            ],
+            "message": (
+                f"This team dispatch would give {len(write_capable_indices)} of "
+                f"{len(resolved_members)} member(s) a write-capable sandbox. Call "
+                "dispatch_team again with the identical members/mode/classification "
+                "plus this confirmation_token to proceed."
+            ),
+        }
+
+    if write_capable_indices:
+        try:
+            gate.consume(confirmation_token, subject)
+        except DispatchDenied as error:
+            return _team_deny(str(error))
+
+    results: list[dict[str, Any] | None] = [None] * len(resolved_members)
+    threads: list[threading.Thread] = []
+
+    def _run_member(index: int, member: TeamMember, role: ResolvedRole, effective_sandbox: str) -> None:
+        member_audit_base = {
+            **team_audit_base,
+            "role_id": member.role_id,
+            "team_size": len(resolved_members),
+            "team_member_index": index,
+        }
+        acquired = limiter.acquire(timeout=timeout_seconds)
+        if not acquired:
+            write_audit_record(
+                build_audit_record(
+                    **member_audit_base,
+                    decision="denied",
+                    reason=f"timed out waiting for a concurrency slot (limit {MAX_CONCURRENT_CHILDREN})",
+                ),
+                path=audit_path,
+            )
+            results[index] = {
+                "member_index": index,
+                "role_id": member.role_id,
+                "status": "denied",
+                "reason": f"timed out waiting for a concurrency slot (limit {MAX_CONCURRENT_CHILDREN})",
+            }
+            return
+        try:
+            depth = current_dispatch_depth() + 1
+            child_env = build_child_env(depth)
+            argv = build_child_argv(role, effective_sandbox, resolved_project_root)
+            prompt = compose_prompt(role.developer_instructions, member.brief)
+            try:
+                result = child_runner(
+                    argv,
+                    prompt=prompt,
+                    cwd=resolved_project_root,
+                    env=child_env,
+                    timeout_seconds=timeout_seconds,
+                )
+            except DispatchUnavailable as error:
+                write_audit_record(
+                    build_audit_record(**member_audit_base, decision="unavailable", reason=str(error)),
+                    path=audit_path,
+                )
+                results[index] = {
+                    "member_index": index,
+                    "role_id": member.role_id,
+                    "status": "unavailable",
+                    "reason": str(error),
+                }
+                return
+        finally:
+            limiter.release()
+
+        write_audit_record(
+            build_audit_record(
+                **member_audit_base,
+                decision="dispatched",
+                resolved_path=str(role.path),
+                resolution_tier=role.tier,
+                model=role.model,
+                instructions_sha256=role.instructions_sha256,
+                mode=mode,
+                effective_sandbox=effective_sandbox,
+                child_pid=result["pid"],
+                exit_status=result["exit_code"],
+                timed_out=result["timed_out"],
+                duration_seconds=result["duration_seconds"],
+                stdout_truncated=result["stdout_truncated"],
+                project_tier_git_clean=role.project_tier_git_clean,
+            ),
+            path=audit_path,
+        )
+        results[index] = {
+            "member_index": index,
+            "role_id": member.role_id,
+            "status": "dispatched",
+            "resolution_tier": role.tier,
+            "model": role.model,
+            "effective_sandbox": effective_sandbox,
+            "child_pid": result["pid"],
+            "exit_status": result["exit_code"],
+            "timed_out": result["timed_out"],
+            "duration_seconds": result["duration_seconds"],
+            "stdout_truncated": result["stdout_truncated"],
+            "output": wrap_untrusted_output(result.get("stdout_text", "")),
+        }
+
+    for index, (member, role, _classification, effective_sandbox) in enumerate(resolved_members):
+        thread = threading.Thread(target=_run_member, args=(index, member, role, effective_sandbox), daemon=True)
+        threads.append(thread)
+        thread.start()
+
+    for thread in threads:
+        thread.join()
+
+    status_counts: dict[str, int] = {}
+    for entry in results:
+        status_counts[entry["status"]] = status_counts.get(entry["status"], 0) + 1
+
+    write_audit_record(
+        build_audit_record(
+            **team_audit_base,
+            decision="team-completed",
+            team_size=len(resolved_members),
+            status_counts=status_counts,
+        ),
+        path=audit_path,
+    )
+
+    return {
+        "status": "team_dispatched",
+        "team_id": team_id,
+        "members": results,
+    }
