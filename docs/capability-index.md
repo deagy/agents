@@ -1,6 +1,6 @@
 # Capability index
 
-This page lists all 70 roles from [`agents/catalog.yaml`](../agents/catalog.yaml)
+This page lists all 71 roles from [`agents/catalog.yaml`](../agents/catalog.yaml)
 grouped by their `capability` and `phase` fields, so you can find every role
 in a given class of change authority (for example, every role that can only
 review, or every role that can operate a live environment) or every role
@@ -54,7 +54,7 @@ Reads and evaluates only; produces findings, decision packages, or approvals but
 | supply-chain-security-reviewer | review | [AGENT.md](../agents/review/supply-chain-security-reviewer/AGENT.md) |
 | system-architect-aide | authority | [AGENT.md](../agents/authority/system-architect-aide/AGENT.md) |
 
-### `document_author` (20 roles)
+### `document_author` (21 roles)
 
 Creates or edits documents, plans, and requirements (not application code).
 
@@ -75,6 +75,7 @@ Creates or edits documents, plans, and requirements (not application code).
 | ip-provenance-agent | evidence | [AGENT.md](../agents/documentation/ip-provenance-agent/AGENT.md) |
 | premortem | planning | [AGENT.md](../agents/planning/premortem/AGENT.md) |
 | product-intent-agent | planning | [AGENT.md](../agents/planning/product-intent-agent/AGENT.md) |
+| quantum-timing-assurance-engineer | security | [AGENT.md](../agents/security/quantum-timing-assurance-engineer/AGENT.md) |
 | requirements-agent | planning | [AGENT.md](../agents/planning/requirements-agent/AGENT.md) |
 | support-triage-agent | support | [AGENT.md](../agents/support/support-triage-agent/AGENT.md) |
 | technical-writer | document | [AGENT.md](../agents/documentation/technical-writer/AGENT.md) |
@@ -154,12 +155,13 @@ grouping instead.
 | interaction-designer | document_author | [AGENT.md](../agents/architecture/interaction-designer/AGENT.md) |
 | threat-modeler | document_author | [AGENT.md](../agents/architecture/threat-modeler/AGENT.md) |
 
-### `security` (3 roles)
+### `security` (4 roles)
 
 | Role | Capability | Definition |
 | --- | --- | --- |
 | cryptographic-assurance-engineer | document_author | [AGENT.md](../agents/security/cryptographic-assurance-engineer/AGENT.md) |
 | policy-as-code-engineer | code_author | [AGENT.md](../agents/security/policy-as-code-engineer/AGENT.md) |
+| quantum-timing-assurance-engineer | document_author | [AGENT.md](../agents/security/quantum-timing-assurance-engineer/AGENT.md) |
 | secrets-identity-engineer | code_author | [AGENT.md](../agents/security/secrets-identity-engineer/AGENT.md) |
 
 ### `build` (6 roles)

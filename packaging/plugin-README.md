@@ -1,6 +1,6 @@
 # Cadre plugin
 
-The installable Claude Code / Codex CLI distribution of **Cadre**: 70
+The installable Claude Code / Codex CLI distribution of **Cadre**: 71
 specialist roles, nine suite skills, the orchestration runtime, the
 knowledge-store runtime, and an external Agentic SDLC provider
 (`provider.json` is the versioned source of truth — see `version` and
@@ -41,7 +41,7 @@ codex plugin add cadre@cadre-team
 ```
 
 **Verify before installing** (optional, recommended for anything you did not
-build yourself — this drops 70 role-instruction files and a `bin/cadre` onto
+build yourself — this drops 71 role-instruction files and a `bin/cadre` onto
 your `PATH` at user scope). See [Verifying a
 release](#verifying-a-release):
 
@@ -51,6 +51,30 @@ gh attestation verify cadre-plugin-v0.13.0.tar.gz --repo deagy/cadre-plugin
 tar xzf cadre-plugin-v0.13.0.tar.gz
 codex plugin marketplace add ./cadre-plugin   # or /plugin marketplace add ./cadre-plugin
 ```
+
+**Cline** installs the hand-authored `cline/` plugin (the single `agents_select`
+tool; see that directory's own notes on what it can and can't do) from a git
+source:
+
+```sh
+cline plugin install --git https://github.com/deagy/cadre-plugin --force
+```
+
+or from a local checkout for development:
+
+```sh
+git clone --branch v0.13.0 https://github.com/deagy/cadre-plugin.git
+cline plugin install /path/to/cadre-plugin --force
+```
+
+If `agents_select` doesn't show up in a session after installing or updating
+the plugin, it is very likely **not** a plugin problem: Cline's local `cline
+hub` daemon enumerates installed plugins once, at its own startup, and does
+not notice plugins installed or changed afterward. Check for this with
+`cline doctor` (an `agents_select`-less session alongside a `hub uptime`
+older than the plugin's install time is the signature) and clear it with
+`cline doctor fix`, which restarts the daemon so it re-scans
+`~/.cline/plugins/_installed/`.
 
 ### The lifecycle kernel
 
@@ -157,7 +181,7 @@ are outside it and need ordinary review.
 
 ## Verifying a release
 
-Installing this plugin puts 70 role-instruction files and a `bin/cadre` onto
+Installing this plugin puts 71 role-instruction files and a `bin/cadre` onto
 `PATH` at user scope in your agent session, so it is worth checking what you
 are installing came from the build you expect. Cloning gives you commit
 integrity; it says nothing about which workflow produced the content.

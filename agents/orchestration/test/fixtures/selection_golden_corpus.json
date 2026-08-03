@@ -14,10 +14,11 @@
     "A route/keyword edit that changes any of these fields must update this",
     "file in the same reviewable diff (see CLAUDE.md/AGENTS.md and B-FR-6).",
     "",
-    "Coverage: this corpus covers all 31 route categories defined in",
+    "Coverage: this corpus covers all 32 route categories defined in",
     "routing.yaml's routes[] array as of the review that added this note",
     "(product-intent, requirements-baseline, governance-planning,",
-    "data-governance, cryptographic-assurance, runtime-assurance,",
+    "data-governance, cryptographic-assurance, quantum-timing-assurance,",
+    "runtime-assurance,",
     "agent-suite-governance, orchestration, frontend, backend,",
     "infrastructure, pipeline, testing, debugging, black-box-testing,",
     "end-user-testing, performance-testing, chaos-resilience, support,",
@@ -455,6 +456,57 @@
         ],
         "matched_routes": [
           "cryptographic-assurance"
+        ]
+      }
+    },
+    {
+      "id": "QUANTUM-TIMING-ASSURANCE-1",
+      "description": "quantum-timing-assurance route; authored to isolate the route",
+      "task": "Assess entanglement fidelity and timing stratum thresholds for physical trust",
+      "changed_files": [
+        "security/quantum-timing/telemetry.yaml"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-QUANTUM-TIMING-ASSURANCE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "quantum-timing-assurance-engineer"
+        ],
+        "reviewers": [
+          "cryptographic-assurance-engineer"
+        ],
+        "support": [
+          "threat-modeler"
+        ],
+        "matched_routes": [
+          "quantum-timing-assurance"
+        ]
+      }
+    },
+    {
+      "id": "QUANTUM-TIMING-ASSURANCE-2",
+      "description": "bare 'qkd' phrasing; both cryptographic-assurance and quantum-timing-assurance match because both routes' keywords include 'qkd', a genuine overlap in routing.yaml -- a plain QKD question must reach both the crypto-posture role and the physical-trust role, not just one",
+      "task": "Assess whether our QKD hardware readings are trustworthy",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-QUANTUM-TIMING-ASSURANCE-2",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "cryptographic-assurance-engineer",
+          "quantum-timing-assurance-engineer"
+        ],
+        "reviewers": [
+          "security-reviewer"
+        ],
+        "support": [
+          "threat-modeler",
+          "secrets-identity-engineer"
+        ],
+        "matched_routes": [
+          "cryptographic-assurance",
+          "quantum-timing-assurance"
         ]
       }
     },

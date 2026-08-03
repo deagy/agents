@@ -1,6 +1,6 @@
 # Role index
 
-This index is a human-readable view of the 70 roles in
+This index is a human-readable view of the 71 roles in
 [`agents/catalog.yaml`](../agents/catalog.yaml). The catalog and each linked
 `AGENT.md` remain authoritative.
 
@@ -35,6 +35,7 @@ tier, route, quality gate, human gate, ...), see the
 | interaction-designer | design | Own user-facing interaction/UX design, flow states, and accessibility intent upstream of implementation. | [AGENT.md](../agents/architecture/interaction-designer/AGENT.md) |
 | data-governance-engineer | design | Define classification, ownership, lineage, residency, retention, and deletion requirements. | [AGENT.md](../agents/data/data-governance-engineer/AGENT.md) |
 | cryptographic-assurance-engineer | security | Assess cryptographic inventory, algorithms, keys, certificates, and agility. | [AGENT.md](../agents/security/cryptographic-assurance-engineer/AGENT.md) |
+| quantum-timing-assurance-engineer | security | Validate that physical measurements from quantum and timing sources are trustworthy enough to act on. | [AGENT.md](../agents/security/quantum-timing-assurance-engineer/AGENT.md) |
 | secrets-identity-engineer | security | Review secrets, workload identity, credentials, RBAC, and access boundaries. | [AGENT.md](../agents/security/secrets-identity-engineer/AGENT.md) |
 | policy-as-code-engineer | security | Design machine-enforced guardrails for infrastructure and delivery policy. | [AGENT.md](../agents/security/policy-as-code-engineer/AGENT.md) |
 | database-reliability-engineer | operations | Assess PostgreSQL reliability, migrations, backups, recovery, and performance risk. | [AGENT.md](../agents/data/database-reliability-engineer/AGENT.md) |

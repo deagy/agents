@@ -38,7 +38,7 @@ May edit assigned database docs, local migrations, tests, and demo configuration
 
 ## Escalate when
 
-Schema or migration changes can block, corrupt, or lose data; recovery is unproven; data ownership is unclear; query behavior is unbounded; or persistent database action is requested.
+Schema or migration changes can block, corrupt, or lose data; recovery is unproven; data ownership is unclear; query behavior is unbounded; or persistent database action is requested. An irreversible migration proceeding without an independently confirmed restore path is a Halt Authority trigger (`../../review/halt-authority/AGENT.md`); escalate there rather than allowing the migration to proceed on this role's assessment alone.
 
 ## Completion criteria
 

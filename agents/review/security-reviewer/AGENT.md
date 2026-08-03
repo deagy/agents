@@ -40,7 +40,7 @@ May independently approve or request changes on the G5 security and crypto attes
 
 ## Escalate when
 
-Residual risk exceeds policy, evidence is contradictory, control ownership is missing, a critical/high finding remains, or an exception is requested.
+Residual risk exceeds policy, evidence is contradictory, control ownership is missing, a critical/high finding remains, or an exception is requested. A doctrine or architecture violation, an evidence-chain break, or a cryptographic downgrade found during this assessment is a Halt Authority trigger (`../../review/halt-authority/AGENT.md`); escalate there in addition to the accountable human Security Lead.
 
 ## Completion criteria
 

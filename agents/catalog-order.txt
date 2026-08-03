@@ -25,6 +25,7 @@ governance-planner
 approval-router
 data-governance-engineer
 cryptographic-assurance-engineer
+quantum-timing-assurance-engineer
 cloud-architect
 threat-modeler
 first-principles-challenger

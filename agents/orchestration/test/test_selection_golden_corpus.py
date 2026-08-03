@@ -38,7 +38,7 @@ routing.yaml edit that adds or removes a route category is itself a failure
 here (an added route needs a new fixture; a removed route needs the
 corresponding fixture(s) pruned) instead of the assertion silently going
 stale. As of the review that added this docstring note the corpus covers
-all 31 route categories (see the fixtures file's _comment block for the
+all 32 route categories (see the fixtures file's _comment block for the
 full enumeration and the rationale for cases where two routes' paths or
 keywords genuinely overlap), matching B-FR-5's "initial corpus covers every
 existing route category" requirement. The same test also requires the

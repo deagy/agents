@@ -583,6 +583,16 @@ class SelectorTests(unittest.TestCase):
             set(crypto["agents"]["primary"]).isdisjoint(crypto["agents"]["reviewers"])
         )
 
+    def test_selects_quantum_timing_assurance_specialist_narrowly(self) -> None:
+        result = plan(task="Assess entanglement fidelity and timing stratum thresholds for physical trust", changed_files=[])
+
+        self.assertIn("quantum-timing-assurance-engineer", result["agents"]["primary"])
+        self.assertIn("cryptographic-assurance-engineer", result["agents"]["reviewers"])
+        self.assertIn("threat-modeler", result["agents"]["support"])
+        self.assertTrue(
+            set(result["agents"]["primary"]).isdisjoint(result["agents"]["reviewers"])
+        )
+
     def test_selects_authority_aides_narrowly_per_role(self) -> None:
         # `routing.yaml`'s declared quality_gates per route (standalone mode:
         # Agentic SDLC unavailable, gates pass through as declared). When
