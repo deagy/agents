@@ -136,6 +136,7 @@ GENERATED_NESTED_PATHS = ("plugins/lifecycle/skills",)
 SKILL_PACKAGE_TARGETS = {
     "lifecycle-onboarding": "plugins/lifecycle/skills",
     "lifecycle-review": "plugins/lifecycle/skills",
+    "brief-pending-gates": "plugins/lifecycle/skills",
 }
 SHARED_POLICIES = [
     "roster/shared/operating-principles.md",
