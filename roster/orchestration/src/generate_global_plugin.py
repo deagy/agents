@@ -118,6 +118,25 @@ PACKAGE_DEFINITION_PREFIX = "suite/roster/"
 # below is the complement: everything reset_generated_content() removes and
 # files_equal() compares.
 PACKAGE_ASSETS = (".claude-plugin", ".codex-plugin")
+# Some generated content lives *inside* an otherwise hand-authored top-level
+# directory. plugins/lifecycle/ is a hand-authored sub-plugin package (its own
+# manifests, tools/ -- see the plugin repository's own split docs), but
+# plugins/lifecycle/skills/ is populated from this register's .agents/skills/
+# like any other packaged skill (see SKILL_PACKAGE_TARGETS below). Listed as
+# full relative paths, not top-level names, so reset_generated_content() and
+# files_equal() can treat exactly this subtree as generated without also
+# claiming the rest of plugins/lifecycle/ -- or plugins/lifecycle-github/,
+# plugins/lifecycle-gitlab/, which this generator never writes to at all -- is
+# generated too.
+GENERATED_NESTED_PATHS = ("plugins/lifecycle/skills",)
+# Skills whose packaged home is a sub-plugin directory (see
+# GENERATED_NESTED_PATHS), not the package root skills/. Anything not listed
+# here keeps generating to skills/<name>/ as always -- the core role-
+# selection plugin's own skills.
+SKILL_PACKAGE_TARGETS = {
+    "lifecycle-onboarding": "plugins/lifecycle/skills",
+    "lifecycle-review": "plugins/lifecycle/skills",
+}
 SHARED_POLICIES = [
     "roster/shared/operating-principles.md",
     "roster/shared/team-profile.yaml",
@@ -294,6 +313,17 @@ def reset_generated_content(plugin_root: Path) -> None:
     cadre_wrapper = plugin_root / "bin" / "cadre"
     if cadre_wrapper.exists():
         cadre_wrapper.unlink()
+    # Nested generated content (see GENERATED_NESTED_PATHS): reset only the
+    # generated subtree itself, never its hand-authored siblings -- e.g.
+    # plugins/lifecycle/skills/ is removed and regenerated, but
+    # plugins/lifecycle/.claude-plugin/, .codex-plugin/, and tools/ (the
+    # plugin's own manifests and bootstrap tooling) must survive.
+    for relative in GENERATED_NESTED_PATHS:
+        path = plugin_root / relative
+        if path.is_dir():
+            shutil.rmtree(path)
+        elif path.exists():
+            path.unlink()
 
 
 def generate_provider_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -> list[Path]:
@@ -384,7 +414,8 @@ def generate_skill_copies(plugin_root: Path) -> list[Path]:
         skill_file = skill_dir / "SKILL.md"
         if not skill_file.is_file():
             continue
-        target_dir = plugin_root / "skills" / skill_dir.name
+        package_root = Path(SKILL_PACKAGE_TARGETS.get(skill_dir.name, "skills"))
+        target_dir = plugin_root / package_root / skill_dir.name
         for relative_text in sorted(path for path in tracked if path.startswith(f".agents/skills/{skill_dir.name}/")):
             source = REPOSITORY_ROOT / relative_text
             if source.is_symlink():
@@ -395,9 +426,15 @@ def generate_skill_copies(plugin_root: Path) -> list[Path]:
         target = target_dir / "SKILL.md"
         content = target.read_text(encoding="utf-8")
         frontmatter_end = content.find("---", 3) + 3
+        # target_dir sits package_root's depth + 1 (the skill's own directory)
+        # below plugin_root -- e.g. "skills/<name>/" is 2 levels down (the
+        # original, hardcoded "../.."), "plugins/lifecycle/skills/<name>/" is
+        # 4. Computed rather than hardcoded so a SKILL_PACKAGE_TARGETS entry
+        # can never ship a wrong hint.
+        up_levels = "/".join([".."] * (len(package_root.parts) + 1))
         package_note = (
             "\n\n> Packaged suite note: when the current project has no local `roster/` "
-            "tree, resolve suite files under `../../suite/roster/` relative to this "
+            f"tree, resolve suite files under `{up_levels}/suite/roster/` relative to this "
             "`SKILL.md`. The packaged plugin is self-contained; do not look for the "
             "source checkout.\n"
         )
@@ -815,15 +852,24 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
             # copy of it instead. Every file carrying this link sits one level
             # under suite/, so `../README.md` resolves to suite/README.md.
             content = content.replace("../packaging/plugin-README.md", "../README.md")
-            # Skills are packaged at the package root (skills/<name>/), not
-            # under suite/, so a source link into .agents/skills/ would dangle.
-            # Computed per file rather than hardcoded: suite/docs/x.md and
-            # suite/AGENTS.md sit at different depths and need different
-            # prefixes for the same source text.
+            # Skills are packaged at the package root (skills/<name>/) by
+            # default, not under suite/, so a source link into .agents/skills/
+            # would dangle. Computed per file rather than hardcoded:
+            # suite/docs/x.md and suite/AGENTS.md sit at different depths and
+            # need different prefixes for the same source text. Skill-name-
+            # aware (not a flat prefix replace) because SKILL_PACKAGE_TARGETS
+            # retargets some skills (lifecycle-onboarding, lifecycle-review)
+            # into a sub-plugin directory instead -- a link to one of those
+            # must land on its actual packaged location, not skills/.
             to_package_root = os.path.relpath(plugin_root, target.parent).replace(os.sep, "/")
-            
-            content = content.replace("../.agents/skills/", f"{to_package_root}/skills/")
-            content = content.replace("../.claude/skills/", f"{to_package_root}/skills/")
+
+            def _rewrite_skill_link(match: "re.Match[str]") -> str:
+                skill_name = match.group("skill")
+                package_subdir = SKILL_PACKAGE_TARGETS.get(skill_name, "skills")
+                return f"{to_package_root}/{package_subdir}/{skill_name}"
+
+            content = re.sub(r"\.\./\.agents/skills/(?P<skill>[^/]+)", _rewrite_skill_link, content)
+            content = re.sub(r"\.\./\.claude/skills/(?P<skill>[^/]+)", _rewrite_skill_link, content)
             # Not packaged at all (the package ships no changelog, and tests
             # are excluded), so point at the register instead of dangling.
             content = content.replace("](../CHANGELOG.md)", f"]({REGISTER_URL}/blob/main/CHANGELOG.md)")
@@ -868,12 +914,17 @@ def generate_package(catalog: dict[str, dict[str, Any]], plugin_root: Path) -> l
 
 
 def files_equal(left: Path, right: Path) -> bool:
+    nested_generated = tuple(Path(relative) for relative in GENERATED_NESTED_PATHS)
+
     def generated_files(root: Path) -> set[Path]:
         return {
             path.relative_to(root)
             for path in root.rglob("*")
             if path.is_file()
-            and path.relative_to(root).parts[0] in GENERATED_TOP_LEVEL
+            and (
+                path.relative_to(root).parts[0] in GENERATED_TOP_LEVEL
+                or any(path.relative_to(root).is_relative_to(nested) for nested in nested_generated)
+            )
             and "__pycache__" not in path.relative_to(root).parts
             and path.suffix not in (".pyc", ".pyo")
         }

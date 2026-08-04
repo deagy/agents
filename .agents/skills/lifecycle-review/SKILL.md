@@ -14,11 +14,16 @@ behalf. Never show them raw flags or JSON unless they explicitly ask to see
 it. Summarize everything in prose.
 
 `decide` is the kernel's single authoritative decision verb — generic,
-evidence-URI based, not tied to GitHub/GitLab review flows. Prefer it over
+evidence-URI based, not tied to GitHub/GitLab review flows. This skill only
+ever calls `decide`. If the human has a real GitHub PR review or GitLab MR
+approval to cite as their evidence, and the matching forge-specific plugin
+(`cadre-lifecycle-github`/`cadre-lifecycle-gitlab`) is installed, prefer that
+plugin's own review-recording skill for this decision instead — it drives
 `approve-from-github*`/`approve-from-gitlab*` (which require a real platform
-review) and over `invalidate` (a blunt whole-gate-and-downstream reset, not a
-scoped decision) unless the human specifically has a GitHub/GitLab review to
-cite as their evidence — see Step 4.
+review), sourced from the platform review rather than a free-text evidence
+URI. Otherwise use `decide` here (see Step 4). Prefer `decide` over
+`invalidate` either way — `invalidate` is a blunt whole-gate-and-downstream
+reset, not a scoped decision.
 
 ## Before you start
 
@@ -108,8 +113,8 @@ Ask: "What's your basis for this — a document, ticket, or review link I
 should attach as the record of this decision?" This is required; `decide`
 will not run without `--evidence-uri`, and this skill must not fabricate a
 placeholder value on the human's behalf. If they have a real GitHub PR review
-or GitLab MR approval already, prefer routing to `approve-from-github`/
-`approve-from-gitlab` instead (Step 6 note) rather than a generic citation.
+or GitLab MR approval already, and the matching forge plugin is installed,
+prefer that plugin's skill instead of continuing here (see the note above).
 Otherwise accept whatever they give you (a URL, a ticket id, a document
 name) and turn it into a plain evidence URI yourself, e.g. `doc:<what they
 described>` or `ticket:<id>` — tell them what you're recording it as in one
@@ -146,11 +151,6 @@ If the command exits non-zero, translate the `error` message the same way
   question; this gate doesn't need that role's sign-off.
 - `"authority <role> is not assigned"` → this role has no one assigned yet;
   point back at `lifecycle-onboarding`'s Step 4.
-
-If they do have real GitHub/GitLab review evidence (Step 4's note), use
-`approve-from-github`/`approve-from-gitlab` instead of `decide` for that one
-call — both still require the same role/actor resolution as Steps 1-2, just
-sourced from the platform review rather than a free-text evidence URI.
 
 ## Throughout
 

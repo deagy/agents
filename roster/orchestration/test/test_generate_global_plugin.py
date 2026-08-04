@@ -400,5 +400,67 @@ class SharedPolicyOptionalityTests(unittest.TestCase):
         self.assertIn("status: active", inputs["instructions"])
 
 
+class GenerateSkillCopiesPackageTargetTests(unittest.TestCase):
+    """SKILL_PACKAGE_TARGETS lets specific skills (lifecycle-onboarding,
+    lifecycle-review) generate into a sub-plugin directory instead of the
+    package root skills/, so cadre-lifecycle can package them as part of an
+    optional lifecycle plugin. Everything else must be unaffected: wrong
+    depth math here would ship a broken relative-path hint in every ordinary
+    skill's "Packaged suite note", not just the two retargeted ones.
+    """
+
+    def _skill_repo(self, root: Path, skill_name: str, body: str = "content\n") -> None:
+        _init_git_repo(root)
+        _write(root / ".agents" / "skills" / skill_name / "SKILL.md", f"---\nname: {skill_name}\n---\n{body}")
+        subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+        subprocess.run(["git", "-C", str(root), "commit", "-qm", "base"], check=True)
+
+    def test_unmapped_skill_generates_to_package_root_skills_with_two_level_hint(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._skill_repo(root, "ordinary-skill")
+            plugin_root = root / "plugins" / "cadre"
+
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(
+                ggp, "SKILLS_ROOT", root / ".agents" / "skills"
+            ):
+                ggp.generate_skill_copies(plugin_root)
+
+            target = plugin_root / "skills" / "ordinary-skill" / "SKILL.md"
+            self.assertTrue(target.is_file())
+            self.assertIn("../../suite/roster/", target.read_text(encoding="utf-8"))
+
+    def test_mapped_skill_generates_into_its_package_target_with_matching_depth_hint(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._skill_repo(root, "lifecycle-review")
+            plugin_root = root / "plugins" / "cadre"
+
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(
+                ggp, "SKILLS_ROOT", root / ".agents" / "skills"
+            ):
+                ggp.generate_skill_copies(plugin_root)
+
+            old_location = plugin_root / "skills" / "lifecycle-review" / "SKILL.md"
+            new_location = plugin_root / "plugins" / "lifecycle" / "skills" / "lifecycle-review" / "SKILL.md"
+            self.assertFalse(old_location.exists())
+            self.assertTrue(new_location.is_file())
+            self.assertIn("../../../../suite/roster/", new_location.read_text(encoding="utf-8"))
+
+    def test_reset_generated_content_clears_nested_target_without_touching_siblings(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            plugin_root = root / "plugins" / "cadre"
+            stale = plugin_root / "plugins" / "lifecycle" / "skills" / "lifecycle-review" / "SKILL.md"
+            _write(stale, "stale\n")
+            manifest = plugin_root / "plugins" / "lifecycle" / ".claude-plugin" / "plugin.json"
+            _write(manifest, "{}\n")
+
+            ggp.reset_generated_content(plugin_root)
+
+            self.assertFalse(stale.exists())
+            self.assertTrue(manifest.is_file(), "hand-authored sub-plugin manifest must survive a reset")
+
+
 if __name__ == "__main__":
     unittest.main()

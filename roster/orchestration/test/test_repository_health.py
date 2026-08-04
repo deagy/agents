@@ -373,11 +373,23 @@ class RepositoryHealthTests(unittest.TestCase):
                 self.assertIn(f"name: {agent_id}", md_path.read_text(encoding="utf-8"))
                 self.assertIn(f'name = "{codex_id}"', toml_path.read_text(encoding="utf-8"))
 
+        sys.path.insert(0, str(ROOT / "orchestration" / "src"))
+        try:
+            import generate_global_plugin
+        finally:
+            sys.path.pop(0)
+
         skills_root = REPOSITORY_ROOT / ".agents" / "skills"
         for skill_file in skills_root.glob("*/SKILL.md"):
             skill_name = skill_file.parent.name
             with self.subTest(skill=skill_name):
-                packaged_skill = plugin_root / "skills" / skill_name / "SKILL.md"
+                # Most skills package to skills/<name>/; a few (see
+                # SKILL_PACKAGE_TARGETS) retarget into a sub-plugin directory
+                # instead, e.g. lifecycle-onboarding/lifecycle-review into
+                # plugins/lifecycle/skills/ so cadre-lifecycle can ship them
+                # as an optional plugin rather than bundled into the core.
+                package_subdir = generate_global_plugin.SKILL_PACKAGE_TARGETS.get(skill_name, "skills")
+                packaged_skill = plugin_root / package_subdir / skill_name / "SKILL.md"
                 self.assertTrue(packaged_skill.is_file(), str(packaged_skill))
                 self.assertIn(f"name: {skill_name}", packaged_skill.read_text(encoding="utf-8"))
 
