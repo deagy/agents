@@ -49,7 +49,7 @@ lightweight tooling/a library/a script?) to land on `web-service`,
 `generic`, or `quick` (`quick` is the low-ceremony default when unsure).
 
 Never propose `secure-cloud` for a project that isn't actually the same
-kind of cloud-infrastructure stack this suite documents — it pulls in 16
+kind of cloud-infrastructure stack this suite documents — it pulls in 19
 opinionated roles shaped around that infrastructure. When onboarding a
 project that is itself a role/tooling catalog like this one (not a deployed
 service), `generic` is usually the right choice, and no `--runner` should be

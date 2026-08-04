@@ -57,7 +57,7 @@ Then initialize your project through this suite's compatibility launcher,
 using `--profile secure-cloud` if your project actually runs on this suite's
 own target stack (Proxmox, Talos, Kubernetes, Helm, OpenTofu, GitLab CI,
 PostgreSQL, React/TypeScript, Go). Use `quick`, `generic`, or `web-service`
-instead for a different stack — `secure-cloud` pulls in 16 roles opinionated
+instead for a different stack — `secure-cloud` pulls in 19 roles opinionated
 toward that infrastructure and shouldn't be forced onto an unrelated one.
 
 ```sh
