@@ -19,6 +19,19 @@ bundled into a version-bumped, tagged release. They are grouped under
 
 ### Changed
 
+- **`run-agent-orchestration`'s proactive trigger broadened.** Its skill
+  description previously only matched requests explicitly phrased as
+  orchestration/dispatch/review, so a runner without an explicit
+  `/run-agent-orchestration` invocation would only pick it up when a user
+  happened to use that vocabulary. Broadened to cover any non-trivial
+  engineering task — implementation, bug fixes, reviews, planning, design,
+  testing, security, compliance, CI/CD, infrastructure, release, or
+  knowledge-store work — while keeping an explicit floor so genuinely
+  trivial changes (a typo, a single config value, a version bump) and pure
+  read-only lookups still get handled directly instead of triggering full
+  agent dispatch. Both canonical copies (`.agents/skills/` and the
+  `.claude/skills/` pointer's own frontmatter) were updated together.
+
 - **The packaged plugin distributions moved to their own repository,**
   [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin). This repository is now purely the agent *register*: role
   definitions, the catalog, routing, orchestration tooling, the knowledge
