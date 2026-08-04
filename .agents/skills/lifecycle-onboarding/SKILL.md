@@ -111,6 +111,40 @@ solo maintainer or small team — the kernel's author/reviewer separation
 check applies to agent roles assigned to a route, not to which human holds
 which named authority.
 
+**Preflight-check every identity before writing it.** As soon as the human
+gives you an identity for a role — whether it's an explicit
+`gitlab_username`/`github_login`, or a name/email/handle, or a
+`gitlab.com/<user>` / `github.com/<user>` URI-style `assignee` — parse it the
+same way the kernel itself resolves it (explicit field wins, then
+URI-form `assignee`, then unresolved) and tell the human plainly whether it
+looks like a usable forge binding *before* you write it to
+`authorities.json`, not after. Use plain language, translating the same
+reason-code vocabulary `gitlab-gate-tracking` uses later, so the human hears
+about a problem now instead of mid-run:
+
+- Looks fine (an explicit `gitlab_username`/`github_login`, or an `assignee`
+  in `gitlab.com/<user>` / `github.com/<user>` form) → confirm briefly and
+  move on.
+- Nothing forge-shaped at all (just a name or bare email, and they said they
+  don't need GitHub/GitLab-review-backed approvals) → that's fine as-is; no
+  need to press further.
+- They *do* want GitHub/GitLab-review-backed approvals (per Step 6) but gave
+  a bare name or email with no forge form (this is `no-gitlab-binding`/the
+  GitHub equivalent) → ask them for the actual GitHub login or GitLab
+  username now, before writing the file, rather than leaving it to be
+  discovered later.
+
+**Known limitation — say this out loud to the human:** this preflight only
+checks that the identity is *shaped* like a usable binding (explicit field
+present, or a well-formed `gitlab.com/`/`github.com/` URI). There is no
+kernel command exposed today that verifies the account actually exists on
+GitHub/GitLab from here — that live check only happens the first time a
+forge-write skill (like `gitlab-gate-tracking`) actually runs and calls the
+forge API, and it can still come back `gitlab-user-unresolved` (no such
+account) or `gitlab-user-ambiguous` (more than one match) at that point even
+though this preflight looked fine. Tell the human this explicitly rather
+than implying the binding has been fully verified.
+
 Then, for the 5 **conditional** roles, ask a gating yes/no question first
 and only ask for an assignee if the answer is yes:
 
