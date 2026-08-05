@@ -1,0 +1,35 @@
+title = "cadre gitleaks config"
+
+# Extend (do not replace) gitleaks' built-in default ruleset. Every rule
+# still runs everywhere in this repository; only the two narrow allowlist
+# entries below are added on top.
+[extend]
+useDefault = true
+
+# Both entries below are synthetic test fixtures in
+# roster/orchestration/test/test_gitlab_integration.py, not real leaked
+# credentials:
+#
+#   - glpat-FAKE-TEST-TOKEN-0000 is an obviously-fake placeholder token used
+#     as this test module's FAKE_TOKEN constant, per its own established
+#     convention for exercising token-resolution/redaction code paths
+#     without ever using a realistic-looking value.
+#   - glpat-SUPER-SECRET-LEAKED-VALUE is synthetic "secret-shaped" test data
+#     used only in
+#     AuditTrailTests.test_real_http_error_with_a_sensitive_response_body_never_reaches_the_audit_file
+#     to prove this string never reaches the audit log after a simulated
+#     GitLab error response.
+#
+# This allowlist is intentionally scoped on three axes at once -- rule ID,
+# file path, and the exact literal string -- so it cannot mask a real
+# gitlab-pat leak anywhere else in the repository, in this file, or even a
+# different-looking secret introduced into this same test file later.
+[[allowlists]]
+targetRules = ["gitlab-pat"]
+paths = [
+  '''roster/orchestration/test/test_gitlab_integration\.py''',
+]
+regexes = [
+  '''glpat-FAKE-TEST-TOKEN-0000''',
+  '''glpat-SUPER-SECRET-LEAKED-VALUE''',
+]

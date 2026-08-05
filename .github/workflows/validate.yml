@@ -138,4 +138,4 @@ jobs:
       - run: >
           docker run --rm -v "$PWD:/repo"
           zricethezav/gitleaks:v8.30.0@sha256:691af3c7c5a48b16f187ce3446d5f194838f91238f27270ed36eef6359a574d9
-          detect --redact --source /repo
+          detect --redact --source /repo --config /repo/.gitleaks.toml
