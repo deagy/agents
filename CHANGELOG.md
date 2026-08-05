@@ -9,13 +9,36 @@ that. New adopters should start with the
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Since
 the plugin split (below), the packaged plugin versions and tags in its own
-repository, [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin); this repository's remaining tags predate that and
-are left as-is. The latest tagged release at the time of writing is
-**v0.12.1**; the entries below have landed since then and have not yet been
-bundled into a version-bumped, tagged release. They are grouped under
-`[Unreleased]` rather than assigned invented version numbers.
+repository, [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) (now
+[`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle)); this
+repository's own tags track register-side changes only, and `release.yml`
+no longer exists here (it moved with the plugin split), so tags below this
+point are cut manually rather than via an automated version-bump PR.
 
 ## [Unreleased]
+
+## [0.13.0] - 2026-08-05
+
+### Added
+
+- **GitLab evidence MCP server** (`roster/orchestration/mcp/gitlab_core.py`
+  + `gitlab_server.py`), mirroring the existing dispatch MCP server's
+  architecture. Exposes three create-only tools —
+  `create_review_subtask`, `write_wiki_page`, `write_evidence_comment` — so
+  any agent (in this repo or a consuming project) can create GitLab
+  review/approval issues as subtasks of a parent issue, write durable
+  documentation to a project wiki, and attach size-capped per-task evidence
+  comments. Recognizes exactly one service-account token env var
+  (`GITLAB_SVC_TOKEN`, no aliases). GitLab issues/wiki pages are evidence
+  pointers only, never gate authority — no code path can close, approve, or
+  transition issue state, and caller-supplied text is neutralized against
+  GitLab quick-action injection before it ever reaches a request body.
+  New `agent-autonomy.yaml` mutation entries
+  (`gitlab_issue_or_comment_write`, `gitlab_wiki_write`,
+  `gitlab_approval_issue_state_change`), a `routing.yaml` route, a redacted
+  audit trail, and operator/security documentation
+  (`roster/orchestration/mcp/GITLAB-EVIDENCE.md`,
+  `SECURITY-CONTROLS.md`). See PR #98.
 
 ### Changed
 
