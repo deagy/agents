@@ -467,6 +467,280 @@ passing unmodified.
   against a real installed Claude Code CLI. Do this before relying on the
   Claude Code runner for anything beyond local development.
 
+## GitLab evidence MCP server (`gitlab_core.py` / `gitlab_server.py`)
+
+A separate, create-only MCP surface (`create_review_subtask`, `write_wiki_page`,
+`write_evidence_comment`) for recording human-reviewable evidence in a single,
+pre-configured, docs-only GitLab project. It shares `dispatch_core.py`'s
+`ConfirmationGate`, `wrap_untrusted_output`, and audit-record mechanism
+directly (not a reimplementation) but is otherwise an independent module with
+its own token, transport, and retry logic. This section uses the same
+mechanically-enforced/advisory classification as above.
+
+- **Token handling: mechanically enforced.** `resolve_token()` reads exactly
+  one env var (`GITLAB_SVC_TOKEN`; `GL_SVC_TOKEN`/`GITLAB_SERVICE_TOKEN` are
+  never honored as aliases), lazily, only from inside a tool function that
+  needs it -- never at import or server-startup time -- and fails closed on
+  unset/empty/whitespace-only. The token travels only in the `PRIVATE-TOKEN`
+  HTTP header, never a query parameter, never folded into an exception
+  message, log line, or audit record. Tested by `TokenResolutionTests`,
+  `TokenNeverLeaksTests`.
+- **TLS / redirect controls: mechanically enforced.** `resolve_config()`
+  requires `GITLAB_BASE_URL` to start with `https://`; there is no
+  configuration path anywhere in this module that accepts an `http://` base
+  URL or that can disable certificate verification (`_build_opener()` only
+  ever constructs `ssl.create_default_context()` with no
+  `check_hostname=False`/custom-verify-mode escape hatch). `_NoCrossHostRedirectHandler`
+  refuses (raises `GitLabPermanentError`, never a silent fallthrough) any
+  redirect whose target host differs from the original request's host, *and*
+  any redirect whose target scheme is not `https` -- so a same-host
+  `https`-to-`http` downgrade can never cause the `PRIVATE-TOKEN` header to be
+  replayed in cleartext. `_build_opener()` also passes an explicit
+  `urllib.request.ProxyHandler({})` to `build_opener()`, so proxying is
+  disabled unconditionally regardless of any ambient `HTTPS_PROXY` /
+  `https_proxy` / `ALL_PROXY` (or other `getproxies()`-recognized) environment
+  variable in the process this module runs in -- without it,
+  `build_opener()` silently installs its own default, environment-driven
+  `ProxyHandler()` (it only omits a default handler class when an instance of
+  that exact class is already among the handlers passed in, and none of this
+  module's other handlers is a `ProxyHandler`), which would route every
+  GitLab API call through an attacker- or misconfiguration-controlled proxy
+  with no logging and no opt-out anywhere in this module. This is the same
+  "no escape hatch anywhere" discipline as the TLS-verification and redirect
+  controls above, extended to ambient-environment-driven proxy routing, not
+  just GitLab-response-driven redirects. Tested by
+  `ConfigResolutionTests.test_requires_https_base_url` and `RedirectAndTlsTests`
+  (cross-host redirect, same-host scheme-downgrade redirect, a code-reading
+  assertion that no env var or config value can weaken the SSL context's
+  `check_hostname`/`verify_mode`, and an assertion that the opener's
+  `ProxyHandler` carries an explicit empty proxy map even when
+  `HTTPS_PROXY`/`https_proxy`/`ALL_PROXY` are set in the ambient environment).
+- **Create-only invariant / no state-transition path: mechanically enforced
+  at two distinct layers -- Python call-graph shape, and GitLab body-text
+  interpretation. Be precise about what each layer actually covers; neither
+  alone is the whole guarantee.**
+  - *Python-level structural guarantee.* This module implements no function,
+    and calls no function anywhere in its own source or `dispatch_core.py`'s,
+    that closes, reopens, resolves, or relabels-away-from-open-review a
+    GitLab issue. `create_review_subtask` only ever performs a `GET`
+    (idempotency search) and at most one `POST`. Tested by
+    `StructuralNoStateTransitionTests` (name-shape scan of every function in
+    the module, an explicit check that the named forbidden functions don't
+    exist, a source-level check that GitLab's `state_event` field is never
+    used, and a scan of `create_review_subtask`'s own function body for a
+    call-shaped use of a forbidden verb). **This layer, by itself, cannot see
+    a GitLab-side effect triggered by body text this module sends** -- it
+    only scans this module's own Python source and call shapes, and GitLab
+    itself interprets a note/issue body server-side as coming from this
+    module's own service-account token, entirely independent of which HTTP
+    endpoint sent that body. A prior round of this document described the
+    create-only invariant as "mechanically enforced" based on this layer
+    alone; that was accurate about the Python call graph but incomplete about
+    the actual guarantee a caller experiences, which is why the second layer
+    below was added.
+  - *Body-text quick-action neutralization.* GitLab executes "quick actions"
+    (slash-commands such as `/close`, `/unlabel`, `/relabel`,
+    `/confidential`, `/lock`, `/reopen`, `/label`) embedded anywhere in an
+    issue description or a note body, interpreted server-side as coming from
+    the note's author -- this integration's own service-account token --
+    regardless of which of this module's own HTTP endpoints sent that body.
+    Before this fix, a caller-supplied `description` (`create_review_subtask`)
+    or `content` (`write_evidence_comment`) line like `/close` or
+    `/unlabel ~"review-subtask"` reached GitLab byte-identical and was
+    executed, silently transitioning the evidence issue's state even though
+    no Python code path in this module ever called a close/label-removal
+    endpoint -- defeating the create-only guarantee at the effect level, not
+    the call-graph level, and invisible to `StructuralNoStateTransitionTests`
+    since the transition happens via GitLab's own body-text interpretation.
+    `_reject_quick_action_syntax()` now rejects (never silently strips or
+    truncates) any line whose first non-whitespace characters match
+    `^\s*/[a-z][a-z_]*\b`, matched case-insensitively (`re.IGNORECASE`) since
+    GitLab's own quick-action matching is case-insensitive server-side
+    (verified against `lib/gitlab/quick_actions/extractor.rb`) -- a prior
+    version of this filter was case-sensitive and so missed `/Close`,
+    `/CLOSE`, `/UNLABEL ~"review-subtask"`, and any other case-varied
+    command, all of which GitLab still executes; that gap is now closed. The
+    pattern is applied to caller-supplied `description`/`content`, raising
+    `GitLabValidationError` before any HTTP call, applied *before*
+    `create_review_subtask`'s own trusted `/relate #<iid>` line is appended
+    (so the check only ever sees caller-supplied text, and that
+    module-authored line -- a deliberate, intentional quick action this
+    module relies on for the hierarchy fallback -- is never itself rejected).
+    This filter is deliberately broader than GitLab's real, finite quick-action
+    command list -- GitLab's own extractor only interprets a line as a quick
+    action if it names one of a fixed set of registered command names
+    (matched via `Regexp.union(names)`; a line like `/notacommand` is never
+    interpreted), but this module matches any line merely *shaped* like a
+    quick action, so it never needs to track GitLab's exact, version-specific
+    command set to remain safe. The tradeoff is over-rejection of some
+    legitimate content shaped like a quick action (e.g. a fenced code block
+    containing a shell command starting with `/`, or a path-starting log
+    line) that GitLab's real extractor would not have interpreted because it
+    excludes inline code, fenced code blocks, and quote blocks from
+    quick-action parsing and this module's filter does not; that is a known,
+    accepted false-positive/usability gap, not a security gap, and is
+    tracked as separate follow-up work rather than fixed here.
+    `write_wiki_page`'s `content` is deliberately NOT run through this check:
+    GitLab's quick-action interpreter only ever parses issue/note bodies, not
+    wiki page content (see `write_wiki_page`'s own docstring for the
+    "Quick-action scope note" and the revisit condition if that is ever found
+    to be inaccurate for a specific GitLab version/edition). Tested by
+    `QuickActionNeutralizationTests`.
+- **Idempotency search: mechanically enforced, exact-match, never a substring
+  match against untrusted content.** `_find_existing_subtask()` queries with
+  `state=opened` (a closed/already-resolved issue is never silently adopted;
+  a fresh call after the prior subtask was closed intentionally creates a new
+  one) and all three labels -- `review-subtask`, `gate:<gate_id>`, and a
+  hash-based `evidence-key:<hash>` label derived from
+  `(task_id, gate_id, parent_issue_iid)` -- filtered server-side and
+  re-verified locally against each candidate's own `labels`/`state` fields,
+  paginated (`per_page=100`, bounded page loop) so a match beyond an
+  unpaginated first page is never missed. Folding `parent_issue_iid` into the
+  hashed input (not only `task_id`/`gate_id`) is what restores parent binding
+  deterministically and structurally: without it, an open issue carrying the
+  right three labels would be adopted as a match regardless of which parent
+  it actually references, which was a real regression introduced when the
+  matching moved off the untrusted free-text `Parent: #<iid>` description
+  check. The `Parent: #<iid>` text is still written into the description for
+  human readability only and is never read back for matching. The prior
+  design's unauthenticated substring match against issue description text is
+  gone entirely; a decoy issue would need the exact three-label combination,
+  which requires the same permission tier (e.g. GitLab Reporter+ on this
+  project) the legitimate create flow already assumes -- not the same
+  identity/credential, since any project member at that tier can label an
+  issue. `create_review_subtask`'s result surfaces `state` at the top level
+  (not only nested inside the wrapped issue payload) for both a reused match
+  and a freshly created issue. Tested by `CreateReviewSubtaskTests`.
+  **Honest limit, distinct from the stale/poisoning issues already fixed in
+  earlier rounds: the search-then-create sequence is not atomic under
+  genuine concurrency.** Two independent concurrent calls with the same
+  `(task_id, gate_id, parent_issue_iid)` can both observe "no existing
+  issue" via their own GET before either has POSTed, and both then POST,
+  producing two open issues carrying the identical evidence-key label. There
+  is no distributed lock or server-side compare-and-swap primitive closing
+  this gap, and none is added in this round -- disclosed explicitly (see
+  `create_review_subtask`'s own docstring) rather than implicitly claimed
+  away by the word "idempotent".
+- **Retry / fail-closed behavior: mechanically enforced.** `request_json()`
+  retries 429/5xx/timeout/network errors with bounded jittered exponential
+  backoff (`MAX_RETRY_ATTEMPTS`, `MAX_RETRY_ELAPSED_SECONDS`) and raises
+  immediately, without retry, on 401/403/404. Every non-2xx/network outcome
+  raises a `GitLabError` subclass rather than fabricating a success shape; no
+  caller-visible false success is possible. **Honest limit:** retrying a
+  non-idempotent write (POST/PUT) on a 5xx/timeout cannot distinguish
+  "never processed" from "processed but the response was lost" without a
+  server-side idempotency key the targeted GitLab REST API doesn't expose --
+  `create_review_subtask`'s search-before-create is this module's mitigation
+  for the one operation where a duplicate would be most visible;
+  `write_evidence_comment` and `write_wiki_page` have no equivalent
+  caller-level dedup and could in principle double-apply on this specific
+  failure shape. Tested by `RequestJsonRetryTests`.
+- **1 MiB evidence-comment cap: mechanically enforced.** `write_evidence_comment`
+  rejects (never truncates) content whose UTF-8 encoding exceeds
+  `MAX_EVIDENCE_COMMENT_BYTES` (1 MiB), before any HTTP call.
+  `write_wiki_page` has its own, separate 2 MiB cap
+  (`MAX_WIKI_PAGE_CONTENT_BYTES`), also reject-not-truncate, before any HTTP
+  call. Tested by `WriteEvidenceCommentTests`.
+- **Untrusted-output wrapping: mechanically enforced, including the error
+  path.** Every piece of GitLab-retrieved content returned in a *successful*
+  tool result (`result["issue"]`, `result["page"]`, `result["comment"]`) is
+  wrapped with `dispatch_core.wrap_untrusted_output`'s exact marker-token
+  scheme via `wrap_untrusted_gitlab_payload()`, so text an attacker
+  deliberately wrote into an issue title/description/wiki body/comment can
+  never be mistaken by the calling model for a trusted instruction. The
+  *error* path gets the same treatment: `_error_result()` wraps
+  `GitLabPermanentError`/`GitLabRetryableExhaustedError`'s `str(error)` --
+  which can embed a snippet of GitLab's own raw response body -- with the
+  identical marker-token scheme before it reaches `result["reason"]`; a
+  validation/config error's message is this module's own generated wording
+  and is returned unwrapped. Tested by `UntrustedWrappingTests` (success
+  path, asserting the marker tokens themselves are present in the payload,
+  not merely that some substring of the underlying data appears) and
+  `TokenNeverLeaksTests`/the retry test suite (error path).
+- **Error-response bodies never reach the audit trail: mechanically
+  enforced.** `request_json()` still embeds a snippet of GitLab's raw
+  response body in the exception `message` used for the caller-facing
+  result above, but every audit-record write uses
+  `_audit_safe_reason(error)` instead of `str(error)` -- which returns
+  `GitLabPermanentError.audit_reason` (a body-free, this-module-generated
+  variant) rather than the raw-body-bearing message -- plus, when available,
+  a `response_body_sha256`/`response_body_length` pair (hash/length only,
+  never content) via `_audit_error_meta()`. `dispatch_core._FORBIDDEN_AUDIT_KEYS`
+  additionally now includes `content`/`body`/`description` as a defense-in-
+  depth backstop against any future call site accidentally passing raw
+  content under one of those names.
+- **Human-confirmation gate for `write_wiki_page`: same mechanism and same
+  honest limit as `dispatch_core.py`'s own `ConfirmationGate` above.** Every
+  call, with no exception, must round-trip through a first
+  `confirmation_required` response and a second call replaying the token
+  bound to the exact `(slug, title, format, content hash)` tuple before any
+  GitLab write happens. This is mechanically enforced for the two-call,
+  single-use, TTL-bound, tamper-detecting mechanism itself; it is **not** and
+  cannot be enforced from inside this tool that a human actually read the
+  intermediate response before a fully autonomous caller issued the second
+  call. The first call's `confirmation_required` response also discloses
+  `will_overwrite_existing: bool`, computed by checking `_get_wiki_page()`
+  *before* requesting confirmation (not folded into the tamper-detected
+  `brief` itself, so a page's existence changing between the two calls can
+  never spuriously invalidate an otherwise-unchanged confirmation) -- so the
+  human approving the confirmation sees whether the write creates a new page
+  or overwrites an existing one as part of what they're approving, not only
+  after the fact. Tested by `WriteWikiPageConfirmationTests`,
+  `WriteWikiPageCreateVsUpdateTests`, `GetWikiPageTests`.
+  **Honest limit: the disclosed `will_overwrite_existing` hint can go stale
+  during the confirmation window.** It is computed once, before requesting
+  confirmation, from whichever page state existed at that moment; because
+  the confirmation TTL is up to `CONFIRMATION_TTL_SECONDS` (300s), another
+  actor could create or delete a page at the same slug before the second
+  call. The actual write always re-checks fresh at consume-time (`_get_wiki_page()`
+  inside the confirmed branch), so the create-vs-update *behavior* is never
+  wrong -- only the informational hint shown to the approving human can lag
+  reality. No code fix for this in this round; see `write_wiki_page`'s own
+  docstring for the same note.
+- **Audit trail: mechanically enforced.** Every call to all three tools
+  writes a structured JSON-lines audit record via
+  `dispatch_core.build_audit_record`/`write_audit_record` (the same
+  forbidden-key redaction as the main dispatch audit log applies here too),
+  to its own file (`~/.agents/mcp-gitlab/audit.jsonl`, distinct from
+  `dispatch_core`'s `~/.agents/mcp-dispatch/audit.jsonl`) -- covering every
+  confirmation-requested / confirmed / denied / unavailable / ok outcome, not
+  only final success. Records carry the tool name, task_id (when the tool's
+  signature has one), gate_id/parent_issue_iid/issue_iid/slug identifiers, a
+  content hash/length in place of raw wiki/comment body content, the returned
+  GitLab artifact identifier (issue iid / comment id) on success, and the
+  decision -- never the token, never a raw confirmation-token value, never
+  wiki/comment/issue body content. Tested by `AuditTrailTests`.
+- **Deliberate, stated scope boundary: `classification` is intentionally not
+  an in-code parameter on any of this module's three tools.** Unlike
+  `dispatch_core.py`'s `dispatch_secure_cloud_role`/`dispatch_team`, this
+  module performs no classification check at all. This is a recorded,
+  human-accepted residual-risk decision, not an oversight: containment is
+  achieved operationally, by pointing `GITLAB_BASE_URL`/`GITLAB_DOCS_PROJECT_ID`
+  at a dedicated, docs-only GitLab project and issuing a least-privilege
+  service token scoped to only that project, rather than by an in-code
+  classification gate. See `gitlab_core.py`'s module docstring for the same
+  statement. If this integration is ever pointed at a project that also holds
+  higher-classification content, this boundary must be revisited before that
+  happens, not assumed to still hold.
+- **`agent-autonomy.yaml`'s `gitlab_issue_or_comment_write: on_request` is
+  deliberately advisory-only, not mechanically enforced in code.** Unlike
+  `gitlab_wiki_write: human_approval` (mechanically enforced above via
+  `ConfirmationGate`), `create_review_subtask` and `write_evidence_comment`
+  have no in-code confirmation gate of their own -- an agent operating under
+  this policy calls them directly, on its own judgment of when a task
+  warrants it, without a mandatory round trip. This is consistent with how
+  every other `on_request`-ranked entry in `agent-autonomy.yaml` is already
+  handled: `repository.commit`, `repository.push`, and
+  `create_gitlab_merge_request` are also `on_request` and also have no
+  matching in-code gate anywhere in this suite's tooling (they are ordinary
+  git/GitLab operations an agent performs directly when a task calls for it,
+  not operations wrapped in a confirmation mechanism). Treating
+  `gitlab_issue_or_comment_write` the same way follows that existing
+  precedent rather than introducing a new, inconsistent enforcement tier for
+  one entry. If this is ever revisited to add real gating (mirroring
+  `write_wiki_page`'s `ConfirmationGate` reuse), that is a deliberate policy
+  change, not a gap being quietly closed.
+
 ## Not covered above
 
 M-2 (hash-pinning the `mcp` dependency in `requirements-mcp.txt`) and M-3

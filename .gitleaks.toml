@@ -1,0 +1,56 @@
+title = "cadre gitleaks config"
+
+# Extend (do not replace) gitleaks' built-in default ruleset. Every rule
+# still runs everywhere in this repository; only the two narrow allowlist
+# entries below are added on top.
+[extend]
+useDefault = true
+
+# Both entries below are synthetic test fixtures in
+# roster/orchestration/test/test_gitlab_integration.py, not real leaked
+# credentials:
+#
+#   - glpat-FAKE-TEST-TOKEN-0000 is an obviously-fake placeholder token used
+#     as this test module's FAKE_TOKEN constant, per its own established
+#     convention for exercising token-resolution/redaction code paths
+#     without ever using a realistic-looking value.
+#   - glpat-SUPER-SECRET-LEAKED-VALUE is synthetic "secret-shaped" test data
+#     used only in
+#     AuditTrailTests.test_real_http_error_with_a_sensitive_response_body_never_reaches_the_audit_file
+#     to prove this string never reaches the audit log after a simulated
+#     GitLab error response.
+#
+# This allowlist is intentionally scoped on three axes AT ONCE -- rule ID,
+# file path, AND the exact matched secret text all have to match -- so it
+# cannot mask a real gitlab-pat leak anywhere else in the repository, in
+# this file, or even a different-looking secret introduced into this same
+# test file later. `condition = "AND"` is load-bearing here: gitleaks'
+# allowlist `paths`/`regexes` conditions combine as OR unless this is set
+# explicitly, which would otherwise make `paths` alone exempt the entire
+# file from the gitlab-pat rule regardless of which secret it contains.
+# Verified directly (not just read from gitleaks' docs): with
+# `condition = "AND"` absent, a different gitlab-pat-shaped secret placed in
+# this same file went undetected, while the exact allowlisted literal placed
+# in a different file was still (correctly) flagged -- i.e. `paths` alone
+# was already acting as a blanket exemption for this file.
+#
+# The second regex below is deliberately truncated to
+# `glpat-SUPER-SECRET-LEAKED-` (not the fixture's full `...-VALUE` suffix):
+# gitleaks' gitlab-pat rule captures a fixed 20-character secret after the
+# `glpat-` prefix, so the text `regexes` is actually compared against is
+# that truncated capture, not the full source-code literal -- an allowlist
+# regex written against the full literal silently never matches (dead
+# configuration), which is invisible under OR semantics (paths alone still
+# suppresses it) but turns CI red the moment condition = "AND" makes the
+# regex condition load-bearing. Re-verified against the real repository
+# after this correction: zero leaks.
+[[allowlists]]
+condition = "AND"
+targetRules = ["gitlab-pat"]
+paths = [
+  '''roster/orchestration/test/test_gitlab_integration\.py''',
+]
+regexes = [
+  '''glpat-FAKE-TEST-TOKEN-0000''',
+  '''glpat-SUPER-SECRET-LEAKED-''',
+]

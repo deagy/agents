@@ -544,6 +544,26 @@ The accountable control or risk owner—not an agent—approves exceptions. Ever
 
 ## 12. Worked example: documentation and evidence
 
+### Record evidence in GitLab
+
+Follow `orchestration/mcp/GITLAB-EVIDENCE.md` and read
+`orchestration/mcp/SECURITY-CONTROLS.md`'s "GitLab evidence MCP server"
+section first. `orchestration/mcp/gitlab_server.py` exposes three create-only
+tools (`create_review_subtask`, `write_wiki_page`, `write_evidence_comment`)
+against a single, pre-configured, docs-only GitLab project, configured by
+`GITLAB_SVC_TOKEN`/`GITLAB_BASE_URL`/`GITLAB_DOCS_PROJECT_ID` — this server
+never closes, approves, or transitions issue state, so a GitLab issue or wiki
+page it creates is evidence for, never a substitute for, the consuming
+project's own `.agentic-sdlc/` run record. `GITLAB-EVIDENCE.md` also records
+the accepted static-token exception to this org's normal OpenBao
+short-lived-credential standard for this specific integration. This is
+deliberately placed alongside `SECURITY-CONTROLS.md` under
+`orchestration/mcp/`, not under `workflows/`, because `roster/workflows/*.md`
+is a closed set matched 1:1 against `orchestration/selection.schema.json`'s
+`workflow` enum (`test_repository_health.py` enforces the equality) — this is
+operator/setup documentation for one MCP server, not a dispatch-plan
+`workflow` value.
+
 ### Technical writer brief
 
 ```text

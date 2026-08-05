@@ -1,9 +1,12 @@
-# Official MCP Python SDK for roster/orchestration/mcp/dispatch_server.py.
-# Optional: dispatch_core.py (the actual dispatch/authorization/isolation
-# logic) has no dependency on this package and is fully unit-testable
-# without it, matching roster/shared/requirements-validation.txt's PyYAML
-# pattern -- only running dispatch_server.py requires this, and it fails
-# closed with an install pointer (not a silent no-op) if it's missing.
+# Official MCP Python SDK for roster/orchestration/mcp/dispatch_server.py and
+# roster/orchestration/mcp/gitlab_server.py (the GitLab-evidence MCP server).
+# Optional: neither dispatch_core.py nor gitlab_core.py (the actual
+# dispatch/authorization/isolation logic, and the GitLab request/retry/
+# confirmation-gate logic, respectively) depends on this package -- both are
+# fully unit-testable without it, matching
+# roster/shared/requirements-validation.txt's PyYAML pattern -- only running
+# dispatch_server.py or gitlab_server.py requires this, and each fails closed
+# with an install pointer (not a silent no-op) if it's missing.
 #
 # Stdio transport only. Do not install an extra that pulls in a networked
 # transport (e.g. `mcp[cli]` brings in starlette/uvicorn for HTTP/SSE

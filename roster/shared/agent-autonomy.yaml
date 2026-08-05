@@ -48,6 +48,9 @@ mutations:
   opentofu_state_operation: human_approval
   gitlab_protection_runner_variable_or_credential: human_approval
   destructive_action: human_approval
+  gitlab_issue_or_comment_write: on_request
+  gitlab_wiki_write: human_approval
+  gitlab_approval_issue_state_change: never
 
 governance:
   approve_own_work: never

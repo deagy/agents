@@ -14,7 +14,7 @@
     "A route/keyword edit that changes any of these fields must update this",
     "file in the same reviewable diff (see CLAUDE.md/AGENTS.md and B-FR-6).",
     "",
-    "Coverage: this corpus covers all 32 route categories defined in",
+    "Coverage: this corpus covers all 33 route categories defined in",
     "routing.yaml's routes[] array as of the review that added this note",
     "(product-intent, requirements-baseline, governance-planning,",
     "data-governance, cryptographic-assurance, quantum-timing-assurance,",
@@ -24,8 +24,8 @@
     "end-user-testing, performance-testing, chaos-resilience, support,",
     "incident-response, observability, secrets-identity,",
     "database-reliability, policy-as-code, supply-chain, cost-capacity,",
-    "cost-operations, api-contract, documentation, knowledge-store,",
-    "architecture-design), matching B-FR-5's 'initial corpus covers every",
+    "cost-operations, api-contract, documentation, gitlab-evidence,",
+    "knowledge-store, architecture-design), matching B-FR-5's 'initial corpus covers every",
     "existing route category' requirement. Most single-route fixtures were",
     "authored fresh (not reused from test_selector.py) specifically to",
     "isolate one route per case; where routing.yaml's own paths/keywords",
@@ -968,6 +968,31 @@
         "support": [],
         "matched_routes": [
           "documentation"
+        ]
+      }
+    },
+    {
+      "id": "GITLAB-EVIDENCE-1",
+      "description": "gitlab-evidence route; authored to isolate the route",
+      "task": "Write a GitLab wiki page for review subtask evidence",
+      "changed_files": [
+        "roster/orchestration/mcp/gitlab_core.py"
+      ],
+      "classification": "internal",
+      "task_id": "GOLDEN-GITLAB-EVIDENCE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "application-engineer"
+        ],
+        "reviewers": [
+          "test-engineer",
+          "code-reviewer",
+          "security-reviewer"
+        ],
+        "support": [],
+        "matched_routes": [
+          "gitlab-evidence"
         ]
       }
     },

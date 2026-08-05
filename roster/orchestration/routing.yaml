@@ -388,6 +388,13 @@
       "reviewers": []
     },
     {
+      "id": "gitlab-evidence",
+      "paths": ["roster/orchestration/mcp/gitlab_*.py"],
+      "keywords": ["gitlab issue", "gitlab subtask", "gitlab wiki", "review subtask"],
+      "primary": ["application-engineer"],
+      "reviewers": ["test-engineer", "code-reviewer", "security-reviewer"]
+    },
+    {
       "id": "knowledge-store",
       "paths": ["roster/knowledge-store/**", "roster/shared/knowledge-use-policy.md", "roster/orchestration/knowledge-retrieval-policy.yaml"],
       "keywords": ["knowledge store", "chat history", "embedding", "vector search", "retrieval", "rag"],
