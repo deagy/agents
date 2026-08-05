@@ -1,5 +1,22 @@
 # Infrastructure Change Workflow
 
+```mermaid
+flowchart LR
+    Classify --> ArchCheck{"Architecture/trust boundary change?"}
+    ArchCheck -->|yes| G3["G3: System Architect"]
+    ArchCheck -->|no| Provision
+    G3 --> Provision["Provision + Plan"]
+    Provision --> Review["Infrastructure Reviewer"]
+    Review --> SecGov{"Sensitive data, identity, keys, or public exposure?"}
+    SecGov -->|yes| G45["G4: Governance Lead / G5: Security Lead"]
+    SecGov -->|no| Verify["G6: Product Owner + Engineering Lead"]
+    G45 --> Verify
+    Verify --> Approve["G7/G8: Release Owner approval"]
+    Approve --> Apply["Deploy + Verify"]
+```
+
+Gate set cross-checked against `routing.yaml`'s `infrastructure` route (`G3, G4, G5, G6, G7, G8`) and `roster/authority/aides.yaml`.
+
 1. Classify scope, environment, affected data, blast radius, architecture impact, and required approvals.
 2. If architecture or trust boundaries change, require cloud architect and threat modeler review before implementation.
 3. Infrastructure provisioner updates IaC and produces validation evidence plus a plan tied to the exact revision and target.

@@ -36,16 +36,12 @@ and emits a reviewable plan with provider lifecycle applicability kept
 separate from mutation-oriented human gates; it does not execute agents,
 approve gates, or retrieve knowledge.
 
-`cadre select` works standalone by default — team dispatch (`agents.primary/
-reviewers/support`) needs only this suite's own `catalog.yaml` and
-`routing.yaml`, useful on its own for a single small project. When the
-standalone Agentic SDLC executable is also available (`AGENTIC_SDLC_BIN` or
-`agentic-sdlc` on `PATH`), the plan is automatically enriched with
-lifecycle-contract-derived, gate-augmented `required_quality_gates`;
-pass `--require-sdlc` to fail instead of silently falling back to standalone
-when that integration is required (for example, a larger or multi-project
-effort tracked through Agentic SDLC). Check the emitted `lifecycle_tracking.status`
-(`standalone` or `integrated`) to see which mode a given plan used.
+`cadre select` works standalone by default, using only this suite's own
+`catalog.yaml` and `routing.yaml`, and optionally enriches its plan when the
+standalone Agentic SDLC executable is also available. See
+[`RUNBOOK.md` §2 "Select agents locally"](RUNBOOK.md#select-agents-locally)
+for the standalone-vs-integrated behavior, `lifecycle_tracking.status`, and
+`--require-sdlc`.
 
 The plan additionally emits a deterministic `teams` array (from
 `orchestration/routing.yaml`'s `team_recipes`) and each role in `catalog.yaml`
@@ -85,13 +81,11 @@ cadre sdlc init --root /path/to/target
 
 The portable initializer proposes detectable values and leaves consequential unknowns unresolved. Human authority, compliance applicability, environment persistence/production status, risk acceptance, and platform applicability must be assigned or decided by accountable humans. It writes lifecycle state into the target project's own `.agentic-sdlc/` directory — separate from and carrying no authority over any other project's overlay. This provider checkout does not run its own `.agentic-sdlc/` overlay (see `docs/lifecycle-and-plugin-operations.md`). See `https://github.com/deagy/agentic-sdlc` for installation and upgrades.
 
-For GitHub-backed human gates, set `approval_sources.human_gate_default` to
-`github-review`, bind authorities to their GitHub logins, and use
-`cadre sdlc approve-from-github-pr` to fetch an approved review. The command
-requires authenticated `gh` access and an exact repository, pull request, gate,
-authority role, and reviewed commit when revision binding is required. Run
-`cadre sdlc validate` after recording the approval; the lifecycle kernel will
-advance the run record only when all gate criteria and authority checks pass.
+For GitHub-backed human gates, see [Lifecycle and plugin
+operations](../docs/lifecycle-and-plugin-operations.md)'s "GitHub-backed
+human approvals" section: set `approval_sources.human_gate_default` to
+`github-review`, bind authorities to their GitHub logins, and use `cadre
+sdlc approve-from-github-pr` to fetch and record an approved review.
 
 ## System-wide adoption
 

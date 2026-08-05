@@ -270,12 +270,23 @@ For review work, capture:
 
 Follow `workflows/new-service.md`.
 
-The merged lifecycle is:
+The merged lifecycle, with the deciding human authority for each gate
+(cross-checked against `roster/workflows/new-service.md` and
+`roster/authority/aides.yaml`):
 
-```text
-Intent -> Requirements -> Architecture -> Governance/Data -> Security/Crypto
--> Build -> Verification -> Evidence -> Release Readiness
--> Deployment Authorization -> Runtime Conformance -> Feedback
+```mermaid
+flowchart LR
+    Intent -->|"G1: Product Owner"| Requirements
+    Requirements -->|"G2: Product Owner + Engineering Lead"| Architecture
+    Architecture -->|"G3: System Architect"| GovData["Governance/Data"]
+    GovData -->|"G4: Governance Lead"| SecCrypto["Security/Crypto"]
+    SecCrypto -->|"G5: Security Lead"| Build
+    Build --> Verification
+    Verification -->|"G6: Product Owner + Engineering Lead"| Evidence
+    Evidence -->|"G7: Release Owner"| ReleaseReadiness["Release Readiness"]
+    ReleaseReadiness -->|"G8: Release Owner"| DeployAuth["Deployment Authorization"]
+    DeployAuth -->|"G9: Release Authority"| RuntimeConformance["Runtime Conformance"]
+    RuntimeConformance -->|"G10: Service Owner"| Feedback
 ```
 
 Use `workflows/product-intake.md` while work is limited to intent and requirements. Use `workflows/runtime-assurance.md` for deployed-behavior conformance and feedback. Target-project lifecycle records and gate validation are owned by the standalone Agentic SDLC kernel. Use `agentic-sdlc validate --root <project>` before handoff; this suite only contributes dispatch inputs and agent evidence.
@@ -311,20 +322,26 @@ verification tasks. Block the handoff for unresolved critical/high threats.
 
 ### Implementation and review sequence
 
-```text
-Product intent agent -> Human Product Owner -> Requirements agent
-Governance planner + Data governance engineer + Cryptographic assurance engineer
-Cloud architect -> Human System Architect -> Threat modeler
-Frontend engineer + Backend engineer + Infrastructure provisioner + CI/CD engineer
-Secrets & identity engineer + Database reliability engineer + Policy-as-code engineer
-Test engineer + Black-box tester + End-user tester
-Code reviewer + Infrastructure reviewer + Pipeline security reviewer + Supply chain security reviewer
-Observability SRE + Cost & capacity planner
-Support triage agent for user-impacting defects or support-readiness gaps
-Security reviewer -> Compliance reviewer
-Technical writer + Evidence curator
-Escalation manager when gates are blocked or critical/high issues remain
-Release engineer -> Human production approval -> Automated deployment
+Cross-checked against `roster/orchestration/routing.yaml`'s routes (`product-intent`, `requirements-baseline`, `architecture-design`, `frontend`, `backend`, `infrastructure`, `pipeline`, `secrets-identity`, `database-reliability`, `policy-as-code`, `testing`, `black-box-testing`, `end-user-testing`, `observability`, `cost-capacity`, `support`, `documentation`) and risk rules (`compliance`), plus the `parallel-review` team recipe (`code-reviewer` + `infrastructure-reviewer` + `pipeline-security-reviewer` + `supply-chain-security-reviewer`, fired together once 2+ of `frontend`/`backend`/`infrastructure`/`pipeline`/`supply-chain` match) and `roster/authority/aides.yaml`'s gate ownership. No discrepancy found — the diagram below matches current routing/authority data.
+
+```mermaid
+flowchart TD
+    A["Product Intent Agent"] -->|"G1: Product Owner"| B["Requirements Agent"]
+    B --> C["Governance Planner + Data Governance Engineer + Cryptographic Assurance Engineer"]
+    C --> D["Cloud Architect"]
+    D -->|"G3: System Architect"| E["Threat Modeler"]
+    E --> F["Frontend + Backend + Infrastructure Provisioner + CI/CD Engineer (cross-stack-build team)"]
+    F --> G["Secrets & Identity Engineer + Database Reliability Engineer + Policy-as-Code Engineer"]
+    G --> H["Test Engineer + Black-Box Tester + End-User Tester"]
+    H --> I["Code Reviewer + Infrastructure Reviewer + Pipeline Security Reviewer + Supply Chain Security Reviewer (parallel-review team)"]
+    I --> J["Observability SRE + Cost & Capacity Planner"]
+    J -.->|"user-impacting defects or support-readiness gaps"| K["Support Triage Agent"]
+    I --> L["Security Reviewer"]
+    L --> M["Compliance Reviewer"]
+    M --> N["Technical Writer + Evidence Curator"]
+    N -.->|"gates blocked or critical/high issues remain"| O["Escalation Manager"]
+    N --> P["Release Engineer"]
+    P -->|"G9: Release Authority"| Q["Automated Deployment"]
 ```
 
 Implementation roles may work concurrently after architecture and threat requirements are stable. Independent reviews must evaluate the resulting exact revisions and artifacts.
@@ -502,7 +519,6 @@ Escalate blockers to support triage with user impact and evidence.
 
 ### Support triage and escalation chain
 
-```text
 Support triage receives the user report, sanitizes evidence, classifies
 severity, attempts safe local/non-production reproduction, and routes defects
 to the responsible engineer or reviewer. If critical/high impact, unclear
@@ -510,9 +526,15 @@ ownership, production diagnostics, customer-visible outage, possible data
 exposure, or a human-requested decision is present, hand off to the escalation
 manager.
 
-Escalation chain:
-originating agent -> support triage agent -> responsible engineering/review
-role -> escalation manager -> accountable human owner or approval group.
+Escalation chain (matches `roster/orchestration/escalation-policy.md`'s
+"Support escalation chain"):
+
+```mermaid
+flowchart LR
+    A["Originating Agent"] --> B["Support Triage Agent"]
+    B --> C["Responsible Engineering/Review Role"]
+    C -->|"critical/high, ambiguous, customer-visible, or human-requested"| D["Escalation Manager"]
+    D --> E["Accountable Human Owner / Approval Group"]
 ```
 
 Agents must stop before human-only decisions: production action, persistent

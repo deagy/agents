@@ -2,6 +2,12 @@
 
 Use this workflow when work has not yet entered architecture or implementation.
 
+```mermaid
+flowchart LR
+    Intent["Product Intent Agent drafts intent"] -->|"G1: Product Owner"| Requirements["Requirements Agent decomposes"]
+    Requirements -->|"G2: Product Owner + Engineering Lead"| Handoff["Handoff to new-service.md"]
+```
+
 1. Dispatcher records scope, classification, human owner, exclusions, source references, and authorized knowledge-retrieval status.
 2. Product Intent Agent drafts a versioned intent record covering users, outcomes, scope, exclusions, constraints, environments, and measurable success criteria. It does not set priority, resolve mission ambiguity, or approve intent.
 3. Human Product Owner resolves conflicts, sets priority, and approves or rejects G1.

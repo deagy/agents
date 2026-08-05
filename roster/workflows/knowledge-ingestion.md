@@ -1,5 +1,17 @@
 # Knowledge Store Ingestion Workflow
 
+```mermaid
+flowchart LR
+    Record["Steward Records Source Terms"] --> SecCompliance["Security & Compliance Review"]
+    SecCompliance --> Normalize --> Redact["Redaction + Human Review"]
+    Redact --> Ingest --> Evaluate --> Evidence["Evidence Curator Records"]
+```
+
+This workflow carries no lifecycle gate — authorization comes from the
+Security/Compliance reviewers and the Knowledge Store Steward's own
+operator authority (`roster/knowledge-store/AGENT.md`), not a numbered
+`G1`-`G10` human gate.
+
 1. Knowledge store steward records source ownership, processing authority, intended use, classification, retention, residency, deletion, tenant, and audience constraints.
 2. Security and compliance reviewers assess sensitive-data handling and external embedding-provider restrictions before real content leaves the staging boundary.
 3. Store steward normalizes recognized export fields and samples results against the source. The generic parser does not validate or preserve every canonical-schema field; add a source-specific adapter when fidelity matters.

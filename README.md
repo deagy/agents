@@ -44,7 +44,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 
 Key areas:
 
-- [bin/cadre](bin/cadre) dispatches the suite tools (`cadre select`, `cadre selection-telemetry`, `cadre knowledge`, `cadre sdlc`, `cadre generate-plugin`, `cadre generate-authority-aides`, `cadre generate-role-metadata`, `cadre bootstrap-codex`, `cadre resolve-shared`, `cadre mcp-dispatch-server`, `cadre profile`, and `cadre init`). `cadre select` works standalone, deterministically dispatching roles from this suite's own catalog and routing rules; it automatically enriches its plan with lifecycle-gate tracking when the standalone `agentic-sdlc` CLI is also available (or fails fast with `--require-sdlc` if that's required), and lifecycle *validation* itself is always provided by that separate `agentic-sdlc` CLI, never by this suite.
+- [bin/cadre](bin/cadre) dispatches the suite tools (`cadre select`, `cadre selection-telemetry`, `cadre knowledge`, `cadre sdlc`, `cadre generate-plugin`, `cadre generate-authority-aides`, `cadre generate-role-metadata`, `cadre bootstrap-codex`, `cadre resolve-shared`, `cadre mcp-dispatch-server`, `cadre profile`, and `cadre init`). `cadre select` works standalone by default and optionally enriches its plan when the standalone `agentic-sdlc` CLI is also available — see [RUNBOOK.md §2 "Select agents locally"](roster/RUNBOOK.md#select-agents-locally) for the standalone-vs-integrated behavior and `--require-sdlc`. Lifecycle *validation* itself is always provided by that separate `agentic-sdlc` CLI, never by this suite.
 - [roster/catalog.yaml](roster/catalog.yaml) is the machine-readable role inventory.
 - [roster/RUNBOOK.md](roster/RUNBOOK.md) explains how to select, dispatch, review, and escalate agent work.
 - [roster/orchestration/](roster/orchestration/) contains routing rules, lifecycle applicability mappings, handoff contracts, escalation policy, selectors, and tests.
@@ -67,7 +67,42 @@ repository does not run its own `.agentic-sdlc/` overlay.
 
 ## Supported runners
 
-Every role definition and orchestration tool is runner-neutral text and data. Codex CLI and Claude Code wrappers are generated into the self-contained Cadre plugin. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc). [Cline](https://docs.cline.bot) is also recognized, in two complementary ways: it [reads `AGENTS.md` natively](https://docs.cline.bot/customization/cline-rules) as a cross-tool standard, and this repository additionally provides `.clinerules/agents-repository.md`, which points at the same canonical `AGENTS.md` and `roster/RUNBOOK.md` sources — this works for any Cline session with this repository as its working directory, no install required. Separately, [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle)'s `cline/` is a real, installable Cline CLI plugin (`cline plugin install ./cline` from a checkout of that repository, or a git URL) exposing an `agents_select` tool that wraps `cadre select` and returns its plan directly in conversation. Unlike the packaged Cadre plugin alongside it, that one is hand-authored TypeScript source under version control, not generated output. This plugin system currently applies to the Cline CLI, SDK, and Kanban only — not the VSCode/JetBrains extension. **Known limitation**: as of `cline` CLI `3.0.46` (the latest published version at the time this was built), invoking any locally-installed plugin's tool fails with `JSON.stringify cannot serialize cyclic structures` — this was confirmed to be an upstream Cline bug, not specific to this plugin, by reproducing the identical failure with `cline/cline`'s own unmodified example plugin. The plugin installs and uninstalls cleanly; tool invocation should start working once Cline ships a fix. **Second known limitation**: installing via a bare repository URL, rather than the local-install form, previously failed with `Cannot find module 'vitest'` while Cline's "sync plugin MCP servers" step scanned the plugin's test file — because a git-plugin-source with no root `package.json` `cline.plugins` manifest and no root `index.ts`/`index.js` falls back to an unbounded recursive `.ts`/`.js` scan of the whole cloned repository, which can import files whose own dependencies (here, the `vitest` devDependency) were never installed. [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) declares its plugin location explicitly via its root `package.json`'s `cline.plugins` key so the git-URL install path resolves directly without triggering that recursive scan; the underlying scanner behavior is still worth reporting upstream, since Cline's git plugin-source format has no way to select a subdirectory otherwise.
+Every role definition and orchestration tool is runner-neutral text and data. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc).
+
+| Runner | Support | Notes |
+| --- | --- | --- |
+| Codex CLI | Generated wrapper, packaged in the Cadre plugin | See [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle). |
+| Claude Code | Generated wrapper, packaged in the Cadre plugin | See [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle). |
+| [Cline](https://docs.cline.bot) | Native `AGENTS.md` support, plus an installable CLI plugin | [Reads `AGENTS.md` natively](https://docs.cline.bot/customization/cline-rules); this repository also provides `.clinerules/agents-repository.md`, pointing at the same canonical `AGENTS.md`/`roster/RUNBOOK.md` sources — works for any Cline session with this repository as its working directory, no install required. Separately, [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle)'s `cline/` is a real, hand-authored (not generated) installable Cline CLI plugin (`cline plugin install ./cline` from a checkout, or a git URL) exposing an `agents_select` tool that wraps `cadre select`. Applies to the Cline CLI, SDK, and Kanban only — not the VSCode/JetBrains extension. |
+
+<details>
+<summary>Known Cline plugin limitations</summary>
+
+**Tool invocation fails with a cyclic-structure error.** As of `cline` CLI
+`3.0.46` (the latest published version at the time this was built), invoking
+any locally-installed plugin's tool fails with `JSON.stringify cannot
+serialize cyclic structures` — confirmed to be an upstream Cline bug, not
+specific to this plugin, by reproducing the identical failure with
+`cline/cline`'s own unmodified example plugin. The plugin installs and
+uninstalls cleanly; tool invocation should start working once Cline ships a
+fix.
+
+**Bare git-URL install can fail with a missing `vitest` module.** Installing
+via a bare repository URL, rather than the local-install form, previously
+failed with `Cannot find module 'vitest'` while Cline's "sync plugin MCP
+servers" step scanned the plugin's test file — because a git-plugin-source
+with no root `package.json` `cline.plugins` manifest and no root
+`index.ts`/`index.js` falls back to an unbounded recursive `.ts`/`.js` scan
+of the whole cloned repository, which can import files whose own
+dependencies (here, the `vitest` devDependency) were never installed.
+[`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) declares
+its plugin location explicitly via its root `package.json`'s `cline.plugins`
+key so the git-URL install path resolves directly without triggering that
+recursive scan; the underlying scanner behavior is still worth reporting
+upstream, since Cline's git plugin-source format has no way to select a
+subdirectory otherwise.
+
+</details>
 
 ## Quick start
 
@@ -151,31 +186,14 @@ MCP server, owned by this repo, currently in development.
 ### GitHub review-backed approvals
 
 Projects can make an approved GitHub pull-request review the authoritative
-source for human gate decisions. Set the policy in `.agentic-sdlc/project.json`
-and bind each applicable authority to its GitHub login in
-`.agentic-sdlc/authorities.json`:
-
-```json
-"approval_sources": {
-  "human_gate_default": "github-review",
-  "allow_manual_fallback": false
-}
-```
-
-Record supplied review metadata with `approve-from-github`, or let the CLI
-fetch the latest matching `APPROVED` review with `approve-from-github-pr`:
-
-```sh
-cadre sdlc approve-from-github-pr \
-  --root /path/to/target --task-id TASK-42 --gate G2 \
-  --role product_owner --repo OWNER/REPO --pr 42 --commit-sha "$GITHUB_SHA"
-```
-
-The fetch command requires an authenticated `gh` CLI and fails closed when
-GitHub is unavailable, no matching approval exists, the reviewer does not
-match the assigned authority, or the review is not bound to the required
-revision. Validate afterward; a successful approval advances the record to the
-next applicable gate automatically.
+source for human gate decisions (`approval_sources.human_gate_default:
+"github-review"`, `cadre sdlc approve-from-github-pr`, fails closed without
+authenticated `gh` access or a matching review). See [Lifecycle and plugin
+operations §GitHub-backed human
+approvals](docs/lifecycle-and-plugin-operations.md#github-backed-human-approvals)
+for the full setup and command reference, or [RUNBOOK.md
+§18](roster/RUNBOOK.md#18-record-a-github-backed-human-gate-approval) for the
+two supported recording paths and the evidence-URI format.
 
 ## Advanced: install every role globally
 

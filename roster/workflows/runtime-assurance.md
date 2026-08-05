@@ -3,6 +3,16 @@
 This workflow uses existing operational and review roles; it does not create a
 generic Runtime Agent.
 
+```mermaid
+flowchart LR
+    Observe["Observability SRE Observes"] --> Assess["Security/Compliance Review + Support Triage"]
+    Assess --> Decide["G10: Service Owner (with Security/Governance Leads when implicated)"]
+    Decide -->|conforming| Continue["Continue Observation"]
+    Decide -.->|"mission/scope change"| G1["Re-entry: G1"]
+    Decide -.->|"requirement/control change"| G2["Re-entry: G2"]
+    Decide -.->|"implementation correction"| G6["Re-entry: G6"]
+```
+
 1. Observability SRE identifies the deployed version/configuration, observation window, SLO and business signals, privacy-safe telemetry, drift, and evidence hashes.
 2. Security Reviewer and Compliance Reviewer assess security, data, trust, crypto, governance, and accreditation signals when applicable. Support Triage Agent contributes sanitized user-impact evidence.
 3. Incident Commander owns active major-incident coordination. Debugging Engineer diagnoses reproducible defects. Neither may authorize production changes or approve its own correction.

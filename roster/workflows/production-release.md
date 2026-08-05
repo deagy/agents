@@ -1,5 +1,12 @@
 # Production Release Workflow
 
+```mermaid
+flowchart LR
+    Precondition["G8: Release Owner (Release Engineer verifies preconditions)"] -->|"G9: Release Authority"| Deploy["Deploy Immutable Artifact"]
+    Deploy --> Verify["Verify Health & Thresholds"]
+    Verify -->|"G10: Service Owner (via runtime-assurance.md)"| Observe["Runtime Observation"]
+```
+
 ## Preconditions (G8 Release Readiness)
 
 - The standalone Agentic SDLC lifecycle record shows G1-G7 and all applicable specialist attestations approved for the exact release inputs.

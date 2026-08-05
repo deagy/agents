@@ -1,5 +1,19 @@
 # Support Escalation Workflow
 
+```mermaid
+flowchart LR
+    Triage["Support Triage Agent"] --> Investigate["Specialist Implementation/Review"]
+    Investigate --> Escalate{"Unresolved, critical/high, ambiguous, or human-requested?"}
+    Escalate -->|yes| Manager["Escalation Manager"]
+    Manager --> Human["Accountable Human Decision"]
+    Escalate -->|no| Closure["Support Triage Records Closure"]
+    Human --> Closure
+```
+
+Runtime findings from closure re-enter the lifecycle at G1 (mission/scope
+change), G2 (requirement/control change), or G6 (implementation correction) —
+this workflow itself carries no fixed gate of its own.
+
 1. **Dispatcher:** Retrieve authorized support, incident, and role-specific context. Record unavailable, empty, unauthorized, or conflicting knowledge.
 2. **Support triage agent:** Sanitize the report, classify severity, confirm scope, preserve evidence, and select the next specialist. Provide only user-safe updates.
 3. **Black-box tester:** Reproduce the issue through externally available surfaces and capture observable evidence.
