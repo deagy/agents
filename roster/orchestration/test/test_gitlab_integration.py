@@ -20,6 +20,7 @@ exercise:
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import inspect
 import io
@@ -42,6 +43,28 @@ import dispatch_core  # noqa: E402
 import gitlab_core as gcore  # noqa: E402
 
 FAKE_TOKEN = "glpat-FAKE-TEST-TOKEN-0000"
+
+# Module-wide safety net: every test in this file that calls any of the
+# three tools without an explicit audit_path= must never append to the real
+# ~/.agents/mcp-gitlab/audit.jsonl on the host running the suite. Patching
+# gcore.GITLAB_AUDIT_LOG_PATH once here (rather than per test class) covers
+# every call site uniformly, including any test written in the future that
+# forgets to pass audit_path= explicitly -- _write_gitlab_audit_record()
+# looks up this module global by name on every call, so the patch applies
+# regardless of when during module execution a given test runs.
+_AUDIT_LOG_TMP_DIR = tempfile.TemporaryDirectory(prefix="mcp-gitlab-test-audit-")
+_AUDIT_LOG_PATCHER = mock.patch.object(
+    gcore, "GITLAB_AUDIT_LOG_PATH", Path(_AUDIT_LOG_TMP_DIR.name) / "audit.jsonl"
+)
+
+
+def setUpModule() -> None:
+    _AUDIT_LOG_PATCHER.start()
+
+
+def tearDownModule() -> None:
+    _AUDIT_LOG_PATCHER.stop()
+    _AUDIT_LOG_TMP_DIR.cleanup()
 
 
 def _base_env(**overrides: str) -> dict[str, str]:
@@ -122,6 +145,27 @@ class ConfigResolutionTests(unittest.TestCase):
         with mock.patch.dict(os.environ, _base_env(**{gcore.GITLAB_HIERARCHY_ENV_VAR: "maybe"})):
             with self.assertRaises(gcore.GitLabConfigError):
                 gcore.resolve_config()
+
+    def test_base_url_containing_url_userinfo_is_rejected(self) -> None:
+        # "https://gitlab.example.com@attacker.com/" looks, at a glance, like
+        # it targets gitlab.example.com, but urllib/browsers parse everything
+        # before the last "@" in the authority component as userinfo and
+        # connect to attacker.com instead -- this would silently send the
+        # PRIVATE-TOKEN header to an attacker-controlled host.
+        with mock.patch.dict(
+            os.environ,
+            _base_env(**{gcore.GITLAB_BASE_URL_ENV_VAR: "https://gitlab.example.com@attacker.com/"}),
+        ):
+            with self.assertRaises(gcore.GitLabConfigError) as ctx:
+                gcore.resolve_config()
+        self.assertIn("userinfo", str(ctx.exception))
+
+    def test_normal_base_url_with_no_userinfo_is_still_accepted(self) -> None:
+        # Contrast case: an ordinary base URL with no "@" in the host
+        # component must not be caught by the userinfo check above.
+        with mock.patch.dict(os.environ, _base_env(**{gcore.GITLAB_BASE_URL_ENV_VAR: "https://gitlab.example.com"})):
+            config = gcore.resolve_config()
+        self.assertEqual(config.base_url, "https://gitlab.example.com")
 
 
 # ---------------------------------------------------------------------------
@@ -268,13 +312,17 @@ class CreateReviewSubtaskTests(unittest.TestCase):
     def test_second_call_returns_existing_issue_without_creating_a_duplicate(self) -> None:
         existing_issue = {
             "iid": 7,
+            "state": "opened",
             "description": "Parent: #1\n\nSome body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relates_to #1\n",
-            "labels": ["review-subtask", "gate:G5"],
+            "labels": ["review-subtask", "gate:G5", gcore._evidence_key_label("TASK-1", "G5", 1)],
         }
 
         def _fake_request_json(method, path, config, token, **kwargs):
             self.assertEqual(method, "GET")
             self.assertTrue(path.endswith("/issues"))
+            query = kwargs.get("query") or {}
+            self.assertEqual(query.get("state"), "opened")
+            self.assertIn(gcore._evidence_key_label("TASK-1", "G5", 1), query.get("labels", ""))
             return [existing_issue]
 
         with mock.patch.object(gcore, "request_json", side_effect=_fake_request_json) as mocked:
@@ -282,10 +330,119 @@ class CreateReviewSubtaskTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "ok")
         self.assertFalse(result["created"])
+        self.assertEqual(result["state"], "opened")
         self.assertIn(str(existing_issue["iid"]), result["issue"])
         # Only the idempotency-search GET happened -- no POST was ever issued.
         for call in mocked.call_args_list:
             self.assertNotEqual(call.args[0], "POST")
+
+    def test_closed_matching_issue_is_never_adopted_and_a_new_one_is_created(self) -> None:
+        # A closed issue -- even one carrying the exact three-label
+        # combination -- must never be silently treated as satisfying a
+        # fresh review request; state=opened is both requested server-side
+        # and re-verified locally against each candidate.
+        closed_issue = {
+            "iid": 7,
+            "state": "closed",
+            "description": "Parent: #1\n\nSome body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relates_to #1\n",
+            "labels": ["review-subtask", "gate:G5", gcore._evidence_key_label("TASK-1", "G5", 1)],
+        }
+
+        def _fake_request_json(method, path, config, token, **kwargs):
+            if method == "GET":
+                return [closed_issue]
+            return {"iid": 99, "state": "opened", "title": kwargs["json_body"]["title"]}
+
+        with mock.patch.object(gcore, "request_json", side_effect=_fake_request_json):
+            result = gcore.create_review_subtask(1, "Review needed", "Some body", "G5", "TASK-1")
+
+        self.assertEqual(result["status"], "ok")
+        self.assertTrue(result["created"])
+        self.assertEqual(result["state"], "opened")
+
+    def test_issue_matching_labels_for_a_different_parent_is_not_adopted(self) -> None:
+        # Regression test for the dropped parent-binding fix: an open issue
+        # carrying the right review-subtask/gate labels and an evidence-key
+        # label computed for a *different* parent_issue_iid must not be
+        # adopted as satisfying a request for this parent. Before folding
+        # parent_issue_iid into the evidence-key hash, only (task_id,
+        # gate_id) were hashed, so this decoy would have matched regardless
+        # of which parent it actually referenced.
+        wrong_parent_issue = {
+            "iid": 8,
+            "state": "opened",
+            "description": "Parent: #999\n\nSome other body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relates_to #999\n",
+            "labels": ["review-subtask", "gate:G5", gcore._evidence_key_label("TASK-1", "G5", 999)],
+        }
+
+        def _fake_request_json(method, path, config, token, **kwargs):
+            if method == "GET":
+                return [wrong_parent_issue]
+            return {"iid": 100, "state": "opened", "title": kwargs["json_body"]["title"]}
+
+        with mock.patch.object(gcore, "request_json", side_effect=_fake_request_json):
+            result = gcore.create_review_subtask(1, "Review needed", "Some body", "G5", "TASK-1")
+
+        self.assertEqual(result["status"], "ok")
+        self.assertTrue(result["created"])
+
+    def test_decoy_issue_missing_the_evidence_key_label_is_not_adopted(self) -> None:
+        # A decoy issue carrying only the review-subtask/gate labels (e.g. a
+        # coincidentally-labeled issue an attacker without write access to
+        # this project could not have produced anyway, but defended against
+        # regardless) must not satisfy the idempotency search -- only the
+        # exact three-label combination, re-verified locally, does.
+        decoy_issue = {
+            "iid": 5,
+            "state": "opened",
+            "description": "Parent: #1\n\nSome body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relates_to #1\n",
+            "labels": ["review-subtask", "gate:G5"],
+        }
+
+        def _fake_request_json(method, path, config, token, **kwargs):
+            if method == "GET":
+                return [decoy_issue]
+            return {"iid": 100, "state": "opened", "title": kwargs["json_body"]["title"]}
+
+        with mock.patch.object(gcore, "request_json", side_effect=_fake_request_json):
+            result = gcore.create_review_subtask(1, "Review needed", "Some body", "G5", "TASK-1")
+
+        self.assertEqual(result["status"], "ok")
+        self.assertTrue(result["created"])
+
+    def test_idempotency_search_paginates_when_the_match_is_not_on_the_first_page(self) -> None:
+        matching_issue = {
+            "iid": 42,
+            "state": "opened",
+            "description": "Parent: #1\n\nSome body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relates_to #1\n",
+            "labels": ["review-subtask", "gate:G5", gcore._evidence_key_label("TASK-1", "G5", 1)],
+        }
+        # A full first page (page-size worth of issues) that carry the
+        # review-subtask/gate labels but not the evidence-key label, so the
+        # first page yields no local match and the loop must advance to
+        # page 2 (rather than a real GitLab deployment ever returning this
+        # shape given the exact server-side label filter -- this is a
+        # defensive-completeness test of the pagination loop itself).
+        full_page_of_non_matching_issues = [
+            {"iid": index, "state": "opened", "labels": ["review-subtask", "gate:G5"]}
+            for index in range(gcore._ISSUE_SEARCH_PAGE_SIZE)
+        ]
+        pages_seen: list[str] = []
+
+        def _fake_request_json(method, path, config, token, **kwargs):
+            query = kwargs.get("query") or {}
+            pages_seen.append(query.get("page"))
+            if query.get("page") == "1":
+                return full_page_of_non_matching_issues
+            return [matching_issue]
+
+        with mock.patch.object(gcore, "request_json", side_effect=_fake_request_json) as mocked:
+            result = gcore.create_review_subtask(1, "Review needed", "Some body", "G5", "TASK-1")
+
+        self.assertEqual(result["status"], "ok")
+        self.assertFalse(result["created"])
+        self.assertEqual(mocked.call_count, 2)
+        self.assertEqual(pages_seen, ["1", "2"])
 
     def test_no_existing_match_creates_exactly_one_new_issue(self) -> None:
         calls: list[tuple[str, str]] = []
@@ -397,24 +554,31 @@ class WriteWikiPageConfirmationTests(unittest.TestCase):
         gcore._WIKI_CONFIRMATION_GATE = dispatch_core.ConfirmationGate()
 
     def test_first_call_never_writes_and_returns_a_confirmation_token(self) -> None:
-        with mock.patch.object(gcore, "request_json") as mocked:
+        # The first (unconfirmed) call does perform one read -- the
+        # existence check that populates will_overwrite_existing (see
+        # test_first_call_discloses_whether_it_will_overwrite_an_existing_page
+        # below) -- but never a write (POST/PUT).
+        with mock.patch.object(gcore, "request_json", return_value=None) as mocked:
             result = gcore.write_wiki_page("evidence/task-1", "Evidence", "content")
         self.assertEqual(result["status"], "confirmation_required")
         self.assertIn("confirmation_token", result)
-        mocked.assert_not_called()
+        mocked.assert_called_once()
+        self.assertEqual(mocked.call_args.args[0], "GET")
 
     def test_second_call_with_matching_token_writes_exactly_once(self) -> None:
-        with mock.patch.object(gcore, "request_json") as mocked:
+        with mock.patch.object(gcore, "request_json", return_value=None) as mocked:
             first = gcore.write_wiki_page("evidence/task-1", "Evidence", "content")
             mocked.side_effect = [None, {"slug": "evidence/task-1", "content": "content"}]
             second = gcore.write_wiki_page(
                 "evidence/task-1", "Evidence", "content", confirmation_token=first["confirmation_token"]
             )
         self.assertEqual(second["status"], "ok")
-        self.assertEqual(mocked.call_count, 2)  # GET (miss) + POST (create)
+        # existence-check GET (first call) + existence-check GET (miss,
+        # second call) + POST (create).
+        self.assertEqual(mocked.call_count, 3)
 
     def test_reusing_a_token_a_second_time_is_denied(self) -> None:
-        with mock.patch.object(gcore, "request_json", side_effect=[None, {"slug": "s"}]):
+        with mock.patch.object(gcore, "request_json", side_effect=[None, None, {"slug": "s"}]):
             first = gcore.write_wiki_page("evidence/task-1", "Evidence", "content")
             gcore.write_wiki_page("evidence/task-1", "Evidence", "content", confirmation_token=first["confirmation_token"])
         with mock.patch.object(gcore, "request_json") as mocked:
@@ -425,13 +589,177 @@ class WriteWikiPageConfirmationTests(unittest.TestCase):
         mocked.assert_not_called()
 
     def test_tampering_with_content_after_confirmation_request_invalidates_it(self) -> None:
-        with mock.patch.object(gcore, "request_json") as mocked:
+        with mock.patch.object(gcore, "request_json", return_value=None) as mocked:
             first = gcore.write_wiki_page("evidence/task-1", "Evidence", "content")
             tampered = gcore.write_wiki_page(
                 "evidence/task-1", "Evidence", "DIFFERENT CONTENT", confirmation_token=first["confirmation_token"]
             )
         self.assertEqual(tampered["status"], "denied")
+        # Only the first call's existence-check GET happened; the tampered
+        # second call is denied before ever reaching _get_wiki_page.
+        mocked.assert_called_once()
+
+    def test_first_call_discloses_whether_it_will_overwrite_an_existing_page(self) -> None:
+        with mock.patch.object(gcore, "request_json", return_value=None):
+            result = gcore.write_wiki_page("evidence/task-1", "Evidence", "content")
+        self.assertIn("will_overwrite_existing", result)
+        self.assertFalse(result["will_overwrite_existing"])
+
+        gcore._WIKI_CONFIRMATION_GATE = dispatch_core.ConfirmationGate()
+        with mock.patch.object(gcore, "request_json", return_value={"slug": "evidence/task-1", "content": "old"}):
+            result = gcore.write_wiki_page("evidence/task-1", "Evidence", "content")
+        self.assertTrue(result["will_overwrite_existing"])
+
+    def test_existence_check_error_before_confirmation_re_raises_rather_than_silently_proceeding(self) -> None:
+        with mock.patch.object(
+            gcore, "request_json", side_effect=gcore.GitLabPermanentError("denied", status_code=403)
+        ) as mocked:
+            result = gcore.write_wiki_page("evidence/task-1", "Evidence", "content")
+        self.assertEqual(result["status"], "denied")
+        self.assertEqual(result["status_code"], 403)
+        mocked.assert_called_once()
+
+    def test_over_cap_content_is_rejected_without_truncation_and_without_any_http_call(self) -> None:
+        # Mirrors WriteEvidenceCommentTests's identically-named test: the
+        # size cap is checked before resolve_token_and_config()/any existence
+        # check, so an over-cap call must make zero HTTP calls, even though
+        # write_wiki_page's ordinary path would otherwise perform an
+        # existence-check GET before returning confirmation_required.
+        oversized = "x" * (gcore.MAX_WIKI_PAGE_CONTENT_BYTES + 1)
+        with mock.patch.object(gcore, "request_json") as mocked:
+            result = gcore.write_wiki_page("evidence/task-1", "Evidence", oversized)
+        self.assertEqual(result["status"], "denied")
+        self.assertIn(str(gcore.MAX_WIKI_PAGE_CONTENT_BYTES), result["reason"])
         mocked.assert_not_called()
+
+    def test_exactly_at_cap_is_accepted(self) -> None:
+        exactly_at_cap = "x" * gcore.MAX_WIKI_PAGE_CONTENT_BYTES
+        with mock.patch.object(gcore, "request_json", return_value=None):
+            result = gcore.write_wiki_page("evidence/task-1", "Evidence", exactly_at_cap)
+        self.assertEqual(result["status"], "confirmation_required")
+
+
+# ---------------------------------------------------------------------------
+# _get_wiki_page: real 404 vs real non-404 permanent error vs an existing
+# page, and the full create-vs-update (POST vs PUT) branch each drives.
+# ---------------------------------------------------------------------------
+
+
+class GetWikiPageTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.env_patcher = mock.patch.dict(os.environ, _base_env())
+        self.env_patcher.start()
+        self.addCleanup(self.env_patcher.stop)
+        self.config = gcore.resolve_config()
+        self.token = gcore.resolve_token()
+
+    def test_real_404_is_treated_as_page_not_found(self) -> None:
+        with mock.patch.object(
+            gcore, "request_json", side_effect=gcore.GitLabPermanentError("not found", status_code=404)
+        ):
+            result = gcore._get_wiki_page(self.config, self.token, "evidence/task-1")
+        self.assertIsNone(result)
+
+    def test_real_403_re_raises_rather_than_being_treated_as_not_found(self) -> None:
+        with mock.patch.object(
+            gcore, "request_json", side_effect=gcore.GitLabPermanentError("denied", status_code=403)
+        ):
+            with self.assertRaises(gcore.GitLabPermanentError) as ctx:
+                gcore._get_wiki_page(self.config, self.token, "evidence/task-1")
+        self.assertEqual(ctx.exception.status_code, 403)
+
+    def test_existing_page_is_returned_unchanged(self) -> None:
+        page = {"slug": "evidence/task-1", "content": "hello"}
+        with mock.patch.object(gcore, "request_json", return_value=page):
+            result = gcore._get_wiki_page(self.config, self.token, "evidence/task-1")
+        self.assertEqual(result, page)
+
+
+class WriteWikiPageCreateVsUpdateTests(unittest.TestCase):
+    """Full round trip through write_wiki_page's real GET-then-catch-404
+    detection (not a test double that returns None directly for "doesn't
+    exist"), asserting the resulting POST-vs-PUT branch."""
+
+    def setUp(self) -> None:
+        self.env_patcher = mock.patch.dict(os.environ, _base_env())
+        self.env_patcher.start()
+        self.addCleanup(self.env_patcher.stop)
+        gcore._WIKI_CONFIRMATION_GATE = dispatch_core.ConfirmationGate()
+
+    def test_real_404_on_get_takes_the_create_post_path(self) -> None:
+        calls: list[str] = []
+
+        def _fake_request_json(method, path, config, token, **kwargs):
+            calls.append(method)
+            if method == "GET":
+                raise gcore.GitLabPermanentError("not found", status_code=404)
+            return {"slug": "evidence/task-1", "content": "content"}
+
+        with mock.patch.object(gcore, "request_json", side_effect=_fake_request_json):
+            first = gcore.write_wiki_page("evidence/task-1", "Evidence", "content")
+            second = gcore.write_wiki_page(
+                "evidence/task-1", "Evidence", "content", confirmation_token=first["confirmation_token"]
+            )
+
+        self.assertFalse(first["will_overwrite_existing"])
+        self.assertEqual(second["status"], "ok")
+        self.assertTrue(second["created"])
+        self.assertEqual(calls, ["GET", "GET", "POST"])
+
+    def test_existing_page_on_get_takes_the_update_put_path(self) -> None:
+        existing_page = {"slug": "evidence/task-1", "content": "old"}
+        calls: list[str] = []
+
+        def _fake_request_json(method, path, config, token, **kwargs):
+            calls.append(method)
+            if method == "GET":
+                return existing_page
+            return {"slug": "evidence/task-1", "content": "content"}
+
+        with mock.patch.object(gcore, "request_json", side_effect=_fake_request_json):
+            first = gcore.write_wiki_page("evidence/task-1", "Evidence", "content")
+            second = gcore.write_wiki_page(
+                "evidence/task-1", "Evidence", "content", confirmation_token=first["confirmation_token"]
+            )
+
+        self.assertTrue(first["will_overwrite_existing"])
+        self.assertEqual(second["status"], "ok")
+        self.assertFalse(second["created"])
+        self.assertEqual(calls, ["GET", "GET", "PUT"])
+
+    def test_non_404_permanent_error_on_get_re_raises_rather_than_falling_through_to_create(self) -> None:
+        # The pre-confirmation existence check (first call) must succeed --
+        # a real 404, treated as "page doesn't exist yet" -- so a
+        # confirmation_token is actually issued; the 403 this test cares
+        # about is injected only on the *second* GET, the one taken during
+        # the confirmed write itself, to isolate that specific re-raise
+        # behavior from the pre-confirmation check added separately above.
+        calls: list[str] = []
+        get_call_count = 0
+
+        def _fake_request_json(method, path, config, token, **kwargs):
+            nonlocal get_call_count
+            calls.append(method)
+            if method == "GET":
+                get_call_count += 1
+                if get_call_count == 1:
+                    raise gcore.GitLabPermanentError("not found", status_code=404)
+                raise gcore.GitLabPermanentError("denied", status_code=403)
+            raise AssertionError("a 403 on GET must re-raise, never fall through to a POST/PUT")
+
+        with mock.patch.object(gcore, "request_json", side_effect=_fake_request_json):
+            first = gcore.write_wiki_page("evidence/task-1", "Evidence", "content")
+            second = gcore.write_wiki_page(
+                "evidence/task-1", "Evidence", "content", confirmation_token=first["confirmation_token"]
+            )
+
+        self.assertEqual(first["status"], "confirmation_required")
+        self.assertFalse(first["will_overwrite_existing"])
+        self.assertEqual(second["status"], "denied")
+        self.assertEqual(second["status_code"], 403)
+        # Never a POST -- the 403 on GET must re-raise, not be silently
+        # treated as "page doesn't exist, proceed to create".
+        self.assertEqual(calls, ["GET", "GET"])
 
 
 # ---------------------------------------------------------------------------
@@ -513,15 +841,16 @@ class UntrustedWrappingTests(unittest.TestCase):
     def test_create_review_subtask_issue_payload_is_wrapped(self) -> None:
         existing_issue = {
             "iid": 7,
+            "state": "opened",
             "description": "Parent: #1\n\nSome body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relates_to #1\n",
-            "labels": ["review-subtask", "gate:G5"],
+            "labels": ["review-subtask", "gate:G5", gcore._evidence_key_label("TASK-1", "G5", 1)],
         }
         with mock.patch.object(gcore, "request_json", return_value=[existing_issue]):
             result = gcore.create_review_subtask(1, "Review needed", "Some body", "G5", "TASK-1")
         self._assert_wrapped(result["issue"])
 
     def test_write_wiki_page_page_payload_is_wrapped(self) -> None:
-        with mock.patch.object(gcore, "request_json", side_effect=[None, {"slug": "s", "content": "c"}]):
+        with mock.patch.object(gcore, "request_json", side_effect=[None, None, {"slug": "s", "content": "c"}]):
             first = gcore.write_wiki_page("evidence/task-1", "Evidence", "content")
             second = gcore.write_wiki_page(
                 "evidence/task-1", "Evidence", "content", confirmation_token=first["confirmation_token"]
@@ -576,7 +905,7 @@ class AuditTrailTests(unittest.TestCase):
         self.assertEqual(records[0]["decision"], "denied")
 
     def test_write_wiki_page_records_every_stage_not_only_final_success(self) -> None:
-        with mock.patch.object(gcore, "request_json", side_effect=[None, {"slug": "s"}]):
+        with mock.patch.object(gcore, "request_json", side_effect=[None, None, {"slug": "s"}]):
             first = gcore.write_wiki_page("evidence/task-1", "Evidence", "content", audit_path=self.audit_path)
             gcore.write_wiki_page(
                 "evidence/task-1",
@@ -593,7 +922,7 @@ class AuditTrailTests(unittest.TestCase):
             self.assertIn("content_sha256", record)
 
     def test_write_wiki_page_denied_confirmation_replay_writes_a_denied_record(self) -> None:
-        with mock.patch.object(gcore, "request_json", side_effect=[None, {"slug": "s"}]):
+        with mock.patch.object(gcore, "request_json", side_effect=[None, None, {"slug": "s"}]):
             first = gcore.write_wiki_page("evidence/task-1", "Evidence", "content")
             gcore.write_wiki_page("evidence/task-1", "Evidence", "content", confirmation_token=first["confirmation_token"])
             gcore.write_wiki_page(
@@ -626,6 +955,45 @@ class AuditTrailTests(unittest.TestCase):
         self.assertNotIn(FAKE_TOKEN, raw)
         self.assertNotIn("sensitive body text", raw)
         self.assertNotIn("sensitive comment text", raw)
+
+    def test_real_http_error_with_a_sensitive_response_body_never_reaches_the_audit_file(self) -> None:
+        # Unlike every other test in this class (and every other test in
+        # this file that raises GitLabPermanentError directly with a plain
+        # string, where audit_reason trivially equals message because there
+        # was never a raw body to begin with), this test drives an actual
+        # urllib.error.HTTPError *with a response body* through the real,
+        # unmocked request_json() -- only _perform_request is mocked, the
+        # same mocking layer RequestJsonRetryTests uses -- so the real
+        # redaction path in request_json()/_audit_safe_reason()/
+        # _audit_error_meta() is what's under test, not a test double that
+        # never had a body to redact in the first place.
+        sensitive_body = b'{"message":"denied","secret_token":"glpat-SUPER-SECRET-LEAKED-VALUE"}'
+        with mock.patch.dict(os.environ, _base_env()):
+            with mock.patch.object(gcore, "_perform_request", side_effect=_http_error(403, sensitive_body)):
+                result = gcore.write_evidence_comment(1, "content", "TASK-1", audit_path=self.audit_path)
+
+        self.assertEqual(result["status"], "denied")
+
+        records = self._read_records()
+        self.assertEqual(len(records), 1)
+        record = records[0]
+        self.assertEqual(record["decision"], "denied")
+        # The redaction mechanism's positive claim: hash/length fields are
+        # present as evidence that a response body existed and how large it
+        # was...
+        self.assertIn("response_body_sha256", record)
+        self.assertIn("response_body_length", record)
+        expected_sha256 = hashlib.sha256(sensitive_body.decode("utf-8").encode("utf-8")).hexdigest()
+        self.assertEqual(record["response_body_sha256"], expected_sha256)
+        self.assertEqual(record["response_body_length"], len(sensitive_body))
+        # ...while the raw body text itself is verifiably absent from the
+        # audit file's raw contents (mirroring
+        # test_no_audit_record_ever_contains_the_token_or_raw_content above,
+        # but for an HTTP-error-with-body case specifically).
+        raw = self.audit_path.read_text(encoding="utf-8")
+        self.assertNotIn("glpat-SUPER-SECRET-LEAKED-VALUE", raw)
+        self.assertNotIn("secret_token", raw)
+        self.assertNotIn(sensitive_body.decode("utf-8"), raw)
 
 
 # ---------------------------------------------------------------------------
@@ -678,6 +1046,21 @@ class RedirectAndTlsTests(unittest.TestCase):
         context = https_handlers[0]._context
         self.assertTrue(context.check_hostname)
         self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+
+    def test_build_opener_actually_wires_in_the_no_cross_host_redirect_handler(self) -> None:
+        # Regression test for the gap where _NoCrossHostRedirectHandler was
+        # only ever exercised as an isolated object (via self._redirect()
+        # above), never proven to actually be installed on the opener
+        # _perform_request() uses for real requests. A future edit that
+        # silently dropped this handler from _build_opener() -- leaving
+        # urllib's default HTTPRedirectHandler in place, which happily
+        # follows cross-host/scheme-downgrade redirects -- must fail this
+        # test.
+        opener = gcore._build_opener()
+        self.assertTrue(
+            any(isinstance(handler, gcore._NoCrossHostRedirectHandler) for handler in opener.handlers),
+            "opener.handlers has no _NoCrossHostRedirectHandler instance",
+        )
 
     def test_ssl_context_verification_is_not_configurable_by_any_env_var(self) -> None:
         # There is no code path in _build_opener() that reads any
@@ -835,6 +1218,55 @@ class GitlabServerSchemaTests(unittest.TestCase):
         self.assertEqual(result["status"], "denied")
         self.assertEqual(captured["parent_issue_iid"], 1)
         self.assertEqual(captured["gate_id"], "G5")
+        self.assertEqual(captured["task_id"], "TASK-1")
+
+    def test_write_wiki_page_tool_forwards_confirmation_token_and_format_unmutated(self) -> None:
+        module = _load_gitlab_server_module()
+        server = module.build_server()
+        tool = server.tools["write_wiki_page"]
+
+        captured = {}
+
+        def fake_write_wiki_page(**kwargs):
+            captured.update(kwargs)
+            return {"status": "confirmation_required", "confirmation_token": "stub-token"}
+
+        with mock.patch.object(module.core, "write_wiki_page", side_effect=fake_write_wiki_page):
+            result = tool(
+                slug="evidence/task-1",
+                title="Evidence",
+                content="body",
+                format="rdoc",
+                confirmation_token="a-real-token",
+            )
+
+        self.assertEqual(result["status"], "confirmation_required")
+        self.assertEqual(captured["slug"], "evidence/task-1")
+        self.assertEqual(captured["title"], "Evidence")
+        self.assertEqual(captured["content"], "body")
+        # The two fields this finding calls out by name -- confirm neither
+        # is silently dropped on the way from the MCP tool wrapper to
+        # gitlab_core.write_wiki_page.
+        self.assertEqual(captured["format"], "rdoc")
+        self.assertEqual(captured["confirmation_token"], "a-real-token")
+
+    def test_write_evidence_comment_tool_delegates_to_gitlab_core_unmutated(self) -> None:
+        module = _load_gitlab_server_module()
+        server = module.build_server()
+        tool = server.tools["write_evidence_comment"]
+
+        captured = {}
+
+        def fake_write_evidence_comment(**kwargs):
+            captured.update(kwargs)
+            return {"status": "ok", "comment": "stub"}
+
+        with mock.patch.object(module.core, "write_evidence_comment", side_effect=fake_write_evidence_comment):
+            result = tool(issue_iid=7, content="evidence text", task_id="TASK-1")
+
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(captured["issue_iid"], 7)
+        self.assertEqual(captured["content"], "evidence text")
         self.assertEqual(captured["task_id"], "TASK-1")
 
 

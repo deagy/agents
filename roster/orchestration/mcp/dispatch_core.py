@@ -129,6 +129,16 @@ _FORBIDDEN_AUDIT_KEYS = {
     "auth",
     "token",
     "confirmation_token",
+    # Defense-in-depth backstop for gitlab_core.py (and any future module
+    # reusing build_audit_record()): a raw body of retrieved/written content
+    # must never land in an audit record under any of these key names, even
+    # by accident. gitlab_core.py's own audit call sites never pass "content"/
+    # "body"/"description" -- they pass a hash/length instead -- but this
+    # keeps that discipline mechanically enforced rather than merely
+    # documented, matching the "token"/"confirmation_token" entries above.
+    "content",
+    "body",
+    "description",
 }
 
 

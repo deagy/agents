@@ -509,6 +509,31 @@ mechanically-enforced/advisory classification as above.
   a source-level check that GitLab's `state_event` field is never used, and a
   scan of `create_review_subtask`'s own function body for a call-shaped use of
   a forbidden verb).
+- **Idempotency search: mechanically enforced, exact-match, never a substring
+  match against untrusted content.** `_find_existing_subtask()` queries with
+  `state=opened` (a closed/already-resolved issue is never silently adopted;
+  a fresh call after the prior subtask was closed intentionally creates a new
+  one) and all three labels -- `review-subtask`, `gate:<gate_id>`, and a
+  hash-based `evidence-key:<hash>` label derived from
+  `(task_id, gate_id, parent_issue_iid)` -- filtered server-side and
+  re-verified locally against each candidate's own `labels`/`state` fields,
+  paginated (`per_page=100`, bounded page loop) so a match beyond an
+  unpaginated first page is never missed. Folding `parent_issue_iid` into the
+  hashed input (not only `task_id`/`gate_id`) is what restores parent binding
+  deterministically and structurally: without it, an open issue carrying the
+  right three labels would be adopted as a match regardless of which parent
+  it actually references, which was a real regression introduced when the
+  matching moved off the untrusted free-text `Parent: #<iid>` description
+  check. The `Parent: #<iid>` text is still written into the description for
+  human readability only and is never read back for matching. The prior
+  design's unauthenticated substring match against issue description text is
+  gone entirely; a decoy issue would need the exact three-label combination,
+  which requires the same permission tier (e.g. GitLab Reporter+ on this
+  project) the legitimate create flow already assumes -- not the same
+  identity/credential, since any project member at that tier can label an
+  issue. `create_review_subtask`'s result surfaces `state` at the top level
+  (not only nested inside the wrapped issue payload) for both a reused match
+  and a freshly created issue. Tested by `CreateReviewSubtaskTests`.
 - **Retry / fail-closed behavior: mechanically enforced.** `request_json()`
   retries 429/5xx/timeout/network errors with bounded jittered exponential
   backoff (`MAX_RETRY_ATTEMPTS`, `MAX_RETRY_ELAPSED_SECONDS`) and raises
@@ -525,18 +550,38 @@ mechanically-enforced/advisory classification as above.
   failure shape. Tested by `RequestJsonRetryTests`.
 - **1 MiB evidence-comment cap: mechanically enforced.** `write_evidence_comment`
   rejects (never truncates) content whose UTF-8 encoding exceeds
-  `MAX_EVIDENCE_COMMENT_BYTES` (1 MiB), before any HTTP call. Tested by
-  `WriteEvidenceCommentTests`.
-- **Untrusted-output wrapping: mechanically enforced.** Every piece of
-  GitLab-retrieved content returned in a tool result (`result["issue"]`,
-  `result["page"]`, `result["comment"]`) is wrapped with
-  `dispatch_core.wrap_untrusted_output`'s exact marker-token scheme via
-  `wrap_untrusted_gitlab_payload()`, so text an attacker deliberately wrote
-  into an issue title/description/wiki body/comment can never be mistaken by
-  the calling model for a trusted instruction. Tested by
-  `UntrustedWrappingTests`, which asserts the marker tokens themselves are
-  present in the payload, not merely that some substring of the underlying
-  data appears.
+  `MAX_EVIDENCE_COMMENT_BYTES` (1 MiB), before any HTTP call.
+  `write_wiki_page` has its own, separate 2 MiB cap
+  (`MAX_WIKI_PAGE_CONTENT_BYTES`), also reject-not-truncate, before any HTTP
+  call. Tested by `WriteEvidenceCommentTests`.
+- **Untrusted-output wrapping: mechanically enforced, including the error
+  path.** Every piece of GitLab-retrieved content returned in a *successful*
+  tool result (`result["issue"]`, `result["page"]`, `result["comment"]`) is
+  wrapped with `dispatch_core.wrap_untrusted_output`'s exact marker-token
+  scheme via `wrap_untrusted_gitlab_payload()`, so text an attacker
+  deliberately wrote into an issue title/description/wiki body/comment can
+  never be mistaken by the calling model for a trusted instruction. The
+  *error* path gets the same treatment: `_error_result()` wraps
+  `GitLabPermanentError`/`GitLabRetryableExhaustedError`'s `str(error)` --
+  which can embed a snippet of GitLab's own raw response body -- with the
+  identical marker-token scheme before it reaches `result["reason"]`; a
+  validation/config error's message is this module's own generated wording
+  and is returned unwrapped. Tested by `UntrustedWrappingTests` (success
+  path, asserting the marker tokens themselves are present in the payload,
+  not merely that some substring of the underlying data appears) and
+  `TokenNeverLeaksTests`/the retry test suite (error path).
+- **Error-response bodies never reach the audit trail: mechanically
+  enforced.** `request_json()` still embeds a snippet of GitLab's raw
+  response body in the exception `message` used for the caller-facing
+  result above, but every audit-record write uses
+  `_audit_safe_reason(error)` instead of `str(error)` -- which returns
+  `GitLabPermanentError.audit_reason` (a body-free, this-module-generated
+  variant) rather than the raw-body-bearing message -- plus, when available,
+  a `response_body_sha256`/`response_body_length` pair (hash/length only,
+  never content) via `_audit_error_meta()`. `dispatch_core._FORBIDDEN_AUDIT_KEYS`
+  additionally now includes `content`/`body`/`description` as a defense-in-
+  depth backstop against any future call site accidentally passing raw
+  content under one of those names.
 - **Human-confirmation gate for `write_wiki_page`: same mechanism and same
   honest limit as `dispatch_core.py`'s own `ConfirmationGate` above.** Every
   call, with no exception, must round-trip through a first
@@ -546,7 +591,15 @@ mechanically-enforced/advisory classification as above.
   single-use, TTL-bound, tamper-detecting mechanism itself; it is **not** and
   cannot be enforced from inside this tool that a human actually read the
   intermediate response before a fully autonomous caller issued the second
-  call. Tested by `WriteWikiPageConfirmationTests`.
+  call. The first call's `confirmation_required` response also discloses
+  `will_overwrite_existing: bool`, computed by checking `_get_wiki_page()`
+  *before* requesting confirmation (not folded into the tamper-detected
+  `brief` itself, so a page's existence changing between the two calls can
+  never spuriously invalidate an otherwise-unchanged confirmation) -- so the
+  human approving the confirmation sees whether the write creates a new page
+  or overwrites an existing one as part of what they're approving, not only
+  after the fact. Tested by `WriteWikiPageConfirmationTests`,
+  `WriteWikiPageCreateVsUpdateTests`, `GetWikiPageTests`.
 - **Audit trail: mechanically enforced.** Every call to all three tools
   writes a structured JSON-lines audit record via
   `dispatch_core.build_audit_record`/`write_audit_record` (the same
@@ -572,6 +625,24 @@ mechanically-enforced/advisory classification as above.
   statement. If this integration is ever pointed at a project that also holds
   higher-classification content, this boundary must be revisited before that
   happens, not assumed to still hold.
+- **`agent-autonomy.yaml`'s `gitlab_issue_or_comment_write: on_request` is
+  deliberately advisory-only, not mechanically enforced in code.** Unlike
+  `gitlab_wiki_write: human_approval` (mechanically enforced above via
+  `ConfirmationGate`), `create_review_subtask` and `write_evidence_comment`
+  have no in-code confirmation gate of their own -- an agent operating under
+  this policy calls them directly, on its own judgment of when a task
+  warrants it, without a mandatory round trip. This is consistent with how
+  every other `on_request`-ranked entry in `agent-autonomy.yaml` is already
+  handled: `repository.commit`, `repository.push`, and
+  `create_gitlab_merge_request` are also `on_request` and also have no
+  matching in-code gate anywhere in this suite's tooling (they are ordinary
+  git/GitLab operations an agent performs directly when a task calls for it,
+  not operations wrapped in a confirmation mechanism). Treating
+  `gitlab_issue_or_comment_write` the same way follows that existing
+  precedent rather than introducing a new, inconsistent enforcement tier for
+  one entry. If this is ever revisited to add real gating (mirroring
+  `write_wiki_page`'s `ConfirmationGate` reuse), that is a deliberate policy
+  change, not a gap being quietly closed.
 
 ## Not covered above
 

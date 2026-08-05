@@ -94,6 +94,16 @@ GITLAB_PROJECT_ID_ENV_VAR = "GITLAB_DOCS_PROJECT_ID"
 GITLAB_HIERARCHY_ENV_VAR = "GITLAB_SUPPORTS_WORK_ITEM_HIERARCHY"
 
 MAX_EVIDENCE_COMMENT_BYTES = 1 * 1024 * 1024  # 1 MiB, UTF-8 encoded content
+# Wiki pages are documented as this integration's home for durable,
+# structured documentation (design records, architecture decisions), which
+# can reasonably be larger than a single evidence comment -- a 2 MiB cap
+# (2x the evidence-comment cap) rather than reusing MAX_EVIDENCE_COMMENT_BYTES
+# outright, but still a hard reject-not-truncate cap rather than no cap at
+# all, and kept comfortably under MAX_RESPONSE_BYTES below (GitLab's wiki
+# write response typically echoes the written content back, plus metadata
+# overhead). Recorded here as a deliberate, revisitable choice, not a
+# silent gap.
+MAX_WIKI_PAGE_CONTENT_BYTES = 2 * 1024 * 1024  # 2 MiB, UTF-8 encoded content
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024  # defensive cap on any single API response body
 
 DEFAULT_TIMEOUT_SECONDS = 15.0
@@ -105,6 +115,17 @@ MAX_BACKOFF_SECONDS = 8.0
 PERMANENT_STATUS_CODES = {401, 403, 404}
 
 REVIEW_SUBTASK_LABEL = "review-subtask"
+_EVIDENCE_KEY_LABEL_PREFIX = "evidence-key:"
+
+# Idempotency search pagination: a sufficiently large per_page (GitLab's own
+# max) plus a bounded page-count cap, rather than trusting a single
+# unpaginated page. In practice, because the search is now also narrowed by
+# an exact-match evidence-key label (see _evidence_key_label below), a
+# legitimate (task_id, gate_id) pair should only ever match 0 or 1 open
+# issues on the first page; the loop exists for defensive completeness
+# rather than an expected common case.
+_ISSUE_SEARCH_PAGE_SIZE = 100
+_ISSUE_SEARCH_MAX_PAGES = 20
 
 _GATE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]+$")
 _TASK_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]+$")
@@ -164,13 +185,35 @@ class GitLabValidationError(GitLabError):
 
 class GitLabPermanentError(GitLabError):
     """401/403/404, or any other non-retryable HTTP status. Never retried.
-    Maps to status="denied"."""
+    Maps to status="denied".
+
+    `message` (and therefore `str(error)`) may embed a snippet of GitLab's
+    own raw response body -- useful for a human debugging a caller-facing
+    result, which is why it stays in `message` -- but that snippet must
+    never reach the audit trail. `audit_reason` carries a body-free variant
+    for that purpose (defaults to `message` itself for direct-construction
+    call sites, e.g. in tests, that never had a raw body to begin with);
+    `response_body_sha256`/`response_body_length` optionally carry a hash/
+    length of the raw body so the audit record still records *that* an error
+    body existed and how large it was, without ever recording its content.
+    """
 
     kind = "denied"
 
-    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        audit_reason: str | None = None,
+        response_body_sha256: str | None = None,
+        response_body_length: int | None = None,
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
+        self.audit_reason = audit_reason if audit_reason is not None else message
+        self.response_body_sha256 = response_body_sha256
+        self.response_body_length = response_body_length
 
 
 class GitLabRetryableExhaustedError(GitLabError):
@@ -233,6 +276,19 @@ def resolve_config() -> GitLabConfig:
     base_url = base_url.strip()
     if not base_url.lower().startswith("https://"):
         raise GitLabConfigError(f"{GITLAB_BASE_URL_ENV_VAR} must start with https://: {base_url!r}")
+    # Reject URL-userinfo host-confusion (e.g.
+    # "https://gitlab.example.com@attacker.com/") -- urllib/browsers parse
+    # everything before the last "@" in the authority component as userinfo
+    # and connect to whatever host follows it, so a value that *looks* like
+    # it targets the expected host at a glance can silently send the
+    # PRIVATE-TOKEN header to an attacker-controlled host instead. `netloc`
+    # containing "@" at all is refused outright; this integration has no
+    # legitimate use for HTTP Basic userinfo in GITLAB_BASE_URL.
+    if "@" in urllib.parse.urlparse(base_url).netloc:
+        raise GitLabConfigError(
+            f"{GITLAB_BASE_URL_ENV_VAR} must not contain URL userinfo (an '@' in the host "
+            f"component): {base_url!r}"
+        )
 
     project_id = os.environ.get(GITLAB_PROJECT_ID_ENV_VAR)
     if project_id is None or not project_id.strip():
@@ -270,11 +326,25 @@ class _NoCrossHostRedirectHandler(urllib.request.HTTPRedirectHandler):
         original_host = urllib.parse.urlparse(req.full_url).hostname
         new_parsed = urllib.parse.urlparse(newurl)
         if new_parsed.hostname != original_host or new_parsed.scheme != "https":
+            # audit_reason is set explicitly here even though these values
+            # (hostname/scheme parsed from the response's own Location
+            # header) are narrower than an arbitrary response body -- they
+            # are still network-derived and in principle attacker/
+            # compromised-instance-influenced, so this stays consistent with
+            # every other GitLabPermanentError raise site rather than
+            # silently falling back to the constructor's message-as-reason
+            # default.
             raise GitLabPermanentError(
                 f"Refusing redirect during GitLab API call (status {code}, from host "
                 f"{original_host!r} to {new_parsed.hostname!r} scheme {new_parsed.scheme!r}): "
                 "cross-host redirection and same-host https-to-http scheme downgrade are both refused",
                 status_code=code,
+                audit_reason=(
+                    f"Refusing redirect during GitLab API call (status {code}): cross-host "
+                    "redirection and same-host https-to-http scheme downgrade are both refused "
+                    "(host/scheme values omitted from the audit trail; see the caller-facing "
+                    "result for detail)"
+                ),
             )
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
@@ -320,6 +390,18 @@ def _safe_error_body(error: urllib.error.HTTPError) -> str:
         return ""
 
 
+def _error_body_meta(body_snippet: str) -> tuple[str | None, int | None]:
+    """Hash/length of an error-response body snippet, computed once so the
+    audit trail can record that a body existed (and how large it was)
+    without ever recording its content -- mirrors how `write_wiki_page`
+    already hashes wiki content for its own audit records rather than
+    logging it raw. Returns (None, None) for an empty/unreadable body."""
+    if not body_snippet:
+        return None, None
+    encoded = body_snippet.encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest(), len(encoded)
+
+
 def _perform_request(method: str, url: str, token: str, json_body: Any, timeout: float) -> Any:
     headers = {"PRIVATE-TOKEN": token, "Accept": "application/json"}
     data = None
@@ -331,7 +413,14 @@ def _perform_request(method: str, url: str, token: str, json_body: Any, timeout:
     with opener.open(request, timeout=timeout) as response:
         raw = response.read(MAX_RESPONSE_BYTES + 1)
         if len(raw) > MAX_RESPONSE_BYTES:
-            raise GitLabPermanentError(f"GitLab API response for {method} {url} exceeded {MAX_RESPONSE_BYTES}-byte cap")
+            # audit_reason set explicitly for the same consistency reason as
+            # the redirect refusal above -- this message only ever embeds
+            # the method/url/byte-cap, never response content, but stays
+            # explicit rather than relying on the constructor default.
+            raise GitLabPermanentError(
+                f"GitLab API response for {method} {url} exceeded {MAX_RESPONSE_BYTES}-byte cap",
+                audit_reason=f"GitLab API response exceeded the {MAX_RESPONSE_BYTES}-byte cap",
+            )
         if not raw:
             return None
         return json.loads(raw.decode("utf-8"))
@@ -382,10 +471,18 @@ def request_json(
         except urllib.error.HTTPError as error:
             status = error.code
             body_snippet = _safe_error_body(error)
+            body_sha256, body_length = _error_body_meta(body_snippet)
             if status in PERMANENT_STATUS_CODES:
                 raise GitLabPermanentError(
                     f"GitLab API returned {status} for {method} {path}: {body_snippet}",
                     status_code=status,
+                    audit_reason=(
+                        f"GitLab API returned {status} for {method} {path} "
+                        "(response body redacted from the audit trail; see "
+                        "response_body_sha256/response_body_length)"
+                    ),
+                    response_body_sha256=body_sha256,
+                    response_body_length=body_length,
                 ) from None
             if status == 429 or 500 <= status < 600:
                 if not _should_retry(attempt, started):
@@ -398,6 +495,13 @@ def request_json(
             raise GitLabPermanentError(
                 f"GitLab API returned unexpected status {status} for {method} {path}: {body_snippet}",
                 status_code=status,
+                audit_reason=(
+                    f"GitLab API returned unexpected status {status} for {method} {path} "
+                    "(response body redacted from the audit trail; see "
+                    "response_body_sha256/response_body_length)"
+                ),
+                response_body_sha256=body_sha256,
+                response_body_length=body_length,
             ) from None
         except (urllib.error.URLError, socket.timeout, TimeoutError) as error:
             if not _should_retry(attempt, started):
@@ -432,8 +536,44 @@ def wrap_untrusted_gitlab_payload(payload: Any) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _audit_safe_reason(error: GitLabError) -> str:
+    """The `reason` text safe to write to the audit trail: this module's own
+    generated wording, never a raw snippet of GitLab's response body.
+    `GitLabPermanentError` sets `audit_reason` explicitly (see its
+    docstring); every other error kind is generated entirely by this module
+    already (validation/config failures), so `str(error)` is already safe
+    and `audit_reason` (absent on those classes) falls back to it."""
+    return getattr(error, "audit_reason", str(error))
+
+
+def _audit_error_meta(error: GitLabError) -> dict[str, Any]:
+    """Hash/length fields (never raw content) to fold into an audit record
+    for an error that originated from an actual GitLab HTTP response."""
+    meta: dict[str, Any] = {}
+    body_sha256 = getattr(error, "response_body_sha256", None)
+    body_length = getattr(error, "response_body_length", None)
+    if body_sha256 is not None:
+        meta["response_body_sha256"] = body_sha256
+    if body_length is not None:
+        meta["response_body_length"] = body_length
+    return meta
+
+
 def _error_result(error: GitLabError) -> dict[str, Any]:
-    result: dict[str, Any] = {"status": error.kind, "reason": str(error)}
+    """Build the tool-caller-facing error result. For an error that
+    originated from an actual GitLab HTTP response (`GitLabPermanentError`/
+    `GitLabRetryableExhaustedError`), `str(error)` may embed a snippet of
+    GitLab's own response body -- untrusted, potentially attacker-influenced
+    text (e.g. a custom error message from a compromised/misconfigured
+    instance) -- so it is wrapped with the same untrusted-output marker-token
+    scheme every success-path payload already uses, rather than returned
+    raw. A validation/config error's message is entirely this module's own
+    generated wording and is returned unwrapped, matching existing test
+    expectations that assert on its exact substring content."""
+    reason_text = str(error)
+    if isinstance(error, (GitLabPermanentError, GitLabRetryableExhaustedError)):
+        reason_text = _dispatch_core.wrap_untrusted_output(reason_text)
+    result: dict[str, Any] = {"status": error.kind, "reason": reason_text}
     status_code = getattr(error, "status_code", None)
     if status_code is not None:
         result["status_code"] = status_code
@@ -463,32 +603,87 @@ def _idempotency_key(task_id: str, gate_id: str) -> str:
     return f"task_id={task_id} gate_id={gate_id}"
 
 
+def _evidence_key_label(task_id: str, gate_id: str, parent_issue_iid: int) -> str:
+    """A third label, in addition to `review-subtask` and `gate:<gate_id>`,
+    encoding a hash of the (task_id, gate_id, parent_issue_iid) idempotency
+    key. `parent_issue_iid` is folded into the hashed input -- not only
+    `task_id`/`gate_id` -- specifically so this label also binds the subtask
+    to the parent issue it was requested against: without it, an open issue
+    carrying the right three labels would be adopted as a match regardless of
+    which parent it actually references, silently dropping the parent
+    binding the old (pre-labels-only) description-based `Parent: #<iid>`
+    substring check used to provide. Filtering by all three labels
+    server-side (GitLab's issues API ANDs comma-separated `labels` values) is
+    what actually makes the idempotency search exact-match rather than
+    relying on an unauthenticated substring match against untrusted issue
+    description text -- a decoy issue would need to carry this exact label
+    combination, which requires the same permission tier (e.g. GitLab
+    Reporter+ on this project) the legitimate create flow already assumes,
+    not the same identity/credential."""
+    digest = hashlib.sha256(
+        f"task_id={task_id} gate_id={gate_id} parent={parent_issue_iid}".encode("utf-8")
+    ).hexdigest()
+    return f"{_EVIDENCE_KEY_LABEL_PREFIX}{digest}"
+
+
 def _find_existing_subtask(
     config: GitLabConfig, token: str, parent_issue_iid: int, gate_id: str, task_id: str
 ) -> dict[str, Any] | None:
-    """Search the configured project's issues for one already carrying both
-    the `review-subtask` label and `gate:<gate_id>` label, whose description
-    contains this exact (task_id, gate_id) idempotency key and an explicit
-    reference back to `parent_issue_iid`. This is the search-before-create
-    step that makes `create_review_subtask` idempotent; see `request_json`'s
-    docstring for why this matters beyond ordinary dedup (it is also this
-    module's stated safety design for retrying a POST on 429/5xx/timeout)."""
-    labels_filter = f"{REVIEW_SUBTASK_LABEL},gate:{gate_id}"
-    candidates = request_json(
-        "GET",
-        f"/projects/{_quote_project_id(config)}/issues",
-        config,
-        token,
-        query={"labels": labels_filter},
-    )
-    if not isinstance(candidates, list):
-        return None
-    key = _idempotency_key(task_id, gate_id)
-    parent_marker = f"Parent: #{parent_issue_iid}"
-    for issue in candidates:
-        description = issue.get("description") or ""
-        if key in description and parent_marker in description:
-            return issue
+    """Search the configured project's *open* issues for one already
+    carrying the exact three-label combination (`review-subtask`,
+    `gate:<gate_id>`, and a hash-based `evidence-key:<hash>` label derived
+    from (task_id, gate_id)) -- all filtered server-side, paginated, never
+    matched via an unauthenticated substring scan of issue description text.
+    This is the search-before-create step that makes `create_review_subtask`
+    idempotent; see `request_json`'s docstring for why this matters beyond
+    ordinary dedup (it is also this module's stated safety design for
+    retrying a POST on 429/5xx/timeout).
+
+    `state=opened` is included in the query filter so a closed (already
+    resolved) issue is never silently adopted as satisfying a fresh review
+    request -- a fresh call after the prior subtask was closed intentionally
+    creates a new subtask rather than reusing history. The three-label match
+    is re-verified locally against each candidate's own `labels` field (cheap
+    structural comparison of GitLab-controlled metadata, not the untrusted
+    free-text description) as a defense-in-depth backstop in case a server-
+    side label filter ever behaves more loosely than documented; the
+    `Parent: #<iid>` reference is still written into the description for
+    human readability only and is never used for matching -- the parent
+    binding is instead folded structurally into the evidence-key label hash
+    itself (see `_evidence_key_label`'s docstring), so a match still requires
+    the correct parent without reading untrusted free text."""
+    expected_labels = {
+        REVIEW_SUBTASK_LABEL,
+        f"gate:{gate_id}",
+        _evidence_key_label(task_id, gate_id, parent_issue_iid),
+    }
+    labels_filter = ",".join(sorted(expected_labels))
+    page = 1
+    while page <= _ISSUE_SEARCH_MAX_PAGES:
+        candidates = request_json(
+            "GET",
+            f"/projects/{_quote_project_id(config)}/issues",
+            config,
+            token,
+            query={
+                "labels": labels_filter,
+                "state": "opened",
+                "per_page": str(_ISSUE_SEARCH_PAGE_SIZE),
+                "page": str(page),
+            },
+        )
+        if not isinstance(candidates, list):
+            return None
+        for issue in candidates:
+            if not isinstance(issue, dict):
+                continue
+            if issue.get("state") != "opened":
+                continue
+            if expected_labels.issubset(set(issue.get("labels") or [])):
+                return issue
+        if len(candidates) < _ISSUE_SEARCH_PAGE_SIZE:
+            return None
+        page += 1
     return None
 
 
@@ -547,7 +742,7 @@ def create_review_subtask(
         _validate_label_component(gate_id, field_name="gate_id", pattern=_GATE_ID_PATTERN)
         _validate_label_component(task_id, field_name="task_id", pattern=_TASK_ID_PATTERN)
     except GitLabValidationError as error:
-        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=str(error))
+        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=_audit_safe_reason(error))
         return _error_result(error)
 
     resolved = _resolve_token_and_config()
@@ -571,6 +766,13 @@ def create_review_subtask(
                 "status": "ok",
                 "created": False,
                 "hierarchy_supported": config.supports_work_item_hierarchy,
+                # Surfaced at top level (not only nested inside the wrapped
+                # issue payload) so a caller can see the matched issue's
+                # state without unwrapping untrusted content -- always
+                # "opened" here since _find_existing_subtask only ever
+                # returns an open match, but kept explicit rather than
+                # assumed.
+                "state": existing.get("state") if isinstance(existing, dict) else None,
                 "issue": wrap_untrusted_gitlab_payload(existing),
             }
 
@@ -584,7 +786,11 @@ def create_review_subtask(
         payload = {
             "title": title,
             "description": full_description,
-            "labels": [REVIEW_SUBTASK_LABEL, f"gate:{gate_id}"],
+            "labels": [
+                REVIEW_SUBTASK_LABEL,
+                f"gate:{gate_id}",
+                _evidence_key_label(task_id, gate_id, parent_issue_iid),
+            ],
         }
         created = request_json(
             "POST",
@@ -603,14 +809,16 @@ def create_review_subtask(
             "status": "ok",
             "created": True,
             "hierarchy_supported": config.supports_work_item_hierarchy,
+            "state": created.get("state") if isinstance(created, dict) else None,
             "issue": wrap_untrusted_gitlab_payload(created),
         }
     except GitLabError as error:
         _write_gitlab_audit_record(
             **common_audit_fields,
             decision=error.kind,
-            reason=str(error),
+            reason=_audit_safe_reason(error),
             status_code=getattr(error, "status_code", None),
+            **_audit_error_meta(error),
         )
         return _error_result(error)
 
@@ -700,25 +908,35 @@ def write_wiki_page(
     if not isinstance(slug, str) or not slug.strip():
         error = GitLabValidationError("slug must be a non-empty string")
         _write_gitlab_audit_record(
-            tool="write_wiki_page", task_id=None, decision="denied", reason=str(error), audit_path=audit_path
+            tool="write_wiki_page", task_id=None, decision="denied", reason=_audit_safe_reason(error), audit_path=audit_path
         )
         return _error_result(error)
     if not isinstance(title, str) or not title.strip():
         error = GitLabValidationError("title must be a non-empty string")
         _write_gitlab_audit_record(
-            tool="write_wiki_page", task_id=None, decision="denied", reason=str(error), slug=slug, audit_path=audit_path
+            tool="write_wiki_page", task_id=None, decision="denied", reason=_audit_safe_reason(error), slug=slug, audit_path=audit_path
         )
         return _error_result(error)
     if not isinstance(content, str):
         error = GitLabValidationError("content must be a string")
         _write_gitlab_audit_record(
-            tool="write_wiki_page", task_id=None, decision="denied", reason=str(error), slug=slug, audit_path=audit_path
+            tool="write_wiki_page", task_id=None, decision="denied", reason=_audit_safe_reason(error), slug=slug, audit_path=audit_path
         )
         return _error_result(error)
     if format not in ("markdown", "rdoc", "asciidoc", "org"):
         error = GitLabValidationError(f"format must be one of markdown/rdoc/asciidoc/org: {format!r}")
         _write_gitlab_audit_record(
-            tool="write_wiki_page", task_id=None, decision="denied", reason=str(error), slug=slug, audit_path=audit_path
+            tool="write_wiki_page", task_id=None, decision="denied", reason=_audit_safe_reason(error), slug=slug, audit_path=audit_path
+        )
+        return _error_result(error)
+    encoded_content_length = len(content.encode("utf-8"))
+    if encoded_content_length > MAX_WIKI_PAGE_CONTENT_BYTES:
+        error = GitLabValidationError(
+            f"content exceeds the {MAX_WIKI_PAGE_CONTENT_BYTES}-byte UTF-8-encoded cap for "
+            f"write_wiki_page ({encoded_content_length} bytes); shorten the content, do not truncate it here"
+        )
+        _write_gitlab_audit_record(
+            tool="write_wiki_page", task_id=None, decision="denied", reason=_audit_safe_reason(error), slug=slug, audit_path=audit_path
         )
         return _error_result(error)
 
@@ -749,14 +967,38 @@ def write_wiki_page(
     }
 
     if confirmation_token is None:
+        # Check for an existing page *before* requesting confirmation, not
+        # after, so the human approving the confirmation_required response
+        # can see whether this write will create a new page or destructively
+        # overwrite an existing one -- not folded into `brief` itself (which
+        # stays a pure function of slug/title/content/format so the
+        # confirmation gate's tamper-detecting exact-match on the second call
+        # is unaffected by any change in page existence between the two
+        # calls).
+        try:
+            existing_before_confirmation = _get_wiki_page(config, token, slug)
+        except GitLabError as error:
+            _write_gitlab_audit_record(
+                **common_audit_fields,
+                decision=error.kind,
+                reason=_audit_safe_reason(error),
+                status_code=getattr(error, "status_code", None),
+                **_audit_error_meta(error),
+            )
+            return _error_result(error)
+        will_overwrite_existing = existing_before_confirmation is not None
+
         issued = _WIKI_CONFIRMATION_GATE.request(
             "write_wiki_page", brief, _WIKI_GATE_MODE, _WIKI_GATE_CLASSIFICATION, _WIKI_GATE_SANDBOX_LABEL
         )
-        _write_gitlab_audit_record(**common_audit_fields, decision="confirmation-required")
+        _write_gitlab_audit_record(
+            **common_audit_fields, decision="confirmation-required", will_overwrite_existing=will_overwrite_existing
+        )
         return {
             "status": "confirmation_required",
             "confirmation_token": issued,
             "expires_in_seconds": _dispatch_core.CONFIRMATION_TTL_SECONDS,
+            "will_overwrite_existing": will_overwrite_existing,
             "message": (
                 "write_wiki_page requires human confirmation. Replay this call unchanged, "
                 "adding confirmation_token, to actually write the wiki page."
@@ -768,8 +1010,14 @@ def write_wiki_page(
             confirmation_token, "write_wiki_page", brief, _WIKI_GATE_MODE, _WIKI_GATE_CLASSIFICATION, _WIKI_GATE_SANDBOX_LABEL
         )
     except _dispatch_core.DispatchDenied as error:
-        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=str(error))
-        return {"status": "denied", "reason": str(error)}
+        # DispatchDenied is not a GitLabError, but it already carries the
+        # same `.kind == "denied"` attribute _error_result() reads, and its
+        # message is this module's/dispatch_core's own generated wording
+        # (never raw GitLab response content), so routing it through the
+        # same shared helper every other error path uses keeps this path
+        # consistent rather than building an ad-hoc result dict here.
+        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=_audit_safe_reason(error))
+        return _error_result(error)
 
     try:
         existing = _get_wiki_page(config, token, slug)
@@ -803,8 +1051,9 @@ def write_wiki_page(
         _write_gitlab_audit_record(
             **common_audit_fields,
             decision=error.kind,
-            reason=str(error),
+            reason=_audit_safe_reason(error),
             status_code=getattr(error, "status_code", None),
+            **_audit_error_meta(error),
         )
         return _error_result(error)
 
@@ -830,15 +1079,15 @@ def write_evidence_comment(
 
     if not isinstance(issue_iid, int) or isinstance(issue_iid, bool) or issue_iid <= 0:
         error = GitLabValidationError(f"issue_iid must be a positive integer: {issue_iid!r}")
-        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=str(error))
+        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=_audit_safe_reason(error))
         return _error_result(error)
     if not isinstance(content, str):
         error = GitLabValidationError("content must be a string")
-        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=str(error))
+        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=_audit_safe_reason(error))
         return _error_result(error)
     if not isinstance(task_id, str) or not task_id.strip():
         error = GitLabValidationError("task_id must be a non-empty string")
-        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=str(error))
+        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=_audit_safe_reason(error))
         return _error_result(error)
 
     encoded_length = len(content.encode("utf-8"))
@@ -847,7 +1096,7 @@ def write_evidence_comment(
             f"content exceeds the {MAX_EVIDENCE_COMMENT_BYTES}-byte UTF-8-encoded cap for "
             f"write_evidence_comment ({encoded_length} bytes); shorten the content, do not truncate it here"
         )
-        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=str(error))
+        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=_audit_safe_reason(error))
         return _error_result(error)
 
     resolved = _resolve_token_and_config()
@@ -876,8 +1125,9 @@ def write_evidence_comment(
         _write_gitlab_audit_record(
             **common_audit_fields,
             decision=error.kind,
-            reason=str(error),
+            reason=_audit_safe_reason(error),
             status_code=getattr(error, "status_code", None),
+            **_audit_error_meta(error),
         )
         return _error_result(error)
 
