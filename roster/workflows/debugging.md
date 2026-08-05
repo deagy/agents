@@ -1,5 +1,16 @@
 # Debugging Workflow
 
+```mermaid
+flowchart LR
+    Reproduce --> Fix["Scoped Fix"]
+    Fix --> Review["Independent Review"]
+    Review -.->|"production impact, persistent data, secrets, or critical/high risk"| Human["Accountable Human (escalation-policy.md)"]
+```
+
+This workflow carries no fixed lifecycle gate (`routing.yaml`'s `debugging`
+route declares no `quality_gates`); stop conditions are governed by
+`orchestration/escalation-policy.md` instead.
+
 1. **Dispatcher:** Attach the issue report, failing command, logs, changed paths, environment, and authorized knowledge context. Record unavailable or blocked retrieval.
 2. **Debugging engineer:** Reproduce the issue or prove it is unreproducible, isolate the smallest likely cause, and identify whether the defect is in code, configuration, tests, runtime, documentation, or agent orchestration.
 3. **Specialist support:** Bring in frontend, backend, infrastructure, CI/CD, security, support, or agent-authoring expertise only for the affected boundary.

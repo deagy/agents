@@ -50,7 +50,19 @@ roles.
 ## GitHub-backed human approvals
 
 When configured by the target project, an approved GitHub pull-request review
-can be the authoritative source for a human gate decision:
+can be the authoritative source for a human gate decision. Set the policy in
+the target project's `.agentic-sdlc/project.json` and bind each applicable
+authority to its GitHub login in `.agentic-sdlc/authorities.json`:
+
+```json
+"approval_sources": {
+  "human_gate_default": "github-review",
+  "allow_manual_fallback": false
+}
+```
+
+Record supplied review metadata with `approve-from-github`, or let the CLI
+fetch the latest matching `APPROVED` review with `approve-from-github-pr`:
 
 ```sh
 cadre sdlc approve-from-github-pr \

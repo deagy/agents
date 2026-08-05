@@ -29,18 +29,19 @@ lifecycle records -- never here.
 
 ## Precedence
 
-1. Explicit task instructions from the human or orchestrator (unchanged —
-   see `operating-principles.md`).
-2. A project-local overlay at `.agents/shared/<filename>`, found by walking
-   up from the current directory to the nearest `.git` (the same convention
-   `roster/knowledge-store/src/config.py` uses for its project-local
-   `config.json`).
-3. The global default in this directory.
+```mermaid
+flowchart LR
+    A["1. Explicit task instructions\n(human or orchestrator)"] --> B["2. Project-local overlay\n.agents/shared/&lt;filename&gt;"]
+    B --> C["3. Global default\nroster/shared/&lt;filename&gt;"]
+```
 
-Resolve the effective value with `cadre resolve-shared <filename>` (see
-`roster/shared/src/resolve.py`), run from anywhere inside the target
-project. It fails closed: a malformed overlay is an error, not a silent
-fallback to the default.
+Highest precedence wins per file. The overlay is found by walking up from
+the current directory to the nearest `.git` (the same convention
+`roster/knowledge-store/src/config.py` uses for its project-local
+`config.json`). Resolve the effective value with `cadre resolve-shared
+<filename>` (see `roster/shared/src/resolve.py`), run from anywhere inside
+the target project. It fails closed: a malformed overlay is an error, not a
+silent fallback to the default.
 
 ## Merge rule by file type
 
@@ -83,48 +84,41 @@ default.
 ## Generating overlays with `cadre init`
 
 Rather than hand-authoring `.agents/shared/<filename>` overlays from scratch,
-run `cadre init --target <project-root>` (see `roster/shared/src/
-init_project.py`) to be guided through RG-A (stack/tooling opinions), RG-B
-(governance/autonomy narrowing, with a closed allowlist — never free text —
-for `agent-autonomy.yaml`), and RG-C (guided `platform-impact-profile.yaml`
-fill-in). Nothing is written without `--force`; omitting it previews only.
-Every generated overlay is validated by resolving it exactly as `agents
-resolve-shared` would before success is reported.
+run `cadre init --target <project-root>` (see
+`roster/shared/src/init_project.py`) for a guided walkthrough of three
+sections (`--sections` restricts to a comma-separated subset; default: all):
 
-Answer the run either non-interactively with `--answers <file.yaml>` (a
-`schema_version: 1` file in the shape `init_project.py`'s module docstring
-documents — the same shape `--print-answers` echoes, so a prior run's
-answers are directly reusable) or interactively with `--interactive`
-(exactly one of the two is required). `--stack <preset-id>` names a starter
-preset from `roster/shared/init-presets/*.yaml` — a static, human-reviewed,
-RG-A-only fragment (it can never touch `agent-autonomy.yaml` or
-`cloud-guardrails.md`) whose values are shown as prompt defaults in
-`--interactive` mode, or merged under an `--answers` file (the answer file's
-own values win). `--sections` restricts the run to a comma-separated subset
-of `rg-a-stack,rg-b-governance,rg-c-platform` (default: all three).
+- **RG-A** — stack/tooling opinions.
+- **RG-B** — governance/autonomy narrowing, via a closed allowlist for
+  `agent-autonomy.yaml` (never free text).
+- **RG-C** — guided `platform-impact-profile.yaml` fill-in.
 
-Pass `--print-answers` to echo the resolved answer set (after validation)
-alongside the write preview, so a run is reproducible from a saved answer
-file. `agent-autonomy.yaml` and `cloud-guardrails.md` fields are redacted in
-that echo to a per-field `accepted`/`rejected` status plus a sha256 hash
-rather than the raw value — the raw value is never printed to stdout/stderr,
-only ever written to the audit log (or the resulting overlay file itself) as
-a hash or as real file content.
+Key behavior:
 
-`technology-standards.md` and `cloud-guardrails.md` overlays use a managed
-block (`<!-- agents-init:managed:start/end -->`): re-running `cadre init`
-against the same project accumulates new addendum entries/guardrail bullets
-onto whatever a prior run already wrote there instead of replacing it
-(exact-duplicate bullets are deduped), and any content a human has manually
-added outside the managed block is left untouched.
-
-Every field an answer set supplies a value for must have a corresponding
-`field_decisions` entry recording a `kept`/`overridden`/`deferred` status and
-a `category` of either `stack` (team-profile.yaml/library-standards.yaml/
-technology-standards.md/platform-impact-profile.yaml) or `governance`
-(agent-autonomy.yaml/cloud-guardrails.md). `cadre init` fails closed (no
-writes) if a touched field is missing a decision entry, or if a field's
-declared category doesn't match which file it actually touches.
+- Nothing is written without `--force` (omitting it previews only), and every
+  generated overlay is validated by resolving it exactly as `cadre
+  resolve-shared` would before success is reported.
+- Answer the run either non-interactively with `--answers <file.yaml>`
+  (`schema_version: 1`, documented in `init_project.py`'s module docstring —
+  the same shape `--print-answers` echoes back, so a prior run is directly
+  reusable) or interactively with `--interactive` (exactly one is required).
+  `--stack <preset-id>` names a static, human-reviewed, RG-A-only starter
+  preset from `roster/shared/init-presets/*.yaml` (never touches
+  `agent-autonomy.yaml` or `cloud-guardrails.md`) as interactive defaults or
+  an `--answers` merge base (the answer file's own values win).
+- `--print-answers` echoes the resolved, validated answer set for
+  reproducibility; `agent-autonomy.yaml`/`cloud-guardrails.md` fields are
+  redacted there to an `accepted`/`rejected` status plus a sha256 hash — the
+  raw value is never printed, only ever written to the audit log or the
+  resulting overlay file.
+- `technology-standards.md` and `cloud-guardrails.md` overlays use a managed
+  block (`<!-- agents-init:managed:start/end -->`): reruns accumulate new
+  entries there (deduping exact duplicates) without touching content a human
+  added outside the block.
+- Every answered field needs a `field_decisions` entry
+  (`kept`/`overridden`/`deferred` status, plus a `stack` or `governance`
+  category); `cadre init` fails closed (no writes) on a missing decision or a
+  category that doesn't match the field's actual file.
 
 ## The platform impact profile
 

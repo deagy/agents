@@ -1,5 +1,17 @@
 # Rollback Workflow
 
+```mermaid
+flowchart LR
+    Trigger --> Preserve["Preserve Evidence"]
+    Preserve --> Select["Release Engineer Selects Procedure"]
+    Select -.->|"policy-defined emergency authorization"| Human["Accountable Human"]
+    Human --> Execute["Deploy Known-Good Artifact"]
+    Execute --> Verify
+```
+
+This workflow carries no fixed `G1`-`G10` gate; the deciding authority is
+whichever accountable human policy designates for emergency authorization.
+
 1. Declare the trigger, incident/change identifier, decision owner, affected environment, and current blast radius.
 2. Preserve logs, events, artifact identifiers, plans, and relevant state before changing the system when safe.
 3. Release engineer selects the pre-approved rollback or roll-forward procedure; obtain emergency authorization required by policy.

@@ -5,6 +5,23 @@ Use `product-intake.md` when the task only captures intent or baselines
 requirements. Knowledge retrieval is required at every relevant phase under the
 retrieval policy, but it is a cross-cutting prerequisite rather than G1-G10.
 
+```mermaid
+flowchart LR
+    Intent -->|"G1: Product Owner"| Requirements
+    Requirements -->|"G2: Product Owner + Engineering Lead"| Architecture
+    Architecture -->|"G3: System Architect"| Governance["Governance & Data"]
+    Governance -->|"G4: Governance Lead"| Security["Security & Crypto"]
+    Security -->|"G5: Security Lead"| Implementation
+    Implementation --> Verification
+    Verification -->|"G6: Product Owner + Engineering Lead"| Evidence
+    Evidence -->|"G7: Release Owner"| Readiness["Release Readiness"]
+    Readiness -->|"G8: Release Owner"| Authorization["Deployment Authorization"]
+    Authorization -->|"G9: Release Authority"| Deployment
+    Deployment -->|"G10: Service Owner"| Runtime["Runtime & Feedback"]
+```
+
+Cross-checked against `roster/authority/aides.yaml`'s per-gate authority list.
+
 1. **Intent and requirements:** Product Intent Agent drafts the versioned intent; the Human Product Owner decides G1. Requirements Agent derives stable, traceable functional, non-functional, control, test, and evidence obligations; the Product Owner and Engineering Lead decide G2.
 2. **Early assurance:** Governance Planner, Data Governance Engineer, and Cryptographic Assurance Engineer classify applicability, populate the platform impact profile, and identify unresolved definitions. `unknown` applicable items fail closed.
 3. **Architecture:** Cloud Architect maps the approved baseline and platform profile to boundaries, APIs, data/trust flows, ADRs, failure/recovery behavior, and validation obligations. The Human System Architect decides G3.

@@ -29,19 +29,24 @@ it names a concrete field or file, the link goes to that source instead.
 
 ## Relationship between the three repositories
 
-```text
-portable Agentic SDLC kernel
-    └── target-project overlay and run records
+```mermaid
+graph TD
+    K["portable Agentic SDLC kernel"] --> O["target-project overlay and run records"]
 
-Secure Cloud provider (deagy/cadre — the register)
-    ├── role catalog and AGENT.md definitions
-    ├── shared policies and workflows
-    ├── knowledge-store procedures
-    └── provider bundle (provider/)
+    subgraph P["Secure Cloud provider (deagy/cadre — the register)"]
+        P1["role catalog and AGENT.md definitions"]
+        P2["shared policies and workflows"]
+        P3["knowledge-store procedures"]
+        P4["provider bundle (provider/)"]
+    end
 
-Cadre plugin (deagy/cadre-lifecycle)
-    ├── generated Claude Code / Codex distribution
-    └── hand-authored Cline CLI plugin
+    subgraph L["Cadre plugin (deagy/cadre-lifecycle)"]
+        L1["generated Claude Code / Codex distribution"]
+        L2["hand-authored Cline CLI plugin"]
+    end
+
+    P4 -- "contributed into" --> K
+    L1 -- "generated from" --> P
 ```
 
 The kernel owns lifecycle state and gate transitions, permanently — no
