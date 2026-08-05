@@ -143,7 +143,8 @@ packages = ["cadre_cli"]
 #
 # This directory is register-owned precisely so these two subcommands keep
 # working from a pip/pipx install with no plugin checkout anywhere: the
-# separate Claude/Codex plugin distribution (deagy/cadre-plugin) receives a
+# separate Claude/Codex plugin distribution (deagy/cadre-lifecycle, successor
+# to the now-archived deagy/cadre-plugin) receives a
 # copy of it, rather than the other way round. Both subcommands only *read*
 # these resources (bootstrap-codex writes into the caller's own home
 # directory, never back into this package), so vendoring them is safe --

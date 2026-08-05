@@ -22,7 +22,7 @@ Own routine, non-debugging changes to this suite's own tooling and orchestration
 ## Outputs
 
 - Scoped changes to `roster/catalog.yaml`, role `AGENT.md` files, `roster/orchestration/routing.yaml`, orchestration source, or publishable skills, plus their tests
-- Regenerated `catalog.yaml`/`routing.yaml` and the generated half of `provider/` (`cadre generate-role-metadata`) when the change touches generated output. The packaged plugin is not built here — it is regenerated in a `deagy/cadre-plugin` checkout (`cadre generate-plugin --output /path/to/cadre-plugin`) and committed there.
+- Regenerated `catalog.yaml`/`routing.yaml` and the generated half of `provider/` (`cadre generate-role-metadata`) when the change touches generated output. The packaged plugin is not built here — it is regenerated in a `deagy/cadre-lifecycle` checkout (`cadre generate-plugin --output /path/to/cadre-lifecycle`) and committed there.
 - Implementation notes, assumptions, known limitations, and reviewer handoff
 
 ## Required checks

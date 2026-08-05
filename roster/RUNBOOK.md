@@ -70,7 +70,7 @@ Choose agents by the capability the task needs. The examples in this runbook sta
 | Import or retrieve historical knowledge | Knowledge store steward | Security/compliance reviewer |
 | Prepare a decision package for a human lifecycle-gate authority | Matching `<authority>-aide` (e.g. product-owner-aide for G1/G2/G6, release-authority-aide for G9) | The named human authority itself |
 
-Use `catalog.yaml` when an orchestrator needs a machine-readable role inventory. Each role optionally declares a `model` tier (`haiku`/`sonnet`/`opus`), assigned by the fixed heuristic documented in the file's header comment: `opus` for design/architecture/governance/crypto-assurance roles making high-blast-radius judgment calls, `sonnet` as the default for build/review/test/operations/support roles, `haiku` for narrow single-purpose roles (evidence cataloging, knowledge-store stewardship, triage/escalation routing). `generate_global_plugin.py` propagates it into both the generated Claude Code subagent wrapper's `model:` frontmatter and the Codex `.toml` wrapper's `model` key — regenerate the package with `cadre generate-plugin --output /path/to/cadre-plugin` after changing it.
+Use `catalog.yaml` when an orchestrator needs a machine-readable role inventory. Each role optionally declares a `model` tier (`haiku`/`sonnet`/`opus`), assigned by the fixed heuristic documented in the file's header comment: `opus` for design/architecture/governance/crypto-assurance roles making high-blast-radius judgment calls, `sonnet` as the default for build/review/test/operations/support roles, `haiku` for narrow single-purpose roles (evidence cataloging, knowledge-store stewardship, triage/escalation routing). `generate_global_plugin.py` propagates it into both the generated Claude Code subagent wrapper's `model:` frontmatter and the Codex `.toml` wrapper's `model` key — regenerate the package with `cadre generate-plugin --output /path/to/cadre-lifecycle` after changing it.
 
 `catalog.yaml` and `orchestration/routing.yaml`'s `knowledge_focus` block are themselves generated files, produced by `roster/orchestration/src/generate_role_metadata.py` from `roster/catalog-order.txt` (the dispatch-precedence id order) and every role's own `AGENT.md` frontmatter -- every role's `AGENT.md` carries `---`-delimited frontmatter (`id`, `phase`, `capability`, `model`, `codex_model`, `reasoning_effort`, `knowledge_focus` -- `definition` is never stored in frontmatter, it is always derived from the file's own path); an `AGENT.md` without frontmatter is a generator error, not a supported state. Never hand-edit `catalog.yaml` or `routing.yaml`'s `knowledge_focus` block directly: edit the role's frontmatter and run `cadre generate-role-metadata` (or `python3 roster/orchestration/src/generate_role_metadata.py`) to regenerate both derived files, and `... --check` to validate without writing. Adding a role always means adding its `AGENT.md` (with frontmatter) and adding its id to `catalog-order.txt` in the same change.
 
@@ -654,7 +654,7 @@ The active provider profile currently centers on self-hosted Proxmox, OpenTofu, 
 
 Named support escalation levels, human owner groups, customer communication expectations, emergency contacts, and named human approval groups are deliberately **not** tracked in `shared/team-profile.yaml` — record that in a consuming project's own local/untracked config or its `agentic-sdlc` lifecycle records instead.
 
-**This repository's own case:** this repository runs no `.agentic-sdlc/` overlay of its own (see the two-repo boundary in `CLAUDE.md`), so it has no lifecycle records to redirect to. This repository's own Product Owner / G1 Intent Gate approval authority, and any other repository-level approval authority, is instead recorded in `.github/CODEOWNERS` (a GitHub handle, not a name) — a file that is never read or embedded by `generate_global_plugin.py`, so it carries no risk of propagating into generated role wrappers or the public `cadre-plugin` repo. A `product-intent-agent` dispatch against this repository's own backlog should resolve the Product Owner from `.github/CODEOWNERS` rather than re-logging its absence as a blocking gap.
+**This repository's own case:** this repository runs no `.agentic-sdlc/` overlay of its own (see the two-repo boundary in `CLAUDE.md`), so it has no lifecycle records to redirect to. This repository's own Product Owner / G1 Intent Gate approval authority, and any other repository-level approval authority, is instead recorded in `.github/CODEOWNERS` (a GitHub handle, not a name) — a file that is never read or embedded by `generate_global_plugin.py`, so it carries no risk of propagating into generated role wrappers or the public `cadre-lifecycle` repo. A `product-intent-agent` dispatch against this repository's own backlog should resolve the Product Owner from `.github/CODEOWNERS` rather than re-logging its absence as a blocking gap.
 
 Keep organization-wide requirements under `shared/`; keep role authority in each `AGENT.md`; keep change-specific facts in task briefs.
 
@@ -721,17 +721,17 @@ The report classifies each of the two artifacts independently into one of five s
 
 ## 16a. Use the installable Cline CLI plugin
 
-`cline/` in [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) is a separate, hand-authored TypeScript source tree (not generated) implementing a real, installable Cline CLI plugin — distinct from the ambient `.clinerules/agents-repository.md` recognition described in the README's "Supported runners" section, which works for any Cline session with this repository as its working directory and needs no install step.
+`cline/` in [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) (the successor to the now-archived `deagy/cadre-plugin`) is a separate, hand-authored TypeScript source tree (not generated) implementing a real, installable Cline CLI plugin — distinct from the ambient `.clinerules/agents-repository.md` recognition described in the README's "Supported runners" section, which works for any Cline session with this repository as its working directory and needs no install step.
 
 Install it with:
 
 ```sh
 # Clone at a release tag, then install from that checkout. The bare git-URL
-# form (`cline plugin install https://github.com/deagy/cadre-plugin.git`)
+# form (`cline plugin install https://github.com/deagy/cadre-lifecycle.git`)
 # installs whatever is on `main` at that moment, with no way to pin a ref --
 # prefer the checkout so you control the revision.
-git clone --branch v0.13.0 https://github.com/deagy/cadre-plugin.git
-cd cadre-plugin && cline plugin install ./cline
+git clone --branch v0.7.0 https://github.com/deagy/cadre-lifecycle.git
+cd cadre-lifecycle && cline plugin install ./cline
 ```
 
 It registers one tool, `agents_select`, wrapping `cadre select` (see §"Select Agents" above) — a Cline conversation can call it directly to get the same deterministic, plan-only dispatch plan a human would get from the CLI, without shelling out manually. It carries the same invariants as the CLI it wraps: plan-only, never invokes agents, retrieves knowledge, merges, deploys, or mutates infrastructure or approvals.
@@ -742,36 +742,38 @@ This plugin system currently applies to the Cline CLI, SDK, and Kanban only, not
 
 Most projects want §16's `cadre sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 71 roles, 10 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
 
-The marketplace lives in [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin),
-not here. Claude Code adds it straight from GitHub, pinned to a release —
-check [the releases](https://github.com/deagy/cadre-plugin/releases) for the
+The marketplace lives in [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle)
+(the successor to the now-archived `deagy/cadre-plugin`), not here. Claude
+Code adds it straight from GitHub, pinned to a release — check
+[the releases](https://github.com/deagy/cadre-lifecycle/releases) for the
 current tag rather than trusting the one written here:
 
 ```text
-/plugin marketplace add deagy/cadre-plugin@v0.13.0
-/plugin install cadre@cadre-team
+/plugin marketplace add deagy/cadre-lifecycle@v0.7.0
+/plugin install cadre@cadre-lifecycle-team
 ```
 
 Always pin: without `@<tag>` you track that repository's `main`. A marketplace
 source accepts a branch or tag but not a commit SHA, so the pin is only as
 immutable as the tag. `owner/repo` shorthand clones over SSH by default; set
-`CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` for HTTPS.
+`CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` for HTTPS. That repository also bundles
+optional, separately-owned Agentic SDLC lifecycle-governance plugins under
+other install keys — see its own README.
 
 Codex installs from a local checkout, so clone at the tag first:
 
 ```sh
-git clone --branch v0.13.0 https://github.com/deagy/cadre-plugin.git
-codex plugin marketplace add /path/to/cadre-plugin
-codex plugin add cadre@cadre-team
+git clone --branch v0.7.0 https://github.com/deagy/cadre-lifecycle.git
+codex plugin marketplace add /path/to/cadre-lifecycle
+codex plugin add cadre@cadre-lifecycle-team
 ```
 
-Each release also carries a signed provenance attestation, so you can check
-what you are installing before it reaches your `PATH`:
-
-```sh
-gh release download v0.13.0 --repo deagy/cadre-plugin
-gh attestation verify cadre-plugin-v0.13.0.tar.gz --repo deagy/cadre-plugin
-```
+Unlike the archived `deagy/cadre-plugin`, `deagy/cadre-lifecycle`'s release
+workflow does not currently attach a downloadable release tarball or a signed
+provenance attestation — a release is a plain git tag plus a GitHub Release
+whose notes are that version's `CHANGELOG.md` entry. Install from the tagged
+git checkout above (or the pinned marketplace add) rather than looking for a
+tarball to download and verify.
 
 Codex has no plugin-bundled-subagent mechanism, so its 71 namespaced `agents-<role>.toml` wrappers are staged under `provider/codex-agents/` rather than loaded from the plugin directly. The bootstrap step installs only those namespaced files and refuses unowned collisions; it leaves legacy bare global files untouched. Project-local bare role overrides remain preferred. See `../packaging/plugin-README.md`; legacy bare global files can be removed manually after confirming they are unused. Claude Code's plugin-bundled `agents/*.md` wrappers need no such step.
 
@@ -779,9 +781,10 @@ A namespaced `.toml` wrapper alone only lets a human or a project-local override
 
 The plugin is self-contained: generated wrappers embed role and shared-policy
 instructions, while skills and runtime files are packaged under `skills/` and
-`suite/`. Regenerate it into a [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) checkout with
-`cadre generate-plugin --output /path/to/cadre-plugin` after role, policy, workflow, runtime, or
-skill changes; that repository's CI fails on drift against the register
+`suite/`. Regenerate it into a [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) checkout with
+`cadre generate-plugin --output /path/to/cadre-lifecycle` after role, policy, workflow, runtime, or
+skill changes (excluding that repository's own hand-authored exceptions — see
+its `CLAUDE.md`); that repository's CI fails on drift against the register
 revision its `cadre-ref.txt` pins.
 
 Editing `roster/authority/aides.yaml` or `roster/authority/_template.md.tmpl`
@@ -798,7 +801,7 @@ so editing a role's `AGENT.md` requires the same kind of extra step: run
 `roster/orchestration/routing.yaml`'s `knowledge_focus` block from the
 frontmatter and the generated half of `provider/`. `cadre
 generate-role-metadata --check` is the CI drift-guard equivalent. The
-packaged plugin then picks the change up when it is regenerated in a [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin)
+packaged plugin then picks the change up when it is regenerated in a [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle)
 checkout.
 
 ## 18. Record a GitHub-backed human gate approval

@@ -12,19 +12,19 @@ This repository is one of three:
 | Repository | Owns |
 | --- | --- |
 | [`deagy/cadre`](https://github.com/deagy/cadre) | The **register** — role definitions, catalog, routing, and the generator. The source of everything generated here. |
-| `deagy/cadre-plugin` (this repository) | The **plugin implementations** — the generated distribution above, plus the hand-authored package assets and the Cline plugin under `cline/`. |
+| `deagy/cadre-lifecycle` (this repository) | The **plugin implementations** — the generated distribution above, plus the hand-authored package assets, the Cline plugin under `cline/`, and optional, separately-owned Agentic SDLC lifecycle-governance plugins. Successor to the now-archived `deagy/cadre-plugin`. |
 | [`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc) | The **lifecycle kernel** — G1–G10 gate schemas, run-record validation, gate authority. |
 
 ## Installing
 
 **Claude Code** adds this marketplace straight from GitHub — no clone of your
 own. Pin to a release; check [the
-releases](https://github.com/deagy/cadre-plugin/releases) for the current tag
+releases](https://github.com/deagy/cadre-lifecycle/releases) for the current tag
 rather than trusting the one written here:
 
 ```text
-/plugin marketplace add deagy/cadre-plugin@v0.13.0
-/plugin install cadre@cadre-team
+/plugin marketplace add deagy/cadre-lifecycle@v0.7.0
+/plugin install cadre@cadre-lifecycle-team
 ```
 
 Without `@<tag>` you track `main`, which moves. A *marketplace* source accepts
@@ -35,21 +35,21 @@ tag itself. `owner/repo` shorthand clones over SSH by default; set
 **Codex** installs from a local checkout, so clone at the tag first:
 
 ```sh
-git clone --branch v0.13.0 https://github.com/deagy/cadre-plugin.git
-codex plugin marketplace add /path/to/cadre-plugin
-codex plugin add cadre@cadre-team
+git clone --branch v0.7.0 https://github.com/deagy/cadre-lifecycle.git
+codex plugin marketplace add /path/to/cadre-lifecycle
+codex plugin add cadre@cadre-lifecycle-team
 ```
 
 **Verify before installing** (optional, recommended for anything you did not
 build yourself — this drops 71 role-instruction files and a `bin/cadre` onto
 your `PATH` at user scope). See [Verifying a
-release](#verifying-a-release):
+release](#verifying-a-release) — as of this writing that section is aspirational
+for this successor repository; install from the tagged git checkout or the
+pinned marketplace add above instead:
 
 ```sh
-gh release download v0.13.0 --repo deagy/cadre-plugin
-gh attestation verify cadre-plugin-v0.13.0.tar.gz --repo deagy/cadre-plugin
-tar xzf cadre-plugin-v0.13.0.tar.gz
-codex plugin marketplace add ./cadre-plugin   # or /plugin marketplace add ./cadre-plugin
+git clone --branch v0.7.0 https://github.com/deagy/cadre-lifecycle.git
+codex plugin marketplace add /path/to/cadre-lifecycle   # or /plugin marketplace add /path/to/cadre-lifecycle
 ```
 
 **Cline** installs the hand-authored `cline/` plugin (the single `agents_select`
@@ -57,14 +57,14 @@ tool; see that directory's own notes on what it can and can't do) from a git
 source:
 
 ```sh
-cline plugin install --git https://github.com/deagy/cadre-plugin --force
+cline plugin install --git https://github.com/deagy/cadre-lifecycle --force
 ```
 
 or from a local checkout for development:
 
 ```sh
-git clone --branch v0.13.0 https://github.com/deagy/cadre-plugin.git
-cline plugin install /path/to/cadre-plugin --force
+git clone --branch v0.7.0 https://github.com/deagy/cadre-lifecycle.git
+cline plugin install /path/to/cadre-lifecycle --force
 ```
 
 If `agents_select` doesn't show up in a session after installing or updating
@@ -159,9 +159,9 @@ the register are `roster/`, `.agents/skills/`, `provider/`, and
 
 ```sh
 git clone https://github.com/deagy/cadre.git
-git -C cadre checkout "$(grep -v '^[[:space:]]*#' /path/to/cadre-plugin/cadre-ref.txt \
+git -C cadre checkout "$(grep -v '^[[:space:]]*#' /path/to/cadre-lifecycle/cadre-ref.txt \
   | grep -v '^[[:space:]]*$' | head -1)"
-cadre/bin/cadre generate-plugin --output /path/to/cadre-plugin
+cadre/bin/cadre generate-plugin --output /path/to/cadre-lifecycle
 ```
 
 Check out exactly the revision `cadre-ref.txt` names, not a release tag:
@@ -186,18 +186,19 @@ Installing this plugin puts 71 role-instruction files and a `bin/cadre` onto
 are installing came from the build you expect. Cloning gives you commit
 integrity; it says nothing about which workflow produced the content.
 
-Each release attaches a source tarball and an SBOM for the Cline plugin's npm
-dependency tree, both with SLSA build provenance signed through GitHub's
-hosted Sigstore instance. Verify with the GitHub CLI:
+In the now-archived `deagy/cadre-plugin`, each release attached a source
+tarball and an SBOM for the Cline plugin's npm dependency tree, both with
+SLSA build provenance signed through GitHub's hosted Sigstore instance,
+verifiable with the GitHub CLI (`gh release download`/`gh attestation
+verify`). That confirmed the tarball was built by that repository's
+`release.yml` at the tagged commit, and not assembled elsewhere.
 
-```sh
-gh release download v0.13.0 --repo deagy/cadre-plugin
-gh attestation verify cadre-plugin-v0.13.0.tar.gz --repo deagy/cadre-plugin
-```
-
-That confirms the tarball was built by this repository's `release.yml` at the
-tagged commit, and not assembled elsewhere. A failed verification means the
-artifact is not what this repository published — do not install it.
+**`deagy/cadre-lifecycle`'s current `release.yml` does not yet reproduce
+this** — its releases are a plain git tag plus a GitHub Release whose notes
+are that version's `CHANGELOG.md` entry, with no attached tarball, SBOM, or
+attestation. Until that gap is closed, verify by installing from a tagged git
+checkout (commit integrity only) rather than expecting a downloadable,
+attestable artifact.
 
 The generated Cadre package itself carries no third-party dependencies (Python
 standard library and Markdown only), which is why the SBOM covers `cline/`
@@ -210,7 +211,7 @@ The version lives in both plugin manifests and they must always agree. Set
 them together:
 
 ```sh
-python3 tools/plugin_version.py --set 0.13.0
+python3 tools/plugin_version.py --set 0.7.0
 ```
 
 `.github/workflows/release.yml` tags and publishes once that bump lands on

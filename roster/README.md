@@ -95,4 +95,4 @@ advance the run record only when all gate criteria and authority checks pass.
 
 ## System-wide adoption
 
-Unlike the portable kernel above, the packaged plugin ([`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin)) does not get copied into other repositories — it makes *this* suite (roles, skills, knowledge store) reachable from any project directory on the machine once installed at global/user scope, since none of it is discoverable from outside this checkout by default. See `../packaging/plugin-README.md` (the register-owned source of that package's README) and `RUNBOOK.md` section 17.
+Unlike the portable kernel above, the packaged plugin ([`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle), the successor to the now-archived `deagy/cadre-plugin`) does not get copied into other repositories — it makes *this* suite (roles, skills, knowledge store) reachable from any project directory on the machine once installed at global/user scope, since none of it is discoverable from outside this checkout by default. See `../packaging/plugin-README.md` (the register-owned source of that package's README) and `RUNBOOK.md` section 17.

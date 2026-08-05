@@ -29,7 +29,7 @@ text a runner uses to decide when to invoke the skill.
 
 After adding, removing, or renaming a skill (or editing its `name`/
 `description` frontmatter) under `.agents/skills/`, update the table above in
-the same change, then run `cadre generate-plugin --output /path/to/cadre-plugin`
+the same change, then run `cadre generate-plugin --output /path/to/cadre-lifecycle`
 in a checkout of that repository, and re-run
 `python3 -m unittest discover -s roster/orchestration/test -p "test_repository_health.py"` — that
 test enforces catalog/plugin drift but does not check this page, so treat

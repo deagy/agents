@@ -60,7 +60,8 @@ _VENDORED_CADRE_PY = VENDOR_ROOT / "bin" / "cadre.py"
 # `generate-plugin` (generate_global_plugin.py) reads roster/README.md,
 # roster/RUNBOOK.md, the plugin repository's README.md, and the whole docs/
 # tree, then *writes* regenerated output into a checkout of the plugin
-# repository (deagy/cadre-plugin) named by --output -- a maintainer/
+# repository (deagy/cadre-lifecycle, successor to the now-archived
+# deagy/cadre-plugin) named by --output -- a maintainer/
 # regeneration operation driven from this repository's own tracked source
 # (it reads this repository's git index), not something that makes sense
 # pointed at an installed site-packages copy.

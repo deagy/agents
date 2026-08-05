@@ -34,8 +34,9 @@ _GENERATED_PACKAGE: Path | None = None
 def generated_package() -> Path:
     """A freshly generated plugin package, built once and reused.
 
-    The committed package lives in its own repository (deagy/cadre-plugin)
-    since the register/plugin split, so tests about what the *generator*
+    The committed package lives in its own repository (deagy/cadre-lifecycle,
+    successor to the now-archived deagy/cadre-plugin) since the
+    register/plugin split, so tests about what the *generator*
     produces build their own copy here instead of reading a checked-in tree.
     Drift between this generator and that repository's committed content is
     guarded there, by its validate.yml `generated-content` job, which runs
@@ -474,7 +475,7 @@ class RepositoryHealthTests(unittest.TestCase):
         A drift check cannot catch this: the generator copies the wrong number
         faithfully, so package and register agree and `--check` passes. The
         equivalent assertion over the two plugin.json manifests moved to
-        deagy/cadre-plugin with the manifests themselves; this covers the half
+        deagy/cadre-lifecycle with the manifests themselves; this covers the half
         whose source lives here.
         """
         readme = (REPOSITORY_ROOT / "packaging" / "plugin-README.md").read_text(encoding="utf-8")

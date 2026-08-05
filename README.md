@@ -54,7 +54,7 @@ Key areas:
 - [roster/testing/](roster/testing/) and [roster/support/](roster/support/) define black-box testing, end-user testing, support triage, and escalation roles.
 - [.agents/skills/](.agents/skills/) contains this repository's skills, packaged for Codex CLI directly and pointed to from `.claude/skills/` for Claude Code.
 - [deagy/agentic-sdlc](https://github.com/deagy/agentic-sdlc) owns the portable lifecycle kernel, initializer, validator, and lifecycle skills.
-- [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) packages this suite, its 71 roles, and the external `secure-cloud` provider profile as an installable Claude Code / Codex CLI plugin.
+- [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) packages this suite, its 71 roles, and the external `secure-cloud` provider profile as an installable Claude Code / Codex CLI plugin (the successor to the now-archived `deagy/cadre-plugin`), alongside optional, separately-owned Agentic SDLC lifecycle-governance plugins.
 
 The boundary is intentional: Agentic SDLC owns lifecycle state, schemas, gate
 transitions, approval-source policy, and portable commands. This repository
@@ -67,7 +67,7 @@ repository does not run its own `.agentic-sdlc/` overlay.
 
 ## Supported runners
 
-Every role definition and orchestration tool is runner-neutral text and data. Codex CLI and Claude Code wrappers are generated into the self-contained Cadre plugin. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc). [Cline](https://docs.cline.bot) is also recognized, in two complementary ways: it [reads `AGENTS.md` natively](https://docs.cline.bot/customization/cline-rules) as a cross-tool standard, and this repository additionally provides `.clinerules/agents-repository.md`, which points at the same canonical `AGENTS.md` and `roster/RUNBOOK.md` sources — this works for any Cline session with this repository as its working directory, no install required. Separately, [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin)'s `cline/` is a real, installable Cline CLI plugin (`cline plugin install ./cline` from a checkout of that repository, or a git URL) exposing an `agents_select` tool that wraps `cadre select` and returns its plan directly in conversation. Unlike the packaged Cadre plugin alongside it, that one is hand-authored TypeScript source under version control, not generated output. This plugin system currently applies to the Cline CLI, SDK, and Kanban only — not the VSCode/JetBrains extension. **Known limitation**: as of `cline` CLI `3.0.46` (the latest published version at the time this was built), invoking any locally-installed plugin's tool fails with `JSON.stringify cannot serialize cyclic structures` — this was confirmed to be an upstream Cline bug, not specific to this plugin, by reproducing the identical failure with `cline/cline`'s own unmodified example plugin. The plugin installs and uninstalls cleanly; tool invocation should start working once Cline ships a fix. **Second known limitation**: installing via a bare repository URL, rather than the local-install form, previously failed with `Cannot find module 'vitest'` while Cline's "sync plugin MCP servers" step scanned the plugin's test file — because a git-plugin-source with no root `package.json` `cline.plugins` manifest and no root `index.ts`/`index.js` falls back to an unbounded recursive `.ts`/`.js` scan of the whole cloned repository, which can import files whose own dependencies (here, the `vitest` devDependency) were never installed. [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) declares its plugin location explicitly via its root `package.json`'s `cline.plugins` key so the git-URL install path resolves directly without triggering that recursive scan; the underlying scanner behavior is still worth reporting upstream, since Cline's git plugin-source format has no way to select a subdirectory otherwise.
+Every role definition and orchestration tool is runner-neutral text and data. Codex CLI and Claude Code wrappers are generated into the self-contained Cadre plugin. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc). [Cline](https://docs.cline.bot) is also recognized, in two complementary ways: it [reads `AGENTS.md` natively](https://docs.cline.bot/customization/cline-rules) as a cross-tool standard, and this repository additionally provides `.clinerules/agents-repository.md`, which points at the same canonical `AGENTS.md` and `roster/RUNBOOK.md` sources — this works for any Cline session with this repository as its working directory, no install required. Separately, [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle)'s `cline/` is a real, installable Cline CLI plugin (`cline plugin install ./cline` from a checkout of that repository, or a git URL) exposing an `agents_select` tool that wraps `cadre select` and returns its plan directly in conversation. Unlike the packaged Cadre plugin alongside it, that one is hand-authored TypeScript source under version control, not generated output. This plugin system currently applies to the Cline CLI, SDK, and Kanban only — not the VSCode/JetBrains extension. **Known limitation**: as of `cline` CLI `3.0.46` (the latest published version at the time this was built), invoking any locally-installed plugin's tool fails with `JSON.stringify cannot serialize cyclic structures` — this was confirmed to be an upstream Cline bug, not specific to this plugin, by reproducing the identical failure with `cline/cline`'s own unmodified example plugin. The plugin installs and uninstalls cleanly; tool invocation should start working once Cline ships a fix. **Second known limitation**: installing via a bare repository URL, rather than the local-install form, previously failed with `Cannot find module 'vitest'` while Cline's "sync plugin MCP servers" step scanned the plugin's test file — because a git-plugin-source with no root `package.json` `cline.plugins` manifest and no root `index.ts`/`index.js` falls back to an unbounded recursive `.ts`/`.js` scan of the whole cloned repository, which can import files whose own dependencies (here, the `vitest` devDependency) were never installed. [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) declares its plugin location explicitly via its root `package.json`'s `cline.plugins` key so the git-URL install path resolves directly without triggering that recursive scan; the underlying scanner behavior is still worth reporting upstream, since Cline's git plugin-source format has no way to select a subdirectory otherwise.
 
 ## Quick start
 
@@ -187,43 +187,41 @@ is for the narrower case of genuinely wanting all 71 roles, the 10 skills, and
 the knowledge store reachable from *every* project on the machine
 unconditionally, via the same global/user-scope plugin install mechanism. The
 marketplace and the packaged plugin live in
-[`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin), not in this
-repository.
+[`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) (the
+successor to the now-archived `deagy/cadre-plugin`), not in this repository.
 
 Claude Code can add that marketplace straight from GitHub, pinned to a
 release, with no clone of your own — check
-[the releases](https://github.com/deagy/cadre-plugin/releases) for the current
-tag rather than trusting the one written here:
+[the releases](https://github.com/deagy/cadre-lifecycle/releases) for the
+current tag rather than trusting the one written here:
 
 ```text
-/plugin marketplace add deagy/cadre-plugin@v0.13.0
-/plugin install cadre@cadre-team
+/plugin marketplace add deagy/cadre-lifecycle@v0.7.0
+/plugin install cadre@cadre-lifecycle-team
 ```
 
 Pin the tag. Without `@<tag>` you track that repository's `main`, which moves.
 Note that a *marketplace* source accepts a branch or tag but not a commit SHA,
 so the pin is only as immutable as the tag: it protects you from `main`
 moving, not from a tag being moved. `owner/repo` shorthand clones over SSH by
-default; set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` to use HTTPS instead.
+default; set `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` to use HTTPS instead. That
+repository also bundles optional, separately-owned Agentic SDLC
+lifecycle-governance plugins under other install keys — see its own README.
 
 Codex installs from a local checkout, so clone at the tag first:
 
 ```sh
-git clone --branch v0.13.0 https://github.com/deagy/cadre-plugin.git
-codex plugin marketplace add /path/to/cadre-plugin
-codex plugin add cadre@cadre-team
+git clone --branch v0.7.0 https://github.com/deagy/cadre-lifecycle.git
+codex plugin marketplace add /path/to/cadre-lifecycle
+codex plugin add cadre@cadre-lifecycle-team
 ```
 
-To check what you are installing before installing it, every release carries a
-signed provenance attestation — see
-[Verifying a release](https://github.com/deagy/cadre-plugin#verifying-a-release):
-
-```sh
-gh release download v0.13.0 --repo deagy/cadre-plugin
-gh attestation verify cadre-plugin-v0.13.0.tar.gz --repo deagy/cadre-plugin
-tar xzf cadre-plugin-v0.13.0.tar.gz
-codex plugin marketplace add ./cadre-plugin   # or /plugin marketplace add ./cadre-plugin
-```
+Unlike the archived `deagy/cadre-plugin`, `deagy/cadre-lifecycle`'s release
+workflow does not currently attach a downloadable release tarball or a signed
+provenance attestation — a release is a plain git tag plus a GitHub Release
+whose notes are that version's `CHANGELOG.md` entry. Install from the tagged
+git checkout above (or the pinned marketplace add) rather than looking for a
+tarball to download and verify.
 
 The first `run-agent-orchestration` or `knowledge-ingestion` invocation with no
 knowledge-store config anywhere asks whether to create an isolated project-local
@@ -299,7 +297,7 @@ quick start" above for installing it.
 generate-authority-aides` are maintainer-only tools that require a full git
 checkout; they are not available from a pip/pipx install. Both read tracked
 source through this repository's own git index and write generated content
-back to a real checkout (a [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) checkout named by `--output` for
+back to a real checkout (a [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) checkout named by `--output` for
 `generate-plugin`; `roster/authority/*/AGENT.md` for
 `generate-authority-aides`) — an operation that only makes sense against a
 real checkout, never against an installed site-packages copy. `cadre
@@ -376,21 +374,22 @@ Start here:
 
 ## Releasing
 
-The packaged plugin releases from its own repository, [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin), on its
-own `vMAJOR.MINOR.PATCH` tags — see that repository's README for the flow.
-This repository's tags before `v0.3.0` predate any versioning scheme and are
-a plain incrementing counter; they are left as-is.
+The packaged plugin releases from its own repository, [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle), on its
+own `vMAJOR.MINOR.PATCH` tags shared across all of its bundled plugins — see
+that repository's README for the flow. This repository's tags before `v0.3.0`
+predate any versioning scheme and are a plain incrementing counter; they are
+left as-is.
 
 To ship a register change through to installed plugins:
 
 1. Merge the change here.
-2. In a [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) checkout, bump `cadre-ref.txt` to the register revision
-   and run `cadre generate-plugin --output /path/to/cadre-plugin`; open a pull request there with
-   the regenerated diff.
+2. In a [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) checkout, bump `cadre-ref.txt` to the register revision
+   and run `cadre generate-plugin --output /path/to/cadre-lifecycle`; open a pull request there with
+   the regenerated diff (excluding that repository's own hand-authored exceptions — see its `CLAUDE.md`).
 3. Bump that repository's plugin version (`python3 tools/plugin_version.py
    --set X.Y.Z`) when the change should reach existing installs.
 
-Once the version bump lands on `main`, [that repository's `release.yml`](https://github.com/deagy/cadre-plugin/blob/main/.github/workflows/release.yml)
+Once the version bump lands on `main`, [that repository's `release.yml`](https://github.com/deagy/cadre-lifecycle/blob/main/.github/workflows/release.yml)
 reads the new version and, if no `vX.Y.Z` tag exists for it yet, creates one
 at that commit and publishes a matching GitHub Release automatically — no
 manual `git tag`/`git push` step. The workflow only ever tags content that

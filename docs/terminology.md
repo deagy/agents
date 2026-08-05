@@ -39,7 +39,7 @@ Secure Cloud provider (deagy/cadre — the register)
     ├── knowledge-store procedures
     └── provider bundle (provider/)
 
-Cadre plugin (deagy/cadre-plugin)
+Cadre plugin (deagy/cadre-lifecycle)
     ├── generated Claude Code / Codex distribution
     └── hand-authored Cline CLI plugin
 ```

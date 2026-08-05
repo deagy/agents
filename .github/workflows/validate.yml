@@ -83,7 +83,7 @@ jobs:
       # Run every smoke command from outside the checkout ($RUNNER_TEMP, not
       # $GITHUB_WORKSPACE) so this only exercises what an installed
       # distribution can see on its own, the same regression guard the
-      # deagy/cadre-plugin's own CI provides for the plugin distribution.
+      # deagy/cadre-lifecycle's own CI provides for the plugin distribution.
       - name: Smoke test the installed cadre distribution from outside the checkout
         run: |
           set -eu

@@ -231,7 +231,7 @@ authoritative for the *why*.
 
 ## Cline
 
-`cline/` in [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) (the
+`cline/` in [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) (the
 hand-authored, non-generated Cline CLI plugin —
 see `AGENTS.md`'s project-structure note) registers exactly one tool,
 `agents_select`, which shells out to `./bin/cadre select` and returns the

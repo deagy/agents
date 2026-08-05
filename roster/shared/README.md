@@ -20,7 +20,7 @@ generated wrappers rather than failing.
 `generate_global_plugin.py` embeds these files **verbatim** into every one of
 the 71+ generated role wrappers (both the Codex `.toml` wrappers committed in
 this repository and the Claude Code wrappers written into the separately
-published public `cadre-plugin` repository). Because of that, files under
+published public `cadre-lifecycle` repository). Because of that, files under
 `roster/shared/` must never contain personal names, emails, or other
 individual-identifying data. Named human approval or escalation-contact
 information (who is a project's Product Owner, on-call contact, etc.) belongs
