@@ -467,6 +467,112 @@ passing unmodified.
   against a real installed Claude Code CLI. Do this before relying on the
   Claude Code runner for anything beyond local development.
 
+## GitLab evidence MCP server (`gitlab_core.py` / `gitlab_server.py`)
+
+A separate, create-only MCP surface (`create_review_subtask`, `write_wiki_page`,
+`write_evidence_comment`) for recording human-reviewable evidence in a single,
+pre-configured, docs-only GitLab project. It shares `dispatch_core.py`'s
+`ConfirmationGate`, `wrap_untrusted_output`, and audit-record mechanism
+directly (not a reimplementation) but is otherwise an independent module with
+its own token, transport, and retry logic. This section uses the same
+mechanically-enforced/advisory classification as above.
+
+- **Token handling: mechanically enforced.** `resolve_token()` reads exactly
+  one env var (`GITLAB_SVC_TOKEN`; `GL_SVC_TOKEN`/`GITLAB_SERVICE_TOKEN` are
+  never honored as aliases), lazily, only from inside a tool function that
+  needs it -- never at import or server-startup time -- and fails closed on
+  unset/empty/whitespace-only. The token travels only in the `PRIVATE-TOKEN`
+  HTTP header, never a query parameter, never folded into an exception
+  message, log line, or audit record. Tested by `TokenResolutionTests`,
+  `TokenNeverLeaksTests`.
+- **TLS / redirect controls: mechanically enforced.** `resolve_config()`
+  requires `GITLAB_BASE_URL` to start with `https://`; there is no
+  configuration path anywhere in this module that accepts an `http://` base
+  URL or that can disable certificate verification (`_build_opener()` only
+  ever constructs `ssl.create_default_context()` with no
+  `check_hostname=False`/custom-verify-mode escape hatch). `_NoCrossHostRedirectHandler`
+  refuses (raises `GitLabPermanentError`, never a silent fallthrough) any
+  redirect whose target host differs from the original request's host, *and*
+  any redirect whose target scheme is not `https` -- so a same-host
+  `https`-to-`http` downgrade can never cause the `PRIVATE-TOKEN` header to be
+  replayed in cleartext. Tested by `ConfigResolutionTests.test_requires_https_base_url`
+  and `RedirectAndTlsTests` (cross-host redirect, same-host scheme-downgrade
+  redirect, and a code-reading assertion that no env var or config value can
+  weaken the SSL context's `check_hostname`/`verify_mode`).
+- **Create-only invariant / no state-transition path: mechanically enforced.**
+  This module implements no function, and calls no function anywhere in its
+  own source or `dispatch_core.py`'s, that closes, reopens, resolves, or
+  relabels-away-from-open-review a GitLab issue. `create_review_subtask` only
+  ever performs a `GET` (idempotency search) and at most one `POST`. Tested by
+  `StructuralNoStateTransitionTests` (name-shape scan of every function in the
+  module, an explicit check that the named forbidden functions don't exist,
+  a source-level check that GitLab's `state_event` field is never used, and a
+  scan of `create_review_subtask`'s own function body for a call-shaped use of
+  a forbidden verb).
+- **Retry / fail-closed behavior: mechanically enforced.** `request_json()`
+  retries 429/5xx/timeout/network errors with bounded jittered exponential
+  backoff (`MAX_RETRY_ATTEMPTS`, `MAX_RETRY_ELAPSED_SECONDS`) and raises
+  immediately, without retry, on 401/403/404. Every non-2xx/network outcome
+  raises a `GitLabError` subclass rather than fabricating a success shape; no
+  caller-visible false success is possible. **Honest limit:** retrying a
+  non-idempotent write (POST/PUT) on a 5xx/timeout cannot distinguish
+  "never processed" from "processed but the response was lost" without a
+  server-side idempotency key the targeted GitLab REST API doesn't expose --
+  `create_review_subtask`'s search-before-create is this module's mitigation
+  for the one operation where a duplicate would be most visible;
+  `write_evidence_comment` and `write_wiki_page` have no equivalent
+  caller-level dedup and could in principle double-apply on this specific
+  failure shape. Tested by `RequestJsonRetryTests`.
+- **1 MiB evidence-comment cap: mechanically enforced.** `write_evidence_comment`
+  rejects (never truncates) content whose UTF-8 encoding exceeds
+  `MAX_EVIDENCE_COMMENT_BYTES` (1 MiB), before any HTTP call. Tested by
+  `WriteEvidenceCommentTests`.
+- **Untrusted-output wrapping: mechanically enforced.** Every piece of
+  GitLab-retrieved content returned in a tool result (`result["issue"]`,
+  `result["page"]`, `result["comment"]`) is wrapped with
+  `dispatch_core.wrap_untrusted_output`'s exact marker-token scheme via
+  `wrap_untrusted_gitlab_payload()`, so text an attacker deliberately wrote
+  into an issue title/description/wiki body/comment can never be mistaken by
+  the calling model for a trusted instruction. Tested by
+  `UntrustedWrappingTests`, which asserts the marker tokens themselves are
+  present in the payload, not merely that some substring of the underlying
+  data appears.
+- **Human-confirmation gate for `write_wiki_page`: same mechanism and same
+  honest limit as `dispatch_core.py`'s own `ConfirmationGate` above.** Every
+  call, with no exception, must round-trip through a first
+  `confirmation_required` response and a second call replaying the token
+  bound to the exact `(slug, title, format, content hash)` tuple before any
+  GitLab write happens. This is mechanically enforced for the two-call,
+  single-use, TTL-bound, tamper-detecting mechanism itself; it is **not** and
+  cannot be enforced from inside this tool that a human actually read the
+  intermediate response before a fully autonomous caller issued the second
+  call. Tested by `WriteWikiPageConfirmationTests`.
+- **Audit trail: mechanically enforced.** Every call to all three tools
+  writes a structured JSON-lines audit record via
+  `dispatch_core.build_audit_record`/`write_audit_record` (the same
+  forbidden-key redaction as the main dispatch audit log applies here too),
+  to its own file (`~/.agents/mcp-gitlab/audit.jsonl`, distinct from
+  `dispatch_core`'s `~/.agents/mcp-dispatch/audit.jsonl`) -- covering every
+  confirmation-requested / confirmed / denied / unavailable / ok outcome, not
+  only final success. Records carry the tool name, task_id (when the tool's
+  signature has one), gate_id/parent_issue_iid/issue_iid/slug identifiers, a
+  content hash/length in place of raw wiki/comment body content, the returned
+  GitLab artifact identifier (issue iid / comment id) on success, and the
+  decision -- never the token, never a raw confirmation-token value, never
+  wiki/comment/issue body content. Tested by `AuditTrailTests`.
+- **Deliberate, stated scope boundary: `classification` is intentionally not
+  an in-code parameter on any of this module's three tools.** Unlike
+  `dispatch_core.py`'s `dispatch_secure_cloud_role`/`dispatch_team`, this
+  module performs no classification check at all. This is a recorded,
+  human-accepted residual-risk decision, not an oversight: containment is
+  achieved operationally, by pointing `GITLAB_BASE_URL`/`GITLAB_DOCS_PROJECT_ID`
+  at a dedicated, docs-only GitLab project and issuing a least-privilege
+  service token scoped to only that project, rather than by an in-code
+  classification gate. See `gitlab_core.py`'s module docstring for the same
+  statement. If this integration is ever pointed at a project that also holds
+  higher-classification content, this boundary must be revisited before that
+  happens, not assumed to still hold.
+
 ## Not covered above
 
 M-2 (hash-pinning the `mcp` dependency in `requirements-mcp.txt`) and M-3

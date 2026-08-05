@@ -1,0 +1,892 @@
+"""Pure-Python core logic for the GitLab-evidence MCP server.
+
+Exposes a small, deliberately create-only set of GitLab operations (a
+review-subtask issue, a wiki page, an evidence comment) so any agent -- in
+this repo or a consuming project -- can record human-reviewable evidence
+against a single, pre-configured, docs-only GitLab project without ever being
+able to transition an issue's state (close/reopen/resolve/relabel-away-from
+open-review). This module mirrors `dispatch_core.py`'s architecture exactly:
+
+- Zero dependency on the optional `mcp` package (or anything else outside the
+  standard library plus this module's own sibling `dispatch_core.py`), so it
+  can be imported and unit tested with all HTTP calls mocked, with no live
+  GitLab instance and no third-party HTTP client. `gitlab_server.py` is the
+  thin protocol adapter that depends on `mcp`; this module is the reviewable
+  safety core.
+- Reuses `dispatch_core.ConfirmationGate` verbatim (not a reimplementation)
+  for `write_wiki_page`'s mandatory human-confirmation gate. `ConfirmationGate`
+  is already fully generic -- its five bound fields (`role_id`, `brief`,
+  `mode`, `classification`, `effective_sandbox`) are only ever hashed and
+  compared for exact equality, never validated against dispatch-specific
+  vocabularies -- so this module binds them to GitLab-shaped values (tool
+  name, a hash of the write's arguments, a fixed "human_approval" mode
+  string, a fixed "internal" classification, and a fixed "wiki-write" sandbox
+  label) instead of inventing a second confirmation mechanism.
+- Reuses `dispatch_core.wrap_untrusted_output`'s marker-token pattern (via
+  `_wrap_untrusted_gitlab_payload` below) for every piece of GitLab-retrieved
+  content handed back in a tool result, so retrieved issue/wiki/comment text
+  can never be mistaken for an instruction by the calling model.
+- Reuses `dispatch_core.build_audit_record`/`write_audit_record` verbatim
+  (not a reimplementation) for a structured, append-only JSON-lines audit
+  trail of every call to the three tools in this module -- every
+  confirmation-requested / confirmed / denied / unavailable / ok outcome,
+  not only final success -- written to its own file
+  (`~/.agents/mcp-gitlab/audit.jsonl`, see `GITLAB_AUDIT_LOG_PATH` below),
+  separate from `dispatch_core`'s own `~/.agents/mcp-dispatch/audit.jsonl`.
+  Records never contain the GitLab token, wiki/comment/issue body content,
+  or a confirmation token value -- only identifiers, hashes/lengths, and the
+  decision -- matching `dispatch_core`'s own forbidden-audit-key discipline
+  (`_FORBIDDEN_AUDIT_KEYS`), which `build_audit_record` enforces for this
+  module too since it is the same function.
+
+Deliberate, hard, structural invariant: this module never implements any
+function that closes, reopens, resolves, or relabels-away-from-open-review
+an issue, and never calls such a function on any caller's behalf. Search
+this file for the string "STATE TRANSITION" if you are looking for the one
+comment that exists specifically to keep that invariant visible to a future
+editor; there is no such function to find beyond that comment.
+
+Deliberate, stated scope boundary (not a silent omission): unlike
+`dispatch_core.py`'s tools, none of this module's three tools accepts or
+enforces a `classification` parameter on the GitLab write it performs. The
+human-accepted residual-risk decision for this integration is that scope
+containment is achieved operationally -- a dedicated, docs-only GitLab
+project and a least-privilege service token scoped to only that project --
+rather than by an in-code classification check here. See
+`SECURITY-CONTROLS.md`'s GitLab section for the same statement.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import hashlib
+import json
+import os
+import random
+import re
+import socket
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
+from typing import Any
+
+_MODULE_DIR = Path(__file__).resolve().parent
+if str(_MODULE_DIR) not in sys.path:
+    sys.path.insert(0, str(_MODULE_DIR))
+
+import dispatch_core as _dispatch_core  # noqa: E402  (sys.path set above)
+
+# ---------------------------------------------------------------------------
+# Configuration: exactly three required env vars, no aliases.
+# ---------------------------------------------------------------------------
+
+# Settled decision: exactly this name. GL_SVC_TOKEN / GITLAB_SERVICE_TOKEN are
+# explicitly rejected, not merely deprioritized -- there is no alias-lookup
+# code anywhere in this module, so a caller relying on either alias fails
+# closed with a message naming *this* variable, never silently picking up a
+# same-shaped alias.
+GITLAB_TOKEN_ENV_VAR = "GITLAB_SVC_TOKEN"
+GITLAB_BASE_URL_ENV_VAR = "GITLAB_BASE_URL"
+GITLAB_PROJECT_ID_ENV_VAR = "GITLAB_DOCS_PROJECT_ID"
+GITLAB_HIERARCHY_ENV_VAR = "GITLAB_SUPPORTS_WORK_ITEM_HIERARCHY"
+
+MAX_EVIDENCE_COMMENT_BYTES = 1 * 1024 * 1024  # 1 MiB, UTF-8 encoded content
+MAX_RESPONSE_BYTES = 4 * 1024 * 1024  # defensive cap on any single API response body
+
+DEFAULT_TIMEOUT_SECONDS = 15.0
+MAX_RETRY_ATTEMPTS = 5
+MAX_RETRY_ELAPSED_SECONDS = 30.0
+BASE_BACKOFF_SECONDS = 0.5
+MAX_BACKOFF_SECONDS = 8.0
+
+PERMANENT_STATUS_CODES = {401, 403, 404}
+
+REVIEW_SUBTASK_LABEL = "review-subtask"
+
+_GATE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]+$")
+_TASK_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]+$")
+
+# ---------------------------------------------------------------------------
+# Audit trail: same mechanism as dispatch_core.py's own audit log
+# (build_audit_record/write_audit_record, including its forbidden-key
+# check), written to a dedicated file so this module's records never mix
+# with dispatch_core's own. Never contains the GitLab token, wiki/comment/
+# issue body content, or a raw confirmation-token value.
+# ---------------------------------------------------------------------------
+
+GITLAB_AUDIT_LOG_DIR = Path.home() / ".agents" / "mcp-gitlab"
+GITLAB_AUDIT_LOG_PATH = GITLAB_AUDIT_LOG_DIR / "audit.jsonl"
+
+
+def _write_gitlab_audit_record(
+    *,
+    tool: str,
+    task_id: str | None,
+    decision: str,
+    audit_path: Path | None = None,
+    **extra: Any,
+) -> None:
+    """Build and append one audit record for a GitLab tool call. `extra`
+    must never include the token, confirmation-token value, or raw
+    issue/wiki/comment body content -- callers pass identifiers, hashes, and
+    lengths instead; `dispatch_core.build_audit_record`'s forbidden-key
+    check (`_FORBIDDEN_AUDIT_KEYS`) rejects an accidental `token`/
+    `confirmation_token`/`content` key outright rather than silently
+    allowing it through."""
+    record = _dispatch_core.build_audit_record(tool=tool, task_id=task_id, decision=decision, **extra)
+    _dispatch_core.write_audit_record(record, path=audit_path or GITLAB_AUDIT_LOG_PATH)
+
+
+class GitLabError(Exception):
+    """Base class for structured GitLab tool failures."""
+
+    kind = "error"
+
+
+class GitLabConfigError(GitLabError):
+    """Missing/invalid env var configuration. Always fails closed, never
+    silently proceeds with a guessed default. Maps to status="unavailable"
+    (an operator/deployment problem, not a policy denial)."""
+
+    kind = "unavailable"
+
+
+class GitLabValidationError(GitLabError):
+    """Caller-supplied argument failed a structural check (bad gate_id shape,
+    over-cap comment, etc). Maps to status="denied": this is the caller's
+    input being rejected, not an infrastructure problem."""
+
+    kind = "denied"
+
+
+class GitLabPermanentError(GitLabError):
+    """401/403/404, or any other non-retryable HTTP status. Never retried.
+    Maps to status="denied"."""
+
+    kind = "denied"
+
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+
+class GitLabRetryableExhaustedError(GitLabError):
+    """429/5xx/timeout/network error that exhausted the bounded retry budget
+    (attempt count or elapsed time) without succeeding. Maps to
+    status="unavailable": the caller never observes a false success here --
+    this is only ever raised, never swallowed into a fabricated ok result."""
+
+    kind = "unavailable"
+
+
+# ---------------------------------------------------------------------------
+# Token resolution: lazy, fail-closed, never logged.
+# ---------------------------------------------------------------------------
+
+
+def resolve_token() -> str:
+    """Resolve `GITLAB_SVC_TOKEN` lazily -- called only from inside a tool
+    function that actually needs it, never at import or server-startup time.
+    Fails closed on unset/empty/whitespace-only, naming the env var checked
+    but never any value. Callers must never place the returned token in a
+    log line, exception message, audit record, or generated artifact."""
+    raw = os.environ.get(GITLAB_TOKEN_ENV_VAR)
+    if raw is None or not raw.strip():
+        raise GitLabConfigError(f"{GITLAB_TOKEN_ENV_VAR} is not set or is empty/whitespace-only")
+    return raw
+
+
+# ---------------------------------------------------------------------------
+# Target-project configuration.
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass(frozen=True)
+class GitLabConfig:
+    base_url: str  # always https://..., no trailing slash
+    project_id: str  # numeric id or "namespace/project" path, URL-encoded on use
+    supports_work_item_hierarchy: bool | None  # None = unset/undetectable -> fallback
+
+
+def _parse_hierarchy_flag(raw: str | None) -> bool | None:
+    if raw is None:
+        return None
+    normalized = raw.strip().lower()
+    if normalized == "true":
+        return True
+    if normalized == "false":
+        return False
+    raise GitLabConfigError(f"{GITLAB_HIERARCHY_ENV_VAR} must be 'true' or 'false' if set: {raw!r}")
+
+
+def resolve_config() -> GitLabConfig:
+    """Resolve the three (well, two required + one optional) target-project
+    env vars lazily, mirroring `resolve_token()`'s fail-closed discipline.
+    Requires HTTPS -- there is no flag anywhere in this module that can
+    accept an http:// base URL or disable TLS certificate verification."""
+    base_url = os.environ.get(GITLAB_BASE_URL_ENV_VAR)
+    if base_url is None or not base_url.strip():
+        raise GitLabConfigError(f"{GITLAB_BASE_URL_ENV_VAR} is not set or is empty/whitespace-only")
+    base_url = base_url.strip()
+    if not base_url.lower().startswith("https://"):
+        raise GitLabConfigError(f"{GITLAB_BASE_URL_ENV_VAR} must start with https://: {base_url!r}")
+
+    project_id = os.environ.get(GITLAB_PROJECT_ID_ENV_VAR)
+    if project_id is None or not project_id.strip():
+        raise GitLabConfigError(f"{GITLAB_PROJECT_ID_ENV_VAR} is not set or is empty/whitespace-only")
+
+    supports_hierarchy = _parse_hierarchy_flag(os.environ.get(GITLAB_HIERARCHY_ENV_VAR))
+
+    return GitLabConfig(
+        base_url=base_url.rstrip("/"),
+        project_id=project_id.strip(),
+        supports_work_item_hierarchy=supports_hierarchy,
+    )
+
+
+# ---------------------------------------------------------------------------
+# HTTP transport: stdlib urllib only, PRIVATE-TOKEN header (never a query
+# param), no cross-host redirects, no TLS verification bypass, bounded
+# jittered exponential-backoff retry for 429/5xx/timeout, permanent failure
+# for 401/403/404.
+# ---------------------------------------------------------------------------
+
+
+class _NoCrossHostRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Follows same-host, same-scheme redirects (urllib's normal behavior)
+    but refuses -- raises GitLabPermanentError, not a silent fallthrough --
+    any redirect whose target host differs from the request's original
+    host, *or* whose target scheme is not `https`. GitLab's own API does not
+    ordinarily redirect same-request-shape calls, but this exists
+    specifically so a compromised or misconfigured instance can never cause
+    this client to replay the PRIVATE-TOKEN header at an attacker-controlled
+    host (cross-host redirection) or in cleartext (a same-host
+    https-to-http scheme downgrade)."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: N802 (urllib's own method name)
+        original_host = urllib.parse.urlparse(req.full_url).hostname
+        new_parsed = urllib.parse.urlparse(newurl)
+        if new_parsed.hostname != original_host or new_parsed.scheme != "https":
+            raise GitLabPermanentError(
+                f"Refusing redirect during GitLab API call (status {code}, from host "
+                f"{original_host!r} to {new_parsed.hostname!r} scheme {new_parsed.scheme!r}): "
+                "cross-host redirection and same-host https-to-http scheme downgrade are both refused",
+                status_code=code,
+            )
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _build_opener() -> urllib.request.OpenerDirector:
+    # No ssl.create_default_context(check_hostname=False, ...) escape hatch
+    # anywhere in this module -- the default context (full verification) is
+    # the only context ever constructed.
+    import ssl
+
+    https_handler = urllib.request.HTTPSHandler(context=ssl.create_default_context())
+    return urllib.request.build_opener(https_handler, _NoCrossHostRedirectHandler())
+
+
+def _api_url(config: GitLabConfig, path: str) -> str:
+    return f"{config.base_url}/api/v4{path}"
+
+
+def _quote_project_id(config: GitLabConfig) -> str:
+    return urllib.parse.quote(config.project_id, safe="")
+
+
+def _should_retry(attempt: int, started_monotonic: float) -> bool:
+    if attempt >= MAX_RETRY_ATTEMPTS:
+        return False
+    return (time.monotonic() - started_monotonic) < MAX_RETRY_ELAPSED_SECONDS
+
+
+def _sleep_backoff(attempt: int, *, sleep=time.sleep) -> None:
+    base = min(MAX_BACKOFF_SECONDS, BASE_BACKOFF_SECONDS * (2 ** (attempt - 1)))
+    jitter = random.uniform(0, base * 0.25)
+    sleep(base + jitter)
+
+
+def _safe_error_body(error: urllib.error.HTTPError) -> str:
+    try:
+        raw = error.read(4096)
+    except Exception:  # noqa: BLE001 - best-effort diagnostic only
+        return ""
+    try:
+        return raw.decode("utf-8", errors="replace")
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _perform_request(method: str, url: str, token: str, json_body: Any, timeout: float) -> Any:
+    headers = {"PRIVATE-TOKEN": token, "Accept": "application/json"}
+    data = None
+    if json_body is not None:
+        data = json.dumps(json_body).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    request = urllib.request.Request(url, data=data, headers=headers, method=method)
+    opener = _build_opener()
+    with opener.open(request, timeout=timeout) as response:
+        raw = response.read(MAX_RESPONSE_BYTES + 1)
+        if len(raw) > MAX_RESPONSE_BYTES:
+            raise GitLabPermanentError(f"GitLab API response for {method} {url} exceeded {MAX_RESPONSE_BYTES}-byte cap")
+        if not raw:
+            return None
+        return json.loads(raw.decode("utf-8"))
+
+
+def request_json(
+    method: str,
+    path: str,
+    config: GitLabConfig,
+    token: str,
+    *,
+    query: dict[str, str] | None = None,
+    json_body: Any = None,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    sleep=time.sleep,
+) -> Any:
+    """Perform one logical GitLab API call, retrying 429/5xx/timeout/network
+    errors with bounded jittered exponential backoff and raising immediately
+    (no retry) on 401/403/404. Never returns a result unless the call
+    actually succeeded -- every non-2xx/network outcome raises a
+    GitLabError subclass rather than fabricating a success shape.
+
+    Honest limitation, ported from this module's docstring: retrying a
+    non-idempotent write (POST/PUT) on a 5xx or timeout is inherently unsafe
+    if the prior attempt's request was actually processed server-side but
+    the response was lost -- a possibility this stdlib-only client cannot
+    distinguish from "never processed" without a server-side idempotency
+    key, which the GitLab REST API this module targets does not expose. This
+    module's settled design applies the same bounded-retry policy uniformly
+    (per the task's settled failure-handling decision) and relies on
+    caller-level idempotency checks (see `create_review_subtask`'s
+    search-before-create) as the safety design for the one operation where a
+    duplicate would be most visible; `write_evidence_comment` and
+    `write_wiki_page` have no equivalent caller-level dedup and could in
+    principle double-apply on this specific failure shape. Flagged here,
+    not silently accepted.
+    """
+    url = _api_url(config, path)
+    if query:
+        url = f"{url}?{urllib.parse.urlencode(query)}"
+
+    attempt = 0
+    started = time.monotonic()
+    while True:
+        attempt += 1
+        try:
+            return _perform_request(method, url, token, json_body, timeout)
+        except urllib.error.HTTPError as error:
+            status = error.code
+            body_snippet = _safe_error_body(error)
+            if status in PERMANENT_STATUS_CODES:
+                raise GitLabPermanentError(
+                    f"GitLab API returned {status} for {method} {path}: {body_snippet}",
+                    status_code=status,
+                ) from None
+            if status == 429 or 500 <= status < 600:
+                if not _should_retry(attempt, started):
+                    raise GitLabRetryableExhaustedError(
+                        f"GitLab API call {method} {path} did not succeed after {attempt} attempt(s) "
+                        f"over {time.monotonic() - started:.1f}s (last status {status}); giving up"
+                    ) from error
+                _sleep_backoff(attempt, sleep=sleep)
+                continue
+            raise GitLabPermanentError(
+                f"GitLab API returned unexpected status {status} for {method} {path}: {body_snippet}",
+                status_code=status,
+            ) from None
+        except (urllib.error.URLError, socket.timeout, TimeoutError) as error:
+            if not _should_retry(attempt, started):
+                raise GitLabRetryableExhaustedError(
+                    f"GitLab API call {method} {path} did not succeed after {attempt} attempt(s) "
+                    f"over {time.monotonic() - started:.1f}s (network/timeout error); giving up"
+                ) from error
+            _sleep_backoff(attempt, sleep=sleep)
+            continue
+
+
+# ---------------------------------------------------------------------------
+# Untrusted-output wrapping: reuse dispatch_core's marker-token pattern.
+# ---------------------------------------------------------------------------
+
+
+def wrap_untrusted_gitlab_payload(payload: Any) -> str:
+    """Serialize `payload` (a dict/list returned by the GitLab API, e.g. an
+    idempotency search result or a created issue/comment/wiki page) and wrap
+    it with `dispatch_core.wrap_untrusted_output`'s exact marker-token
+    scheme, so GitLab-retrieved text can never be mistaken by the calling
+    model for an instruction, including text an attacker deliberately wrote
+    into an issue title/description/wiki body to try to forge a fake
+    trusted-instruction boundary."""
+    return _dispatch_core.wrap_untrusted_output(json.dumps(payload, sort_keys=True))
+
+
+# ---------------------------------------------------------------------------
+# Structured result helpers (mirrors dispatch_core's status vocabulary:
+# "denied" for permanent/policy rejections, "unavailable" for infra/config
+# problems, never a bare exception escaping to the tool layer).
+# ---------------------------------------------------------------------------
+
+
+def _error_result(error: GitLabError) -> dict[str, Any]:
+    result: dict[str, Any] = {"status": error.kind, "reason": str(error)}
+    status_code = getattr(error, "status_code", None)
+    if status_code is not None:
+        result["status_code"] = status_code
+    return result
+
+
+def _resolve_token_and_config() -> tuple[str, GitLabConfig] | dict[str, Any]:
+    try:
+        token = resolve_token()
+        config = resolve_config()
+    except GitLabConfigError as error:
+        return _error_result(error)
+    return token, config
+
+
+# ---------------------------------------------------------------------------
+# Idempotent create_review_subtask.
+# ---------------------------------------------------------------------------
+
+
+def _validate_label_component(value: str, *, field_name: str, pattern: re.Pattern[str]) -> None:
+    if not isinstance(value, str) or not value or not pattern.match(value):
+        raise GitLabValidationError(f"{field_name} must be a non-empty string matching {pattern.pattern!r}: {value!r}")
+
+
+def _idempotency_key(task_id: str, gate_id: str) -> str:
+    return f"task_id={task_id} gate_id={gate_id}"
+
+
+def _find_existing_subtask(
+    config: GitLabConfig, token: str, parent_issue_iid: int, gate_id: str, task_id: str
+) -> dict[str, Any] | None:
+    """Search the configured project's issues for one already carrying both
+    the `review-subtask` label and `gate:<gate_id>` label, whose description
+    contains this exact (task_id, gate_id) idempotency key and an explicit
+    reference back to `parent_issue_iid`. This is the search-before-create
+    step that makes `create_review_subtask` idempotent; see `request_json`'s
+    docstring for why this matters beyond ordinary dedup (it is also this
+    module's stated safety design for retrying a POST on 429/5xx/timeout)."""
+    labels_filter = f"{REVIEW_SUBTASK_LABEL},gate:{gate_id}"
+    candidates = request_json(
+        "GET",
+        f"/projects/{_quote_project_id(config)}/issues",
+        config,
+        token,
+        query={"labels": labels_filter},
+    )
+    if not isinstance(candidates, list):
+        return None
+    key = _idempotency_key(task_id, gate_id)
+    parent_marker = f"Parent: #{parent_issue_iid}"
+    for issue in candidates:
+        description = issue.get("description") or ""
+        if key in description and parent_marker in description:
+            return issue
+    return None
+
+
+def create_review_subtask(
+    parent_issue_iid: int,
+    title: str,
+    description: str,
+    gate_id: str,
+    task_id: str,
+    *,
+    audit_path: Path | None = None,
+) -> dict[str, Any]:
+    """Create (or, if one already exists, return) a GitLab issue linked to
+    `parent_issue_iid` as a review subtask, labeled `review-subtask` and
+    `gate:<gate_id>`.
+
+    STATE TRANSITION: this function never closes, reopens, resolves, or
+    relabels any issue away from its open review state, and calls no
+    function anywhere in this module or its imports that does. It only ever
+    reads issues (for the idempotency search) and creates at most one new
+    issue.
+
+    Hierarchy note (deviation from the ideal design, recorded here rather
+    than silently guessed): the settled design allows detecting work-item
+    hierarchy support "via a GraphQL feature probe or an explicit config
+    flag ... default to the fallback if unset/undetectable". This
+    implementation only honors the explicit `GITLAB_SUPPORTS_WORK_ITEM_HIERARCHY`
+    flag as *informational* -- it is threaded through to the result so a
+    caller can see whether the instance is believed to support it -- but
+    does not attempt the GraphQL work-item-hierarchy mutation even when the
+    flag is `true`. That mutation's exact schema (namespace-scoped work-item
+    type IDs, hierarchy widget shape) could not be verified against a real
+    GitLab instance or its GraphQL docs in this environment, and shipping an
+    unverified mutation guess risked a worse outcome (a confidently wrong
+    hierarchy link) than always using the documented fallback (an explicit
+    "Parent: #<iid>" reference plus a `/relates_to` quick action in the
+    description, which is what every call currently uses regardless of the
+    flag). Extending this to a verified GraphQL hierarchy path is tracked as
+    follow-up work, not done here.
+    """
+    common_audit_fields = {
+        "tool": "create_review_subtask",
+        "task_id": task_id,
+        "gate_id": gate_id,
+        "parent_issue_iid": parent_issue_iid,
+        "audit_path": audit_path,
+    }
+
+    try:
+        if not isinstance(parent_issue_iid, int) or isinstance(parent_issue_iid, bool) or parent_issue_iid <= 0:
+            raise GitLabValidationError(f"parent_issue_iid must be a positive integer: {parent_issue_iid!r}")
+        if not isinstance(title, str) or not title.strip():
+            raise GitLabValidationError("title must be a non-empty string")
+        if not isinstance(description, str):
+            raise GitLabValidationError("description must be a string")
+        _validate_label_component(gate_id, field_name="gate_id", pattern=_GATE_ID_PATTERN)
+        _validate_label_component(task_id, field_name="task_id", pattern=_TASK_ID_PATTERN)
+    except GitLabValidationError as error:
+        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=str(error))
+        return _error_result(error)
+
+    resolved = _resolve_token_and_config()
+    if isinstance(resolved, dict):
+        _write_gitlab_audit_record(
+            **common_audit_fields, decision="unavailable", reason=resolved.get("reason", "config unavailable")
+        )
+        return resolved
+    token, config = resolved
+
+    try:
+        existing = _find_existing_subtask(config, token, parent_issue_iid, gate_id, task_id)
+        if existing is not None:
+            _write_gitlab_audit_record(
+                **common_audit_fields,
+                decision="ok",
+                created=False,
+                issue_iid=existing.get("iid") if isinstance(existing, dict) else None,
+            )
+            return {
+                "status": "ok",
+                "created": False,
+                "hierarchy_supported": config.supports_work_item_hierarchy,
+                "issue": wrap_untrusted_gitlab_payload(existing),
+            }
+
+        key = _idempotency_key(task_id, gate_id)
+        full_description = (
+            f"Parent: #{parent_issue_iid}\n\n"
+            f"{description}\n\n"
+            f"<!-- {key} -->\n\n"
+            f"/relates_to #{parent_issue_iid}\n"
+        )
+        payload = {
+            "title": title,
+            "description": full_description,
+            "labels": [REVIEW_SUBTASK_LABEL, f"gate:{gate_id}"],
+        }
+        created = request_json(
+            "POST",
+            f"/projects/{_quote_project_id(config)}/issues",
+            config,
+            token,
+            json_body=payload,
+        )
+        _write_gitlab_audit_record(
+            **common_audit_fields,
+            decision="ok",
+            created=True,
+            issue_iid=created.get("iid") if isinstance(created, dict) else None,
+        )
+        return {
+            "status": "ok",
+            "created": True,
+            "hierarchy_supported": config.supports_work_item_hierarchy,
+            "issue": wrap_untrusted_gitlab_payload(created),
+        }
+    except GitLabError as error:
+        _write_gitlab_audit_record(
+            **common_audit_fields,
+            decision=error.kind,
+            reason=str(error),
+            status_code=getattr(error, "status_code", None),
+        )
+        return _error_result(error)
+
+
+# ---------------------------------------------------------------------------
+# write_wiki_page: mandatory confirmation gate, every invocation, no
+# exceptions.
+# ---------------------------------------------------------------------------
+
+# A dedicated ConfirmationGate instance, reused verbatim from dispatch_core --
+# not a new confirmation mechanism. Module-level singleton mirrors
+# dispatch_core's own `_DEFAULT_GATE` pattern.
+_WIKI_CONFIRMATION_GATE = _dispatch_core.ConfirmationGate()
+
+# Fixed, non-dispatch-shaped values bound into ConfirmationGate's five
+# generic fields for this tool. ConfirmationGate never validates these
+# against dispatch's own MODES/CLASSIFICATIONS vocabularies -- it only
+# hashes and exact-matches them -- so reusing the class this way is safe.
+_WIKI_GATE_MODE = "human_approval"
+_WIKI_GATE_CLASSIFICATION = "internal"
+_WIKI_GATE_SANDBOX_LABEL = "wiki-write"
+
+
+def _wiki_write_brief(slug: str, title: str, content: str, fmt: str) -> str:
+    # Hash content *here* rather than passing raw content into
+    # ConfirmationGate: the gate only ever needs to detect tampering between
+    # the confirmation-request and confirmation-consume calls (exact-match
+    # comparison of this brief string), so hashing up front means the gate's
+    # in-memory pending-confirmation state never holds a second copy of the
+    # raw wiki body -- ConfirmationGate hashes its own `brief` argument again
+    # internally, but by then it is already just this compact digest, not
+    # the original content.
+    return json.dumps(
+        {
+            "slug": slug,
+            "title": title,
+            "format": fmt,
+            "content_sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            "content_length_bytes": len(content.encode("utf-8")),
+        },
+        sort_keys=True,
+    )
+
+
+def _get_wiki_page(config: GitLabConfig, token: str, slug: str) -> dict[str, Any] | None:
+    try:
+        return request_json(
+            "GET",
+            f"/projects/{_quote_project_id(config)}/wikis/{urllib.parse.quote(slug, safe='')}",
+            config,
+            token,
+        )
+    except GitLabPermanentError as error:
+        if error.status_code == 404:
+            return None
+        raise
+
+
+def write_wiki_page(
+    slug: str,
+    title: str,
+    content: str,
+    format: str = "markdown",  # noqa: A002 (matches the settled public signature exactly)
+    confirmation_token: str | None = None,
+    *,
+    audit_path: Path | None = None,
+) -> dict[str, Any]:
+    """Create or update (versioned, by GitLab's own wiki history) a wiki page
+    in the configured project. The `human_approval`-tier tool: every call --
+    with no exception for any caller -- must round-trip through
+    `_WIKI_CONFIRMATION_GATE` exactly like a write-capable dispatch does in
+    `dispatch_core.py`. A first call with no `confirmation_token` never
+    writes anything; it returns `status="confirmation_required"` plus a
+    token bound to the exact (slug, title, format, content hash) tuple, and
+    a second call replaying that token is required before any GitLab write
+    happens.
+
+    Note: this tool's public signature has no `task_id` parameter (unlike
+    `create_review_subtask`/`write_evidence_comment`), so its audit records
+    carry `task_id=None`; that is a property of this tool's existing
+    contract, not something this audit-logging change introduces."""
+    # common_audit_fields never includes slug/title/content -- only the
+    # content hash/length computed below once brief is available -- so a
+    # validation failure that fires before `brief` exists (unknown slug/
+    # title/content shape) is logged with those fields omitted rather than
+    # raw content included.
+    if not isinstance(slug, str) or not slug.strip():
+        error = GitLabValidationError("slug must be a non-empty string")
+        _write_gitlab_audit_record(
+            tool="write_wiki_page", task_id=None, decision="denied", reason=str(error), audit_path=audit_path
+        )
+        return _error_result(error)
+    if not isinstance(title, str) or not title.strip():
+        error = GitLabValidationError("title must be a non-empty string")
+        _write_gitlab_audit_record(
+            tool="write_wiki_page", task_id=None, decision="denied", reason=str(error), slug=slug, audit_path=audit_path
+        )
+        return _error_result(error)
+    if not isinstance(content, str):
+        error = GitLabValidationError("content must be a string")
+        _write_gitlab_audit_record(
+            tool="write_wiki_page", task_id=None, decision="denied", reason=str(error), slug=slug, audit_path=audit_path
+        )
+        return _error_result(error)
+    if format not in ("markdown", "rdoc", "asciidoc", "org"):
+        error = GitLabValidationError(f"format must be one of markdown/rdoc/asciidoc/org: {format!r}")
+        _write_gitlab_audit_record(
+            tool="write_wiki_page", task_id=None, decision="denied", reason=str(error), slug=slug, audit_path=audit_path
+        )
+        return _error_result(error)
+
+    resolved = _resolve_token_and_config()
+    if isinstance(resolved, dict):
+        _write_gitlab_audit_record(
+            tool="write_wiki_page",
+            task_id=None,
+            decision="unavailable",
+            reason=resolved.get("reason", "config unavailable"),
+            slug=slug,
+            audit_path=audit_path,
+        )
+        return resolved
+    token, config = resolved
+
+    brief = _wiki_write_brief(slug, title, content, format)
+    content_sha256 = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    content_length_bytes = len(content.encode("utf-8"))
+    common_audit_fields = {
+        "tool": "write_wiki_page",
+        "task_id": None,
+        "slug": slug,
+        "format": format,
+        "content_sha256": content_sha256,
+        "content_length_bytes": content_length_bytes,
+        "audit_path": audit_path,
+    }
+
+    if confirmation_token is None:
+        issued = _WIKI_CONFIRMATION_GATE.request(
+            "write_wiki_page", brief, _WIKI_GATE_MODE, _WIKI_GATE_CLASSIFICATION, _WIKI_GATE_SANDBOX_LABEL
+        )
+        _write_gitlab_audit_record(**common_audit_fields, decision="confirmation-required")
+        return {
+            "status": "confirmation_required",
+            "confirmation_token": issued,
+            "expires_in_seconds": _dispatch_core.CONFIRMATION_TTL_SECONDS,
+            "message": (
+                "write_wiki_page requires human confirmation. Replay this call unchanged, "
+                "adding confirmation_token, to actually write the wiki page."
+            ),
+        }
+
+    try:
+        _WIKI_CONFIRMATION_GATE.consume(
+            confirmation_token, "write_wiki_page", brief, _WIKI_GATE_MODE, _WIKI_GATE_CLASSIFICATION, _WIKI_GATE_SANDBOX_LABEL
+        )
+    except _dispatch_core.DispatchDenied as error:
+        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=str(error))
+        return {"status": "denied", "reason": str(error)}
+
+    try:
+        existing = _get_wiki_page(config, token, slug)
+        payload = {"title": title, "content": content, "format": format}
+        if existing is None:
+            result = request_json(
+                "POST", f"/projects/{_quote_project_id(config)}/wikis", config, token, json_body=payload
+            )
+            written = True
+        else:
+            result = request_json(
+                "PUT",
+                f"/projects/{_quote_project_id(config)}/wikis/{urllib.parse.quote(slug, safe='')}",
+                config,
+                token,
+                json_body=payload,
+            )
+            written = False if result is None else True
+        _write_gitlab_audit_record(
+            **common_audit_fields,
+            decision="ok",
+            created=existing is None,
+            written=written,
+        )
+        return {
+            "status": "ok",
+            "created": existing is None,
+            "page": wrap_untrusted_gitlab_payload(result),
+        }
+    except GitLabError as error:
+        _write_gitlab_audit_record(
+            **common_audit_fields,
+            decision=error.kind,
+            reason=str(error),
+            status_code=getattr(error, "status_code", None),
+        )
+        return _error_result(error)
+
+
+# ---------------------------------------------------------------------------
+# write_evidence_comment: hard size cap, no truncate-and-continue.
+# ---------------------------------------------------------------------------
+
+
+def write_evidence_comment(
+    issue_iid: int, content: str, task_id: str, *, audit_path: Path | None = None
+) -> dict[str, Any]:
+    """Add a comment (GitLab "note") to an existing issue for small,
+    structured per-task evidence. Rejects (does not truncate) content whose
+    UTF-8 encoding exceeds `MAX_EVIDENCE_COMMENT_BYTES`."""
+    common_audit_fields = {
+        "tool": "write_evidence_comment",
+        "task_id": task_id if isinstance(task_id, str) else None,
+        "issue_iid": issue_iid,
+        "content_length_bytes": len(content.encode("utf-8")) if isinstance(content, str) else None,
+        "audit_path": audit_path,
+    }
+
+    if not isinstance(issue_iid, int) or isinstance(issue_iid, bool) or issue_iid <= 0:
+        error = GitLabValidationError(f"issue_iid must be a positive integer: {issue_iid!r}")
+        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=str(error))
+        return _error_result(error)
+    if not isinstance(content, str):
+        error = GitLabValidationError("content must be a string")
+        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=str(error))
+        return _error_result(error)
+    if not isinstance(task_id, str) or not task_id.strip():
+        error = GitLabValidationError("task_id must be a non-empty string")
+        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=str(error))
+        return _error_result(error)
+
+    encoded_length = len(content.encode("utf-8"))
+    if encoded_length > MAX_EVIDENCE_COMMENT_BYTES:
+        error = GitLabValidationError(
+            f"content exceeds the {MAX_EVIDENCE_COMMENT_BYTES}-byte UTF-8-encoded cap for "
+            f"write_evidence_comment ({encoded_length} bytes); shorten the content, do not truncate it here"
+        )
+        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=str(error))
+        return _error_result(error)
+
+    resolved = _resolve_token_and_config()
+    if isinstance(resolved, dict):
+        _write_gitlab_audit_record(
+            **common_audit_fields, decision="unavailable", reason=resolved.get("reason", "config unavailable")
+        )
+        return resolved
+    token, config = resolved
+
+    try:
+        created = request_json(
+            "POST",
+            f"/projects/{_quote_project_id(config)}/issues/{issue_iid}/notes",
+            config,
+            token,
+            json_body={"body": content},
+        )
+        _write_gitlab_audit_record(
+            **common_audit_fields,
+            decision="ok",
+            comment_id=created.get("id") if isinstance(created, dict) else None,
+        )
+        return {"status": "ok", "comment": wrap_untrusted_gitlab_payload(created)}
+    except GitLabError as error:
+        _write_gitlab_audit_record(
+            **common_audit_fields,
+            decision=error.kind,
+            reason=str(error),
+            status_code=getattr(error, "status_code", None),
+        )
+        return _error_result(error)
+
+
+# ---------------------------------------------------------------------------
+# Structural guarantee, enforced by this module's own public surface: no
+# name resembling a state-transition operation exists here. See
+# test_gitlab_integration.py's StructuralNoStateTransitionTests for the
+# automated assertion this comment promises -- that test file does its own
+# independent name/source scanning; there is no local pattern constant in
+# this module that acts as the enforcement mechanism.
+# ---------------------------------------------------------------------------
