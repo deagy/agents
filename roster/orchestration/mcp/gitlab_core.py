@@ -401,7 +401,24 @@ def _build_opener() -> urllib.request.OpenerDirector:
     import ssl
 
     https_handler = urllib.request.HTTPSHandler(context=ssl.create_default_context())
-    return urllib.request.build_opener(https_handler, _NoCrossHostRedirectHandler())
+    # Explicit ProxyHandler({}) below is load-bearing, not decorative:
+    # urllib.request.build_opener() only omits a *default* handler class
+    # when an instance of that exact class is already among the handlers
+    # passed in. Neither HTTPSHandler nor _NoCrossHostRedirectHandler is a
+    # ProxyHandler, so without this, build_opener() silently adds its own
+    # default ProxyHandler() -- which consults the ambient HTTPS_PROXY /
+    # https_proxy / ALL_PROXY environment variables (via getproxies()) and,
+    # if any is set, transparently routes every GitLab API call through
+    # that proxy with no logging and no opt-out anywhere in this module.
+    # Passing ProxyHandler({}) here means "use this exact proxy map (none)"
+    # and disables proxying unconditionally, regardless of ambient
+    # environment -- consistent with this module's "no escape hatch
+    # anywhere" TLS/redirect-hardening discipline (see SECURITY-CONTROLS.md).
+    return urllib.request.build_opener(
+        https_handler,
+        _NoCrossHostRedirectHandler(),
+        urllib.request.ProxyHandler({}),
+    )
 
 
 def _api_url(config: GitLabConfig, path: str) -> str:

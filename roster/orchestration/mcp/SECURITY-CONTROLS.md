@@ -495,10 +495,26 @@ mechanically-enforced/advisory classification as above.
   redirect whose target host differs from the original request's host, *and*
   any redirect whose target scheme is not `https` -- so a same-host
   `https`-to-`http` downgrade can never cause the `PRIVATE-TOKEN` header to be
-  replayed in cleartext. Tested by `ConfigResolutionTests.test_requires_https_base_url`
-  and `RedirectAndTlsTests` (cross-host redirect, same-host scheme-downgrade
-  redirect, and a code-reading assertion that no env var or config value can
-  weaken the SSL context's `check_hostname`/`verify_mode`).
+  replayed in cleartext. `_build_opener()` also passes an explicit
+  `urllib.request.ProxyHandler({})` to `build_opener()`, so proxying is
+  disabled unconditionally regardless of any ambient `HTTPS_PROXY` /
+  `https_proxy` / `ALL_PROXY` (or other `getproxies()`-recognized) environment
+  variable in the process this module runs in -- without it,
+  `build_opener()` silently installs its own default, environment-driven
+  `ProxyHandler()` (it only omits a default handler class when an instance of
+  that exact class is already among the handlers passed in, and none of this
+  module's other handlers is a `ProxyHandler`), which would route every
+  GitLab API call through an attacker- or misconfiguration-controlled proxy
+  with no logging and no opt-out anywhere in this module. This is the same
+  "no escape hatch anywhere" discipline as the TLS-verification and redirect
+  controls above, extended to ambient-environment-driven proxy routing, not
+  just GitLab-response-driven redirects. Tested by
+  `ConfigResolutionTests.test_requires_https_base_url` and `RedirectAndTlsTests`
+  (cross-host redirect, same-host scheme-downgrade redirect, a code-reading
+  assertion that no env var or config value can weaken the SSL context's
+  `check_hostname`/`verify_mode`, and an assertion that the opener's
+  `ProxyHandler` carries an explicit empty proxy map even when
+  `HTTPS_PROXY`/`https_proxy`/`ALL_PROXY` are set in the ambient environment).
 - **Create-only invariant / no state-transition path: mechanically enforced
   at two distinct layers -- Python call-graph shape, and GitLab body-text
   interpretation. Be precise about what each layer actually covers; neither

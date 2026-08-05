@@ -1187,6 +1187,94 @@ class RedirectAndTlsTests(unittest.TestCase):
             "opener.handlers has no _NoCrossHostRedirectHandler instance",
         )
 
+    def test_build_opener_never_honors_an_ambient_proxy_env_var(self) -> None:
+        # Regression test for the finding that urllib.request.build_opener()
+        # only skips a *default* handler class when an instance of that
+        # exact class is already among the handlers passed in. Neither
+        # HTTPSHandler nor _NoCrossHostRedirectHandler is a ProxyHandler, so
+        # without an explicit ProxyHandler({}) argument in _build_opener(),
+        # build_opener() would silently instantiate and wire in its own
+        # default ProxyHandler(), which consults HTTPS_PROXY/https_proxy/
+        # ALL_PROXY via getproxies() and would route every GitLab API call
+        # through whatever proxy an ambient environment variable names --
+        # with no logging and no opt-out anywhere in this module.
+        #
+        # Note on what to assert: empirically (verified directly against
+        # CPython's urllib.request.OpenerDirector.add_handler), a
+        # ProxyHandler constructed with an *empty* proxy map registers no
+        # protocol-open methods and is therefore never appended to
+        # opener.handlers at all -- so "the opener's handlers contains a
+        # ProxyHandler instance" is not itself the correct proof of the fix
+        # (a bare `ProxyHandler({})` and "no ProxyHandler present" are
+        # observationally identical on opener.handlers). The proof that
+        # actually distinguishes fixed from unfixed code is: (1) the exact
+        # positional argument list this module passes to
+        # urllib.request.build_opener() includes an explicit
+        # ProxyHandler({}) instance, which is what makes build_opener()'s
+        # own skip-default-class logic skip instantiating an
+        # environment-driven default ProxyHandler in the first place
+        # (confirmed by reading urllib.request.build_opener's source: it
+        # skips a default class only when an instance of that class is
+        # among the *caller-supplied* handlers, not by inspecting the
+        # resulting opener); and (2) the resulting opener's "https" open
+        # chain contains exactly the one HTTPSHandler and no proxy-capable
+        # handler, even with proxy env vars set. Both are asserted below.
+        # This fails against the pre-fix code: pre-fix, build_opener() is
+        # called with only (https_handler, _NoCrossHostRedirectHandler())
+        # -- no ProxyHandler instance in the call args at all -- so
+        # assertion (1) fails immediately; and pre-fix, build_opener()'s
+        # skip-default logic (seeing no caller-supplied ProxyHandler)
+        # instantiates its own default ProxyHandler() from the ambient
+        # HTTPS_PROXY set below, which registers an "https_open" method and
+        # so is appended to opener.handlers and to
+        # opener.handle_open["https"] alongside HTTPSHandler -- so assertion
+        # (2) also fails pre-fix.
+        real_build_opener = urllib.request.build_opener
+        captured_args: list[tuple] = []
+
+        def _capturing_build_opener(*handlers):
+            captured_args.append(handlers)
+            return real_build_opener(*handlers)
+
+        with mock.patch.dict(
+            os.environ,
+            {
+                "HTTPS_PROXY": "http://attacker.example:8080",
+                "https_proxy": "http://attacker.example:8080",
+                "ALL_PROXY": "http://attacker.example:8080",
+            },
+        ), mock.patch("urllib.request.build_opener", side_effect=_capturing_build_opener):
+            opener = gcore._build_opener()
+
+        self.assertEqual(len(captured_args), 1)
+        passed_handlers = captured_args[0]
+        explicit_proxy_handlers = [h for h in passed_handlers if isinstance(h, urllib.request.ProxyHandler)]
+        self.assertEqual(
+            len(explicit_proxy_handlers),
+            1,
+            "_build_opener() must pass an explicit ProxyHandler instance to "
+            "urllib.request.build_opener() so build_opener()'s own "
+            "skip-default-class logic never instantiates an "
+            "environment-driven default ProxyHandler",
+        )
+        self.assertEqual(
+            explicit_proxy_handlers[0].proxies,
+            {},
+            "the explicit ProxyHandler passed to build_opener() must be "
+            "constructed with an empty proxy map, not one derived from "
+            "ambient HTTPS_PROXY/https_proxy/ALL_PROXY via getproxies()",
+        )
+
+        https_open_chain = opener.handle_open.get("https", [])
+        self.assertEqual(
+            len(https_open_chain),
+            1,
+            "the opener's https-open chain must contain exactly one "
+            "handler; a second entry here would be a proxy handler "
+            "silently intercepting every GitLab HTTPS request",
+        )
+        self.assertIsInstance(https_open_chain[0], urllib.request.HTTPSHandler)
+
     def test_ssl_context_verification_is_not_configurable_by_any_env_var(self) -> None:
         # There is no code path in _build_opener() that reads any
         # environment variable or config value to weaken TLS verification --
