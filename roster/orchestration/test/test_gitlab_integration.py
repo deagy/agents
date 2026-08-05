@@ -313,7 +313,7 @@ class CreateReviewSubtaskTests(unittest.TestCase):
         existing_issue = {
             "iid": 7,
             "state": "opened",
-            "description": "Parent: #1\n\nSome body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relates_to #1\n",
+            "description": "Parent: #1\n\nSome body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relate #1\n",
             "labels": ["review-subtask", "gate:G5", gcore._evidence_key_label("TASK-1", "G5", 1)],
         }
 
@@ -344,7 +344,7 @@ class CreateReviewSubtaskTests(unittest.TestCase):
         closed_issue = {
             "iid": 7,
             "state": "closed",
-            "description": "Parent: #1\n\nSome body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relates_to #1\n",
+            "description": "Parent: #1\n\nSome body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relate #1\n",
             "labels": ["review-subtask", "gate:G5", gcore._evidence_key_label("TASK-1", "G5", 1)],
         }
 
@@ -371,7 +371,7 @@ class CreateReviewSubtaskTests(unittest.TestCase):
         wrong_parent_issue = {
             "iid": 8,
             "state": "opened",
-            "description": "Parent: #999\n\nSome other body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relates_to #999\n",
+            "description": "Parent: #999\n\nSome other body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relate #999\n",
             "labels": ["review-subtask", "gate:G5", gcore._evidence_key_label("TASK-1", "G5", 999)],
         }
 
@@ -395,7 +395,7 @@ class CreateReviewSubtaskTests(unittest.TestCase):
         decoy_issue = {
             "iid": 5,
             "state": "opened",
-            "description": "Parent: #1\n\nSome body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relates_to #1\n",
+            "description": "Parent: #1\n\nSome body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relate #1\n",
             "labels": ["review-subtask", "gate:G5"],
         }
 
@@ -414,7 +414,7 @@ class CreateReviewSubtaskTests(unittest.TestCase):
         matching_issue = {
             "iid": 42,
             "state": "opened",
-            "description": "Parent: #1\n\nSome body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relates_to #1\n",
+            "description": "Parent: #1\n\nSome body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relate #1\n",
             "labels": ["review-subtask", "gate:G5", gcore._evidence_key_label("TASK-1", "G5", 1)],
         }
         # A full first page (page-size worth of issues) that carry the
@@ -483,7 +483,7 @@ class CreateReviewSubtaskTests(unittest.TestCase):
         # instance is declared to support work-item hierarchy, this
         # implementation never attempts a GraphQL hierarchy mutation -- it
         # always uses the "Parent: #<iid>" description reference plus a
-        # "/relates_to" quick action. A future silent switch to a real
+        # "/relate" quick action. A future silent switch to a real
         # hierarchy mutation would break this test, which is the point.
         with mock.patch.dict(os.environ, {gcore.GITLAB_HIERARCHY_ENV_VAR: "true"}):
             captured_payload = {}
@@ -500,10 +500,135 @@ class CreateReviewSubtaskTests(unittest.TestCase):
         self.assertEqual(result["status"], "ok")
         self.assertTrue(result["hierarchy_supported"])
         self.assertIn("Parent: #1", captured_payload["description"])
-        self.assertIn("/relates_to #1", captured_payload["description"])
+        self.assertIn("/relate #1", captured_payload["description"])
         # No GraphQL/work-item-hierarchy-shaped field is ever sent.
         self.assertNotIn("workItemId", captured_payload)
         self.assertNotIn("parentId", captured_payload)
+
+
+# ---------------------------------------------------------------------------
+# Quick-action injection neutralization (create_review_subtask's description,
+# write_evidence_comment's content).
+# ---------------------------------------------------------------------------
+
+
+class QuickActionNeutralizationTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.env_patcher = mock.patch.dict(os.environ, _base_env())
+        self.env_patcher.start()
+        self.addCleanup(self.env_patcher.stop)
+
+    def test_create_review_subtask_rejects_a_leading_close_line_with_zero_http_calls(self) -> None:
+        malicious_description = "Please review this.\n/close\nThanks."
+        with mock.patch.object(gcore, "request_json") as mocked:
+            result = gcore.create_review_subtask(1, "Review needed", malicious_description, "G5", "TASK-1")
+        self.assertEqual(result["status"], "denied")
+        self.assertIn("quick action", result["reason"])
+        mocked.assert_not_called()
+
+    def test_create_review_subtask_rejects_an_unlabel_line_with_zero_http_calls(self) -> None:
+        malicious_description = '/unlabel ~"review-subtask"'
+        with mock.patch.object(gcore, "request_json") as mocked:
+            result = gcore.create_review_subtask(1, "Review needed", malicious_description, "G5", "TASK-1")
+        self.assertEqual(result["status"], "denied")
+        mocked.assert_not_called()
+
+    def test_create_review_subtask_rejects_a_capitalized_close_line_with_zero_http_calls(self) -> None:
+        # GitLab's own quick-action matching is case-insensitive server-side,
+        # so the filter must reject case-varied commands too, not only the
+        # all-lowercase shape.
+        malicious_description = "Please review this.\n/Close\nThanks."
+        with mock.patch.object(gcore, "request_json") as mocked:
+            result = gcore.create_review_subtask(1, "Review needed", malicious_description, "G5", "TASK-1")
+        self.assertEqual(result["status"], "denied")
+        self.assertIn("quick action", result["reason"])
+        mocked.assert_not_called()
+
+    def test_create_review_subtask_rejects_an_all_caps_close_line_with_zero_http_calls(self) -> None:
+        malicious_description = "Please review this.\n/CLOSE\nThanks."
+        with mock.patch.object(gcore, "request_json") as mocked:
+            result = gcore.create_review_subtask(1, "Review needed", malicious_description, "G5", "TASK-1")
+        self.assertEqual(result["status"], "denied")
+        mocked.assert_not_called()
+
+    def test_create_review_subtask_rejects_mixed_case_unlabel_line_with_zero_http_calls(self) -> None:
+        malicious_description = '/UNLABEL ~"review-subtask"'
+        with mock.patch.object(gcore, "request_json") as mocked:
+            result = gcore.create_review_subtask(1, "Review needed", malicious_description, "G5", "TASK-1")
+        self.assertEqual(result["status"], "denied")
+        mocked.assert_not_called()
+
+    def test_write_evidence_comment_rejects_a_capitalized_close_line_with_zero_http_calls(self) -> None:
+        with mock.patch.object(gcore, "request_json") as mocked:
+            result = gcore.write_evidence_comment(1, "Evidence attached.\n/Close\n", "TASK-1")
+        self.assertEqual(result["status"], "denied")
+        self.assertIn("quick action", result["reason"])
+        mocked.assert_not_called()
+
+    def test_write_evidence_comment_rejects_an_all_caps_close_line_with_zero_http_calls(self) -> None:
+        with mock.patch.object(gcore, "request_json") as mocked:
+            result = gcore.write_evidence_comment(1, "Evidence attached.\n/CLOSE\n", "TASK-1")
+        self.assertEqual(result["status"], "denied")
+        mocked.assert_not_called()
+
+    def test_write_evidence_comment_rejects_a_mixed_case_close_line_with_zero_http_calls(self) -> None:
+        with mock.patch.object(gcore, "request_json") as mocked:
+            result = gcore.write_evidence_comment(1, "Evidence attached.\n/cLoSe\n", "TASK-1")
+        self.assertEqual(result["status"], "denied")
+        mocked.assert_not_called()
+
+    def test_write_evidence_comment_rejects_mixed_case_unlabel_line_with_zero_http_calls(self) -> None:
+        with mock.patch.object(gcore, "request_json") as mocked:
+            result = gcore.write_evidence_comment(1, '/UnLaBeL ~"review-subtask"', "TASK-1")
+        self.assertEqual(result["status"], "denied")
+        mocked.assert_not_called()
+
+    def test_write_evidence_comment_rejects_a_leading_close_line_with_zero_http_calls(self) -> None:
+        with mock.patch.object(gcore, "request_json") as mocked:
+            result = gcore.write_evidence_comment(1, "Evidence attached.\n/reopen\n", "TASK-1")
+        self.assertEqual(result["status"], "denied")
+        self.assertIn("quick action", result["reason"])
+        mocked.assert_not_called()
+
+    def test_quick_action_line_indented_with_leading_whitespace_is_still_rejected(self) -> None:
+        # _QUICK_ACTION_LINE_PATTERN allows leading whitespace before the
+        # slash, mirroring GitLab's own tolerant parsing of quick-action lines.
+        with mock.patch.object(gcore, "request_json") as mocked:
+            result = gcore.write_evidence_comment(1, "Body text\n   /confidential\nmore text", "TASK-1")
+        self.assertEqual(result["status"], "denied")
+        mocked.assert_not_called()
+
+    def test_ordinary_prose_is_still_accepted(self) -> None:
+        with mock.patch.object(gcore, "request_json", return_value={"id": 1, "body": "ok"}):
+            result = gcore.write_evidence_comment(
+                1, "The build passed. See /var/log/build.log for details.", "TASK-1"
+            )
+        self.assertEqual(result["status"], "ok")
+
+    def test_slash_mid_line_not_at_line_start_is_still_accepted(self) -> None:
+        with mock.patch.object(gcore, "request_json", return_value={"id": 1, "body": "ok"}):
+            result = gcore.write_evidence_comment(1, "Fetched from https://example.com/foo/bar", "TASK-1")
+        self.assertEqual(result["status"], "ok")
+
+    def test_create_review_subtask_ordinary_description_is_still_accepted_and_relate_line_is_appended(
+        self,
+    ) -> None:
+        captured_payload = {}
+
+        def _fake_request_json(method, path, config, token, **kwargs):
+            if method == "GET":
+                return []
+            captured_payload.update(kwargs.get("json_body", {}))
+            return {"iid": 1, "title": kwargs["json_body"]["title"]}
+
+        with mock.patch.object(gcore, "request_json", side_effect=_fake_request_json):
+            result = gcore.create_review_subtask(
+                1, "Review needed", "A file path starts a line: /etc/hosts has entries.", "G5", "TASK-1"
+            )
+        self.assertEqual(result["status"], "ok")
+        # This module's own trusted quick action is still present and was
+        # never itself rejected by the check applied to caller input only.
+        self.assertIn("/relate #1", captured_payload["description"])
 
 
 # ---------------------------------------------------------------------------
@@ -842,7 +967,7 @@ class UntrustedWrappingTests(unittest.TestCase):
         existing_issue = {
             "iid": 7,
             "state": "opened",
-            "description": "Parent: #1\n\nSome body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relates_to #1\n",
+            "description": "Parent: #1\n\nSome body\n\n<!-- task_id=TASK-1 gate_id=G5 -->\n\n/relate #1\n",
             "labels": ["review-subtask", "gate:G5", gcore._evidence_key_label("TASK-1", "G5", 1)],
         }
         with mock.patch.object(gcore, "request_json", return_value=[existing_issue]):

@@ -499,16 +499,77 @@ mechanically-enforced/advisory classification as above.
   and `RedirectAndTlsTests` (cross-host redirect, same-host scheme-downgrade
   redirect, and a code-reading assertion that no env var or config value can
   weaken the SSL context's `check_hostname`/`verify_mode`).
-- **Create-only invariant / no state-transition path: mechanically enforced.**
-  This module implements no function, and calls no function anywhere in its
-  own source or `dispatch_core.py`'s, that closes, reopens, resolves, or
-  relabels-away-from-open-review a GitLab issue. `create_review_subtask` only
-  ever performs a `GET` (idempotency search) and at most one `POST`. Tested by
-  `StructuralNoStateTransitionTests` (name-shape scan of every function in the
-  module, an explicit check that the named forbidden functions don't exist,
-  a source-level check that GitLab's `state_event` field is never used, and a
-  scan of `create_review_subtask`'s own function body for a call-shaped use of
-  a forbidden verb).
+- **Create-only invariant / no state-transition path: mechanically enforced
+  at two distinct layers -- Python call-graph shape, and GitLab body-text
+  interpretation. Be precise about what each layer actually covers; neither
+  alone is the whole guarantee.**
+  - *Python-level structural guarantee.* This module implements no function,
+    and calls no function anywhere in its own source or `dispatch_core.py`'s,
+    that closes, reopens, resolves, or relabels-away-from-open-review a
+    GitLab issue. `create_review_subtask` only ever performs a `GET`
+    (idempotency search) and at most one `POST`. Tested by
+    `StructuralNoStateTransitionTests` (name-shape scan of every function in
+    the module, an explicit check that the named forbidden functions don't
+    exist, a source-level check that GitLab's `state_event` field is never
+    used, and a scan of `create_review_subtask`'s own function body for a
+    call-shaped use of a forbidden verb). **This layer, by itself, cannot see
+    a GitLab-side effect triggered by body text this module sends** -- it
+    only scans this module's own Python source and call shapes, and GitLab
+    itself interprets a note/issue body server-side as coming from this
+    module's own service-account token, entirely independent of which HTTP
+    endpoint sent that body. A prior round of this document described the
+    create-only invariant as "mechanically enforced" based on this layer
+    alone; that was accurate about the Python call graph but incomplete about
+    the actual guarantee a caller experiences, which is why the second layer
+    below was added.
+  - *Body-text quick-action neutralization.* GitLab executes "quick actions"
+    (slash-commands such as `/close`, `/unlabel`, `/relabel`,
+    `/confidential`, `/lock`, `/reopen`, `/label`) embedded anywhere in an
+    issue description or a note body, interpreted server-side as coming from
+    the note's author -- this integration's own service-account token --
+    regardless of which of this module's own HTTP endpoints sent that body.
+    Before this fix, a caller-supplied `description` (`create_review_subtask`)
+    or `content` (`write_evidence_comment`) line like `/close` or
+    `/unlabel ~"review-subtask"` reached GitLab byte-identical and was
+    executed, silently transitioning the evidence issue's state even though
+    no Python code path in this module ever called a close/label-removal
+    endpoint -- defeating the create-only guarantee at the effect level, not
+    the call-graph level, and invisible to `StructuralNoStateTransitionTests`
+    since the transition happens via GitLab's own body-text interpretation.
+    `_reject_quick_action_syntax()` now rejects (never silently strips or
+    truncates) any line whose first non-whitespace characters match
+    `^\s*/[a-z][a-z_]*\b`, matched case-insensitively (`re.IGNORECASE`) since
+    GitLab's own quick-action matching is case-insensitive server-side
+    (verified against `lib/gitlab/quick_actions/extractor.rb`) -- a prior
+    version of this filter was case-sensitive and so missed `/Close`,
+    `/CLOSE`, `/UNLABEL ~"review-subtask"`, and any other case-varied
+    command, all of which GitLab still executes; that gap is now closed. The
+    pattern is applied to caller-supplied `description`/`content`, raising
+    `GitLabValidationError` before any HTTP call, applied *before*
+    `create_review_subtask`'s own trusted `/relate #<iid>` line is appended
+    (so the check only ever sees caller-supplied text, and that
+    module-authored line -- a deliberate, intentional quick action this
+    module relies on for the hierarchy fallback -- is never itself rejected).
+    This filter is deliberately broader than GitLab's real, finite quick-action
+    command list -- GitLab's own extractor only interprets a line as a quick
+    action if it names one of a fixed set of registered command names
+    (matched via `Regexp.union(names)`; a line like `/notacommand` is never
+    interpreted), but this module matches any line merely *shaped* like a
+    quick action, so it never needs to track GitLab's exact, version-specific
+    command set to remain safe. The tradeoff is over-rejection of some
+    legitimate content shaped like a quick action (e.g. a fenced code block
+    containing a shell command starting with `/`, or a path-starting log
+    line) that GitLab's real extractor would not have interpreted because it
+    excludes inline code, fenced code blocks, and quote blocks from
+    quick-action parsing and this module's filter does not; that is a known,
+    accepted false-positive/usability gap, not a security gap, and is
+    tracked as separate follow-up work rather than fixed here.
+    `write_wiki_page`'s `content` is deliberately NOT run through this check:
+    GitLab's quick-action interpreter only ever parses issue/note bodies, not
+    wiki page content (see `write_wiki_page`'s own docstring for the
+    "Quick-action scope note" and the revisit condition if that is ever found
+    to be inaccurate for a specific GitLab version/edition). Tested by
+    `QuickActionNeutralizationTests`.
 - **Idempotency search: mechanically enforced, exact-match, never a substring
   match against untrusted content.** `_find_existing_subtask()` queries with
   `state=opened` (a closed/already-resolved issue is never silently adopted;
@@ -534,6 +595,16 @@ mechanically-enforced/advisory classification as above.
   issue. `create_review_subtask`'s result surfaces `state` at the top level
   (not only nested inside the wrapped issue payload) for both a reused match
   and a freshly created issue. Tested by `CreateReviewSubtaskTests`.
+  **Honest limit, distinct from the stale/poisoning issues already fixed in
+  earlier rounds: the search-then-create sequence is not atomic under
+  genuine concurrency.** Two independent concurrent calls with the same
+  `(task_id, gate_id, parent_issue_iid)` can both observe "no existing
+  issue" via their own GET before either has POSTed, and both then POST,
+  producing two open issues carrying the identical evidence-key label. There
+  is no distributed lock or server-side compare-and-swap primitive closing
+  this gap, and none is added in this round -- disclosed explicitly (see
+  `create_review_subtask`'s own docstring) rather than implicitly claimed
+  away by the word "idempotent".
 - **Retry / fail-closed behavior: mechanically enforced.** `request_json()`
   retries 429/5xx/timeout/network errors with bounded jittered exponential
   backoff (`MAX_RETRY_ATTEMPTS`, `MAX_RETRY_ELAPSED_SECONDS`) and raises
@@ -600,6 +671,16 @@ mechanically-enforced/advisory classification as above.
   or overwrites an existing one as part of what they're approving, not only
   after the fact. Tested by `WriteWikiPageConfirmationTests`,
   `WriteWikiPageCreateVsUpdateTests`, `GetWikiPageTests`.
+  **Honest limit: the disclosed `will_overwrite_existing` hint can go stale
+  during the confirmation window.** It is computed once, before requesting
+  confirmation, from whichever page state existed at that moment; because
+  the confirmation TTL is up to `CONFIRMATION_TTL_SECONDS` (300s), another
+  actor could create or delete a page at the same slug before the second
+  call. The actual write always re-checks fresh at consume-time (`_get_wiki_page()`
+  inside the confirmed branch), so the create-vs-update *behavior* is never
+  wrong -- only the informational hint shown to the approving human can lag
+  reality. No code fix for this in this round; see `write_wiki_page`'s own
+  docstring for the same note.
 - **Audit trail: mechanically enforced.** Every call to all three tools
   writes a structured JSON-lines audit record via
   `dispatch_core.build_audit_record`/`write_audit_record` (the same

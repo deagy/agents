@@ -130,6 +130,51 @@ _ISSUE_SEARCH_MAX_PAGES = 20
 _GATE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]+$")
 _TASK_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.:-]+$")
 
+# GitLab interprets any line whose first non-whitespace characters match this
+# shape as a "quick action" attempt (e.g. /close, /unlabel, /relabel,
+# /confidential, /lock, /reopen, /label), executed server-side as coming from
+# the note/issue author -- which, for this integration, is always this
+# module's own service-account token, never the human the content actually
+# came from. Quick-action matching is case-insensitive server-side (verified
+# against GitLab's own `lib/gitlab/quick_actions/extractor.rb`), so this
+# pattern is too (`re.IGNORECASE`) -- `/Close`, `/CLOSE`, and `/cLoSe` are all
+# executed identically to `/close`. This is deliberately broader than
+# GitLab's real, finite command list (built server-side from
+# `Regexp.union(names)` over actual registered quick-action names, so
+# `/notacommand` is never interpreted) rather than an exhaustive keyword
+# list, so this module never needs to track GitLab's exact, version-specific
+# command set to stay safe -- a false-positive reject on a line that merely
+# *looks* like a quick action is an accepted, deliberate cost of that margin
+# (see SECURITY-CONTROLS.md's noted over-rejection follow-up). A `/`
+# appearing mid-line (a file path, a URL fragment) never matches, since
+# `re.MULTILINE` anchors `^` to line starts only.
+_QUICK_ACTION_LINE_PATTERN = re.compile(r"^\s*/[a-z][a-z_]*\b", re.MULTILINE | re.IGNORECASE)
+
+
+def _reject_quick_action_syntax(value: str, *, field_name: str) -> None:
+    """Raise `GitLabValidationError` if any line of caller-supplied `value`
+    is shaped like a GitLab quick action (see `_QUICK_ACTION_LINE_PATTERN`).
+    Rejects outright -- never strips or truncates the offending line -- and
+    never echoes the rejected line/content back in the error message,
+    consistent with this module's existing discipline of not folding
+    untrusted content into error text it doesn't control. Callers must run
+    this against caller-supplied text only, *before* any of this module's
+    own trusted, deliberate quick-action lines (e.g. `create_review_subtask`'s
+    own `/relate #<iid>`) are appended -- this check has no way to
+    distinguish "this module wrote this" from "the caller wrote this" once
+    the two are concatenated."""
+    if _QUICK_ACTION_LINE_PATTERN.search(value):
+        raise GitLabValidationError(
+            f"{field_name} contains a line shaped like a GitLab quick action "
+            "(a line starting with '/' followed by a letter and then letters/"
+            "underscores, matched case-insensitively since GitLab itself matches "
+            "quick actions case-insensitively), which GitLab would interpret and "
+            "execute server-side as this integration's own service-account token "
+            "-- rejected rather than sent to GitLab; remove or reword the "
+            "offending line (e.g. escape the leading slash or add leading text "
+            "before it)"
+        )
+
 # ---------------------------------------------------------------------------
 # Audit trail: same mechanism as dispatch_core.py's own audit log
 # (build_audit_record/write_audit_record, including its forbidden-key
@@ -704,7 +749,34 @@ def create_review_subtask(
     relabels any issue away from its open review state, and calls no
     function anywhere in this module or its imports that does. It only ever
     reads issues (for the idempotency search) and creates at most one new
-    issue.
+    issue. This is a Python-call-graph guarantee only; it does not by itself
+    prevent GitLab's own server-side quick-action interpretation of body
+    text from causing a state transition (see the quick-action neutralization
+    note below, and `SECURITY-CONTROLS.md`'s GitLab section for the two-layer
+    explanation).
+
+    Quick-action neutralization: `description` is checked with
+    `_reject_quick_action_syntax()` before this function's own trusted
+    "Parent: #<iid>" / "/relate #<iid>" lines are added around it, so no
+    caller-supplied line shaped like a GitLab quick action (e.g. `/close`,
+    `/unlabel ~"review-subtask"`) ever reaches GitLab in the issue body.
+    Without this, GitLab would interpret such a line as coming from this
+    module's own service-account note author and execute it server-side --
+    an effect-level state transition no Python-level structural check here
+    can observe, since it never goes through this module's own HTTP call
+    shapes.
+
+    Idempotency-search race, disclosed honestly rather than implied away by
+    the word "idempotent": the search-then-create sequence below (see
+    `_find_existing_subtask`) is not atomic. Two genuinely concurrent calls
+    with the same `(task_id, gate_id, parent_issue_iid)` can both observe "no
+    existing issue" via their own GET before either has POSTed, and both then
+    POST, producing two open issues carrying the identical evidence-key
+    label. This module has no distributed-lock or server-side compare-and-
+    swap primitive to close this gap, and none is implemented in this round;
+    a caller relying on strict single-issue-per-key semantics under genuine
+    concurrent callers should be aware this is a best-effort dedup, not a
+    hard uniqueness guarantee.
 
     Hierarchy note (deviation from the ideal design, recorded here rather
     than silently guessed): the settled design allows detecting work-item
@@ -719,7 +791,7 @@ def create_review_subtask(
     GitLab instance or its GraphQL docs in this environment, and shipping an
     unverified mutation guess risked a worse outcome (a confidently wrong
     hierarchy link) than always using the documented fallback (an explicit
-    "Parent: #<iid>" reference plus a `/relates_to` quick action in the
+    "Parent: #<iid>" reference plus a `/relate` quick action in the
     description, which is what every call currently uses regardless of the
     flag). Extending this to a verified GraphQL hierarchy path is tracked as
     follow-up work, not done here.
@@ -739,6 +811,11 @@ def create_review_subtask(
             raise GitLabValidationError("title must be a non-empty string")
         if not isinstance(description, str):
             raise GitLabValidationError("description must be a string")
+        # Checked on the raw caller-supplied description, before this
+        # function's own trusted "Parent: #<iid>" / "/relate #<iid>"
+        # lines are appended below -- see _reject_quick_action_syntax's
+        # docstring for why the ordering matters.
+        _reject_quick_action_syntax(description, field_name="description")
         _validate_label_component(gate_id, field_name="gate_id", pattern=_GATE_ID_PATTERN)
         _validate_label_component(task_id, field_name="task_id", pattern=_TASK_ID_PATTERN)
     except GitLabValidationError as error:
@@ -781,7 +858,7 @@ def create_review_subtask(
             f"Parent: #{parent_issue_iid}\n\n"
             f"{description}\n\n"
             f"<!-- {key} -->\n\n"
-            f"/relates_to #{parent_issue_iid}\n"
+            f"/relate #{parent_issue_iid}\n"
         )
         payload = {
             "title": title,
@@ -899,7 +976,31 @@ def write_wiki_page(
     Note: this tool's public signature has no `task_id` parameter (unlike
     `create_review_subtask`/`write_evidence_comment`), so its audit records
     carry `task_id=None`; that is a property of this tool's existing
-    contract, not something this audit-logging change introduces."""
+    contract, not something this audit-logging change introduces.
+
+    Quick-action scope note: unlike `create_review_subtask`'s `description`
+    and `write_evidence_comment`'s `content`, `content` here is deliberately
+    NOT run through `_reject_quick_action_syntax()`. GitLab wiki pages are
+    plain Markdown/RDoc/AsciiDoc/Org rendering of a repository-like content
+    blob, not an issue/note body -- GitLab's quick-action interpreter only
+    ever parses issue descriptions and issue/MR/commit/epic notes, never wiki
+    page content, so a `/close`-shaped line in a wiki page is rendered as
+    literal text, not executed. If this is ever found to be inaccurate for a
+    specific GitLab version/edition, this scope boundary must be revisited,
+    not assumed to still hold.
+
+    Stale-hint honesty note: `will_overwrite_existing` in the
+    `confirmation_required` response (see below) is computed once, before the
+    confirmation round trip begins, from whichever page state existed at that
+    moment. Because the confirmation token's TTL is up to
+    `dispatch_core.CONFIRMATION_TTL_SECONDS` (currently 300s), another actor
+    could create or delete a page at the same `slug` during that window,
+    making the disclosed hint stale by the time a human actually reads and
+    approves it. The actual write path (`_get_wiki_page()` inside the
+    confirmed branch below) always re-checks fresh at consume-time, so the
+    create-vs-update *behavior* itself is never wrong -- only the
+    informational hint shown to the approving human can lag reality.
+    """
     # common_audit_fields never includes slug/title/content -- only the
     # content hash/length computed below once brief is available -- so a
     # validation failure that fires before `brief` exists (unknown slug/
@@ -1087,6 +1188,12 @@ def write_evidence_comment(
         return _error_result(error)
     if not isinstance(task_id, str) or not task_id.strip():
         error = GitLabValidationError("task_id must be a non-empty string")
+        _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=_audit_safe_reason(error))
+        return _error_result(error)
+
+    try:
+        _reject_quick_action_syntax(content, field_name="content")
+    except GitLabValidationError as error:
         _write_gitlab_audit_record(**common_audit_fields, decision="denied", reason=_audit_safe_reason(error))
         return _error_result(error)
 
