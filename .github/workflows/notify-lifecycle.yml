@@ -1,0 +1,42 @@
+name: notify-lifecycle
+
+# Notifies deagy/cadre-lifecycle of a new tag so it can regenerate its
+# packaged plugin content and open a PR for review. This repo has no other
+# cross-repo automation; see cadre-lifecycle's regenerate.yml (repository
+# owner: this is the emitting half of that flow).
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Notify cadre-lifecycle
+        env:
+          GH_TOKEN: ${{ secrets.CADRE_LIFECYCLE_DISPATCH_TOKEN }}
+        run: |
+          set -eu
+          if [ -z "${GH_TOKEN:-}" ]; then
+            # Soft-skip: this repo's own release must never fail because a
+            # downstream-only notification secret isn't provisioned yet.
+            echo "::warning::CADRE_LIFECYCLE_DISPATCH_TOKEN is not set; skipping cadre-lifecycle dispatch for ${GITHUB_REF_NAME}."
+            exit 0
+          fi
+          # Built with jq (not string interpolation) so the tag name can
+          # never break out of the JSON payload.
+          payload=$(jq -n --arg tag "$GITHUB_REF_NAME" \
+            '{event_type: "cadre-release", client_payload: {tag: $tag}}')
+          echo "$payload" | gh api repos/deagy/cadre-lifecycle/dispatches \
+            --method POST \
+            --input -
