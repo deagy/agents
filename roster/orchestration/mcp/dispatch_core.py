@@ -1342,7 +1342,11 @@ def write_audit_record(record: dict[str, Any], *, path: Path | None = None) -> N
 def _write_audit_record_best_effort(record: dict[str, Any], *, path: Path | None) -> None:
     """`write_audit_record()`, but a failure here (disk full, permission
     denied, the `ELOOP`/`O_NOFOLLOW` symlink guard firing, ...) is swallowed
-    rather than propagated.
+    rather than propagated -- the caller-visible job/team state must still
+    reach a terminal outcome (see below), so this function itself can never
+    raise. The failure is not silent, though: it is reported to stderr so an
+    operator has a trace to grep for, even though the primary audit log is
+    missing that record.
 
     Used only at call sites where a real, already-committed side effect (a
     background job/team that has already started, or a member's already-
@@ -1358,8 +1362,17 @@ def _write_audit_record_best_effort(record: dict[str, Any], *, path: Path | None
     """
     try:
         write_audit_record(record, path=path)
-    except Exception:  # noqa: BLE001 -- see docstring: must never propagate
-        pass
+    except Exception as exc:  # noqa: BLE001 -- see docstring: must never propagate
+        try:
+            decision = record.get("decision", "<unknown>")
+            job_id = record.get("job_id") or record.get("team_id") or "<unknown>"
+            print(
+                f"dispatch_core: best-effort audit write failed for decision="
+                f"{decision!r} job/team_id={job_id!r}: {exc!r}",
+                file=sys.stderr,
+            )
+        except Exception:  # noqa: BLE001 -- the stderr trace is itself best-effort
+            pass
 
 
 # ---------------------------------------------------------------------------

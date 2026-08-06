@@ -14,6 +14,7 @@ real package being available.
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import os
 import re
@@ -2482,6 +2483,73 @@ class AsyncTeamDispatchTests(unittest.TestCase):
         self.assertIsNotNone(final, "team never reached a terminal state")
         self.assertEqual(final["status"], "team_dispatched")
         self.assertEqual(final["members"][0]["status"], "dispatched")
+
+
+class WriteAuditRecordBestEffortStderrFallbackTests(unittest.TestCase):
+    """Fast-follower fix (PR #101 re-review, MEDIUM): a best-effort audit
+    write that fails must leave a stderr trace, not disappear without any
+    signal an operator could grep for."""
+
+    def test_write_failure_is_reported_to_stderr_with_decision_and_id(self) -> None:
+        record = {
+            "decision": "dispatched",
+            "job_id": "job-abc123",
+            "team_member_index": None,
+        }
+        with mock.patch.object(
+            core, "write_audit_record", side_effect=OSError("simulated disk full")
+        ):
+            captured = io.StringIO()
+            with mock.patch.object(sys, "stderr", captured):
+                core._write_audit_record_best_effort(record, path=None)
+
+        stderr_text = captured.getvalue()
+        self.assertIn("dispatched", stderr_text)
+        self.assertIn("job-abc123", stderr_text)
+        self.assertIn("simulated disk full", stderr_text)
+
+    def test_write_failure_falls_back_to_team_id_when_job_id_absent(self) -> None:
+        record = {"decision": "team-dispatched-async", "team_id": "team-xyz789"}
+        with mock.patch.object(
+            core, "write_audit_record", side_effect=OSError("simulated permission denied")
+        ):
+            captured = io.StringIO()
+            with mock.patch.object(sys, "stderr", captured):
+                core._write_audit_record_best_effort(record, path=None)
+
+        stderr_text = captured.getvalue()
+        self.assertIn("team-xyz789", stderr_text)
+        self.assertIn("simulated permission denied", stderr_text)
+
+    def test_write_success_produces_no_stderr_output(self) -> None:
+        record = {"decision": "dispatched", "job_id": "job-ok"}
+        with mock.patch.object(core, "write_audit_record", return_value=None):
+            captured = io.StringIO()
+            with mock.patch.object(sys, "stderr", captured):
+                core._write_audit_record_best_effort(record, path=None)
+
+        self.assertEqual(captured.getvalue(), "")
+
+    def test_broken_stderr_during_the_trace_write_still_never_propagates(self) -> None:
+        # Code-review follow-up (LOW): the stderr trace write is itself
+        # best-effort. A broken/closed stderr (e.g. BrokenPipeError, or a
+        # full disk on redirected stderr -- the same failure class the
+        # docstring cites for the primary audit write) must not resurrect
+        # the original "raises out of a function documented to never raise"
+        # failure mode this helper exists to prevent.
+        class BrokenStderr:
+            def write(self, _text: str) -> int:
+                raise OSError("simulated broken stderr")
+
+            def flush(self) -> None:
+                pass
+
+        record = {"decision": "dispatched", "job_id": "job-broken-stderr"}
+        with mock.patch.object(
+            core, "write_audit_record", side_effect=OSError("simulated disk full")
+        ):
+            with mock.patch.object(sys, "stderr", BrokenStderr()):
+                core._write_audit_record_best_effort(record, path=None)  # must not raise
 
 
 if __name__ == "__main__":
