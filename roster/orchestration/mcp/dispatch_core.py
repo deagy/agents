@@ -1339,6 +1339,29 @@ def write_audit_record(record: dict[str, Any], *, path: Path | None = None) -> N
         os.close(descriptor)
 
 
+def _write_audit_record_best_effort(record: dict[str, Any], *, path: Path | None) -> None:
+    """`write_audit_record()`, but a failure here (disk full, permission
+    denied, the `ELOOP`/`O_NOFOLLOW` symlink guard firing, ...) is swallowed
+    rather than propagated.
+
+    Used only at call sites where a real, already-committed side effect (a
+    background job/team that has already started, or a member's already-
+    finished child process) must still be reported back to the job store /
+    caller even if the audit write for that specific event fails -- a
+    missing audit line for one event is strictly better than losing the
+    caller's only way to observe that the event happened at all (a job
+    stuck reporting "running" forever, or an already-running team whose
+    team_id was never returned). Never use this for a write that precedes
+    the corresponding side effect (e.g. before a background thread starts)
+    -- there, a failure should still abort the operation; see
+    `dispatch_secure_cloud_role`'s `wait=False` branch for that case.
+    """
+    try:
+        write_audit_record(record, path=path)
+    except Exception:  # noqa: BLE001 -- see docstring: must never propagate
+        pass
+
+
 # ---------------------------------------------------------------------------
 # Top-level orchestration
 # ---------------------------------------------------------------------------
@@ -1386,7 +1409,11 @@ def _run_async_role_dispatch(
                 timeout_seconds=timeout_seconds,
             )
         except DispatchUnavailable as error:
-            write_audit_record(
+            # Best-effort audit write: the job is about to be marked
+            # "failed" regardless of whether this write succeeds -- an
+            # audit-write failure here must never leave the job stuck
+            # reporting "running" forever (see Finding 2 in the review).
+            _write_audit_record_best_effort(
                 build_audit_record(
                     **audit_base,
                     decision="unavailable",
@@ -1400,7 +1427,26 @@ def _run_async_role_dispatch(
             job_store.fail(job_id, str(error))
             return
 
-        write_audit_record(
+        # Compute the terminal result before attempting the audit write, and
+        # write it to the job store unconditionally afterward (Finding 2):
+        # if the audit write below raises, the job's completion must still
+        # be recorded rather than silently lost by falling into the
+        # `except Exception` safety net and potentially failing there too.
+        completion_result = {
+            "status": "dispatched",
+            "role_id": role.role_id,
+            "resolution_tier": role.tier,
+            "model": role.model,
+            "effective_sandbox": effective_sandbox,
+            "classification": classification,
+            "child_pid": result["pid"],
+            "exit_status": result["exit_code"],
+            "timed_out": result["timed_out"],
+            "duration_seconds": result["duration_seconds"],
+            "stdout_truncated": result["stdout_truncated"],
+            "output": wrap_untrusted_output(result.get("stdout_text", "")),
+        }
+        _write_audit_record_best_effort(
             build_audit_record(
                 **audit_base,
                 decision=sandbox_decision,
@@ -1421,23 +1467,7 @@ def _run_async_role_dispatch(
             ),
             path=audit_path,
         )
-        job_store.complete(
-            job_id,
-            {
-                "status": "dispatched",
-                "role_id": role.role_id,
-                "resolution_tier": role.tier,
-                "model": role.model,
-                "effective_sandbox": effective_sandbox,
-                "classification": classification,
-                "child_pid": result["pid"],
-                "exit_status": result["exit_code"],
-                "timed_out": result["timed_out"],
-                "duration_seconds": result["duration_seconds"],
-                "stdout_truncated": result["stdout_truncated"],
-                "output": wrap_untrusted_output(result.get("stdout_text", "")),
-            },
-        )
+        job_store.complete(job_id, completion_result)
     except Exception as error:  # noqa: BLE001 -- same rationale as dispatch_team's
         # _run_member safety net (see its own comment, added for a security
         # review finding on PR #85): an uncaught exception in a background
@@ -1446,8 +1476,10 @@ def _run_async_role_dispatch(
         # here would leak the concurrency slot forever (finally below never
         # runs) and strand the job in "running" forever (nothing ever calls
         # job_store.fail/complete), so a polling caller would wait out the
-        # full TTL for nothing.
-        write_audit_record(
+        # full TTL for nothing. The audit write here is also best-effort
+        # (Finding 2): job_store.fail() must run even if this same
+        # underlying I/O condition also breaks this write.
+        _write_audit_record_best_effort(
             build_audit_record(**audit_base, decision="unavailable", reason=f"unexpected error: {error}", job_id=job_id),
             path=audit_path,
         )
@@ -1617,47 +1649,63 @@ def dispatch_secure_cloud_role(
 
         if not wait:
             active_job_store = job_store or _DEFAULT_JOB_STORE
-            job_id = active_job_store.create()
-            write_audit_record(
-                build_audit_record(
-                    **audit_base,
-                    decision="dispatched-async",
-                    resolved_path=str(role.path),
-                    resolution_tier=role.tier,
-                    model=role.model,
-                    instructions_sha256=role.instructions_sha256,
-                    mode=mode,
-                    sandbox_enforcement=sandbox_decision,
-                    effective_sandbox=effective_sandbox,
-                    classification=classification,
-                    project_tier_git_clean=role.project_tier_git_clean,
-                    job_id=job_id,
-                ),
-                path=audit_path,
-            )
-            thread = threading.Thread(
-                target=_run_async_role_dispatch,
-                kwargs=dict(
-                    job_store=active_job_store,
-                    job_id=job_id,
-                    limiter=limiter,
-                    child_runner=child_runner,
-                    argv=argv,
-                    prompt=prompt,
-                    cwd=resolved_project_root,
-                    child_env=child_env,
-                    timeout_seconds=timeout_seconds,
-                    audit_base=audit_base,
-                    audit_path=audit_path,
-                    sandbox_decision=sandbox_decision,
-                    role=role,
-                    mode=mode,
-                    effective_sandbox=effective_sandbox,
-                    classification=classification,
-                ),
-                daemon=True,
-            )
-            thread.start()
+            # Finding 1 (review): limiter.try_acquire() above has already
+            # reserved a concurrency slot. Everything from here through
+            # thread.start() succeeding must release that slot on ANY
+            # exception -- job_store.create(), the "dispatched-async" audit
+            # write, and building/starting the background thread all run
+            # before _run_async_role_dispatch's own `finally:
+            # limiter.release()` exists to cover them. Nothing with a real
+            # side effect (no thread has been started, no child spawned) has
+            # happened yet at this point, so re-raising the real error
+            # (rather than swallowing it) is correct here -- unlike the
+            # audit write inside dispatch_team's wait=False branch below,
+            # which runs after member threads are already active.
+            try:
+                job_id = active_job_store.create()
+                write_audit_record(
+                    build_audit_record(
+                        **audit_base,
+                        decision="dispatched-async",
+                        resolved_path=str(role.path),
+                        resolution_tier=role.tier,
+                        model=role.model,
+                        instructions_sha256=role.instructions_sha256,
+                        mode=mode,
+                        sandbox_enforcement=sandbox_decision,
+                        effective_sandbox=effective_sandbox,
+                        classification=classification,
+                        project_tier_git_clean=role.project_tier_git_clean,
+                        job_id=job_id,
+                    ),
+                    path=audit_path,
+                )
+                thread = threading.Thread(
+                    target=_run_async_role_dispatch,
+                    kwargs=dict(
+                        job_store=active_job_store,
+                        job_id=job_id,
+                        limiter=limiter,
+                        child_runner=child_runner,
+                        argv=argv,
+                        prompt=prompt,
+                        cwd=resolved_project_root,
+                        child_env=child_env,
+                        timeout_seconds=timeout_seconds,
+                        audit_base=audit_base,
+                        audit_path=audit_path,
+                        sandbox_decision=sandbox_decision,
+                        role=role,
+                        mode=mode,
+                        effective_sandbox=effective_sandbox,
+                        classification=classification,
+                    ),
+                    daemon=True,
+                )
+                thread.start()
+            except Exception:
+                limiter.release()
+                raise
             return {
                 "status": "dispatched_async",
                 "job_id": job_id,
@@ -2127,7 +2175,12 @@ def dispatch_team(
                     timeout_seconds=timeout_seconds,
                 )
             except DispatchUnavailable as error:
-                write_audit_record(
+                # Best-effort audit write (Finding 2): results[index] must
+                # reach a terminal state even if this write fails, or the
+                # team is stuck reporting this member (and therefore the
+                # whole team, per poll_team_status's completed-count check)
+                # as still running forever.
+                _write_audit_record_best_effort(
                     build_audit_record(**member_audit_base, decision="unavailable", reason=str(error)),
                     path=audit_path,
                 )
@@ -2139,7 +2192,26 @@ def dispatch_team(
                 }
                 return
 
-            write_audit_record(
+            # Compute the terminal result before attempting the audit write,
+            # and set results[index] unconditionally afterward (Finding 2):
+            # an audit-write failure here must not fall through to the
+            # `except Exception` safety net and risk losing this member's
+            # terminal state if that second write also fails.
+            member_result = {
+                "member_index": index,
+                "role_id": member.role_id,
+                "status": "dispatched",
+                "resolution_tier": role.tier,
+                "model": role.model,
+                "effective_sandbox": effective_sandbox,
+                "child_pid": result["pid"],
+                "exit_status": result["exit_code"],
+                "timed_out": result["timed_out"],
+                "duration_seconds": result["duration_seconds"],
+                "stdout_truncated": result["stdout_truncated"],
+                "output": wrap_untrusted_output(result.get("stdout_text", "")),
+            }
+            _write_audit_record_best_effort(
                 build_audit_record(
                     **member_audit_base,
                     decision="dispatched",
@@ -2158,22 +2230,12 @@ def dispatch_team(
                 ),
                 path=audit_path,
             )
-            results[index] = {
-                "member_index": index,
-                "role_id": member.role_id,
-                "status": "dispatched",
-                "resolution_tier": role.tier,
-                "model": role.model,
-                "effective_sandbox": effective_sandbox,
-                "child_pid": result["pid"],
-                "exit_status": result["exit_code"],
-                "timed_out": result["timed_out"],
-                "duration_seconds": result["duration_seconds"],
-                "stdout_truncated": result["stdout_truncated"],
-                "output": wrap_untrusted_output(result.get("stdout_text", "")),
-            }
+            results[index] = member_result
         except Exception as error:  # noqa: BLE001 -- deliberately catch-all, see comment above
-            write_audit_record(
+            # Best-effort audit write here too (Finding 2): results[index]
+            # must be set even if the same underlying I/O condition that
+            # brought us into this handler also breaks this write.
+            _write_audit_record_best_effort(
                 build_audit_record(**member_audit_base, decision="unavailable", reason=f"unexpected error: {error}"),
                 path=audit_path,
             )
@@ -2220,7 +2282,16 @@ def dispatch_team(
         # its own synchronization, exactly as this function's own wait=True
         # aggregation below already relies on.
         active_job_store.register(team_id, results)
-        write_audit_record(
+        # Finding 3 (review): every member's background thread has already
+        # been started (the spawn loop above runs before this block) and is
+        # actively spawning real child processes with real side effects.
+        # Registration with the job store has already happened too, so
+        # poll_team_status(team_id) is already usable. A failure in this
+        # particular audit write must not prevent the caller from receiving
+        # team_id -- an already-launched, already-registered team must never
+        # become unpollable just because this one audit line couldn't be
+        # written.
+        _write_audit_record_best_effort(
             build_audit_record(
                 **team_audit_base,
                 decision="team-dispatched-async",

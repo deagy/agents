@@ -2191,6 +2191,80 @@ class AsyncDispatchTests(unittest.TestCase):
         self.assertEqual(polled["status"], "unavailable")
         self.assertIn("no such executable", polled["reason"])
 
+    def test_audit_write_failure_between_acquire_and_thread_start_releases_slot(self) -> None:
+        # Finding 1 (review, BLOCKING): limiter.try_acquire() succeeds
+        # synchronously in the wait=False branch, then job_store.create(),
+        # the "dispatched-async" audit write, and building/starting the
+        # background thread all used to run outside any try/finally that
+        # would release the already-acquired slot if one of them raised.
+        # Simulate exactly that: an audit-log I/O failure (disk full,
+        # permission denied, ...) at the "dispatched-async" write, which
+        # runs after try_acquire() but before the background thread (whose
+        # own finally: limiter.release() never gets a chance to run,
+        # because the thread is never started) exists. The fix must release
+        # the slot and let the real error propagate -- never fabricate a
+        # fake dispatched_async success.
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        limiter = core.ConcurrencyLimiter(max_concurrent=1)
+
+        def failing_write_audit_record(record, *, path=None):
+            raise OSError("simulated audit-log write failure")
+
+        with mock.patch.object(core, "write_audit_record", side_effect=failing_write_audit_record):
+            with self.assertRaises(OSError):
+                self._dispatch(
+                    wait=False,
+                    limiter=limiter,
+                    child_runner=lambda *a, **k: self.fail("must not run: thread should never start"),
+                )
+
+        # The slot must be released, not leaked -- both observable directly
+        # and by the limiter genuinely being usable again afterward (not
+        # just reporting 0 by coincidence of a fresh limiter).
+        self.assertEqual(limiter.active, 0)
+        self.assertTrue(limiter.try_acquire())
+        limiter.release()
+
+    def test_audit_write_failure_on_completion_still_reaches_terminal_job_state(self) -> None:
+        # Finding 2 (review, HIGH): if the *completion* audit write inside
+        # _run_async_role_dispatch's success path raises after child_runner()
+        # already succeeded, the job's terminal state must still reach the
+        # job store -- it must not depend on that audit write (or a second
+        # audit write inside the exception handler) succeeding, or the job
+        # is stuck reporting "running" forever.
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        real_write_audit_record = core.write_audit_record
+        call_count = {"n": 0}
+
+        def flaky_write_audit_record(record, *, path=None):
+            call_count["n"] += 1
+            # First call is the synchronous "dispatched-async" write (must
+            # succeed so the caller gets a job_id); fail every call from the
+            # background thread onward (the completion write, and -- if the
+            # fix regresses -- the exception handler's own fallback write).
+            if call_count["n"] == 1:
+                return real_write_audit_record(record, path=path)
+            raise OSError("simulated audit-log write failure on completion")
+
+        job_store = core.DispatchJobStore()
+        with mock.patch.object(core, "write_audit_record", side_effect=flaky_write_audit_record):
+            result = self._dispatch(
+                wait=False, job_store=job_store, child_runner=lambda *a, **k: self._fake_result("done despite audit failure")
+            )
+            self.assertEqual(result["status"], "dispatched_async")
+            job_id = result["job_id"]
+
+            deadline = time.monotonic() + 5
+            polled = {"status": "running"}
+            while time.monotonic() < deadline and polled["status"] == "running":
+                polled = core.poll_dispatch_status(job_id, job_store=job_store)
+                if polled["status"] == "running":
+                    time.sleep(0.02)
+
+        self.assertNotEqual(polled["status"], "running")
+        self.assertEqual(polled["status"], "dispatched")
+        self.assertIn("done despite audit failure", polled["output"])
+
 
 class AsyncTeamDispatchTests(unittest.TestCase):
     """dispatch_team(wait=False) / poll_team_status(): the team analogue of
@@ -2308,6 +2382,106 @@ class AsyncTeamDispatchTests(unittest.TestCase):
         )
         self.assertEqual(result["status"], "confirmation_required")
         self.assertIn("confirmation_token", result)
+
+    def test_member_audit_write_failure_on_completion_still_reaches_terminal_result(self) -> None:
+        # Finding 2 (review, HIGH): the same audit-write-after-success
+        # failure mode as AsyncDispatchTests's analogous test, but for
+        # _run_member (dispatch_team's per-member background-thread body).
+        # results[index] staying None forever would make _finish_team's
+        # status_counts loop (entry["status"] on a None entry) raise
+        # TypeError if reached synchronously, and silently hangs
+        # poll_team_status at "running" forever in the async case -- so this
+        # must not depend on the completion audit write succeeding.
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        real_write_audit_record = core.write_audit_record
+
+        def flaky_write_audit_record(record, *, path=None):
+            # Fail specifically the member's own "dispatched" completion
+            # audit write (matched by decision + the team-member-specific
+            # field, so this is robust to the member thread and the main
+            # thread's own "team-dispatched-async" write racing each other,
+            # which they legitimately can since both run concurrently once
+            # wait=False starts the member thread before writing that
+            # record). Every other audit write succeeds normally.
+            if record.get("decision") == "dispatched" and "team_member_index" in record:
+                raise OSError("simulated audit-log write failure on member completion")
+            return real_write_audit_record(record, path=path)
+
+        job_store = core.TeamDispatchJobStore()
+        with mock.patch.object(core, "write_audit_record", side_effect=flaky_write_audit_record):
+            result = self._dispatch(
+                [{"role_id": "application-engineer", "brief": "task one"}],
+                wait=False,
+                job_store=job_store,
+                child_runner=lambda *a, **k: self._fake_result("member done despite audit failure"),
+            )
+            self.assertEqual(result["status"], "team_dispatched_async")
+            team_id = result["team_id"]
+
+            deadline = time.monotonic() + 5
+            polled = {"status": "running"}
+            while time.monotonic() < deadline and polled["status"] == "running":
+                polled = core.poll_team_status(team_id, job_store=job_store)
+                if polled["status"] == "running":
+                    time.sleep(0.02)
+
+        self.assertNotEqual(polled["status"], "running")
+        self.assertEqual(polled["status"], "team_dispatched")
+        self.assertEqual(len(polled["members"]), 1)
+        self.assertEqual(polled["members"][0]["status"], "dispatched")
+        self.assertIn("member done despite audit failure", polled["members"][0]["output"])
+
+    def test_team_dispatched_async_audit_failure_still_returns_pollable_team_id(self) -> None:
+        # Finding 3 (review, HIGH): by the time dispatch_team's wait=False
+        # branch writes its own "team-dispatched-async" audit record, every
+        # member's background thread has already been started and is
+        # actively spawning real child processes with real side effects.
+        # A failure in *this* audit write must not prevent the caller from
+        # receiving team_id, or an already-running team becomes permanently
+        # unpollable and unobservable even though nothing about the dispatch
+        # itself failed.
+        _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
+        real_write_audit_record = core.write_audit_record
+
+        def failing_on_team_dispatched_async(record, *, path=None):
+            if record.get("decision") == "team-dispatched-async":
+                raise OSError("simulated audit-log write failure on team-dispatched-async")
+            return real_write_audit_record(record, path=path)
+
+        job_store = core.TeamDispatchJobStore()
+        release = threading.Event()
+
+        def blocking_runner(*args, **kwargs):
+            release.wait(timeout=5)
+            return self._fake_result("member finished")
+
+        with mock.patch.object(core, "write_audit_record", side_effect=failing_on_team_dispatched_async):
+            result = self._dispatch(
+                [{"role_id": "application-engineer", "brief": "task one"}],
+                wait=False,
+                job_store=job_store,
+                child_runner=blocking_runner,
+            )
+
+        # The function must not raise past the failed audit write, and
+        # team_id must still come back so the caller can poll it.
+        self.assertEqual(result["status"], "team_dispatched_async")
+        team_id = result["team_id"]
+        running = core.poll_team_status(team_id, job_store=job_store)
+        self.assertEqual(running["status"], "running")
+
+        release.set()
+        deadline = time.monotonic() + 5
+        final = None
+        while time.monotonic() < deadline:
+            polled = core.poll_team_status(team_id, job_store=job_store)
+            if polled["status"] != "running":
+                final = polled
+                break
+            time.sleep(0.02)
+        self.assertIsNotNone(final, "team never reached a terminal state")
+        self.assertEqual(final["status"], "team_dispatched")
+        self.assertEqual(final["members"][0]["status"], "dispatched")
 
 
 if __name__ == "__main__":
