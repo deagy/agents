@@ -92,6 +92,7 @@ def build_server():
         classification: str = "internal",
         confirmation_token: str | None = None,
         runner: str = "codex",
+        wait: bool = True,
     ) -> dict[str, Any]:
         """Dispatch a named agents role as a child process of the given
         runner.
@@ -112,6 +113,18 @@ def build_server():
             runner" section; in this increment it can only ever resolve to
             a read-only sandbox, regardless of mode, since no Claude Code
             wrapper field exists yet to declare write-capability).
+        wait: True (default) blocks this call until the dispatched child
+            exits (or times out) and returns its result directly -- existing
+            callers see no behavior change. Set False if your MCP client has
+            a short, non-configurable tools/call timeout (a dispatch can take
+            up to several minutes): every authorization decision (denied /
+            unavailable / confirmation_required) still happens synchronously
+            and is still returned immediately either way; only the slow
+            child-process wait moves to a background thread. With wait=False
+            this returns immediately with {"status": "dispatched_async",
+            "job_id": ...} -- call poll_dispatch_status with that job_id to
+            retrieve the eventual result, which has the identical shape this
+            tool would have returned directly under wait=True.
         """
         return core.dispatch_secure_cloud_role(
             role_id=role_id,
@@ -123,7 +136,25 @@ def build_server():
             session_id=_session_id(),
             parent_classification=_parent_classification(),
             runner=runner,
+            wait=wait,
         )
+
+    @server.tool()
+    def poll_dispatch_status(job_id: str) -> dict[str, Any]:
+        """Poll the result of a dispatch_secure_cloud_role(wait=False) call.
+
+        job_id: the "job_id" value returned by a prior
+            dispatch_secure_cloud_role call made with wait=False.
+
+        Returns {"status": "not_found"} for an unknown or expired job_id,
+        {"status": "running", "job_id": ...} while the dispatch is still in
+        flight, or -- once it has finished -- the exact same result shape
+        dispatch_secure_cloud_role(wait=True) returns directly (including a
+        possible {"status": "unavailable", "reason": ...} if the child itself
+        failed to spawn). Safe to call more than once for the same job_id --
+        a completed result is not consumed on first read.
+        """
+        return core.poll_dispatch_status(job_id)
 
     @server.tool()
     def dispatch_team(
@@ -132,6 +163,7 @@ def build_server():
         classification: str = "internal",
         confirmation_token: str | None = None,
         runner: str = "codex",
+        wait: bool = True,
     ) -> dict[str, Any]:
         """Dispatch more than one agents role at once and wait for every
         member to reach a terminal state before returning.
@@ -149,6 +181,21 @@ def build_server():
         runner: applies to every member identically -- a team cannot mix
             runners in this increment. See dispatch_secure_cloud_role's
             runner parameter for the same "codex" vs "claude-code" caveats.
+        wait: True (default) blocks this call until every member has
+            finished, denied, or been marked unavailable, exactly as before
+            this parameter existed. Set False for the same short-client-
+            timeout reason as dispatch_secure_cloud_role's wait parameter --
+            every member is still dispatched concurrently right away, but
+            this call returns as soon as dispatch has started for all of
+            them, without waiting for any to finish. Denial/unavailable/
+            confirmation_required outcomes that can be determined before any
+            child is spawned (bad members, depth guard, classification,
+            team-wide confirmation gate) are still returned synchronously
+            either way. With wait=False this returns immediately with
+            {"status": "team_dispatched_async", "team_id": ...} -- call
+            poll_team_status with that team_id to retrieve the eventual
+            result, which has the identical shape this tool would have
+            returned directly under wait=True.
 
         Returns {"status": "team_dispatched", "team_id": ..., "members": [...]}
         once every member has finished, denied, or been marked unavailable --
@@ -164,7 +211,25 @@ def build_server():
             session_id=_session_id(),
             parent_classification=_parent_classification(),
             runner=runner,
+            wait=wait,
         )
+
+    @server.tool()
+    def poll_team_status(team_id: str) -> dict[str, Any]:
+        """Poll the result of a dispatch_team(wait=False) (or
+        dispatch_team_recipe(wait=False)) call.
+
+        team_id: the "team_id" value returned by a prior dispatch_team or
+            dispatch_team_recipe call made with wait=False.
+
+        Returns {"status": "not_found"} for an unknown or expired team_id,
+        {"status": "running", "team_id": ..., "completed": N, "total": M}
+        while at least one member hasn't reached a terminal state, or --
+        once every member has -- the exact same {"status": "team_dispatched",
+        "team_id": ..., "members": [...]} shape dispatch_team(wait=True)
+        returns directly. Safe to call more than once for the same team_id.
+        """
+        return core.poll_team_status(team_id)
 
     @server.tool()
     def dispatch_team_recipe(
@@ -180,6 +245,7 @@ def build_server():
         instance_briefs: list[str] | None = None,
         instance_count: int | None = None,
         runner: str = "codex",
+        wait: bool = True,
     ) -> dict[str, Any]:
         """Expand a `routing.yaml` team_recipes[] entry into concrete members
         and dispatch them as a team (see dispatch_team above) -- for when
@@ -206,6 +272,11 @@ def build_server():
             instance_briefs must supply exactly that many distinct briefs
             (one per instance/hypothesis; a single shared brief is refused,
             since it would defeat the point of a dynamic recipe).
+        wait: True (default) blocks until every expanded member finishes,
+            exactly as before this parameter existed. Set False for the same
+            short-client-timeout reason as dispatch_team's wait parameter --
+            this returns immediately with {"status": "team_dispatched_async",
+            "team_id": ...}; poll it with poll_team_status.
         Everything else matches dispatch_team exactly, including the
         team-wide confirmation_token round trip.
         """
@@ -233,6 +304,7 @@ def build_server():
             session_id=_session_id(),
             parent_classification=_parent_classification(),
             runner=runner,
+            wait=wait,
         )
 
     return server
