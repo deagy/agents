@@ -77,6 +77,16 @@ MAX_CONCURRENT_CHILDREN = 3
 CONFIRMATION_TTL_SECONDS = 300.0
 MAX_DISPATCH_DEPTH = 1
 
+# TTL for async (wait=False) dispatch jobs -- see DispatchJobStore /
+# TeamDispatchJobStore below. Long enough that a caller with a short (e.g.
+# 5s) client-side tools/call timeout can poll every few seconds without
+# losing the job before it completes (spawn_and_wait's own default timeout
+# is DEFAULT_TIMEOUT_SECONDS == 600s, so a job can legitimately still be
+# "running" that long); short enough that a job nobody ever polls doesn't
+# pin its result dict (including the dispatched child's captured stdout) in
+# memory indefinitely.
+DISPATCH_JOB_TTL_SECONDS = 1800.0
+
 DEPTH_ENV_VAR = "SECURE_CLOUD_AGENTS_DISPATCH_DEPTH"
 PARENT_CLASSIFICATION_ENV_VAR = "SECURE_CLOUD_AGENTS_PARENT_CLASSIFICATION"
 CODEX_BIN_ENV_VAR = "SECURE_CLOUD_AGENTS_CODEX_BIN"
@@ -908,6 +918,128 @@ class ConfirmationGate:
 
 
 # ---------------------------------------------------------------------------
+# Async (wait=False) dispatch job store
+#
+# Fixes a real client-side limitation: some MCP clients (confirmed: Cline's
+# @cline/core) hardcode a short, non-configurable tools/call timeout (5000ms)
+# with no way for the server to signal "still working" -- so a dispatch that
+# would have succeeded in, say, 90 seconds is never delivered to that caller
+# at all, even though nothing about the dispatch itself failed. wait=False
+# on dispatch_secure_cloud_role()/dispatch_team() lets such a caller get an
+# immediate acknowledgement (this store's job_id) and poll for the result
+# via poll_dispatch_status()/poll_team_status() instead of blocking the
+# original tools/call on the slow child_runner() call.
+# ---------------------------------------------------------------------------
+
+
+@dataclasses.dataclass
+class _DispatchJobRecord:
+    status: str  # "running" | "completed" | "failed"
+    result: dict[str, Any] | None
+    created_monotonic: float
+
+
+class DispatchJobStore:
+    """In-memory, TTL-bound store for dispatch_secure_cloud_role(wait=False)
+    jobs. Modeled on ConfirmationGate above: a threading.Lock-guarded dict, a
+    TTL, and a _purge_expired_locked() helper run at the top of every public
+    method.
+
+    Mechanism: create() is called synchronously (registers "running" and
+    returns a fresh job_id) before the slow child_runner() call is handed to
+    a background thread; that thread later calls complete()/fail() exactly
+    once. get() is read-only and does not consume/delete the record on a
+    successful read -- unlike ConfirmationGate's single-use tokens, a caller
+    polling a completed (or still-running) job may reasonably retry a
+    dropped connection and must see the same answer again, not "not_found"
+    on the second read.
+    """
+
+    def __init__(self, ttl_seconds: float = DISPATCH_JOB_TTL_SECONDS) -> None:
+        self._ttl = ttl_seconds
+        self._lock = threading.Lock()
+        self._jobs: dict[str, _DispatchJobRecord] = {}
+
+    def _purge_expired_locked(self) -> None:
+        now = time.monotonic()
+        expired = [job_id for job_id, record in self._jobs.items() if now - record.created_monotonic > self._ttl]
+        for job_id in expired:
+            del self._jobs[job_id]
+
+    def create(self) -> str:
+        with self._lock:
+            self._purge_expired_locked()
+            job_id = secrets.token_urlsafe(32)
+            self._jobs[job_id] = _DispatchJobRecord(status="running", result=None, created_monotonic=time.monotonic())
+            return job_id
+
+    def complete(self, job_id: str, result: dict[str, Any]) -> None:
+        with self._lock:
+            self._purge_expired_locked()
+            record = self._jobs.get(job_id)
+            if record is not None:
+                record.status = "completed"
+                record.result = result
+
+    def fail(self, job_id: str, reason: str) -> None:
+        with self._lock:
+            self._purge_expired_locked()
+            record = self._jobs.get(job_id)
+            if record is not None:
+                record.status = "failed"
+                record.result = {"reason": reason}
+
+    def get(self, job_id: str) -> _DispatchJobRecord | None:
+        with self._lock:
+            self._purge_expired_locked()
+            return self._jobs.get(job_id)
+
+
+@dataclasses.dataclass
+class _TeamDispatchJobRecord:
+    total_members: int
+    results: list[dict[str, Any] | None]
+    created_monotonic: float
+
+
+class TeamDispatchJobStore:
+    """dispatch_team(wait=False) analogue of DispatchJobStore.
+
+    dispatch_team() already aggregates every member's outcome into a shared
+    `results` list, one slot per member index, written by that member's own
+    background thread (see dispatch_team()'s existing per-member threads) --
+    None means "not yet terminal". register() stores a reference to that
+    same list (not a copy), so poll_team_status() reading it later always
+    sees the members' latest state with no extra synchronization needed,
+    exactly as dispatch_team()'s own synchronous `for thread in threads:
+    thread.join()` aggregation already relies on.
+    """
+
+    def __init__(self, ttl_seconds: float = DISPATCH_JOB_TTL_SECONDS) -> None:
+        self._ttl = ttl_seconds
+        self._lock = threading.Lock()
+        self._teams: dict[str, _TeamDispatchJobRecord] = {}
+
+    def _purge_expired_locked(self) -> None:
+        now = time.monotonic()
+        expired = [team_id for team_id, record in self._teams.items() if now - record.created_monotonic > self._ttl]
+        for team_id in expired:
+            del self._teams[team_id]
+
+    def register(self, team_id: str, results: list[dict[str, Any] | None]) -> None:
+        with self._lock:
+            self._purge_expired_locked()
+            self._teams[team_id] = _TeamDispatchJobRecord(
+                total_members=len(results), results=results, created_monotonic=time.monotonic()
+            )
+
+    def get(self, team_id: str) -> _TeamDispatchJobRecord | None:
+        with self._lock:
+            self._purge_expired_locked()
+            return self._teams.get(team_id)
+
+
+# ---------------------------------------------------------------------------
 # Concurrency cap (bounded backpressure, never unbounded queueing)
 # ---------------------------------------------------------------------------
 
@@ -1213,6 +1345,115 @@ def write_audit_record(record: dict[str, Any], *, path: Path | None = None) -> N
 
 _DEFAULT_LIMITER = ConcurrencyLimiter()
 _DEFAULT_GATE = ConfirmationGate()
+_DEFAULT_JOB_STORE = DispatchJobStore()
+
+
+def _run_async_role_dispatch(
+    *,
+    job_store: DispatchJobStore,
+    job_id: str,
+    limiter: ConcurrencyLimiter,
+    child_runner: ChildRunner,
+    argv: list[str],
+    prompt: str,
+    cwd: Path,
+    child_env: dict[str, str],
+    timeout_seconds: float,
+    audit_base: dict[str, Any],
+    audit_path: Path | None,
+    sandbox_decision: str,
+    role: ResolvedRole,
+    mode: str,
+    effective_sandbox: str,
+    classification: str,
+) -> None:
+    """Background-thread body for dispatch_secure_cloud_role(wait=False).
+
+    Runs exactly the same child_runner() call, and writes exactly the same
+    completion audit record, that the synchronous (wait=True) path writes
+    today -- the only difference is where the result goes (job_store instead
+    of a direct return value) and that limiter.release() happens here,
+    rather than in the caller, since try_acquire() already ran synchronously
+    before this thread was started.
+    """
+    try:
+        try:
+            result = child_runner(
+                argv,
+                prompt=prompt,
+                cwd=cwd,
+                env=child_env,
+                timeout_seconds=timeout_seconds,
+            )
+        except DispatchUnavailable as error:
+            write_audit_record(
+                build_audit_record(
+                    **audit_base,
+                    decision="unavailable",
+                    reason=str(error),
+                    resolved_path=str(role.path),
+                    resolution_tier=role.tier,
+                    job_id=job_id,
+                ),
+                path=audit_path,
+            )
+            job_store.fail(job_id, str(error))
+            return
+
+        write_audit_record(
+            build_audit_record(
+                **audit_base,
+                decision=sandbox_decision,
+                resolved_path=str(role.path),
+                resolution_tier=role.tier,
+                model=role.model,
+                instructions_sha256=role.instructions_sha256,
+                mode=mode,
+                effective_sandbox=effective_sandbox,
+                classification=classification,
+                child_pid=result["pid"],
+                exit_status=result["exit_code"],
+                timed_out=result["timed_out"],
+                duration_seconds=result["duration_seconds"],
+                stdout_truncated=result["stdout_truncated"],
+                project_tier_git_clean=role.project_tier_git_clean,
+                job_id=job_id,
+            ),
+            path=audit_path,
+        )
+        job_store.complete(
+            job_id,
+            {
+                "status": "dispatched",
+                "role_id": role.role_id,
+                "resolution_tier": role.tier,
+                "model": role.model,
+                "effective_sandbox": effective_sandbox,
+                "classification": classification,
+                "child_pid": result["pid"],
+                "exit_status": result["exit_code"],
+                "timed_out": result["timed_out"],
+                "duration_seconds": result["duration_seconds"],
+                "stdout_truncated": result["stdout_truncated"],
+                "output": wrap_untrusted_output(result.get("stdout_text", "")),
+            },
+        )
+    except Exception as error:  # noqa: BLE001 -- same rationale as dispatch_team's
+        # _run_member safety net (see its own comment, added for a security
+        # review finding on PR #85): an uncaught exception in a background
+        # thread is silently swallowed by threading.Thread (printed to
+        # stderr, thread just dies) -- without this, an unexpected failure
+        # here would leak the concurrency slot forever (finally below never
+        # runs) and strand the job in "running" forever (nothing ever calls
+        # job_store.fail/complete), so a polling caller would wait out the
+        # full TTL for nothing.
+        write_audit_record(
+            build_audit_record(**audit_base, decision="unavailable", reason=f"unexpected error: {error}", job_id=job_id),
+            path=audit_path,
+        )
+        job_store.fail(job_id, f"unexpected error: {error}")
+    finally:
+        limiter.release()
 
 
 def dispatch_secure_cloud_role(
@@ -1236,6 +1477,8 @@ def dispatch_secure_cloud_role(
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
     child_runner: ChildRunner = spawn_and_wait,
     runner: str = DEFAULT_RUNNER,
+    wait: bool = True,
+    job_store: DispatchJobStore | None = None,
 ) -> dict[str, Any]:
     """Resolve, authorize, and (on a second confirmed call, if write-capable)
     dispatch `role_id` as a child process of the given `runner` ("codex",
@@ -1243,6 +1486,17 @@ def dispatch_secure_cloud_role(
     `build_claude_child_argv`'s docstring for what is and isn't verified
     about that path). See module docstring and ConfirmationGate for the
     exact confirmation mechanism.
+
+    `wait` (default True): when True, behavior is byte-for-byte identical to
+    before this parameter existed -- this call blocks until the dispatched
+    child exits (or times out) and returns its result directly. When False,
+    every authorization decision up through the confirmation gate and the
+    concurrency limiter still happens synchronously and can still return
+    denied/unavailable/confirmation_required immediately, exactly as today;
+    only the slow child_runner() call moves to a background thread, and this
+    returns immediately with status="dispatched_async" and a job_id to poll
+    via poll_dispatch_status(). See DispatchJobStore's docstring for why this
+    exists (short, non-configurable client-side MCP tools/call timeouts).
     """
     if runner not in RUNNERS:
         return {"status": "denied", "reason": f"runner must be one of {sorted(RUNNERS)}: {runner!r}"}
@@ -1349,11 +1603,73 @@ def dispatch_secure_cloud_role(
             return _deny(
                 f"too many concurrent dispatches (limit {MAX_CONCURRENT_CHILDREN}); retry later"
             )
+
+        # Everything above this point (file reads, regex parsing, at most one
+        # `git status` call, plus this non-blocking try_acquire()) is fast --
+        # only child_runner() below is slow (it spawns and waits on a real
+        # `codex exec`/`claude -p` child, default timeout DEFAULT_TIMEOUT_SECONDS).
+        # depth/child_env/argv/prompt are cheap to build and are identical for
+        # both the wait=True and wait=False paths below.
+        depth = current_dispatch_depth() + 1
+        child_env = build_child_env(depth)
+        argv = build_child_argv_for_runner(runner, role, effective_sandbox, resolved_project_root)
+        prompt = compose_prompt(role.developer_instructions, brief)
+
+        if not wait:
+            active_job_store = job_store or _DEFAULT_JOB_STORE
+            job_id = active_job_store.create()
+            write_audit_record(
+                build_audit_record(
+                    **audit_base,
+                    decision="dispatched-async",
+                    resolved_path=str(role.path),
+                    resolution_tier=role.tier,
+                    model=role.model,
+                    instructions_sha256=role.instructions_sha256,
+                    mode=mode,
+                    sandbox_enforcement=sandbox_decision,
+                    effective_sandbox=effective_sandbox,
+                    classification=classification,
+                    project_tier_git_clean=role.project_tier_git_clean,
+                    job_id=job_id,
+                ),
+                path=audit_path,
+            )
+            thread = threading.Thread(
+                target=_run_async_role_dispatch,
+                kwargs=dict(
+                    job_store=active_job_store,
+                    job_id=job_id,
+                    limiter=limiter,
+                    child_runner=child_runner,
+                    argv=argv,
+                    prompt=prompt,
+                    cwd=resolved_project_root,
+                    child_env=child_env,
+                    timeout_seconds=timeout_seconds,
+                    audit_base=audit_base,
+                    audit_path=audit_path,
+                    sandbox_decision=sandbox_decision,
+                    role=role,
+                    mode=mode,
+                    effective_sandbox=effective_sandbox,
+                    classification=classification,
+                ),
+                daemon=True,
+            )
+            thread.start()
+            return {
+                "status": "dispatched_async",
+                "job_id": job_id,
+                "resolution_tier": role.tier,
+                "effective_sandbox": effective_sandbox,
+                "message": (
+                    "Call poll_dispatch_status with this job_id to retrieve the "
+                    "result once the dispatch completes."
+                ),
+            }
+
         try:
-            depth = current_dispatch_depth() + 1
-            child_env = build_child_env(depth)
-            argv = build_child_argv_for_runner(runner, role, effective_sandbox, resolved_project_root)
-            prompt = compose_prompt(role.developer_instructions, brief)
             try:
                 result = child_runner(
                     argv,
@@ -1405,6 +1721,41 @@ def dispatch_secure_cloud_role(
         return _deny(str(error))
     except DispatchUnavailable as error:
         return _unavailable(str(error))
+
+
+def poll_dispatch_status(job_id: str, *, job_store: DispatchJobStore | None = None) -> dict[str, Any]:
+    """Poll a job_id returned by dispatch_secure_cloud_role(wait=False).
+
+    Returns:
+      - {"status": "not_found"} for an unknown or TTL-expired job_id.
+      - {"status": "running", "job_id": ...} while the dispatch is still in
+        flight.
+      - the exact dict shape dispatch_secure_cloud_role(wait=True) returns
+        for a successful dispatch (status="dispatched", role_id,
+        resolution_tier, model, effective_sandbox, classification, child_pid,
+        exit_status, timed_out, duration_seconds, stdout_truncated, output)
+        once it has completed -- so a caller that only ever calls this
+        function sees an identical result shape to a synchronous caller,
+        just delivered on a later call.
+      - {"status": "unavailable", "reason": ...} if the child itself could
+        not be spawned (child_runner raised DispatchUnavailable), matching
+        dispatch_secure_cloud_role's own `_unavailable(...)` shape.
+
+    Safe to call more than once for the same job_id within the TTL -- a
+    completed (or still-running) result is read, never consumed.
+    """
+    store = job_store or _DEFAULT_JOB_STORE
+    record = store.get(job_id)
+    if record is None:
+        return {"status": "not_found"}
+    if record.status == "running":
+        return {"status": "running", "job_id": job_id}
+    if record.status == "failed":
+        reason = (record.result or {}).get("reason", "dispatch failed")
+        return {"status": "unavailable", "reason": reason}
+    # "completed": record.result is already the exact dict
+    # dispatch_secure_cloud_role(wait=True) would have returned.
+    return record.result
 
 
 # ---------------------------------------------------------------------------
@@ -1551,6 +1902,7 @@ def _resolve_member_for_team(
 
 _DEFAULT_TEAM_LIMITER = _DEFAULT_LIMITER
 _DEFAULT_TEAM_GATE = TeamConfirmationGate()
+_DEFAULT_TEAM_JOB_STORE = TeamDispatchJobStore()
 
 
 def dispatch_team(
@@ -1574,6 +1926,8 @@ def dispatch_team(
     child_runner: ChildRunner = spawn_and_wait,
     max_team_size: int = MAX_TEAM_SIZE,
     runner: str = DEFAULT_RUNNER,
+    wait: bool = True,
+    job_store: TeamDispatchJobStore | None = None,
 ) -> dict[str, Any]:
     """Dispatch every member of `members` (each `{"role_id": str, "brief": str}`,
     duplicates of the same role_id allowed -- e.g. several debugging-engineer
@@ -1583,6 +1937,18 @@ def dispatch_team(
     unavailable). `runner` applies to every member identically -- a team
     cannot mix runners in this increment. See module-level comment above for
     the exact team-aware behavior of each single-role safety control.
+
+    `wait` (default True): identical semantics to
+    dispatch_secure_cloud_role's `wait` parameter, generalized to the whole
+    team -- every member's role resolution, classification/sandbox
+    narrowing, and the one team-wide confirmation-gate decision still happen
+    synchronously and can still return denied/unavailable/confirmation_required
+    immediately. When False, every member is still dispatched concurrently
+    exactly as today (each in its own thread, sharing the same
+    ConcurrencyLimiter pool via the blocking acquire()), but this call
+    returns as soon as every member's child_runner() call has *started*,
+    without waiting for any of them to finish; poll via poll_team_status()
+    with the returned team_id.
     """
     if runner not in RUNNERS:
         team_id = secrets.token_hex(8)
@@ -1826,25 +2192,82 @@ def dispatch_team(
         threads.append(thread)
         thread.start()
 
-    for thread in threads:
-        thread.join()
+    def _finish_team() -> None:
+        """Join every member thread and write the team-wide "team-completed"
+        summary audit record -- identical to what the wait=True path below
+        does inline, factored out so wait=False can run it on a separate
+        "reaper" thread instead of blocking the caller on it."""
+        for thread in threads:
+            thread.join()
+        status_counts: dict[str, int] = {}
+        for entry in results:
+            status_counts[entry["status"]] = status_counts.get(entry["status"], 0) + 1
+        write_audit_record(
+            build_audit_record(
+                **team_audit_base,
+                decision="team-completed",
+                team_size=len(resolved_members),
+                status_counts=status_counts,
+            ),
+            path=audit_path,
+        )
 
-    status_counts: dict[str, int] = {}
-    for entry in results:
-        status_counts[entry["status"]] = status_counts.get(entry["status"], 0) + 1
+    if not wait:
+        active_job_store = job_store or _DEFAULT_TEAM_JOB_STORE
+        # results is shared by reference with every member thread above (each
+        # writes only its own index) -- registering it here, rather than a
+        # copy, is what lets poll_team_status() observe live progress without
+        # its own synchronization, exactly as this function's own wait=True
+        # aggregation below already relies on.
+        active_job_store.register(team_id, results)
+        write_audit_record(
+            build_audit_record(
+                **team_audit_base,
+                decision="team-dispatched-async",
+                team_size=len(resolved_members),
+            ),
+            path=audit_path,
+        )
+        threading.Thread(target=_finish_team, daemon=True).start()
+        return {
+            "status": "team_dispatched_async",
+            "team_id": team_id,
+            "message": (
+                "Call poll_team_status with this team_id to retrieve the result "
+                "once every member completes."
+            ),
+        }
 
-    write_audit_record(
-        build_audit_record(
-            **team_audit_base,
-            decision="team-completed",
-            team_size=len(resolved_members),
-            status_counts=status_counts,
-        ),
-        path=audit_path,
-    )
+    _finish_team()
 
     return {
         "status": "team_dispatched",
         "team_id": team_id,
         "members": results,
     }
+
+
+def poll_team_status(team_id: str, *, job_store: TeamDispatchJobStore | None = None) -> dict[str, Any]:
+    """Poll a team_id returned by dispatch_team(wait=False).
+
+    Returns:
+      - {"status": "not_found"} for an unknown or TTL-expired team_id.
+      - {"status": "running", "team_id": ..., "completed": N, "total": M}
+        while at least one member has not yet reached a terminal state
+        (cheap progress signal: a count of members[] entries that are no
+        longer None).
+      - {"status": "team_dispatched", "team_id": ..., "members": [...]} once
+        every member has reached a terminal state -- the exact shape
+        dispatch_team(wait=True) returns today, preserved so a caller that
+        only ever calls this function sees an identical result shape.
+
+    Safe to call more than once for the same team_id within the TTL.
+    """
+    store = job_store or _DEFAULT_TEAM_JOB_STORE
+    record = store.get(team_id)
+    if record is None:
+        return {"status": "not_found"}
+    completed = sum(1 for entry in record.results if entry is not None)
+    if completed < record.total_members:
+        return {"status": "running", "team_id": team_id, "completed": completed, "total": record.total_members}
+    return {"status": "team_dispatched", "team_id": team_id, "members": record.results}
