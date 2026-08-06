@@ -17,6 +17,30 @@ point are cut manually rather than via an automated version-bump PR.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-08-06
+
+### Added
+
+- **This repository now notifies `deagy/cadre-lifecycle` on every release
+  tag** (`.github/workflows/notify-lifecycle.yml`, triggered on `push:
+  tags: v*`), via a `repository_dispatch` call authenticated with a
+  cross-repo PAT secret. That repository's own `regenerate.yml` workflow
+  responds by regenerating its packaged plugin content and opening a PR for
+  review — automating the "Regenerating Assets" procedure this repository's
+  own "Releasing" section already documented as a manual step. Soft-skips
+  (warns, doesn't fail this repository's own release) if the secret isn't
+  provisioned. See `deagy/cadre-lifecycle`'s own CHANGELOG (0.9.0) for the
+  receiving half.
+
+### Changed
+
+- **Documentation restructured across the README and `roster/` docs**:
+  deduplicated repeated explanations, converted prose into tables where a
+  table reads faster, and added Mermaid diagrams verified against the
+  actual `routing.yaml`/`aides.yaml` content they describe (rather than
+  hand-drawn approximations). No behavioral change — this suite's actual
+  routing, selection, and dispatch logic is unaffected.
+
 ## [0.13.0] - 2026-08-05
 
 ### Added
