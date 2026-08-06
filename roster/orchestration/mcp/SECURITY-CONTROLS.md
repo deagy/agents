@@ -379,6 +379,53 @@ on a refused expansion.
   regression coverage for it specifically because the fix is in the shared
   `_ensure_audit_log_path()` path both call.
 
+## Async dispatch (`wait=False`) audit-write durability
+
+**Best-effort, not mechanically enforced, for the completion/team-summary
+records specifically -- this is a deliberate, narrower guarantee than the
+"Audit logging: mechanically enforced" claim above, which describes the
+default synchronous (`wait=True`) path.** When `dispatch_secure_cloud_role`,
+`dispatch_team`, or `dispatch_team_recipe` is called with `wait=False`, the
+job/team is tracked by an in-process `DispatchJobStore` /
+`TeamDispatchJobStore` and the caller polls for the result via
+`poll_dispatch_status()` / `poll_team_status()`. Two classes of audit write
+exist on this path:
+
+- **Pre-side-effect writes** (e.g. the initial `"dispatched-async"` record,
+  written before the background thread starts) are still a plain
+  `write_audit_record()` call inside a `try/except Exception:
+  limiter.release(); raise` -- a failure here aborts the dispatch and
+  propagates to the caller, exactly as the synchronous path does.
+- **Post-side-effect writes** (a background job's or team member's
+  completion/failure record, and `dispatch_team`'s own
+  `"team-dispatched-async"` record) go through
+  `_write_audit_record_best_effort()`, which swallows a write failure rather
+  than propagating it. This is intentional: by this point a background
+  thread is already running or a child process has already finished, so
+  letting the audit write's failure prevent `job_store.complete()` /
+  `results[index] = ...` / `team_id` from ever being returned would strand
+  the job or team in `"running"` forever with no way for the caller to ever
+  observe the real outcome -- worse, for an operationally-critical module,
+  than one missing audit line. That job/team-state-survives-a-failed-write
+  guarantee is tested by
+  `test_audit_write_failure_between_acquire_and_thread_start_releases_slot`,
+  `test_audit_write_failure_on_completion_still_reaches_terminal_job_state`,
+  `test_member_audit_write_failure_on_completion_still_reaches_terminal_result`,
+  and `test_team_dispatched_async_audit_failure_still_returns_pollable_team_id`.
+  A failure here is not silent: it is written to stderr (`decision`,
+  `job_id`/`team_id`, and the exception) so an operator has a trace to grep
+  for even though the primary on-disk audit log is missing that record; that
+  stderr fallback specifically is tested by
+  `WriteAuditRecordBestEffortStderrFallbackTests` (all three methods --
+  failure content, `team_id` fallback when `job_id` is absent, and no
+  stderr noise on a successful write). All of the above live in
+  `test_mcp_dispatch.py`.
+
+The synchronous (`wait=True`) path is unaffected: its completion audit write
+is still a plain `write_audit_record()` call, so a write failure there
+propagates directly to the same caller who would otherwise receive the
+result -- there is no background thread to silently swallow it.
+
 ## Claude Code runner (`runner="claude-code"`)
 
 Implements OD-4 of `INTENT-CADRE-TEAM-DISPATCH-001`. Both
