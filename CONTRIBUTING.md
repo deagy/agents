@@ -24,8 +24,9 @@ Every role's metadata (`phase`, `capability`, `model`, `codex_model`,
 and the `agent-authoring` skill). `roster/catalog.yaml` and
 `roster/orchestration/routing.yaml`'s `knowledge_focus` block are purely
 generated output derived from that frontmatter -- never hand-edit them.
-Edit a role's frontmatter, then regenerate both files with
-`cadre generate-role-metadata` (`... --check` to validate without writing).
+Edit a role's frontmatter, then regenerate `roster/catalog.yaml` and
+`roster/orchestration/routing.yaml` with `cadre generate-role-metadata`
+(`... --check` to validate without writing).
 
 This repository's own catalog/plugin feature and roadmap work is tracked
 through GitHub Issues/PRs for discussion and triage; this repository does not
@@ -39,10 +40,11 @@ understand scope -> make a focused change -> run relevant checks
 -> open a GitHub pull request -> obtain independent review -> merge
 ```
 
-Do not commit or push secrets, raw chat exports, real documents, credentials,
-databases, object data, OpenTofu/Terraform state, rendered secrets, or generated
-credentials. Do not make persistent-environment or production changes as part
-of repository validation.
+Do not commit or push any of the prohibited content listed in
+[AGENTS.md's Commit & Merge Request
+Guidelines](AGENTS.md#commit--merge-request-guidelines). Do not make
+persistent-environment or production changes as part of repository
+validation.
 
 ## Documentation changes
 

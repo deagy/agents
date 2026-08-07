@@ -240,8 +240,91 @@ agents" and must stay that way (see that repository's `cline/index.ts` tool
 description). **There is currently no
 plugin-registered tool in this repo, and no supported one to add, that
 actually dispatches a named role on Cline** — this is a confirmed gap, not an
-oversight to route around silently:
+oversight to route around silently. A working, *non*-plugin path exists
+today, and as of this section's most recent live re-verification it is now
+usable end to end — see "MCP registration works for discovery and, as of
+CLI 3.0.51 / `@cline/core` 0.0.71, for a real dispatch too" below before
+falling back to manual injection:
 
+- **MCP registration works for discovery and, as of CLI 3.0.51 /
+  `@cline/core` 0.0.71, for a real dispatch too — re-verified live,
+  2026-08-06, superseding the 2026-08-05 finding below.** MCP server
+  registration is a host-level Cline feature (`cline mcp add`/the MCP add
+  wizard, writing to `~/.cline/data/settings/cline_mcp_settings.json`),
+  independent of `AgentExtensionApi` and its `registerTool` limitation below
+  — so the same `dispatch_secure_cloud_role`/`poll_dispatch_status`/
+  `dispatch_team`/`poll_team_status`/`dispatch_team_recipe` server documented
+  for Codex CLI above *can* be registered for Cline too, from a full source
+  checkout (not the packaged plugin — `roster/orchestration/mcp/dispatch_server.py`
+  and its `requirements-mcp.txt` pin are only present there):
+  1. `cline mcp add --yes agents-dispatch -- <repo>/bin/cadre
+     mcp-dispatch-server` registers cleanly with no warnings, and a live
+     act-mode `cline` session correctly lists all five tools in its toolset,
+     namespaced `agents-dispatch__dispatch_secure_cloud_role`,
+     `agents-dispatch__poll_dispatch_status`, `agents-dispatch__dispatch_team`,
+     `agents-dispatch__poll_team_status`,
+     `agents-dispatch__dispatch_team_recipe` (`poll_dispatch_status`/
+     `poll_team_status` are new since the 2026-08-05 finding below — see
+     "Async dispatch now exists as its own mitigation" further down).
+  2. A real call needs one more piece registration doesn't set up: the
+     server refuses every dispatch until its own process env has
+     `SECURE_CLOUD_AGENTS_PARENT_CLASSIFICATION` set (fail-closed, not a
+     bug) — still true and unchanged. `cline mcp add` has no flag for server
+     env vars; set it by hand-editing an `"env"` object into the registered
+     server's `transport` block in `cline_mcp_settings.json`
+     (`McpStdioTransportConfig` in `@cline/core`'s types confirms `env`
+     belongs there, sibling to `command`/`args`), e.g. `"env": {
+     "SECURE_CLOUD_AGENTS_PARENT_CLASSIFICATION": "internal"}`.
+  3. **The 2026-08-05 hardcoded-5000ms-timeout finding is now stale and
+     fixed.** Re-checked live against the environment's actually-installed
+     Cline (CLI 3.0.51, `@cline/core`/`@cline/shared` 0.0.71 — newer than the
+     CLI 3.0.47 / 0.0.65 the original finding was verified against): the
+     literal string `"MCP request timed out"` is no longer present in the
+     `@cline/core` bundle at all. `@cline/shared`'s exported
+     `DEFAULT_MCP_TIMEOUT_SECONDS` is now **60** (was an unconfigurable
+     hardcoded 5), and `resolveMcpTimeoutSeconds()` reads a per-server
+     override, confirmed by the current timeout error message itself:
+     `MCP request to "<server>" ... timed out after <N>s. Increase the
+     "timeout" field (in seconds) for this server in
+     cline_mcp_settings.json.` A live, real, end-to-end
+     `dispatch_secure_cloud_role` call for `code-reviewer` (default
+     `planning-review-only` mode, `runner="codex"`, `wait=true`) **completed
+     successfully through Cline's actual MCP client**, no timeout: the
+     dispatch server's own result reported `"timed_out": false,
+     "duration_seconds": 18.41` — well past the old hardcoded 5s ceiling and
+     comfortably inside the new 60s default. (The dispatched `codex exec`
+     child itself exited 1 in this sandbox, unrelated to MCP/Cline — a
+     `402 deactivated_workspace` from the Codex backend, a credentials issue
+     with the test account, not a dispatch-path failure.) No orphaned
+     `dispatch_server.py`/`codex exec` process was left behind afterward.
+  - **Net effect (updated):** this path now gives you tool discovery, fast
+    fail-closed checks (like the classification denial), *and* a completed
+    end-to-end dispatch through Cline's native MCP client, at least for a
+    task finishing within the (overridable) 60s default. Treat
+    `dispatch_secure_cloud_role`/`dispatch_team`/`dispatch_team_recipe` as
+    **usable end to end from Cline** on a current Cline install; only fall
+    back to manual injection below if either (a) your installed Cline
+    predates CLI ~3.0.5x / `@cline/core` ~0.0.7x and still carries the old
+    hardcoded timeout (check your own installed
+    `@cline/shared/dist/index.js` for `DEFAULT_MCP_TIMEOUT_SECONDS` before
+    assuming either way), or (b) a real task genuinely needs longer than the
+    configured "timeout" field allows and raising it isn't an option — in
+    which case prefer the async `wait=false` + `poll_dispatch_status` path
+    described next over reverting to manual injection.
+  - **Async dispatch now exists as its own mitigation, independent of
+    Cline's client timeout.** `dispatch_secure_cloud_role` gained a `wait`
+    parameter (default `true`, unchanged behavior) documented in its own
+    tool description: `wait=false` returns immediately with
+    `{"status": "dispatched_async", "job_id": ...}` and moves the slow
+    child-process wait to a background thread server-side; poll the result
+    with `poll_dispatch_status(job_id)`, which returns `{"status":
+    "not_found"}`, `{"status": "running", ...}`, or the same result shape
+    `wait=true` returns directly once finished. This was added specifically
+    for "your MCP client has a short, non-configurable tools/call timeout"
+    per its own docstring — with Cline's timeout now both longer and
+    configurable, `wait=true` is fine for most real dispatches, but prefer
+    `wait=false`+polling for a task expected to run well past 60s rather
+    than raising the per-server "timeout" field indefinitely.
 - **Why a plugin can't dispatch.** A Cline plugin's `setup(api, ctx)` only
   receives `AgentExtensionApi`, whose surface is `registerTool`,
   `registerCommand`, `registerRule`, `registerMessageBuilder`,
@@ -263,8 +346,13 @@ oversight to route around silently:
   `registerTool`/`executeTool` RPC calls (confirmed by reading the
   `@cline/core` bundle), so even a plugin tool's `execute()` body has no
   in-process handle to the running session's `AgentTeamsRuntime`.
-- **Ordinary single-role dispatch today: manual injection, same shape as
-  Codex's fallback below.** There is no Cline-native generated wrapper for
+- **Fallback path when the MCP dispatch server isn't registered, or is
+  registered against a Cline install predating the timeout fix above:
+  manual injection, same shape as Codex's fallback below.** Prefer
+  registering the MCP dispatch server (above) on a current Cline install —
+  it now completes a real dispatch end to end, per the re-verification
+  above — and reach for manual injection only when that's unavailable.
+  There is no Cline-native generated wrapper for
   this repo's roles yet — `.clinerules/` here holds one general pointer file
   to `AGENTS.md`/`roster/RUNBOOK.md`, not per-role definitions (see
   `AGENTS.md`'s project-structure note), and this repo does not generate

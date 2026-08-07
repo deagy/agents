@@ -1033,7 +1033,7 @@ class RepositoryHealthTests(unittest.TestCase):
             encoding="utf-8",
             env=os.environ.copy(),
         )
-        self.assertEqual("0.3.0", result.stdout.strip())
+        self.assertEqual("0.13.0", result.stdout.strip())
 
     @unittest.skipUnless(sys.platform != "win32", "bin/cadre is a POSIX sh script")
     def test_bin_agents_wrapper_dispatches_select_matching_direct_invocation(self) -> None:
