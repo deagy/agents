@@ -1199,15 +1199,59 @@ def _cmd_resolve(args: list[str]) -> int:
     return 0
 
 
+def _cmd_set(argv: list[str]) -> int:
+    """Write a setting, without requiring the human to hand-edit YAML.
+
+    `write_setting()` has existed all along -- the interactive prompt uses it
+    -- but nothing exposed it non-interactively, so the documented way to
+    configure a project was to find the right file and edit it by hand. That
+    is a poor answer for a value like a knowledge-store path, and an actively
+    bad one for anything scope-restricted, where hand-editing the wrong file
+    fails at use time with an error about trust scope.
+    """
+    tier = "project"
+    positional: list[str] = []
+    for argument in argv:
+        if argument == "--global":
+            tier = "global"
+        elif argument == "--project":
+            tier = "project"
+        elif argument.startswith("-"):
+            print(f"cadre config set: unknown option {argument}", file=sys.stderr)
+            return 2
+        else:
+            positional.append(argument)
+
+    if len(positional) != 2:
+        print("usage: cadre config set [--project|--global] <key> <value>", file=sys.stderr)
+        return 2
+
+    key, raw = positional
+    try:
+        written = write_setting(key, raw, tier=tier)
+    except SettingsError as error:
+        # Includes the global-only scope violation, which is the case most
+        # worth reporting clearly rather than as a traceback: that field
+        # selects an executable, so a project-local file may never set it.
+        print(f"cadre config set: {error}", file=sys.stderr)
+        return 1
+
+    print(f"{key} = {raw}")
+    print(f"written to {written}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    if not argv or argv[0] not in ("show", "path", "resolve"):
-        print("usage: cadre config <show|path|resolve KEY>", file=sys.stderr)
+    if not argv or argv[0] not in ("show", "path", "resolve", "set"):
+        print("usage: cadre config <show|path|resolve KEY|set KEY VALUE>", file=sys.stderr)
         return 2
     if argv[0] == "show":
         return _cmd_show(argv[1:])
     if argv[0] == "resolve":
         return _cmd_resolve(argv[1:])
+    if argv[0] == "set":
+        return _cmd_set(argv[1:])
     return _cmd_path(argv[1:])
 
 

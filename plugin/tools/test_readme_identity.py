@@ -40,7 +40,15 @@ PLUGIN_NAMES = (
     "cadre-lifecycle-gitlab",
 )
 
-INSTALLING_SUBHEADINGS = ("### Cline", "### Claude Code", "### Codex CLI")
+# Content only this hand-authored README has. The register's template
+# describes a standalone single-plugin repository and would never produce
+# a generated-vs-hand-authored table or a pointer to the canonical install
+# guide, so their absence is a reliable clobber signal.
+IDENTITY_MARKERS = (
+    "## What is generated and what is not",
+    "docs/INSTALL.md",
+    "It is **not a\nrepository**",
+)
 
 
 class ReadmeIdentityTests(unittest.TestCase):
@@ -52,12 +60,14 @@ class ReadmeIdentityTests(unittest.TestCase):
         self.assertTrue(self.path.is_file(), f"{self.path} is missing")
         self.text = self.path.read_text(encoding="utf-8")
 
-    def test_title_is_this_repository_own(self) -> None:
+    def test_title_is_this_directorys_own(self) -> None:
+        """The title was `# Cadre Lifecycle` until the monorepo merge, when
+        this stopped being a repository and became a directory inside one."""
         self.assertTrue(
-            self.text.startswith("# Cadre Lifecycle\n"),
-            "README.md's title has changed from '# Cadre Lifecycle' -- "
-            "possible clobber by the register's generic single-plugin "
-            "template (see deagy/cadre-lifecycle#3)",
+            self.text.startswith("# `plugin/` — the packaged distribution\n"),
+            "plugin/README.md's title has changed -- possible clobber by the "
+            "generator's template, which describes a standalone single-plugin "
+            "repository this directory is not",
         )
 
     def test_names_all_four_plugins(self) -> None:
@@ -70,15 +80,26 @@ class ReadmeIdentityTests(unittest.TestCase):
                 "template (see deagy/cadre-lifecycle#3)",
             )
 
-    def test_installing_section_has_per_runner_subheadings(self) -> None:
-        for heading in INSTALLING_SUBHEADINGS:
-            self.assertIn(
-                heading,
-                self.text,
-                f"README.md is missing the {heading!r} Installing "
-                "sub-heading -- possible clobber by the register's generic "
-                "single-plugin template (see deagy/cadre-lifecycle#3)",
-            )
+    def test_carries_its_own_identity_markers(self) -> None:
+        for marker in IDENTITY_MARKERS:
+            with self.subTest(marker=marker):
+                self.assertIn(
+                    marker,
+                    self.text,
+                    f"plugin/README.md is missing {marker!r} -- possible clobber "
+                    "by the generator's template",
+                )
+
+    def test_does_not_reintroduce_install_instructions(self) -> None:
+        """Install steps belong in docs/INSTALL.md only.
+
+        Three documents quoting three different stale version tags is what
+        one canonical page exists to prevent; a second copy here is how that
+        starts again.
+        """
+        for command in ("/plugin marketplace add", "codex plugin marketplace add"):
+            with self.subTest(command=command):
+                self.assertNotIn(command, self.text)
 
 
 if __name__ == "__main__":

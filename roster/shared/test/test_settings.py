@@ -11,6 +11,8 @@ import os
 import sys
 import tempfile
 import time
+import contextlib
+import pathlib
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -937,3 +939,62 @@ class ResolveManyTests(SettingsTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ConfigSetCommandTests(unittest.TestCase):
+    """`cadre config set` -- the write path, finally exposed.
+
+    `write_setting()` has existed all along and the interactive prompt used
+    it, but nothing exposed it non-interactively: `cadre config` offered only
+    show/path/resolve. So the documented way to configure a project was to
+    find the right file and hand-edit YAML, which is a poor answer generally
+    and an actively bad one for scope-restricted fields, where editing the
+    wrong file fails later with an error about trust scope.
+    """
+
+    def setUp(self) -> None:
+        isolate_settings(self)
+        self.project = tempfile.TemporaryDirectory()
+        self.addCleanup(self.project.cleanup)
+        root = pathlib.Path(self.project.name)
+        (root / ".git").mkdir()
+        self._previous = os.getcwd()
+        os.chdir(root)
+        self.addCleanup(os.chdir, self._previous)
+
+    def test_writes_a_project_scoped_value(self) -> None:
+        code = settings.main(["set", "gitlab.supports_work_item_hierarchy", "true"])
+        self.assertEqual(0, code)
+        written = pathlib.Path(self.project.name) / ".agents" / "cadre.yaml"
+        self.assertTrue(written.is_file())
+        self.assertIs(True, settings.resolve_setting("gitlab.supports_work_item_hierarchy"))
+
+    def test_updates_in_place_rather_than_appending(self) -> None:
+        settings.main(["set", "gitlab.supports_work_item_hierarchy", "true"])
+        settings.main(["set", "gitlab.supports_work_item_hierarchy", "false"])
+        self.assertIs(False, settings.resolve_setting("gitlab.supports_work_item_hierarchy"))
+
+    def test_refuses_a_global_only_field_at_project_scope(self) -> None:
+        """The field selects an executable to spawn, and a project-local
+        config file is untrusted, clonable content. This is the security
+        property the scope system exists for, so `set` must enforce it rather
+        than writing a file that fails later."""
+        code = settings.main(["set", "agentic_sdlc.bin_path", "/tmp/evil"])
+        self.assertEqual(1, code)
+        self.assertFalse((pathlib.Path(self.project.name) / ".agents" / "cadre.yaml").exists())
+
+    def test_rejects_an_unknown_key(self) -> None:
+        self.assertEqual(1, settings.main(["set", "no.such.key", "x"]))
+
+    def test_rejects_a_value_that_fails_validation(self) -> None:
+        self.assertEqual(1, settings.main(["set", "gitlab.supports_work_item_hierarchy", "notabool"]))
+
+    def test_reports_usage_on_wrong_argument_count(self) -> None:
+        self.assertEqual(2, settings.main(["set", "only-a-key"]))
+        self.assertEqual(2, settings.main(["set"]))
+
+    def test_set_is_advertised_in_usage(self) -> None:
+        buffer = io.StringIO()
+        with contextlib.redirect_stderr(buffer):
+            settings.main([])
+        self.assertIn("set KEY VALUE", buffer.getvalue())

@@ -953,7 +953,7 @@ secret-classified field, and after a valid answer asks which tier to save
 it to (project, if the field's scope allows it; global; or skip to use for
 this run only).
 
-### `cadre config show` / `cadre config path` / `cadre config resolve`
+### `cadre config show` / `path` / `resolve` / `set`
 
 ```sh
 cadre config show   # every known setting's resolved value, origin, and source path;
@@ -961,7 +961,17 @@ cadre config show   # every known setting's resolved value, origin, and source p
 cadre config path    # both candidate config file paths (project-local, resolved or "not found"; global)
 cadre config resolve <key>   # a single non-secret setting's resolved value on stdout (nothing,
                               # exit 0, if unset); exit 1 with a message on stderr for a SettingsError
+cadre config set [--project|--global] <key> <value>   # write it, no hand-edited YAML
 ```
+
+`set` writes through the same `write_setting()` the interactive prompt uses:
+atomic, 0600, preserving unrecognized keys, and updating a key in place
+rather than appending a second copy. It enforces scope rather than deferring
+it -- writing a global-only field (`agentic_sdlc.bin_path`,
+`knowledge_store.home`, the runner binaries) to project scope is refused at
+write time, because those select an executable to spawn and a project-local
+config file is untrusted, clonable content. Hand-editing the wrong file
+instead produces a confusing trust-scope error much later, at use time.
 
 `resolve` exists primarily for the *packaged* plugin's POSIX-sh `bin/cadre`
 wrapper (built by `generate_bin_wrapper()` in `generate_global_plugin.py`),

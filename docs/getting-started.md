@@ -1,6 +1,8 @@
 # Getting started
 
 This guide is for someone using the suite from a checkout of this repository.
+To *install* it instead, see [Installing Cadre](INSTALL.md) — that is the
+canonical install guide for every runner.
 For a target project's lifecycle setup, use the [lifecycle and plugin
 operations guide](lifecycle-and-plugin-operations.md).
 
