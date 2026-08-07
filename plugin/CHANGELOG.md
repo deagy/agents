@@ -15,6 +15,71 @@ release convention (see `README.md`'s "Releasing" section) ties git tags
 `python3 tools/plugin_version.py --check`/`--set`. Each version heading
 below links to its [GitHub Release](https://github.com/deagy/cadre-lifecycle/releases).
 
+## [0.11.0](https://github.com/deagy/cadre/releases/tag/plugin-v0.11.0) - 2026-08-07
+
+First release from the `deagy/cadre` monorepo. Everything below has been on
+`main` since 0.10.1 but unreleased, so no existing install has it yet.
+
+Note the tag scheme: releases are now `plugin-v<version>`, not `v<version>`.
+The monorepo inherited 25 bare `v*` tags from before the merge, and an
+unprefixed tag would collide with them — silently, since the release
+workflow's already-tagged check would match one and report "nothing to do".
+The kernel releases separately on `kernel-v*`.
+
+### Added
+
+- **Each lifecycle plugin declares `dependencies` on `cadre`.** Every
+  lifecycle skill shells out to `bin/cadre sdlc`, which exists only in the
+  `cadre` plugin; that requirement was previously prose in a `description`
+  field and enforced by nothing. Installing a lifecycle plugin now pulls
+  `cadre` in automatically.
+- **`userConfig` options `kernelInstall` and `profile`.** `kernelInstall`
+  chooses how the plugin may obtain the Agentic SDLC kernel: `auto`
+  (default, manages its own copy), `system` (never installs anything), or
+  `off` (no checking). Set them at install time with
+  `--config kernelInstall=system`, or fleet-wide via managed settings.
+- **`/cadre-install-kernel`**, and a `SessionStart` hook that reports when
+  the kernel is missing or out of range. The hook only detects and reports —
+  it never installs. Installation is always an explicit human action.
+- **A `bin/agentic-sdlc` shim in each lifecycle plugin**, so the kernel is
+  reachable without touching your shell profile.
+
+### Changed
+
+- **The kernel installs from a checksum-verified release wheel** rather than
+  a git ref. A tag can be moved; a published artifact plus its `SHA256SUMS`
+  can be verified. If no wheel is available the install falls back to the git
+  ref with a warning — but a *checksum mismatch* aborts rather than falling
+  back, since that is a tampering signal, not an unavailable route.
+- **No `pipx` prerequisite.** The kernel installs into a virtualenv the
+  plugin owns, under its own data directory. This also removes the old "run
+  `pipx ensurepath`, start a new shell, re-run" dead end.
+- **An incompatible `agentic-sdlc` on `PATH` is left alone**, and the
+  plugin's own copy is used instead. It used to be a hard stop that left you
+  with a broken plugin and no way forward except uninstalling your own tool.
+  A kernel you named via `AGENTIC_SDLC_BIN` is still never substituted.
+
+### Fixed
+
+- **Four skills had unparseable YAML frontmatter** — a `description`
+  containing `": "` ends a plain scalar — so they loaded with no name and no
+  description, effectively undiscoverable:
+  `create-github-gate-issues`, `publish-gate-status-github`,
+  `gitlab-gate-tracking`, `publish-gate-status-gitlab`.
+- **`cadre-install-kernel` was stranded in `cline-agents`**, which had kept
+  advertising a skill nothing generated. The porting step now prunes.
+
+### Install
+
+```text
+/plugin marketplace add deagy/cadre
+/plugin install cadre@cadre-team
+```
+
+See [docs/INSTALL.md](https://github.com/deagy/cadre/blob/main/docs/INSTALL.md),
+or [docs/enterprise.md](https://github.com/deagy/cadre/blob/main/docs/enterprise.md)
+for a fleet.
+
 ## [0.10.1](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.10.1) - 2026-08-07
 
 ### Fixed
