@@ -10,6 +10,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -632,6 +633,109 @@ class StdoutTtyOverrideTests(SettingsTestCase):
     def test_open_tty_io_returns_none_without_a_controlling_terminal(self) -> None:
         with mock.patch("builtins.open", side_effect=OSError("no such device")):
             self.assertIsNone(settings._open_tty_io())
+
+    @unittest.skipUnless(sys.platform != "win32", "requires a POSIX pty/controlling terminal")
+    def test_open_tty_io_round_trips_through_a_real_controlling_terminal(self) -> None:
+        """Exercises the REAL /dev/tty open, not a stub.
+
+        Every other test here either mocks `builtins.open` to fail or
+        replaces `_open_tty_io` wholesale, so the actual file-open
+        semantics were previously untested -- which is exactly where a
+        latent defect lived: `open("/dev/tty", "r+")` raises on modern
+        CPython (a buffered read-write text stream needs a seekable file;
+        a character device isn't), and `_open_tty_io`'s own `except`
+        turned that into a silent `None`, degrading prompting to
+        permanently unavailable with no error anywhere. This test fails
+        (child exits 2) against that buggy form and passes against the
+        two-separate-handles form. `pty.fork()` is required rather than
+        handing a pty fd to `subprocess.Popen` -- only the former gives
+        the child a real *controlling* terminal, which is what /dev/tty
+        resolves through.
+        """
+        import pty
+
+        pid, master_fd = pty.fork()
+        if pid == 0:  # pragma: no cover - child process
+            try:
+                io_pair = settings._open_tty_io()
+                if io_pair is None:
+                    os._exit(2)
+                child_input, child_output = io_pair
+                child_output("PROMPT-MARKER")
+                answer = child_input("give me a value: ")
+                child_output("GOT:" + answer)
+                os._exit(0 if answer == "hello-world" else 4)
+            except BaseException:  # noqa: BLE001 - child must never raise into the harness
+                os._exit(3)
+
+        transcript = b""
+        try:
+            os.write(master_fd, b"hello-world\n")
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                try:
+                    chunk = os.read(master_fd, 4096)
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                transcript += chunk
+                if b"GOT:" in transcript:
+                    break
+            _pid, status = os.waitpid(pid, 0)
+        finally:
+            os.close(master_fd)
+
+        self.assertTrue(os.WIFEXITED(status), f"child did not exit normally: {transcript!r}")
+        self.assertEqual(os.WEXITSTATUS(status), 0, f"child exit status; transcript={transcript!r}")
+        self.assertIn(b"PROMPT-MARKER", transcript)
+        self.assertIn(b"GOT:hello-world", transcript)
+
+    def test_prompt_eof_becomes_a_settings_error_not_a_raw_traceback(self) -> None:
+        # Ctrl-D (or a controlling terminal closing mid-prompt) is an
+        # ordinary way to abandon a prompt; it must surface as this
+        # module's usual fail-closed SettingsError, so callers'
+        # `except SettingsError` handling applies and the CLI prints a
+        # clean message instead of dumping a traceback.
+        def eof_input(_prompt: str) -> str:
+            raise EOFError("simulated Ctrl-D")
+
+        with mock.patch.object(sys.stdin, "isatty", return_value=True), mock.patch.object(
+            sys.stdout, "isatty", return_value=True
+        ):
+            with self.assertRaises(settings.SettingsError) as ctx:
+                settings.resolve_setting(
+                    "gitlab.base_url",
+                    start=self.project_dir,
+                    env={"CADRE_INTERACTIVE": "1"},
+                    input_func=eof_input,
+                    output_func=lambda _text: None,
+                )
+        self.assertIn("gitlab.base_url", str(ctx.exception))
+
+    def test_resolve_cli_handles_prompt_eof_without_a_traceback(self) -> None:
+        # A cancelled prompt (Ctrl-D) resolves to "unset": `resolve`'s
+        # contract is that a SettingsError for a non-scope reason means
+        # "no value", so it exits 0 printing nothing, and the packaged
+        # wrapper's own `[ -n "$sdlc_bin" ] ||` check then produces the
+        # actionable install pointer. The point being pinned here is that
+        # the EOFError never escapes as an unhandled traceback (it used to)
+        # and nothing partial is written to the captured stdout.
+        def eof_input(_prompt: str) -> str:
+            raise EOFError("simulated Ctrl-D")
+
+        with mock.patch.object(sys.stdin, "isatty", return_value=True), mock.patch.object(
+            settings, "_open_tty_io", return_value=(eof_input, lambda _text: None)
+        ), mock.patch.object(
+            settings.Path, "cwd", return_value=self.project_dir
+        ), mock.patch.dict(
+            os.environ, {"CADRE_INTERACTIVE": "1"}, clear=False
+        ):
+            captured_stdout = io.StringIO()
+            with mock.patch.object(sys, "stdout", captured_stdout):
+                exit_code = settings.main(["resolve", "gitlab.base_url"])
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(captured_stdout.getvalue().strip(), "")
 
     def test_resolve_cli_prompts_via_tty_without_leaking_into_captured_stdout(self) -> None:
         # Simulates the real command-substitution scenario end to end:

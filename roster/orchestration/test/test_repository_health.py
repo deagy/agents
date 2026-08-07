@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import atexit
+import contextlib
 import json
 import os
 import re
@@ -10,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -1213,8 +1215,24 @@ class RepositoryHealthTests(unittest.TestCase):
             other = Path(fake_bin) / "other-sdlc"
             other.write_text('#!/bin/sh\necho "STUB-SDLC $*"\n', encoding="utf-8")
             other.chmod(0o755)
-            # PATH deliberately contains no python3/python.
-            bare_path = f"{fake_bin}:/bin"
+            # PATH must contain no python3/python, but still enough for the
+            # wrapper to function -- so it is the stub directory alone, plus
+            # symlinks to the few external tools the wrapper actually calls.
+            # Deliberately NOT `f"{fake_bin}:/bin"`: /bin is a symlink to
+            # /usr/bin on most modern distributions, which silently puts
+            # python3 back on PATH and makes this test vacuous (verified by
+            # mutation -- with /bin present, the assertions below pass even
+            # against a wrapper that hard-requires Python, i.e. they would
+            # not catch the regression this test exists for).
+            for tool in ("dirname",):
+                located = shutil.which(tool)
+                self.assertIsNotNone(located, f"{tool} not found; cannot build the test PATH")
+                os.symlink(located, Path(fake_bin) / tool)
+            self.assertIsNone(
+                shutil.which("python3", path=fake_bin),
+                "test PATH must not contain python3, or this test proves nothing",
+            )
+            bare_path = fake_bin
 
             via_env = subprocess.run(
                 [str(wrapper), "sdlc", "--version"],
@@ -1255,6 +1273,155 @@ class RepositoryHealthTests(unittest.TestCase):
             self.assertNotEqual(0, unresolvable.returncode)
             self.assertIn("install Agentic SDLC", unresolvable.stderr)
             self.assertNotIn("Python 3.10+ is required", unresolvable.stderr)
+
+    @unittest.skipUnless(sys.platform != "win32", "requires a POSIX pty/controlling terminal")
+    def test_packaged_bin_wrapper_interactive_sdlc_prompts_on_tty_and_keeps_stdout_clean(self) -> None:
+        """End-to-end proof that `cadre --interactive sdlc ...` can actually
+        prompt, and that prompt text never contaminates the value-carrying
+        stdout.
+
+        This is the only test that exercises the real failure mode the
+        --interactive half of this feature was written for: the wrapper
+        resolves the binary inside `$(...)`, whose child stdout is
+        unconditionally a pipe, so a naive `sys.stdout.isatty()` gate makes
+        prompting permanently unreachable no matter what terminal the
+        operator is really sitting at. `pty.fork()` (not a pty fd handed to
+        subprocess.Popen, which does NOT confer a controlling terminal on
+        Linux) plus a separate pipe dup2'd onto fd 1 reproduces that exact
+        shape.
+        """
+        import pty
+
+        wrapper = generated_package() / "bin" / "cadre"
+        self.assertTrue(wrapper.is_file(), str(wrapper))
+        with tempfile.TemporaryDirectory() as fake_bin, tempfile.TemporaryDirectory() as fake_home:
+            stub = Path(fake_bin) / "agentic-sdlc-chosen"
+            stub.write_text('#!/bin/sh\necho "STUB-SDLC $*"\n', encoding="utf-8")
+            stub.chmod(0o755)
+
+            stdout_r, stdout_w = os.pipe()
+            pid, master_fd = pty.fork()
+            if pid == 0:  # pragma: no cover - child process
+                try:
+                    os.close(stdout_r)
+                    os.dup2(stdout_w, 1)  # stdout = pipe, exactly like $(...)
+                    os.close(stdout_w)
+                    os.chdir(str(REPOSITORY_ROOT))
+                    env = {
+                        # Deliberately no agentic-sdlc on PATH and no
+                        # AGENTIC_SDLC_BIN, so the field is genuinely
+                        # unresolved and prompting is the only way forward.
+                        "PATH": "/usr/bin:/bin",
+                        "HOME": fake_home,
+                        "XDG_CONFIG_HOME": str(Path(fake_home) / ".config"),
+                    }
+                    os.execve(str(wrapper), [str(wrapper), "--interactive", "sdlc", "--version"], env)
+                except BaseException:  # noqa: BLE001 - child must never raise into the harness
+                    pass
+                os._exit(127)
+
+            os.close(stdout_w)
+            transcript = b""
+            answered_value = False
+            answered_tier = False
+            try:
+                deadline = time.monotonic() + 20
+                while time.monotonic() < deadline:
+                    try:
+                        chunk = os.read(master_fd, 4096)
+                    except OSError:
+                        break
+                    if not chunk:
+                        break
+                    transcript += chunk
+                    if not answered_value and b"Enter value" in transcript:
+                        os.write(master_fd, str(stub).encode() + b"\n")
+                        answered_value = True
+                    elif answered_value and not answered_tier and b"which tier" in transcript:
+                        os.write(master_fd, b"skip\n")
+                        answered_tier = True
+                os.waitpid(pid, 0)
+            finally:
+                os.close(master_fd)
+            captured_stdout = b""
+            os.set_blocking(stdout_r, False)
+            with contextlib.suppress(BlockingIOError, OSError):
+                captured_stdout = os.read(stdout_r, 65536)
+            os.close(stdout_r)
+
+        # The prompt reached the terminal...
+        self.assertIn(b"agentic_sdlc.bin_path is not configured", transcript)
+        self.assertTrue(answered_value, f"never saw a value prompt; transcript={transcript!r}")
+        # ...the chosen binary actually ran...
+        self.assertIn(b"STUB-SDLC", captured_stdout)
+        # ...and no prompt text leaked into the value-carrying stdout.
+        self.assertNotIn(b"Enter value", captured_stdout)
+        self.assertNotIn(b"is not configured", captured_stdout)
+
+    @unittest.skipUnless(sys.platform != "win32", "bin/cadre is a POSIX sh script")
+    def test_packaged_bin_wrapper_sdlc_fails_closed_on_a_resolve_error(self) -> None:
+        """A `resolve` *failure* (not merely an unset value) must abort the
+        sdlc branch, never fall through to a PATH lookup.
+
+        A SettingsScopeError here means an untrusted project-local config
+        tried to set the global-only agentic_sdlc.bin_path -- a security
+        event that must stay fatal. The regression this guards against is
+        someone "helpfully" adding a fallback that swallows it (e.g.
+        `... || sdlc_bin=$(command -v agentic-sdlc || true)`), which would
+        silently exec whatever binary is first on PATH instead. Verified by
+        mutation: that exact edit turns this test red, while the plain
+        `set -e` abort and the explicit `|| exit 1` both keep it green.
+        """
+        wrapper = generated_package() / "bin" / "cadre"
+        with tempfile.TemporaryDirectory() as project, tempfile.TemporaryDirectory() as fake_bin:
+            project_path = Path(project)
+            (project_path / ".git").mkdir()
+            (project_path / ".agents").mkdir()
+            (project_path / ".agents" / "cadre.yaml").write_text(
+                'agentic_sdlc:\n  bin_path: "/tmp/should-never-be-honored"\n', encoding="utf-8"
+            )
+            # A decoy on PATH: if the scope error were swallowed, this would
+            # be silently exec'd and the test would see rc=0/DECOY.
+            decoy = Path(fake_bin) / "agentic-sdlc"
+            decoy.write_text('#!/bin/sh\necho "DECOY-SDLC"\n', encoding="utf-8")
+            decoy.chmod(0o755)
+            result = subprocess.run(
+                [str(wrapper), "sdlc", "--version"],
+                cwd=project,
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                env={
+                    "PATH": f"{fake_bin}:/usr/bin:/bin",
+                    "HOME": fake_bin,
+                    "XDG_CONFIG_HOME": str(Path(fake_bin) / ".config"),
+                },
+            )
+        self.assertNotEqual(0, result.returncode)
+        self.assertNotIn("DECOY-SDLC", result.stdout)
+        self.assertIn("agentic_sdlc.bin_path", result.stderr)
+        self.assertIn("project-local", result.stderr)
+
+    @unittest.skipUnless(sys.platform != "win32", "bin/cadre is a POSIX sh script")
+    def test_packaged_bin_wrapper_generic_subcommand_still_requires_python(self) -> None:
+        """`detect_agent_python()` was extracted into a shell function with
+        two call sites; the sdlc branch is covered above, this pins the
+        other one (every non-sdlc subcommand), which no other test reaches.
+        """
+        wrapper = generated_package() / "bin" / "cadre"
+        with tempfile.TemporaryDirectory() as empty_bin:
+            result = subprocess.run(
+                [str(wrapper), "select", "--help"],
+                cwd=REPOSITORY_ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                env={"PATH": empty_bin, "HOME": empty_bin},
+            )
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Python 3.10+ is required", result.stderr)
 
     def test_bin_agents_subcommand_table_is_the_single_source_of_truth(self) -> None:
         table = REPOSITORY_ROOT / "bin" / "subcommands.tsv"

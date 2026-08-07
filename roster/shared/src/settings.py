@@ -613,8 +613,27 @@ def _prompt_for(
 ) -> Resolved | None:
     if spec.secret:
         return None
-    input_func = input_func or input
+    raw_input_func = input_func or input
     output_func = output_func or (lambda text: sys.stdout.write(text + "\n"))
+
+    def input_func(prompt: str) -> str:
+        # Ctrl-D, or a controlling terminal that closes mid-prompt, is an
+        # ordinary way to abandon an interactive prompt -- not something
+        # that should escape as a raw traceback. Both the builtin input()
+        # and _open_tty_io()'s reader raise EOFError there; convert it to
+        # this module's usual fail-closed SettingsError so every caller's
+        # existing `except SettingsError` handling (including
+        # `cadre config resolve`'s clean stderr message + exit 1) applies
+        # uniformly. KeyboardInterrupt is deliberately NOT caught: Ctrl-C
+        # should stay an interrupt, not become a settings error.
+        try:
+            return raw_input_func(prompt)
+        except EOFError as error:
+            raise SettingsError(
+                f"{spec.key}: input stream closed before a value was entered "
+                "(prompt cancelled); set it via the environment or a config file instead"
+            ) from error
+
     default_value = _display_default(spec)
     output_func(f"{spec.key} is not configured.")
     if spec.env_var:

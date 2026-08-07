@@ -724,8 +724,29 @@ def generate_bin_wrapper(plugin_root: Path) -> Path:
             '  if [ -z "$sdlc_bin" ]; then',
             "    detect_agent_python",
             '    if [ -n "$AGENT_PYTHON" ]; then',
+            # `|| exit 1` normalizes the exit code and states the intent
+            # explicitly; `set -e` alone already aborts here (a bare
+            # `var=$(failing-cmd)` IS subject to errexit -- only forms like
+            # `export var=$(...)` are exempt). What must never be added is a
+            # fallback that swallows the failure, e.g.
+            # `|| sdlc_bin=$(command -v agentic-sdlc || true)`: a
+            # SettingsScopeError means an untrusted project-local config
+            # tried to set this global-only field, and silently exec'ing
+            # whatever is on PATH instead is exactly the bypass this whole
+            # branch exists to prevent.
             '      sdlc_bin=$("$AGENT_PYTHON" "$SUITE_ROOT/roster/shared/src/settings.py" resolve agentic_sdlc.bin_path) || exit 1',
             "    else",
+            # This branch cannot tell "no config file exists" from "a config
+            # file exists and pins agentic_sdlc.bin_path, but no interpreter
+            # is available to read it" -- without Python there is no way to
+            # parse YAML/JSON or apply trust-scope rules. Degrading to a bare
+            # PATH lookup keeps the pre-existing no-Python behavior working,
+            # but it must never do so *silently*: an operator who pinned a
+            # path in ~/.config/cadre/config.yaml would otherwise have that
+            # pin quietly replaced by whatever `agentic-sdlc` happens to be
+            # first on PATH, with no signal. Warn on stderr (never stdout --
+            # this branch's value is consumed via command substitution).
+            '      echo "cadre: no Python 3.10+ found; falling back to PATH for agentic-sdlc without reading any cadre config file (a configured agentic_sdlc.bin_path, if set, is being ignored)" >&2',
             '      sdlc_bin=$(command -v agentic-sdlc || true)',
             "    fi",
             "  fi",

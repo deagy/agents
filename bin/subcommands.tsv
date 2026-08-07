@@ -10,4 +10,4 @@ mcp-dispatch-server	roster/orchestration/mcp/dispatch_server.py	Run the Codex MC
 init	roster/shared/src/init_project.py	Guide a project through generating .agents/shared/ overlays (init_project.py)
 profile	roster/orchestration/src/profile_diff.py	Read-only provider/profile drift report against a consuming project's copy (profile_diff.py)
 gitlab-evidence	roster/orchestration/mcp/gitlab_cli.py	Non-MCP CLI over the GitLab evidence tools (create-review-subtask/write-wiki-page/write-evidence-comment)
-config	roster/shared/src/settings.py	Show resolved operator settings or config file paths (settings.py; `show`/`path`)
+config	roster/shared/src/settings.py	Show resolved operator settings, config file paths, or resolve one setting (settings.py; `show`/`path`/`resolve`)
