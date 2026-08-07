@@ -1005,6 +1005,44 @@ class RepositoryHealthTests(unittest.TestCase):
                     target = (path.parent / relative).resolve()
                     self.assertTrue(target.is_file() or target.is_dir(), f"{path}: {relative}")
 
+    def test_every_embedded_shared_policy_is_vendored_into_the_wheel(self) -> None:
+        """pyproject.toml's [tool.hatch.build.targets.wheel.force-include]
+        lists roster/shared/ files *individually* (hatchling's force-include
+        does not honor exclude patterns, so the subtree cannot be included
+        wholesale). That is a second, separate allowlist from
+        generate_suite_copy()'s -- which prefix-matches `roster/shared/` and
+        therefore needs no edit for a new file.
+
+        Omitting a new shared policy here does not crash: role_wrapper_inputs()
+        deliberately *skips* a missing shared file, so an installed
+        distribution would silently generate wrappers without the policy, and
+        `cadre generate-role-metadata --check` would then report drift against
+        the vendored provider/ copies that do contain it. This test makes that
+        silent divergence a loud one.
+        """
+        sys.path.insert(0, str(ROOT / "orchestration" / "src"))
+        try:
+            import generate_global_plugin
+        finally:
+            sys.path.pop(0)
+
+        pyproject = (REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        embedded = list(generate_global_plugin.SHARED_POLICIES) + list(
+            generate_global_plugin.TIER_SCOPED_POLICIES
+        )
+        missing = [
+            relative
+            for relative in embedded
+            if f'"{relative}" = "cadre_cli/_vendor/{relative}"' not in pyproject
+        ]
+        self.assertEqual(
+            [],
+            missing,
+            "shared policy files embedded into generated wrappers but not "
+            "force-included into the wheel (add them to pyproject.toml's "
+            "[tool.hatch.build.targets.wheel.force-include])",
+        )
+
     def test_secure_cloud_agents_plugin_is_self_contained(self) -> None:
         plugin_root = generated_package()
         provider = json.loads((plugin_root / "provider.json").read_text(encoding="utf-8"))
