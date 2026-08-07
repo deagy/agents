@@ -337,6 +337,9 @@ def known_keys() -> list[str]:
 
 _FILE_CACHE: dict[str, dict[str, Any]] = {}
 _INTERACTIVE_DISABLED = False
+# See disable_project_tier_cwd_fallback(). Only suppresses the *implicit*
+# cwd anchor; an explicit start= is always honored.
+_PROJECT_TIER_CWD_FALLBACK_DISABLED = False
 
 
 def reset_cache() -> None:
@@ -353,6 +356,33 @@ def disable_interactive() -> None:
     channel and prompting would corrupt it."""
     global _INTERACTIVE_DISABLED
     _INTERACTIVE_DISABLED = True
+
+
+def disable_project_tier_cwd_fallback() -> None:
+    """Stop treating this process's working directory as a project anchor.
+
+    When `start=` is not passed, the project tier is discovered by walking
+    up from `Path.cwd()`. That is right for a CLI a human ran inside a
+    project, and wrong for a long-lived, project-agnostic process -- an
+    stdio MCP server's cwd is wherever its host CLI happened to be
+    launched, which has no relationship to the project a given tool call
+    is about. Resolving a `project_or_global` field from that incidental
+    directory means an unrelated checkout's `.agents/cadre.yaml` can steer
+    a call it has nothing to do with.
+
+    After this is called, a resolution with no explicit `start=` skips the
+    project tier entirely rather than guessing from cwd. An explicit
+    `start=<path>` is still honored -- it is a validated anchor the caller
+    supplied on purpose (e.g. `dispatch_core`'s `project_root`), not an
+    ambient one -- so a server can still resolve correctly for the project
+    a tool call actually names.
+
+    Mirrors `disable_interactive()`: call it unconditionally at an entry
+    point, never from shared core logic, since the same core is also
+    imported by CLIs where cwd *is* the right anchor.
+    """
+    global _PROJECT_TIER_CWD_FALLBACK_DISABLED
+    _PROJECT_TIER_CWD_FALLBACK_DISABLED = True
 
 
 def _global_config_dir(env: dict[str, str]) -> Path:
@@ -384,6 +414,11 @@ def _reject_symlink_escape_on_read(candidate: Path) -> Path:
 
 
 def _project_config_candidates(start: Path | None) -> tuple[Path | None, Path | None]:
+    # No explicit anchor, and this process has declared its cwd meaningless
+    # (see disable_project_tier_cwd_fallback) -- skip the project tier
+    # rather than walking up from an incidental directory.
+    if start is None and _PROJECT_TIER_CWD_FALLBACK_DISABLED:
+        return None, None
     yaml_path = find_file_at_project_root(PROJECT_CONFIG_DIR / f"{PROJECT_CONFIG_BASENAME}.yaml", start)
     json_path = find_file_at_project_root(PROJECT_CONFIG_DIR / f"{PROJECT_CONFIG_BASENAME}.json", start)
     if yaml_path is not None:
@@ -710,6 +745,15 @@ def _resolve_core(
             checks.append(f"{project_path} -> found, key explicitly null (not set at this tier)")
         else:
             checks.append(f"{project_path} -> found, key absent")
+    elif start is None and _PROJECT_TIER_CWD_FALLBACK_DISABLED:
+        # Don't name a cwd-derived path here -- this process declared its
+        # working directory meaningless, so quoting it would send the
+        # reader to a file that was never consulted and would not be read
+        # even if they created it.
+        checks.append(
+            "project-local config -> not consulted (no project anchor supplied and this "
+            "process does not treat its working directory as one)"
+        )
     else:
         yaml_candidate, _json_candidate = _project_config_candidates(start)
         expected = yaml_candidate if yaml_candidate is not None else (

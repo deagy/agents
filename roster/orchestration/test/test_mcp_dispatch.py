@@ -479,6 +479,34 @@ class ClaudeCodeRunnerTests(unittest.TestCase):
                 _settings.reset_cache()
         self.assertEqual(argv[0], "/opt/bin/claude-from-config")
 
+    def test_runner_bin_is_resolved_against_project_root_not_process_cwd(self) -> None:
+        # build_claude_child_argv already receives a validated project_root;
+        # resolving runners.claude_bin from this process's cwd instead would
+        # mean an MCP server (whose cwd is wherever its host CLI launched)
+        # consults an unrelated checkout. Proven by pointing cwd at a
+        # decoy project whose config, if consulted, would be a scope
+        # violation -- runners.claude_bin is global_only, so reading the
+        # decoy raises rather than silently returning a different value.
+        import settings as _settings  # noqa: PLC0415 - only this test needs it
+
+        decoy = Path(tempfile.mkdtemp(prefix="mcp-dispatch-decoy-project-"))
+        self.addCleanup(lambda: __import__("shutil").rmtree(decoy, ignore_errors=True))
+        (decoy / ".git").mkdir()
+        (decoy / ".agents").mkdir()
+        (decoy / ".agents" / "cadre.yaml").write_text(
+            'runners:\n  claude_bin: "/decoy/claude"\n', encoding="utf-8"
+        )
+
+        _write_claude_wrapper(self.plugin_file("m", "p", "1.0.0", "application-engineer"))
+        role = self.resolve("application-engineer")
+        with mock.patch.object(_settings.Path, "cwd", return_value=decoy):
+            _settings.reset_cache()
+            try:
+                argv = core.build_claude_child_argv(role, "read-only", self.project_root)
+            finally:
+                _settings.reset_cache()
+        self.assertEqual(argv[0], "claude")
+
     def test_unknown_runner_is_denied_without_touching_role_resolution(self) -> None:
         with self.assertRaises(core.DispatchDenied):
             core.build_child_argv_for_runner("some-other-cli", None, "read-only", self.project_root)

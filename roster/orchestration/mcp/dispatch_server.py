@@ -39,6 +39,13 @@ import settings  # noqa: E402  (dispatch_core.py already appends roster/shared/s
 # docstring.
 settings.disable_interactive()
 
+# Same reasoning for the project tier: this server is long-lived and
+# project-agnostic, so its cwd is wherever the host CLI was launched and
+# is not the project any given tool call is about. Callers that know the
+# real project (e.g. dispatch_core's project_root) pass start= explicitly
+# and are unaffected. See settings.disable_project_tier_cwd_fallback().
+settings.disable_project_tier_cwd_fallback()
+
 # dispatch_team_recipe below needs routing.yaml/catalog.yaml loading and the
 # recipe-expansion helper, both of which live in src/ alongside dispatch_core's
 # own SRC_ROOT. dispatch_core.py deliberately never imports these (it stays
