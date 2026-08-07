@@ -22,7 +22,10 @@ Moving the secure-cloud profile to a separate repository:
 ## New Repository
 
 **Repository**: `cadre-profile-secure-cloud`
-**Location**: `/home/deagy/sdk/cadre-profile-secure-cloud/`
+**Upstream**: <https://github.com/deagy/cadre-profile-secure-cloud>
+**Local checkout**: a sibling directory of this repository; the exact path is
+developer-specific and deliberately not recorded here, since this file is
+copied verbatim into the published plugin distribution.
 **Contents**:
 - `profile.json` - Main profile definition
 - `README.md` - Usage documentation
