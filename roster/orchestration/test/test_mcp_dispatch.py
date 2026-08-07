@@ -1757,15 +1757,19 @@ class DispatchTeamTests(unittest.TestCase):
         _write_wrapper(self.layout.plugin_file("application-engineer"), sandbox_mode="read-only")
         _write_wrapper(self.layout.plugin_file("backend-engineer"), sandbox_mode="read-only")
 
-        started = []
         release_second = threading.Event()
 
         def fake_runner(argv, *, prompt, cwd, env, timeout_seconds):
-            started.append(prompt)
-            if len(started) == 1:
-                # First member spawned blocks until the second has also
-                # started, proving dispatch_team does not serialize members
-                # or return before the slower one finishes.
+            # Keyed by which member's brief this call is for (deterministic),
+            # not by which thread happens to reach fake_runner first (a race
+            # -- both threads calling into fake_runner "first" is exactly
+            # the concurrent-dispatch behavior this test is proving, so
+            # thread arrival order must not decide which label a given
+            # member's output gets). application-engineer's call blocks
+            # until backend-engineer's call has also started, proving
+            # dispatch_team does not serialize members or return before the
+            # slower one finishes.
+            if "task one" in prompt:
                 release_second.wait(timeout=5)
                 return self._fake_result("first")
             release_second.set()
