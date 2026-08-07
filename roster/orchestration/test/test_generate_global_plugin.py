@@ -462,5 +462,166 @@ class GenerateSkillCopiesPackageTargetTests(unittest.TestCase):
             self.assertTrue(manifest.is_file(), "hand-authored sub-plugin manifest must survive a reset")
 
 
+class DownstreamReadmeGuardTests(unittest.TestCase):
+    """deagy/cadre#97: `generate-plugin --output` against a target that
+    already carries its own `.codex-plugin/plugin.json` (i.e. it is itself
+    an initialized, hand-authored downstream package, not a fresh
+    distribution target) must never clobber that target's own README.md.
+    The register's prior guard only checked the marker's *presence*, which
+    passes trivially for exactly this repository shape and did nothing to
+    stop the clobber -- these tests exercise the actual write_readme/
+    remove_readme/compare_readme plumbing that fixes it.
+    """
+
+    def _committed_base_repo(self, root: Path) -> None:
+        _init_git_repo(root)
+        _write(root / "roster" / "sample-role" / "AGENT.md", "# Sample\n")
+        subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+        subprocess.run(["git", "-C", str(root), "commit", "-qm", "base"], check=True)
+
+    def test_generate_suite_copy_write_readme_false_skips_root_readme_only(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._committed_base_repo(root)
+            catalog = {"sample-role": {"definition": "sample-role/AGENT.md"}}
+            plugin_root = root / "plugins" / "cadre"
+            hand_authored = "# This Downstream Repository's Own README\n"
+            _write(plugin_root / "README.md", hand_authored)
+
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root):
+                written = ggp.generate_suite_copy(catalog, plugin_root, write_readme=False)
+
+            self.assertEqual(hand_authored, (plugin_root / "README.md").read_text(encoding="utf-8"))
+            self.assertNotIn(plugin_root / "README.md", written)
+            # suite/README.md is always register-owned, marker or not.
+            self.assertTrue((plugin_root / "suite" / "README.md").is_file())
+            self.assertIn(plugin_root / "suite" / "README.md", written)
+
+    def test_generate_suite_copy_write_readme_true_still_writes_root_readme(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._committed_base_repo(root)
+            catalog = {"sample-role": {"definition": "sample-role/AGENT.md"}}
+            plugin_root = root / "plugins" / "cadre"
+            _write(plugin_root / "README.md", "stale template readme\n")
+
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root):
+                written = ggp.generate_suite_copy(catalog, plugin_root)
+
+            self.assertEqual(
+                ggp.PACKAGING_README.read_text(encoding="utf-8"),
+                (plugin_root / "README.md").read_text(encoding="utf-8"),
+            )
+            self.assertIn(plugin_root / "README.md", written)
+
+    def test_reset_generated_content_remove_readme_false_preserves_readme_but_clears_the_rest(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            plugin_root = root / "plugins" / "cadre"
+            hand_authored = "# Downstream README\n"
+            _write(plugin_root / "README.md", hand_authored)
+            _write(plugin_root / "skills" / "some-skill" / "SKILL.md", "stale\n")
+
+            ggp.reset_generated_content(plugin_root, remove_readme=False)
+
+            self.assertEqual(hand_authored, (plugin_root / "README.md").read_text(encoding="utf-8"))
+            self.assertFalse((plugin_root / "skills").exists())
+
+    def test_reset_generated_content_default_still_removes_readme(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            plugin_root = root / "plugins" / "cadre"
+            _write(plugin_root / "README.md", "stale template readme\n")
+
+            ggp.reset_generated_content(plugin_root)
+
+            self.assertFalse((plugin_root / "README.md").exists())
+
+    def test_files_equal_compare_readme_false_ignores_root_readme_difference(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            left, right = root / "left", root / "right"
+            _write(left / "README.md", "generated readme\n")
+            _write(right / "README.md", "downstream's own readme\n")
+            _write(left / "skills" / "a" / "SKILL.md", "same\n")
+            _write(right / "skills" / "a" / "SKILL.md", "same\n")
+
+            self.assertFalse(ggp.files_equal(left, right))
+            self.assertTrue(ggp.files_equal(left, right, compare_readme=False))
+
+    def test_files_equal_compare_readme_false_still_catches_other_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            left, right = root / "left", root / "right"
+            _write(left / "README.md", "downstream's own readme\n")
+            _write(right / "README.md", "downstream's own readme\n")
+            _write(left / "skills" / "a" / "SKILL.md", "new content\n")
+            _write(right / "skills" / "a" / "SKILL.md", "stale content\n")
+
+            self.assertFalse(ggp.files_equal(left, right, compare_readme=False))
+
+    def test_generate_package_write_readme_false_end_to_end(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._committed_base_repo(root)
+            catalog = {"sample-role": {"definition": "sample-role/AGENT.md"}}
+            plugin_root = root / "plugins" / "cadre"
+            hand_authored = "# This Downstream Repository's Own README\n"
+            _write(plugin_root / "README.md", hand_authored)
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(
+                ggp, "generate_agent_wrappers", lambda catalog, plugin_root: []
+            ), mock.patch.object(
+                ggp, "generate_provider_copy", lambda catalog, plugin_root: []
+            ), mock.patch.object(
+                ggp, "generate_bin_wrapper", lambda plugin_root: plugin_root / "bin" / "cadre"
+            ), mock.patch.object(
+                ggp, "generate_skill_copies", lambda plugin_root: []
+            ):
+                ggp.generate_package(catalog, plugin_root, write_readme=False)
+
+            self.assertEqual(hand_authored, (plugin_root / "README.md").read_text(encoding="utf-8"))
+
+
+class MainCliDownstreamReadmeGuardTests(unittest.TestCase):
+    """End-to-end regression for deagy/cadre#97 through the real CLI
+    entrypoint, against this repository's own real catalog/provider/roster
+    content (same pattern test_repository_health.py's generated_package()
+    uses) -- proves the fix works through main()'s actual argument parsing,
+    not just the underlying functions in isolation.
+    """
+
+    SCRIPT = Path(__file__).resolve().parents[1] / "src" / "generate_global_plugin.py"
+    REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+
+    def _run(self, *args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(self.SCRIPT), *args],
+            cwd=self.REPOSITORY_ROOT, check=False, capture_output=True, text=True, encoding="utf-8",
+        )
+
+    def test_existing_marker_preserves_downstream_readme_and_can_be_forced(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "downstream-package"
+            hand_authored = "# This Downstream Repository's Own README\n"
+            _write(target / "README.md", hand_authored)
+            _write(target / ".codex-plugin" / "plugin.json", "{}\n")
+
+            result = self._run("--output", str(target))
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertIn("README.md left untouched", result.stderr)
+            self.assertEqual(hand_authored, (target / "README.md").read_text(encoding="utf-8"))
+            # Everything else still regenerated normally.
+            self.assertTrue((target / "skills").is_dir())
+            self.assertTrue((target / "agents").is_dir())
+
+            forced = self._run("--output", str(target), "--force-readme")
+            self.assertEqual(0, forced.returncode, forced.stderr)
+            self.assertNotIn("README.md left untouched", forced.stderr)
+            self.assertEqual(
+                ggp.PACKAGING_README.read_text(encoding="utf-8"),
+                (target / "README.md").read_text(encoding="utf-8"),
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

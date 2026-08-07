@@ -50,6 +50,15 @@ Validate deterministically without changing the working tree:
 
     cadre generate-plugin --check --output /path/to/cadre-lifecycle
 
+An ``--output`` target that already has a ``.codex-plugin/plugin.json`` (i.e.
+it is already an initialized, hand-authored downstream package rather than a
+fresh distribution target) never has its own README.md overwritten by this
+command, even though README.md is otherwise part of the generated set (see
+GENERATED_TOP_LEVEL) -- a downstream repository may describe a merged or
+otherwise different identity than this generator's own template (deagy/cadre#97).
+Pass ``--force-readme`` to write the register's own README.md there anyway
+(the actual `deagy/cadre-plugin`-style distribution target, if one exists).
+
 (bin/cadre at the repository root; or `python3 roster/orchestration/src/generate_global_plugin.py`
 directly if bin/cadre isn't set up yet).
 """
@@ -300,13 +309,21 @@ def write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def reset_generated_content(plugin_root: Path) -> None:
+def reset_generated_content(plugin_root: Path, *, remove_readme: bool = True) -> None:
     # Derived from GENERATED_TOP_LEVEL rather than re-listed, so a new member
     # can never be generated-but-not-reset (which would leave stale files that
     # files_equal() then reports as drift forever, with no way to regenerate
     # out of it). bin/ is the one entry not removed wholesale: only bin/cadre
     # is generated, and the directory may legitimately hold nothing else.
+    # README.md is the one entry that may need to survive too, when
+    # `remove_readme=False` (see generate_package()'s write_readme parameter
+    # and main()'s downstream-identity guard, deagy/cadre#97): a downstream
+    # repository with its own hand-authored README.md must never have it
+    # deleted here even transiently, since generate_suite_copy() -- called
+    # after this function -- won't rewrite it either in that case.
     for name in sorted(GENERATED_TOP_LEVEL - {"bin"}):
+        if name == "README.md" and not remove_readme:
+            continue
         path = plugin_root / name
         if path.is_dir():
             shutil.rmtree(path)
@@ -700,7 +717,9 @@ def generate_bin_wrapper(plugin_root: Path) -> Path:
     return target
 
 
-def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -> list[Path]:
+def generate_suite_copy(
+    catalog: dict[str, dict[str, Any]], plugin_root: Path, *, write_readme: bool = True
+) -> list[Path]:
     tracked = {
         relative
         for relative in subprocess.run(
@@ -824,9 +843,19 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
     # The packaged README is register-owned (PACKAGING_README) and rendered to
     # two places: the package root, where it is the repository's front page,
     # and suite/README.md, where the packaged docs cross-reference it.
+    #
+    # The package-root copy is skipped when write_readme=False (see
+    # generate_package()'s parameter and main()'s downstream-identity guard,
+    # deagy/cadre#97): a target repository that already has its own
+    # `.codex-plugin/plugin.json` -- meaning it is itself a hand-authored
+    # downstream package, not a fresh distribution target -- keeps its own
+    # README.md untouched. suite/README.md is unaffected either way: it
+    # always carries GENERATED_MARKER and is always register-owned content,
+    # even inside a downstream repository's own package tree.
     package_readme_content = PACKAGING_README.read_text(encoding="utf-8")
-    write(plugin_root / "README.md", package_readme_content)
-    written.append(plugin_root / "README.md")
+    if write_readme:
+        write(plugin_root / "README.md", package_readme_content)
+        written.append(plugin_root / "README.md")
     write(plugin_root / "suite" / "README.md", f"{GENERATED_MARKER}\n\n{package_readme_content}")
     written.append(plugin_root / "suite" / "README.md")
     for relative in selected:
@@ -904,19 +933,25 @@ def generate_suite_copy(catalog: dict[str, dict[str, Any]], plugin_root: Path) -
     return written
 
 
-def generate_package(catalog: dict[str, dict[str, Any]], plugin_root: Path) -> list[Path]:
-    reset_generated_content(plugin_root)
+def generate_package(
+    catalog: dict[str, dict[str, Any]], plugin_root: Path, *, write_readme: bool = True
+) -> list[Path]:
+    # write_readme=False is main()'s downstream-identity guard (deagy/cadre#97):
+    # a target that already carries its own `.codex-plugin/plugin.json` keeps
+    # its own README.md through both the reset and the regeneration below.
+    reset_generated_content(plugin_root, remove_readme=write_readme)
     return (
         generate_skill_copies(plugin_root)
-        + generate_suite_copy(catalog, plugin_root)
+        + generate_suite_copy(catalog, plugin_root, write_readme=write_readme)
         + generate_agent_wrappers(catalog, plugin_root)
         + generate_provider_copy(catalog, plugin_root)
         + [generate_bin_wrapper(plugin_root)]
     )
 
 
-def files_equal(left: Path, right: Path) -> bool:
+def files_equal(left: Path, right: Path, *, compare_readme: bool = True) -> bool:
     nested_generated = tuple(Path(relative) for relative in GENERATED_NESTED_PATHS)
+    readme_path = Path("README.md")
 
     def generated_files(root: Path) -> set[Path]:
         return {
@@ -929,6 +964,12 @@ def files_equal(left: Path, right: Path) -> bool:
             )
             and "__pycache__" not in path.relative_to(root).parts
             and path.suffix not in (".pyc", ".pyo")
+            # Excluded when the `right`-side target owns its own README.md
+            # (deagy/cadre#97) -- see main()'s --check handling, which passes
+            # compare_readme=False exactly when that's the case. `left` is
+            # always a freshly generated, marker-less candidate, so it always
+            # has a package-root README.md of its own to filter out here too.
+            and (compare_readme or path.relative_to(root) != readme_path)
         }
 
     left_files = generated_files(left)
@@ -957,15 +998,29 @@ def main() -> int:
         output_root = Path(arguments[output_index + 1]).resolve()
     except IndexError as error:
         raise SystemExit("--output requires a directory") from error
+    marker = output_root / ".codex-plugin" / "plugin.json"
+    # An existing `.codex-plugin/plugin.json` at the target means it is
+    # already an initialized, hand-authored downstream package -- not a
+    # fresh distribution target -- so its own README.md is downstream-owned
+    # and must survive regeneration untouched (deagy/cadre#97: the earlier
+    # non-empty-directory guard below only checked the marker's *presence*,
+    # never that its declared identity matched what this generator would
+    # produce, so it passed trivially for exactly this case and did nothing
+    # to stop a README.md clobber). `--force-readme` is the escape hatch for
+    # the one target that legitimately wants the register's own README.md
+    # written over an existing marker: the actual `deagy/cadre-plugin`-style
+    # distribution checkout, if one is ever re-created.
+    force_readme = "--force-readme" in arguments
+    preexisting_marker = marker.is_file()
+    write_readme = force_readme or not preexisting_marker
     if "--check" not in arguments and output_root.exists():
-        marker = output_root / ".codex-plugin" / "plugin.json"
-        if any(output_root.iterdir()) and not marker.is_file():
+        if any(output_root.iterdir()) and not preexisting_marker:
             raise SystemExit("--output must be a new directory or an existing generated plugin")
     if "--check" in arguments:
         with tempfile.TemporaryDirectory(prefix="cadre-plugin-") as temporary_directory:
             candidate = Path(temporary_directory) / "cadre"
             generate_package(catalog, candidate)
-            if not output_root.exists() or not files_equal(candidate, output_root):
+            if not output_root.exists() or not files_equal(candidate, output_root, compare_readme=write_readme):
                 print("Generated plugin is stale or non-deterministic; run cadre generate-plugin", file=sys.stderr)
                 return 1
         kernel = os.environ.get("AGENTIC_SDLC_BIN") or shutil.which("agentic-sdlc")
@@ -979,8 +1034,15 @@ def main() -> int:
                 return 1
         print(f"Generated plugin is current under {output_root}")
         return 0
-    written = generate_package(catalog, output_root)
+    written = generate_package(catalog, output_root, write_readme=write_readme)
     print(f"Generated {len(written)} self-contained files under {output_root}")
+    if not write_readme:
+        print(
+            f"README.md left untouched: {marker} already exists, so {output_root} is treated as an "
+            "already-initialized downstream package that owns its own README.md. Pass --force-readme "
+            "to overwrite it with the register's own template instead.",
+            file=sys.stderr,
+        )
     return 0
 
 
