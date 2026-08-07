@@ -82,6 +82,8 @@ Before dispatching a role, check for a project-local override: a `.claude/agents
 3. Test, code, infrastructure, and pipeline review by agents that did not author the artifact.
 4. Security, compliance, documentation, evidence, and release consolidation as applicable.
 
+A role scoped to an entire large codebase (e.g. a full-repository security or supply-chain review, rather than a bounded change) risks exceeding a single dispatch's time budget — this repository's own `codebase-review-2026-07-30` task saw `security-reviewer` and `supply-chain-security-reviewer` both time out this way, with no config-level fix available (see deagy/cadre#68): every other dispatched role that day shared the identical `model`/`reasoning_effort`/`capability` tier and completed normally, so the difference was scope size, not configuration. When a review's natural scope is "the whole repository" rather than a specific change, split it into narrower per-subsystem or per-directory waves and dispatch those independently, rather than one broad pass covering everything at once.
+
 Adapt waves to the selector plan, required quality gates, and workflow dependencies. Do not claim a role ran when it was deferred or unavailable. Do not let an author approve its own work. A reviewer who materially changes an artifact loses approval authority for that revision. If a review returns `request-changes`, `blocked`, or unresolved critical/high findings, invalidate dependent downstream gates, stop dependent release work, and report the earliest gate that must be re-entered.
 
 ## Consolidate Results

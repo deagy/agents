@@ -17,6 +17,10 @@ point are cut manually rather than via an automated version-bump PR.
 
 ## [Unreleased]
 
+### Added
+
+- **`run-agent-orchestration`'s "Dispatch in Waves" section now warns against scoping a role to an entire large codebase.** Investigating #68 (two agents, `security-reviewer` and `supply-chain-security-reviewer`, timed out during a full-repository codebase review) found no config-level cause — every dispatched role that day shared the identical `model`/`reasoning_effort`/`capability` tier, and this repository exposes no timeout knob for that dispatch path at all (the one configurable timeout, `dispatch_core.py`'s `spawn_and_wait()`, is for a separate external MCP dispatch path with a different job-ID scheme, not what produced this incident's `run_00003`/`run_00006` identifiers). The skill now recommends splitting a whole-repository review into narrower per-subsystem or per-directory waves instead.
+
 ### Fixed
 
 - **`cadre generate-plugin --output` could silently clobber a downstream package's hand-authored README.md.** The existing guard against overwriting a non-empty `--output` directory only checked for the *presence* of a `.codex-plugin/plugin.json` marker, not whether the target's declared identity actually matched what this generator would produce — so it passed trivially for a repository that is both a legitimate regeneration target and its own initialized downstream package (e.g. `deagy/cadre-lifecycle`, which merges Cadre with Agentic SDLC/Cline/LangGraph and hand-authors its own README describing that identity), and generation proceeded straight to an unconditional README.md write. `generate-plugin --output` now leaves README.md untouched whenever the target already has a `.codex-plugin/plugin.json`; `--check` correspondingly excludes README.md from its drift comparison in that case. Pass the new `--force-readme` flag to write this generator's own README.md over an existing marker anyway (fixes #97).
