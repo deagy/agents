@@ -5,6 +5,7 @@ static default > computed default > interactive prompt > fail-closed)."""
 from __future__ import annotations
 
 import builtins
+import io
 import json
 import os
 import sys
@@ -603,6 +604,67 @@ class EffectiveSettingsAndCliTests(SettingsTestCase):
     def test_config_resolve_cli_requires_exactly_one_key_argument(self) -> None:
         self.assertEqual(settings.main(["resolve"]), 2)
         self.assertEqual(settings.main(["resolve", "a", "b"]), 2)
+
+
+class StdoutTtyOverrideTests(SettingsTestCase):
+    """`cadre config resolve <key>` is always invoked by the packaged shell
+    wrapper as `x=$(... resolve key)` -- a command substitution whose
+    stdout is unconditionally a pipe, never a real tty, regardless of
+    CADRE_INTERACTIVE=1 or the caller's actual terminal. Without the
+    override machinery below, --interactive prompting through that
+    subcommand would be permanently unreachable."""
+
+    def test_gate_still_requires_stdin_tty_even_with_override(self) -> None:
+        with mock.patch.object(sys.stdin, "isatty", return_value=False):
+            with settings._stdout_tty_override(True):
+                self.assertFalse(settings._interactive_gate_open({"CADRE_INTERACTIVE": "1"}))
+
+    def test_gate_opens_on_stdin_tty_alone_when_override_is_true(self) -> None:
+        with mock.patch.object(sys.stdin, "isatty", return_value=True), mock.patch.object(
+            sys.stdout, "isatty", return_value=False
+        ):
+            self.assertFalse(settings._interactive_gate_open({"CADRE_INTERACTIVE": "1"}))
+            with settings._stdout_tty_override(True):
+                self.assertTrue(settings._interactive_gate_open({"CADRE_INTERACTIVE": "1"}))
+            # Override is scoped to the `with` block only.
+            self.assertFalse(settings._interactive_gate_open({"CADRE_INTERACTIVE": "1"}))
+
+    def test_open_tty_io_returns_none_without_a_controlling_terminal(self) -> None:
+        with mock.patch("builtins.open", side_effect=OSError("no such device")):
+            self.assertIsNone(settings._open_tty_io())
+
+    def test_resolve_cli_prompts_via_tty_without_leaking_into_captured_stdout(self) -> None:
+        # Simulates the real command-substitution scenario end to end:
+        # stdout is not a tty (as it never is under `$(...)`), stdin is,
+        # and _open_tty_io is stubbed to a fake terminal so no real
+        # /dev/tty is required in a test environment. Only the final
+        # resolved value may reach real stdout.
+        answers = iter(["https://prompted.example.com", "skip"])
+        tty_transcript: list[str] = []
+
+        def fake_input(_prompt: str) -> str:
+            return next(answers)
+
+        def fake_output(text: str) -> None:
+            tty_transcript.append(text)
+
+        with mock.patch.object(sys.stdin, "isatty", return_value=True), mock.patch.object(
+            settings, "_open_tty_io", return_value=(fake_input, fake_output)
+        ), mock.patch.object(
+            settings.Path, "cwd", return_value=self.project_dir
+        ), mock.patch.dict(
+            os.environ, {"CADRE_INTERACTIVE": "1"}, clear=False
+        ):
+            # Replaces sys.stdout wholesale with a StringIO (isatty() is
+            # False on a StringIO by default, matching a real command-
+            # substitution pipe) rather than only patching .isatty, so
+            # print(value)'s actual destination is captured too.
+            captured_stdout = io.StringIO()
+            with mock.patch.object(sys, "stdout", captured_stdout):
+                exit_code = settings.main(["resolve", "gitlab.base_url"])
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(captured_stdout.getvalue().strip(), "https://prompted.example.com")
+        self.assertTrue(any("gitlab.base_url" in line for line in tty_transcript))
 
 
 class ResolveManyTests(SettingsTestCase):

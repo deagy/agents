@@ -949,6 +949,23 @@ would silently ignore a configured value. This repository's own Python
 `bin/cadre.py` dispatcher resolves the same field directly in-process and
 does not need this subcommand.
 
+Two properties of that wrapper are worth knowing, since both are easy to
+break:
+
+- **`cadre sdlc ...` still needs no Python at all** when the binary is
+  already locatable without a config file (`AGENTIC_SDLC_BIN` set, or
+  `agentic-sdlc` on `PATH`). Only a config-file-supplied value requires a
+  Python interpreter, and its absence degrades to the same `PATH`-only
+  behavior the wrapper had before, never a new hard failure.
+- **`cadre --interactive sdlc ...` can still prompt**, even though the
+  wrapper necessarily calls `resolve` inside a `$(...)` command
+  substitution whose stdout is a pipe rather than a terminal. `resolve`
+  binds prompt input/output to `/dev/tty` (the *controlling* terminal,
+  independent of this process's own redirection) and opens the interactive
+  gate on that basis for exactly that one resolution, so prompt text never
+  contaminates the captured stdout -- only the final resolved value is
+  printed there.
+
 ## 18. Record a GitHub-backed human gate approval
 
 The portable lifecycle kernel supports two GitHub review paths. Use the

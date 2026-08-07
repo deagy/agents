@@ -698,23 +698,42 @@ def generate_bin_wrapper(plugin_root: Path) -> Path:
             "fi",
             'command_name="${1:-help}"',
             '[ "$#" -gt 0 ] && shift || true',
-            "AGENT_PYTHON=",
-            "for candidate in python3 python; do",
-            '  command -v "$candidate" >/dev/null 2>&1 || continue',
-            '  if "$candidate" -c \'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)\' 2>/dev/null; then AGENT_PYTHON="$candidate"; break; fi',
-            "done",
-            '[ -n "$AGENT_PYTHON" ] || { echo "cadre: Python 3.10+ is required" >&2; exit 1; }',
+            "detect_agent_python() {",
+            "  AGENT_PYTHON=",
+            "  for candidate in python3 python; do",
+            '    command -v "$candidate" >/dev/null 2>&1 || continue',
+            "    if \"$candidate\" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; then AGENT_PYTHON=\"$candidate\"; break; fi",
+            "  done",
+            "}",
             'if [ "$command_name" = "sdlc" ]; then',
-            # Resolved through roster/shared/src/settings.py's real
-            # precedence chain (env > project/global config, only where the
-            # field's trust scope allows it > shutil.which fallback),
-            # exactly like this repo's own Python bin/cadre.py -- not a
-            # second, hand-rolled shell-only resolution that would silently
-            # ignore a configured value or a scope violation.
-            '  sdlc_bin=$("$AGENT_PYTHON" "$SUITE_ROOT/roster/shared/src/settings.py" resolve agentic_sdlc.bin_path) || exit 1',
+            # AGENTIC_SDLC_BIN is settings.py's *highest*-precedence source
+            # for this field, so honoring it directly here needs no Python
+            # and cannot get the precedence order wrong. Everything below
+            # that -- a project/global config file (only where the field's
+            # trust scope allows it), then a bare PATH lookup as the lowest-
+            # precedence computed default -- MUST go through settings.py's
+            # resolve_optional() so the config file is actually consulted
+            # and wins over a same-named binary that merely happens to be
+            # on PATH; jumping straight to `command -v agentic-sdlc` here
+            # (as the pre-#109 wrapper did) would silently skip the config
+            # file and reintroduce the exact gap this PR exists to close.
+            # Python is only truly required for that config-file check, so
+            # its absence degrades to the same PATH-only behavior this
+            # wrapper already had, rather than becoming a new hard failure.
+            '  sdlc_bin="${AGENTIC_SDLC_BIN:-}"',
+            '  if [ -z "$sdlc_bin" ]; then',
+            "    detect_agent_python",
+            '    if [ -n "$AGENT_PYTHON" ]; then',
+            '      sdlc_bin=$("$AGENT_PYTHON" "$SUITE_ROOT/roster/shared/src/settings.py" resolve agentic_sdlc.bin_path) || exit 1',
+            "    else",
+            '      sdlc_bin=$(command -v agentic-sdlc || true)',
+            "    fi",
+            "  fi",
             '  [ -n "$sdlc_bin" ] || { echo "cadre: install Agentic SDLC v0.3.x from https://github.com/deagy/agentic-sdlc" >&2; exit 1; }',
             '  exec "$sdlc_bin" --provider "$PLUGIN_ROOT/provider.json" "$@"',
             "fi",
+            "detect_agent_python",
+            '[ -n "$AGENT_PYTHON" ] || { echo "cadre: Python 3.10+ is required" >&2; exit 1; }',
             'case "$command_name" in',
             *case_lines,
             f'  help|-h|--help) echo "Usage: cadre [--interactive] {{{usage}}} [args...]" ;;',

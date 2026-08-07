@@ -1197,6 +1197,65 @@ class RepositoryHealthTests(unittest.TestCase):
         )
         self.assertIn("Usage: cadre [--interactive]", result.stdout)
 
+    @unittest.skipUnless(sys.platform != "win32", "bin/cadre is a POSIX sh script")
+    def test_packaged_bin_wrapper_sdlc_needs_no_python_when_the_binary_is_already_locatable(self) -> None:
+        """`cadre sdlc ...` must keep working on a host with no Python 3.10+
+        at all whenever the binary is already locatable without consulting a
+        config file (AGENTIC_SDLC_BIN, or `agentic-sdlc` on PATH) -- the
+        pre-existing, Python-independent property of this branch. Only a
+        config-file-supplied value legitimately requires Python.
+        """
+        wrapper = generated_package() / "bin" / "cadre"
+        with tempfile.TemporaryDirectory() as fake_bin:
+            stub = Path(fake_bin) / "agentic-sdlc"
+            stub.write_text('#!/bin/sh\necho "STUB-SDLC $*"\n', encoding="utf-8")
+            stub.chmod(0o755)
+            other = Path(fake_bin) / "other-sdlc"
+            other.write_text('#!/bin/sh\necho "STUB-SDLC $*"\n', encoding="utf-8")
+            other.chmod(0o755)
+            # PATH deliberately contains no python3/python.
+            bare_path = f"{fake_bin}:/bin"
+
+            via_env = subprocess.run(
+                [str(wrapper), "sdlc", "--version"],
+                cwd=REPOSITORY_ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                env={"PATH": bare_path, "AGENTIC_SDLC_BIN": str(other), "HOME": fake_bin},
+            )
+            self.assertEqual(0, via_env.returncode, via_env.stderr)
+            self.assertIn("STUB-SDLC", via_env.stdout)
+
+            via_path = subprocess.run(
+                [str(wrapper), "sdlc", "--version"],
+                cwd=REPOSITORY_ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                env={"PATH": bare_path, "HOME": fake_bin},
+            )
+            self.assertEqual(0, via_path.returncode, via_path.stderr)
+            self.assertIn("STUB-SDLC", via_path.stdout)
+
+            # With nothing locatable and no Python, the failure must still be
+            # the actionable install pointer, never "Python 3.10+ is required".
+            stub.unlink()
+            unresolvable = subprocess.run(
+                [str(wrapper), "sdlc", "--version"],
+                cwd=REPOSITORY_ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                env={"PATH": bare_path, "HOME": fake_bin},
+            )
+            self.assertNotEqual(0, unresolvable.returncode)
+            self.assertIn("install Agentic SDLC", unresolvable.stderr)
+            self.assertNotIn("Python 3.10+ is required", unresolvable.stderr)
+
     def test_bin_agents_subcommand_table_is_the_single_source_of_truth(self) -> None:
         table = REPOSITORY_ROOT / "bin" / "subcommands.tsv"
         self.assertTrue(table.is_file(), str(table))

@@ -35,6 +35,7 @@ functions elsewhere stay exactly as they are.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
@@ -502,17 +503,90 @@ def _fail_closed_message(spec: FieldSpec, checks: list[str], global_path: Path) 
     return "\n".join(lines)
 
 
+# Set only by _cmd_resolve's own tty-bound prompt path (see _open_tty_io
+# below), never by any other caller. `cadre config resolve <key>` -- the
+# packaged shell wrapper's only way to consult this resolver -- is always
+# invoked as `x=$(... resolve key)`, a command substitution whose child
+# process's stdout is unconditionally a pipe, never a tty, regardless of
+# the real controlling terminal or CADRE_INTERACTIVE=1. Gating solely on
+# `sys.stdout.isatty()` would make --interactive prompting through that
+# subcommand permanently unreachable. When _cmd_resolve has independently
+# confirmed a controlling terminal exists (by successfully opening
+# /dev/tty) and has rebound the prompt's own input/output to that terminal
+# (never to the piped stdout/stdin), this override lets the gate open on
+# stdin-tty alone for that one call -- every other caller (in-process
+# Python callers whose real stdout is what a human is looking at) is
+# unaffected and still requires both.
+_STDOUT_TTY_OVERRIDE: bool | None = None
+
+
 def _interactive_gate_open(env: dict[str, str]) -> bool:
     if _INTERACTIVE_DISABLED:
         return False
     if env.get(INTERACTIVE_ENV_VAR) != "1":
         return False
     try:
-        if not sys.stdin.isatty() or not sys.stdout.isatty():
+        if not sys.stdin.isatty():
+            return False
+        stdout_ok = sys.stdout.isatty() if _STDOUT_TTY_OVERRIDE is None else _STDOUT_TTY_OVERRIDE
+        if not stdout_ok:
             return False
     except Exception:  # noqa: BLE001 - a non-stream stdin/stdout is not a tty
         return False
     return True
+
+
+@contextlib.contextmanager
+def _stdout_tty_override(value: bool):
+    global _STDOUT_TTY_OVERRIDE
+    previous = _STDOUT_TTY_OVERRIDE
+    _STDOUT_TTY_OVERRIDE = value
+    try:
+        yield
+    finally:
+        _STDOUT_TTY_OVERRIDE = previous
+
+
+def _open_tty_io() -> tuple[Callable[[str], str], Callable[[str], None]] | None:
+    """Best-effort open of the controlling terminal for prompt I/O, used
+    only by `_cmd_resolve` below. `/dev/tty` (POSIX) refers to whatever
+    terminal is actually controlling this process, independent of this
+    process's own stdin/stdout redirection -- exactly the property needed
+    when stdout is a shell command-substitution pipe capturing a resolved
+    value, not a place prompt text can go. Returns None (not an exception)
+    if there is no controlling terminal (e.g. truly non-interactive), so
+    the caller falls through to the ordinary non-prompting path."""
+    if sys.platform == "win32":
+        return None
+    # Two separate handles rather than one "r+": a buffered read-write text
+    # stream requires a seekable file, and /dev/tty is a character device,
+    # so open("/dev/tty", "r+") raises io.UnsupportedOperation ("File or
+    # stream is not seekable") on modern CPython. Opening read and write
+    # sides independently avoids the seekability requirement entirely.
+    reader = writer = None
+    try:
+        reader = open("/dev/tty", "r", encoding="utf-8")  # noqa: SIM115 - held for the process lifetime
+        writer = open("/dev/tty", "w", encoding="utf-8")  # noqa: SIM115 - held for the process lifetime
+    except (OSError, ValueError):
+        for handle in (reader, writer):
+            if handle is not None:
+                with contextlib.suppress(Exception):
+                    handle.close()
+        return None
+
+    def input_func(prompt: str) -> str:
+        writer.write(prompt)
+        writer.flush()
+        line = reader.readline()
+        if not line:
+            raise EOFError("controlling terminal closed during prompt")
+        return line.rstrip("\n")
+
+    def output_func(text: str) -> None:
+        writer.write(text + "\n")
+        writer.flush()
+
+    return input_func, output_func
 
 
 def _prompt_tier_choice(spec: FieldSpec, input_func: Callable[[str], str], output_func: Callable[[str], None]) -> str | None:
@@ -962,7 +1036,15 @@ def _cmd_resolve(args: list[str]) -> int:
     On a `SettingsError` (including a `global_only` scope violation), the
     message is printed to stderr and this exits 1, matching every other
     fail-closed path in this module -- callers must propagate that exit
-    code, not swallow it."""
+    code, not swallow it.
+
+    If the field is unresolved and CADRE_INTERACTIVE=1, prompting still
+    works even though this process's own stdout is a pipe (the caller's
+    command substitution capturing the eventual resolved value): prompt
+    input/output is rebound to /dev/tty via `_open_tty_io`, and
+    `_stdout_tty_override` opens the interactive gate for the duration of
+    that one resolution -- nothing prompt-related ever touches the real,
+    captured stdout, only the final resolved value does."""
     if len(args) != 1:
         print("usage: cadre config resolve <key>", file=sys.stderr)
         return 2
@@ -975,7 +1057,13 @@ def _cmd_resolve(args: list[str]) -> int:
                 file=sys.stderr,
             )
             return 2
-        value = resolve_optional(key)
+        tty_io = _open_tty_io() if os.environ.get(INTERACTIVE_ENV_VAR) == "1" else None
+        if tty_io is not None:
+            input_func, output_func = tty_io
+            with _stdout_tty_override(True):
+                value = resolve_optional(key, input_func=input_func, output_func=output_func)
+        else:
+            value = resolve_optional(key)
     except SettingsError as error:
         print(str(error), file=sys.stderr)
         return 1
