@@ -23,7 +23,7 @@ releases](https://github.com/deagy/cadre-lifecycle/releases) for the current tag
 rather than trusting the one written here:
 
 ```text
-/plugin marketplace add deagy/cadre-lifecycle@v0.7.0
+/plugin marketplace add deagy/cadre-lifecycle@v0.9.8
 /plugin install cadre@cadre-lifecycle-team
 ```
 
@@ -35,7 +35,7 @@ tag itself. `owner/repo` shorthand clones over SSH by default; set
 **Codex** installs from a local checkout, so clone at the tag first:
 
 ```sh
-git clone --branch v0.7.0 https://github.com/deagy/cadre-lifecycle.git
+git clone --branch v0.9.8 https://github.com/deagy/cadre-lifecycle.git
 codex plugin marketplace add /path/to/cadre-lifecycle
 codex plugin add cadre@cadre-lifecycle-team
 ```
@@ -48,7 +48,7 @@ for this successor repository; install from the tagged git checkout or the
 pinned marketplace add above instead:
 
 ```sh
-git clone --branch v0.7.0 https://github.com/deagy/cadre-lifecycle.git
+git clone --branch v0.9.8 https://github.com/deagy/cadre-lifecycle.git
 codex plugin marketplace add /path/to/cadre-lifecycle   # or /plugin marketplace add /path/to/cadre-lifecycle
 ```
 
@@ -63,7 +63,7 @@ cline plugin install --git https://github.com/deagy/cadre-lifecycle --force
 or from a local checkout for development:
 
 ```sh
-git clone --branch v0.7.0 https://github.com/deagy/cadre-lifecycle.git
+git clone --branch v0.9.8 https://github.com/deagy/cadre-lifecycle.git
 cline plugin install /path/to/cadre-lifecycle --force
 ```
 
