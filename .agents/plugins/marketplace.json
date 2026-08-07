@@ -1,14 +1,14 @@
 {
-  "name": "cadre-lifecycle-team",
+  "name": "cadre-team",
   "interface": {
-    "displayName": "Cadre Lifecycle Team"
+    "displayName": "Cadre"
   },
   "plugins": [
     {
       "name": "cadre",
       "source": {
         "source": "local",
-        "path": "./"
+        "path": "./plugin"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -20,7 +20,7 @@
       "name": "cadre-lifecycle-core",
       "source": {
         "source": "local",
-        "path": "./plugins/lifecycle"
+        "path": "./plugin/plugins/lifecycle"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -32,7 +32,7 @@
       "name": "cadre-lifecycle-github",
       "source": {
         "source": "local",
-        "path": "./plugins/lifecycle-github"
+        "path": "./plugin/plugins/lifecycle-github"
       },
       "policy": {
         "installation": "AVAILABLE",
@@ -44,7 +44,7 @@
       "name": "cadre-lifecycle-gitlab",
       "source": {
         "source": "local",
-        "path": "./plugins/lifecycle-gitlab"
+        "path": "./plugin/plugins/lifecycle-gitlab"
       },
       "policy": {
         "installation": "AVAILABLE",
