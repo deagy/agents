@@ -27,13 +27,14 @@ _MODULE_DIR = Path(__file__).resolve().parent
 if str(_MODULE_DIR) not in sys.path:
     sys.path.insert(0, str(_MODULE_DIR))
 
-import gitlab_core as core  # noqa: E402  (sys.path set above)
+import gitlab_core as core  # noqa: E402  (sys.path set above; also appends roster/shared/src)
+import settings  # noqa: E402
 
 # Unconditional, at import time: this is also a stdio-transport server (see
 # module docstring), so gitlab_core.resolve_config()'s underlying
 # roster/shared/src/settings.py resolver must never fall through to an
 # interactive input() prompt here either.
-core._settings.disable_interactive()
+settings.disable_interactive()
 
 MCP_INSTALL_MESSAGE = (
     "The 'mcp' package is required to run the GitLab evidence MCP "

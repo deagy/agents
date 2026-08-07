@@ -96,6 +96,14 @@ def default_config_path() -> Path:
     partitioning this requires of callers when no project-local override
     exists. A project opts into its own private store simply by creating the
     project-local file.
+
+    May raise `settings.SettingsError` (specifically `SettingsScopeError`)
+    if a project-local `.agents/cadre.yaml`/`.json` sets `knowledge_store.home`
+    -- that field is global-only, since a project-local file is untrusted,
+    clonable content and this value picks where a database is read/written.
+    `cli.py`'s top-level handler catches `SettingsError` alongside its other
+    caught exception types so this surfaces as a clean CLI error, not a
+    traceback.
     """
     project_local = find_project_local_config(Path.cwd())
     if project_local:

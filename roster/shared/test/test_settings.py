@@ -62,14 +62,22 @@ class PrecedenceMatrixTests(SettingsTestCase):
         self.assertEqual(value, "from-env")
 
     def test_project_file_wins_over_global_file(self) -> None:
-        _write_project_config(self.project_dir, 'gitlab:\n  project_id: "from-project"\n')
+        # gitlab.project_id is global_only (see GlobalOnlyScopeTests), so
+        # project-vs-global honoring can only be demonstrated with a
+        # project_or_global field -- gitlab.supports_work_item_hierarchy is
+        # currently the only one.
+        _write_project_config(
+            self.project_dir, "gitlab:\n  supports_work_item_hierarchy: true\n"
+        )
         (self.xdg_config_home / "cadre").mkdir(parents=True)
         (self.xdg_config_home / "cadre" / "config.yaml").write_text(
-            'gitlab:\n  project_id: "from-global"\n', encoding="utf-8"
+            "gitlab:\n  supports_work_item_hierarchy: false\n", encoding="utf-8"
         )
         settings.reset_cache()
-        value = settings.resolve_setting("gitlab.project_id", start=self.project_dir, env={})
-        self.assertEqual(value, "from-project")
+        value = settings.resolve_setting(
+            "gitlab.supports_work_item_hierarchy", start=self.project_dir, env={}
+        )
+        self.assertIs(value, True)
 
     def test_global_file_wins_over_default(self) -> None:
         (self.xdg_config_home / "cadre").mkdir(parents=True)
@@ -153,9 +161,13 @@ class GlobalOnlyScopeTests(SettingsTestCase):
         self.assertIn("project-local", message)
 
     def test_project_local_file_setting_a_project_or_global_field_is_honored(self) -> None:
-        _write_project_config(self.project_dir, 'gitlab:\n  project_id: "42"\n')
-        value = settings.resolve_setting("gitlab.project_id", start=self.project_dir, env={})
-        self.assertEqual(value, "42")
+        _write_project_config(
+            self.project_dir, "gitlab:\n  supports_work_item_hierarchy: true\n"
+        )
+        value = settings.resolve_setting(
+            "gitlab.supports_work_item_hierarchy", start=self.project_dir, env={}
+        )
+        self.assertIs(value, True)
 
     def test_global_file_may_set_a_global_only_field(self) -> None:
         (self.xdg_config_home / "cadre").mkdir(parents=True)
@@ -165,6 +177,27 @@ class GlobalOnlyScopeTests(SettingsTestCase):
         settings.reset_cache()
         value = settings.resolve_setting("gitlab.base_url", start=self.project_dir, env={})
         self.assertEqual(value, "https://ok.example.com")
+
+    def test_project_local_null_value_for_global_only_field_still_raises(self) -> None:
+        # Regression test: the scope check must fire on the key's mere
+        # presence in a project-local file, not only on a non-null value --
+        # an explicit `null` must not be usable to silently no-op past the
+        # "never silently ignored" invariant for a global_only field.
+        _write_project_config(self.project_dir, "gitlab:\n  base_url: ~\n")
+        with self.assertRaises(settings.SettingsScopeError) as ctx:
+            settings.resolve_setting("gitlab.base_url", start=self.project_dir, env={})
+        self.assertIn("gitlab.base_url", str(ctx.exception))
+
+    def test_gitlab_project_id_is_global_only(self) -> None:
+        # roster/orchestration/mcp/SECURITY-CONTROLS.md records a
+        # human-accepted residual-risk control that depends on both
+        # GITLAB_BASE_URL *and* GITLAB_DOCS_PROJECT_ID being operator-fixed
+        # (a dedicated docs-only project + a least-privilege token) --
+        # letting an untrusted project-local file redirect the destination
+        # project would silently weaken that control.
+        _write_project_config(self.project_dir, 'gitlab:\n  project_id: "evil"\n')
+        with self.assertRaises(settings.SettingsScopeError):
+            settings.resolve_setting("gitlab.project_id", start=self.project_dir, env={})
 
 
 class SecretShapedKeyTests(SettingsTestCase):
@@ -261,14 +294,28 @@ class TristateHierarchyFlagTests(SettingsTestCase):
 
 
 class YamlScalarHazardTests(SettingsTestCase):
+    # gitlab.project_id is global_only (see GlobalOnlyScopeTests), so these
+    # kind="project_id" validator tests write to the global tier -- global
+    # is always allowed for every field regardless of scope, and the scope
+    # check (which runs before validation, on the project-tier path only)
+    # would otherwise mask the validator behavior these tests exist to
+    # exercise.
     def test_unquoted_numeric_project_id_is_rejected(self) -> None:
-        _write_project_config(self.project_dir, "gitlab:\n  project_id: 007\n")
+        (self.xdg_config_home / "cadre").mkdir(parents=True)
+        (self.xdg_config_home / "cadre" / "config.yaml").write_text(
+            "gitlab:\n  project_id: 007\n", encoding="utf-8"
+        )
+        settings.reset_cache()
         with self.assertRaises(settings.SettingsError) as ctx:
             settings.resolve_setting("gitlab.project_id", start=self.project_dir, env={})
         self.assertIn("project_id", str(ctx.exception))
 
     def test_tilde_project_id_is_treated_as_unset_at_this_tier(self) -> None:
-        _write_project_config(self.project_dir, "gitlab:\n  project_id: ~\n")
+        (self.xdg_config_home / "cadre").mkdir(parents=True)
+        (self.xdg_config_home / "cadre" / "config.yaml").write_text(
+            "gitlab:\n  project_id: ~\n", encoding="utf-8"
+        )
+        settings.reset_cache()
         with self.assertRaises(settings.SettingsError) as ctx:
             settings.resolve_setting("gitlab.project_id", start=self.project_dir, env={})
         # required field, unset everywhere -> fail-closed, not a validation
@@ -276,7 +323,11 @@ class YamlScalarHazardTests(SettingsTestCase):
         self.assertIn("is not configured", str(ctx.exception))
 
     def test_yes_no_bool_coercion_rejected_for_string_fields(self) -> None:
-        _write_project_config(self.project_dir, "gitlab:\n  project_id: yes\n")
+        (self.xdg_config_home / "cadre").mkdir(parents=True)
+        (self.xdg_config_home / "cadre" / "config.yaml").write_text(
+            "gitlab:\n  project_id: yes\n", encoding="utf-8"
+        )
+        settings.reset_cache()
         with self.assertRaises(settings.SettingsError):
             settings.resolve_setting("gitlab.project_id", start=self.project_dir, env={})
 
@@ -343,6 +394,29 @@ class MissingPyYamlAndDualFileTests(SettingsTestCase):
         self.assertIn("config.yaml", str(ctx.exception))
         self.assertIn("config.json", str(ctx.exception))
 
+    def test_malformed_yaml_raises_settings_error_without_echoing_content(self) -> None:
+        # A malformed (or symlink-redirected) file must fail closed with a
+        # controlled SettingsError, never an unwrapped yaml.YAMLError --
+        # PyYAML's own parser-error messages routinely quote a snippet of
+        # the offending content, which this file's path may not actually
+        # belong to (see the read-path symlink-escape guard above).
+        _write_project_config(self.project_dir, "gitlab:\n  base_url: [unterminated\n")
+        with self.assertRaises(settings.SettingsError) as ctx:
+            settings.resolve_setting("gitlab.base_url", start=self.project_dir, env={})
+        message = str(ctx.exception)
+        self.assertIn("cadre.yaml", message)
+        self.assertNotIn("unterminated", message)
+
+    def test_malformed_json_raises_settings_error_without_echoing_content(self) -> None:
+        _write_project_config(
+            self.project_dir, '{"gitlab": {"base_url": "SECRET_SNIPPET_MARKER"', filename="cadre.json"
+        )
+        with self.assertRaises(settings.SettingsError) as ctx:
+            settings.resolve_setting("gitlab.base_url", start=self.project_dir, env={})
+        message = str(ctx.exception)
+        self.assertIn("cadre.json", message)
+        self.assertNotIn("SECRET_SNIPPET_MARKER", message)
+
 
 class AtomicWriteTests(SettingsTestCase):
     def test_round_trip_preserves_unknown_keys_uses_replace_and_correct_mode(self) -> None:
@@ -373,11 +447,18 @@ class AtomicWriteTests(SettingsTestCase):
         self.assertEqual(value, "my-claude")
 
     def test_project_tier_write_creates_file_and_is_readable(self) -> None:
-        path = settings.write_setting("gitlab.project_id", "99", tier="project", start=self.project_dir)
+        # gitlab.project_id is global_only; supports_work_item_hierarchy is
+        # the only project_or_global field, so it's the one this test can
+        # legitimately write to the project tier.
+        path = settings.write_setting(
+            "gitlab.supports_work_item_hierarchy", True, tier="project", start=self.project_dir
+        )
         self.assertTrue(path.is_file())
         settings.reset_cache()
-        value = settings.resolve_setting("gitlab.project_id", start=self.project_dir, env={})
-        self.assertEqual(value, "99")
+        value = settings.resolve_setting(
+            "gitlab.supports_work_item_hierarchy", start=self.project_dir, env={}
+        )
+        self.assertIs(value, True)
 
     def test_global_only_field_cannot_be_written_to_project_tier(self) -> None:
         with self.assertRaises(settings.SettingsError):
@@ -386,14 +467,38 @@ class AtomicWriteTests(SettingsTestCase):
 
 class SymlinkEscapeTests(SettingsTestCase):
     def test_symlinked_agents_directory_write_is_rejected(self) -> None:
+        # Uses supports_work_item_hierarchy, the only project_or_global
+        # field -- gitlab.project_id is global_only and would be rejected
+        # for that reason alone before the write-path symlink guard this
+        # test exists to exercise is ever reached.
         outside = Path(tempfile.mkdtemp(prefix="cadre-settings-outside-"))
         self.addCleanup(lambda: __import__("shutil").rmtree(outside, ignore_errors=True))
         (self.project_dir / ".agents").rmdir()
         (self.project_dir / ".agents").symlink_to(outside, target_is_directory=True)
         with self.assertRaises(settings.SettingsError) as ctx:
-            settings.write_setting("gitlab.project_id", "1", tier="project", start=self.project_dir)
+            settings.write_setting(
+                "gitlab.supports_work_item_hierarchy", True, tier="project", start=self.project_dir
+            )
         self.assertIn("symlink", str(ctx.exception).lower())
         self.assertFalse((outside / "cadre.yaml").exists())
+
+    def test_symlinked_agents_directory_read_is_rejected(self) -> None:
+        # Read-path counterpart: find_file_at_project_root's candidate.is_file()
+        # check follows symlinks, so a malicious .agents symlink shipped in
+        # an untrusted, clonable project could otherwise point resolution
+        # at an arbitrary file outside the project.
+        outside = Path(tempfile.mkdtemp(prefix="cadre-settings-outside-"))
+        self.addCleanup(lambda: __import__("shutil").rmtree(outside, ignore_errors=True))
+        (outside / "cadre.yaml").write_text(
+            'gitlab:\n  supports_work_item_hierarchy: true\n', encoding="utf-8"
+        )
+        (self.project_dir / ".agents").rmdir()
+        (self.project_dir / ".agents").symlink_to(outside, target_is_directory=True)
+        with self.assertRaises(settings.SettingsError) as ctx:
+            settings.resolve_setting(
+                "gitlab.supports_work_item_hierarchy", start=self.project_dir, env={}
+            )
+        self.assertIn("symlink", str(ctx.exception).lower())
 
 
 class NonInteractivePathNeverPromptsTests(SettingsTestCase):

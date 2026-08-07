@@ -336,24 +336,34 @@ def resolve_config() -> GitLabConfig:
     """Resolve the three (well, two required + one optional) target-project
     settings via `settings.py`'s unified resolver (env var > project-local
     file, when the field's trust scope allows it > user-global file >
-    default), mirroring `resolve_token()`'s fail-closed discipline.
-    `gitlab.base_url` is `global_only` (never settable from a project-local
-    file -- see settings.py's trust-scope table) because it selects the
-    exfiltration-sensitive network endpoint every write in this module talks
-    to; `gitlab.project_id` may come from either tier. Requires HTTPS --
-    there is no flag anywhere in this module that can accept an http://
-    base URL or disable TLS certificate verification (enforced inside
-    settings.py's `gitlab.base_url` validator, which also rejects URL
-    userinfo host-confusion, e.g. "https://gitlab.example.com@attacker.com/",
-    the same way this function always has).
+    default), mirroring `resolve_token()`'s fail-closed discipline. Both
+    `gitlab.base_url` and `gitlab.project_id` are `global_only` (never
+    settable from a project-local file -- see settings.py's trust-scope
+    table): `base_url` because it selects the exfiltration-sensitive
+    network endpoint every write in this module talks to, and
+    `project_id` because `SECURITY-CONTROLS.md` records a human-accepted
+    residual-risk control for this integration that depends on both fields
+    being operator-fixed (a single dedicated, docs-only project + a
+    least-privilege token). `gitlab.supports_work_item_hierarchy` is the
+    only field here that may come from either tier. Requires HTTPS -- there
+    is no flag anywhere in this module that can accept an http:// base URL
+    or disable TLS certificate verification (enforced inside settings.py's
+    `gitlab.base_url` validator, which also rejects URL userinfo
+    host-confusion, e.g. "https://gitlab.example.com@attacker.com/", the
+    same way this function always has).
 
-    Failures are re-raised as `GitLabConfigError` with the same message the
-    field-level validator already produced (same shape/wording this
-    function has always used, since `settings.py`'s per-field validators for
-    these two fields were written to match it) -- callers and tests that
-    assert on `GitLabConfigError`'s message therefore keep seeing the same
-    text, now with `settings.py`'s own "checked: <source> -> <state>" lines
-    appended when the value is entirely unresolved.
+    Failures are re-raised as `GitLabConfigError` wrapping whatever message
+    `settings.py`'s resolver produced. The `https://`/URL-userinfo/
+    hierarchy-flag validation messages match this function's pre-`settings.py`
+    wording exactly (settings.py's validators were written to match them).
+    The unset/empty-env-var and totally-unresolved messages do NOT match
+    the pre-`settings.py` wording verbatim -- they now read
+    "<key> is not configured" with "checked: <source> -> <state>" lines,
+    rather than "<ENV_VAR> is not set or is empty/whitespace-only". Existing
+    tests assert on exception *type* plus specific substrings (e.g.
+    "userinfo"), not full-message equality, so this doesn't break anything,
+    but don't assume unset/empty message text is stable across this
+    refactor if you're about to add a new assertion on it.
     """
     try:
         values = _settings.resolve_many(

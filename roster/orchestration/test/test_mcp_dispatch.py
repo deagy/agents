@@ -39,6 +39,29 @@ sys.path.insert(0, str(MCP_DIR))
 import dispatch_core as core  # noqa: E402
 from build_dispatch_plan import CLASSIFICATIONS as SELECTOR_CLASSIFICATIONS  # noqa: E402
 
+_SHARED_TEST_DIR = AGENTS_ROOT / "shared" / "test"
+if str(_SHARED_TEST_DIR) not in sys.path:
+    sys.path.append(str(_SHARED_TEST_DIR))
+
+from settings_test_helpers import isolate_settings_module  # noqa: E402  (sys.path set above)
+
+# Module-wide settings isolation: build_claude_child_argv/build_codex_child_argv
+# now resolve runners.claude_bin/runners.codex_bin through
+# roster/shared/src/settings.py, which -- for any test in this file that
+# doesn't set SECURE_CLOUD_AGENTS_CLAUDE_BIN/SECURE_CLOUD_AGENTS_CODEX_BIN
+# explicitly -- would otherwise fall through to the real developer
+# machine's ${XDG_CONFIG_HOME:-~/.config}/cadre/config.yaml and become
+# machine-dependent.
+_SETTINGS_ISOLATION = isolate_settings_module()
+
+
+def setUpModule() -> None:
+    _SETTINGS_ISOLATION.start()
+
+
+def tearDownModule() -> None:
+    _SETTINGS_ISOLATION.stop()
+
 
 def _toml_string(value: str) -> str:
     """Escape `value` exactly the way generate_global_plugin.py's
@@ -243,6 +266,31 @@ class ResolutionOrderTests(unittest.TestCase):
             self.layout.resolve("application-engineer")
 
 
+class CodexRunnerArgv0Tests(unittest.TestCase):
+    """build_child_argv()'s runners.codex_bin resolution -- the Codex
+    analogue of ClaudeCodeRunnerTests' argv0 coverage above. Both runners'
+    bin-path fields are global_only and previously had zero coverage at
+    this dispatch_core integration point (only settings.py's own unit
+    tests exercised the resolver in isolation)."""
+
+    def setUp(self) -> None:
+        self.layout = TempLayout()
+        self.addCleanup(self.layout.close)
+
+    def test_argv0_defaults_to_codex_when_unconfigured(self) -> None:
+        _write_wrapper(self.layout.project_file("application-engineer"))
+        role = self.layout.resolve("application-engineer")
+        argv = core.build_child_argv(role, "read-only", self.layout.project_root)
+        self.assertEqual(argv[0], "codex")
+
+    def test_argv0_honors_codex_bin_env_var(self) -> None:
+        _write_wrapper(self.layout.project_file("application-engineer"))
+        role = self.layout.resolve("application-engineer")
+        with mock.patch.dict(os.environ, {core.CODEX_BIN_ENV_VAR: "/opt/bin/codex"}):
+            argv = core.build_child_argv(role, "read-only", self.layout.project_root)
+        self.assertEqual(argv[0], "/opt/bin/codex")
+
+
 class MarkdownFrontmatterTests(unittest.TestCase):
     """_extract_markdown_frontmatter(): targeted parser for the Claude Code
     wrapper's --- delimited frontmatter, verified against a real installed
@@ -381,6 +429,47 @@ class ClaudeCodeRunnerTests(unittest.TestCase):
         role = self.resolve("application-engineer")
         argv = core.build_claude_child_argv(role, "read-only", self.project_root)
         self.assertNotIn("--effort", argv)
+
+    def test_argv0_defaults_to_claude_when_unconfigured(self) -> None:
+        _write_claude_wrapper(self.plugin_file("m", "p", "1.0.0", "application-engineer"))
+        role = self.resolve("application-engineer")
+        argv = core.build_claude_child_argv(role, "read-only", self.project_root)
+        self.assertEqual(argv[0], "claude")
+
+    def test_argv0_honors_claude_bin_env_var(self) -> None:
+        _write_claude_wrapper(self.plugin_file("m", "p", "1.0.0", "application-engineer"))
+        role = self.resolve("application-engineer")
+        with mock.patch.dict(os.environ, {core.CLAUDE_BIN_ENV_VAR: "/opt/bin/claude"}):
+            argv = core.build_claude_child_argv(role, "read-only", self.project_root)
+        self.assertEqual(argv[0], "/opt/bin/claude")
+
+    def test_argv0_honors_global_config_file(self) -> None:
+        # runners.claude_bin is global_only -- resolving it from a
+        # user-global cadre config file (never project-local) is exactly
+        # the path build_claude_child_argv exercises for every real
+        # dispatch, and it had zero coverage at this integration point
+        # before this test (only settings.py's own unit tests exercised
+        # the resolver in isolation). Uses its own nested XDG_CONFIG_HOME
+        # override (distinct from the module-wide isolation already in
+        # effect) so this test controls exactly what the global config
+        # file contains.
+        import settings as _settings  # noqa: PLC0415  (local import: only this test needs it)
+
+        global_home = Path(tempfile.mkdtemp(prefix="mcp-dispatch-claude-global-"))
+        self.addCleanup(lambda: __import__("shutil").rmtree(global_home, ignore_errors=True))
+        (global_home / "cadre").mkdir(parents=True, exist_ok=True)
+        (global_home / "cadre" / "config.yaml").write_text(
+            'runners:\n  claude_bin: "/opt/bin/claude-from-config"\n', encoding="utf-8"
+        )
+        _write_claude_wrapper(self.plugin_file("m", "p", "1.0.0", "application-engineer"))
+        role = self.resolve("application-engineer")
+        with mock.patch.dict(os.environ, {"XDG_CONFIG_HOME": str(global_home)}):
+            _settings.reset_cache()
+            try:
+                argv = core.build_claude_child_argv(role, "read-only", self.project_root)
+            finally:
+                _settings.reset_cache()
+        self.assertEqual(argv[0], "/opt/bin/claude-from-config")
 
     def test_unknown_runner_is_denied_without_touching_role_resolution(self) -> None:
         with self.assertRaises(core.DispatchDenied):

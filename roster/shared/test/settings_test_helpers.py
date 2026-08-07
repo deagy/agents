@@ -36,3 +36,37 @@ def isolate_settings(testcase) -> Path:
     settings.reset_cache()
     testcase.addCleanup(settings.reset_cache)
     return Path(tmp.name)
+
+
+class _ModuleIsolation:
+    """start()/stop() counterpart to `isolate_settings`, for test modules
+    that isolate once in `setUpModule`/`tearDownModule` rather than per
+    `TestCase` (e.g. because most tests in the module already supply every
+    setting via an explicit env dict, and only a handful that pop an env
+    var actually risk falling through to the real global config file --
+    module-wide isolation covers those without adding per-class setUp
+    boilerplate)."""
+
+    def __init__(self) -> None:
+        self._tmp: tempfile.TemporaryDirectory[str] | None = None
+        self._patcher: mock._patch[dict] | None = None
+
+    def start(self) -> Path:
+        self._tmp = tempfile.TemporaryDirectory(prefix="cadre-settings-test-")
+        self._patcher = mock.patch.dict("os.environ", {"XDG_CONFIG_HOME": self._tmp.name})
+        self._patcher.start()
+        settings.reset_cache()
+        return Path(self._tmp.name)
+
+    def stop(self) -> None:
+        settings.reset_cache()
+        if self._patcher is not None:
+            self._patcher.stop()
+        if self._tmp is not None:
+            self._tmp.cleanup()
+
+
+def isolate_settings_module() -> _ModuleIsolation:
+    """Module-level counterpart to `isolate_settings` -- call `.start()`
+    from `setUpModule` and `.stop()` from `tearDownModule`."""
+    return _ModuleIsolation()

@@ -876,21 +876,31 @@ calls. Every setting resolves in this order, per field:
 
 Project-local `.agents/cadre.yaml` is untrusted, clonable repository
 content — anyone who can send a pull request can edit it. A handful of
-fields select an executable to run or an exfiltration-sensitive network
-endpoint, so they may **only** come from an environment variable or the
-user-global file, never the project-local file. A project-local file that
-sets one of these anyway is a hard, loud `SettingsError`, never a silent
-ignore.
+fields select an executable to run, a data-store location, or an
+exfiltration-sensitive network endpoint/destination, so they may **only**
+come from an environment variable or the user-global file, never the
+project-local file. A project-local file that sets one of these anyway is
+a hard, loud `SettingsError` — this fires on the key's mere *presence* in
+the project-local file, including an explicit `null`, never only on a
+non-null value, and is never a silent ignore.
 
 | Key | Env var | Scope | Notes |
 |---|---|---|---|
 | `gitlab.base_url` | `GITLAB_BASE_URL` | **global-only** | must be `https://`, no URL userinfo; trailing `/` stripped |
-| `gitlab.project_id` | `GITLAB_DOCS_PROJECT_ID` | project-or-global | must be a string (an unquoted numeric-looking YAML scalar like `007` is rejected) |
-| `gitlab.supports_work_item_hierarchy` | `GITLAB_SUPPORTS_WORK_ITEM_HIERARCHY` | project-or-global | tri-state: absent/`null` = unset, native YAML bool or `"true"`/`"false"` (case-insensitive) accepted |
+| `gitlab.project_id` | `GITLAB_DOCS_PROJECT_ID` | **global-only** | must be a string (an unquoted numeric-looking YAML scalar like `007` is rejected). Global-only alongside `base_url`, not project-or-global: `roster/orchestration/mcp/SECURITY-CONTROLS.md` records a human-accepted residual-risk control for the GitLab integration that depends on *both* fields being operator-fixed (a single dedicated, docs-only project with a least-privilege service token) — a project-local file redirecting the destination project would silently weaken that control |
+| `gitlab.supports_work_item_hierarchy` | `GITLAB_SUPPORTS_WORK_ITEM_HIERARCHY` | project-or-global | tri-state: absent/`null` = unset, native YAML bool or `"true"`/`"false"` (case-insensitive) accepted. This is currently the only project-or-global field |
 | `runners.claude_bin` | `SECURE_CLOUD_AGENTS_CLAUDE_BIN` | **global-only** | default `"claude"` |
 | `runners.codex_bin` | `SECURE_CLOUD_AGENTS_CODEX_BIN` | **global-only** | default `"codex"` |
 | `agentic_sdlc.bin_path` | `AGENTIC_SDLC_BIN` | **global-only** | computed default: `shutil.which("agentic-sdlc")` |
 | `knowledge_store.home` | `KNOWLEDGE_STORE_HOME` | **global-only** | no default (caller keeps its own fallback) |
+
+The project-local *read* path is guarded the same way the write path
+already was: `.agents/cadre.yaml`/`.json` (or a symlinked `.agents`
+directory) resolving outside the discovered project root is rejected
+before the file is ever opened, and a malformed/unparseable config file
+(YAML or JSON, at either tier) fails closed with a `SettingsError` naming
+only the file's path — never the parser's own message, which can quote a
+snippet of the file's content.
 
 ### Secrets are always environment-variable-only
 

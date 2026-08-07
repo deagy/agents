@@ -61,7 +61,19 @@ def _fetch_contract(executable: str) -> dict[str, Any]:
 
 
 def try_lifecycle_contract() -> dict[str, Any] | None:
-    """Return the lifecycle-gates contract, or None if Agentic SDLC isn't available."""
+    """Return the lifecycle-gates contract, or None if Agentic SDLC isn't
+    available.
+
+    Exception: may raise `settings.SettingsError` (specifically
+    `SettingsScopeError`) if a project-local `.agents/cadre.yaml`/`.json`
+    sets `agentic_sdlc.bin_path` -- that field is global-only, since a
+    project-local file is untrusted, clonable content and this value
+    selects an executable to spawn. That is a security event, not an
+    "unavailable" outcome, and must not be swallowed into None; callers
+    (`cadre select` via `select_agents.py`'s top-level handler, `cadre
+    sdlc` via `bin/cadre.py`'s `dispatch_sdlc`) catch `SettingsError`
+    explicitly and surface a clean error instead of a bare traceback.
+    """
     executable = _resolve_executable()
     if not executable:
         return None

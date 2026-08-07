@@ -76,9 +76,17 @@ def _child_env(interactive: bool) -> dict[str, str] | None:
 
 
 def dispatch_sdlc(rest: list[str], *, interactive: bool = False) -> int:
-    sdlc_bin = settings.resolve_optional(
-        "agentic_sdlc.bin_path", env=_child_env(interactive) or os.environ
-    )
+    try:
+        sdlc_bin = settings.resolve_optional(
+            "agentic_sdlc.bin_path", env=_child_env(interactive) or os.environ
+        )
+    except settings.SettingsError as error:
+        # resolve_optional() only ever raises for a global_only scope
+        # violation (an untrusted project-local file setting
+        # agentic_sdlc.bin_path) -- that's a security event this dispatcher
+        # must surface, not a bare traceback out of a thin CLI shim.
+        print(f"cadre: {error}", file=sys.stderr)
+        return 1
     if not sdlc_bin:
         print(SDLC_INSTALL_MESSAGE, file=sys.stderr)
         return 1

@@ -11,6 +11,7 @@ from typing import Any
 from config import TIER_GLOBAL_FALLBACK, load_config
 from database import open_store, store_stats
 from service import build_agent_context, ingest_file, search_store, stable_query_id
+from settings import SettingsError
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -127,7 +128,7 @@ def main() -> int:
         result = run()
         sys.stdout.write(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
         return 0
-    except (OSError, ValueError, RuntimeError, json.JSONDecodeError) as error:
+    except (OSError, ValueError, RuntimeError, json.JSONDecodeError, SettingsError) as error:
         sys.stderr.write(f"error: {error}\n")
         return 1
 

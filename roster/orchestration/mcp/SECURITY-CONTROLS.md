@@ -768,7 +768,12 @@ mechanically-enforced/advisory classification as above.
   classification gate. See `gitlab_core.py`'s module docstring for the same
   statement. If this integration is ever pointed at a project that also holds
   higher-classification content, this boundary must be revisited before that
-  happens, not assumed to still hold.
+  happens, not assumed to still hold. Both `GITLAB_BASE_URL` and
+  `GITLAB_DOCS_PROJECT_ID` are `global_only` in `roster/shared/src/settings.py`'s
+  field registry (see `roster/RUNBOOK.md`'s config-file section) specifically
+  so this operational containment can't be silently weakened by a
+  project-local `.agents/cadre.yaml` -- untrusted, clonable repository
+  content -- redirecting either value.
 - **`agent-autonomy.yaml`'s `gitlab_issue_or_comment_write: on_request` is
   deliberately advisory-only, not mechanically enforced in code.** Unlike
   `gitlab_wiki_write: human_approval` (mechanically enforced above via

@@ -48,7 +48,15 @@ from typing import Any, Callable
 
 SRC_DIR = Path(__file__).resolve().parent
 if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
+    # Appended, never inserted at sys.path[0]: every consumer of this module
+    # (dispatch_core.py, gitlab_core.py, config.py, agentic_sdlc_contracts.py,
+    # bin/cadre.py) documents and relies on that same discipline so a
+    # caller's own same-named module is never shadowed -- this module
+    # holding itself to a different rule would defeat all four of those
+    # comments the moment any consumer's own path computation doesn't
+    # happen to already match this one exactly (e.g. an unresolved or
+    # symlinked path), since whichever import runs first would win sys.path[0].
+    sys.path.append(str(SRC_DIR))
 
 from resolve import (  # noqa: E402  (sys.path set above)
     MAXIMUM_WALK_DEPTH,
@@ -252,9 +260,19 @@ FIELDS: dict[str, FieldSpec] = {
         required=True,
     ),
     "gitlab.project_id": FieldSpec(
+        # global_only, not project_or_global: roster/orchestration/mcp/
+        # SECURITY-CONTROLS.md records a human-accepted residual-risk
+        # control for this integration -- GitLab write scope is contained
+        # operationally by pointing GITLAB_BASE_URL *and*
+        # GITLAB_DOCS_PROJECT_ID at one dedicated, docs-only project with a
+        # least-privilege service token, since the module itself performs
+        # no classification check. Letting an untrusted project-local file
+        # set the destination project would let a cloned repo redirect
+        # every evidence-comment/wiki write to a project of its choosing,
+        # silently weakening that recorded control.
         key="gitlab.project_id",
         env_var="GITLAB_DOCS_PROJECT_ID",
-        scope=SCOPE_PROJECT_OR_GLOBAL,
+        scope=SCOPE_GLOBAL_ONLY,
         kind="project_id",
         required=True,
     ),
@@ -342,9 +360,35 @@ def _global_config_dir(env: dict[str, str]) -> Path:
     return base / GLOBAL_CONFIG_APP_DIR
 
 
+def _reject_symlink_escape_on_read(candidate: Path) -> Path:
+    """Guard the read path the same way `write_setting` already guards the
+    write path: `find_file_at_project_root`'s `candidate.is_file()` check
+    follows symlinks, so a malicious `.agents/cadre.yaml` (or a symlinked
+    `.agents` directory) shipped in an untrusted, clonable project can point
+    outside the project entirely. Reject that before the file is ever
+    opened/parsed, rather than silently reading (and, on a parse failure,
+    risking an error message that quotes) whatever it resolves to."""
+    # relative_path passed to find_file_at_project_root is always exactly
+    # PROJECT_CONFIG_DIR / "<basename>.<ext>" (two components), so the
+    # directory this candidate was actually discovered under -- before any
+    # symlink is followed -- is candidate.parent.parent.
+    root = candidate.parent.parent.resolve(strict=False)
+    resolved_candidate = candidate.resolve(strict=False)
+    if not _is_same_or_descendant(resolved_candidate, root):
+        raise SettingsError(
+            f"{candidate} resolves outside of {root} (via a symlink); a project-local "
+            "cadre config file/directory may not point outside the project it was found in"
+        )
+    return candidate
+
+
 def _project_config_candidates(start: Path | None) -> tuple[Path | None, Path | None]:
     yaml_path = find_file_at_project_root(PROJECT_CONFIG_DIR / f"{PROJECT_CONFIG_BASENAME}.yaml", start)
     json_path = find_file_at_project_root(PROJECT_CONFIG_DIR / f"{PROJECT_CONFIG_BASENAME}.json", start)
+    if yaml_path is not None:
+        yaml_path = _reject_symlink_escape_on_read(yaml_path)
+    if json_path is not None:
+        json_path = _reject_symlink_escape_on_read(json_path)
     return yaml_path, json_path
 
 
@@ -376,13 +420,27 @@ def _load_config_file(path: Path) -> dict[str, Any]:
     if not text.strip():
         data: Any = {}
     elif path.suffix.lower() == ".json":
-        data = json.loads(text)
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as error:
+            # Deliberately never includes `error`'s own message text below
+            # the path: a project-local config path may resolve through a
+            # symlink to a file this process has no business quoting back
+            # to the caller, and JSONDecodeError.msg/.doc can echo a
+            # snippet of the parsed content.
+            raise SettingsError(f"{path}: not valid JSON") from error
     else:
         try:
             yaml = _require_yaml()
         except RuntimeError as error:
             raise SettingsError(f"{path}: {error}") from error
-        data = yaml.safe_load(text)
+        try:
+            data = yaml.safe_load(text)
+        except yaml.YAMLError as error:
+            # Same rationale as the JSON branch above: never echo the
+            # parser's own message, which can quote a snippet of the
+            # offending (possibly symlink-redirected) file's content.
+            raise SettingsError(f"{path}: not valid YAML") from error
         if data is None:
             data = {}
     if not isinstance(data, dict):
@@ -540,7 +598,13 @@ def _resolve_core(
     if project_path is not None:
         data = _load_config_file(project_path)
         found, raw_value = _lookup_nested(data, key)
-        if found and spec.scope == SCOPE_GLOBAL_ONLY and raw_value is not None:
+        # Deliberately fires on `found` alone, not `found and raw_value is not
+        # None`: an explicit `null` still means this key was placed in an
+        # untrusted project-local file for a field that may never be set
+        # there, and the module's own "never silently ignored" invariant
+        # applies to the key's presence, not just a non-null value -- a
+        # project file cannot use `null` to probe/no-op past this check.
+        if found and spec.scope == SCOPE_GLOBAL_ONLY:
             raise SettingsScopeError(
                 f"{key} may only be set via {spec.env_var or 'the environment'} or the "
                 f"user-global config file, never the project-local file ({project_path}); "
