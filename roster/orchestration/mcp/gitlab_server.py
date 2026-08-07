@@ -35,6 +35,12 @@ import settings  # noqa: E402
 # roster/shared/src/settings.py resolver must never fall through to an
 # interactive input() prompt here either.
 settings.disable_interactive()
+# Same reasoning for the project tier: this server is long-lived and
+# project-agnostic, so its cwd is wherever the host CLI was launched and
+# is not the project any given tool call is about. Callers that know the
+# real project (e.g. dispatch_core's project_root) pass start= explicitly
+# and are unaffected. See settings.disable_project_tier_cwd_fallback().
+settings.disable_project_tier_cwd_fallback()
 
 MCP_INSTALL_MESSAGE = (
     "The 'mcp' package is required to run the GitLab evidence MCP "

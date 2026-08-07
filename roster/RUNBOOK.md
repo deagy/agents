@@ -902,6 +902,26 @@ before the file is ever opened, and a malformed/unparseable config file
 only the file's path — never the parser's own message, which can quote a
 snippet of the file's content.
 
+### Which project the project tier resolves against
+
+The project tier is found by walking up from an anchor directory. Callers
+that know the real project pass it explicitly (`resolve_setting(...,
+start=<project root>)`) — `dispatch_core` does this with the validated
+`project_root` it already receives for a dispatch, so a dispatched role's
+runner binary is resolved against the project being dispatched.
+
+With no explicit anchor, the walk starts at the process's working
+directory. That is right for a CLI a human ran inside a project, and wrong
+for a long-lived, project-agnostic process: an stdio MCP server's cwd is
+wherever its host CLI happened to be launched and has no relationship to
+the project a given tool call is about, so an unrelated checkout's
+`.agents/cadre.yaml` could steer that call. Both stdio servers therefore
+call `settings.disable_project_tier_cwd_fallback()` at import (alongside
+`disable_interactive()`), which makes an unanchored resolution skip the
+project tier rather than guess. An explicit `start=` is still honored —
+the opt-out suppresses only the *implicit* cwd anchor, never a validated
+one a caller supplied on purpose.
+
 ### Secrets are always environment-variable-only
 
 `GITLAB_SVC_TOKEN` and the knowledge store's embedding API key are never

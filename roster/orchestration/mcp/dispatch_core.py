@@ -727,7 +727,10 @@ def build_claude_child_argv(role: ResolvedRole, effective_sandbox: str, project_
     unreachable in production, present only for forward-compatibility once
     a write-capable declaration mechanism exists.
     """
-    claude_bin = settings.resolve_setting("runners.claude_bin")
+    # Anchored to the dispatch's own validated project_root, not this
+    # process's cwd: for an MCP server that cwd is wherever the host CLI
+    # was launched and has no relation to the project being dispatched.
+    claude_bin = settings.resolve_setting("runners.claude_bin", start=project_root)
     permission_mode = {
         READ_ONLY_SANDBOX: "plan",
         "workspace-write": "acceptEdits",
@@ -1202,7 +1205,8 @@ def build_child_argv(role: ResolvedRole, effective_sandbox: str, project_root: P
     model="o3"` as its own example of this exact pattern), so it's passed
     that way here rather than as a flag.
     """
-    codex_bin = settings.resolve_setting("runners.codex_bin")
+    # Anchored to project_root -- see build_claude_child_argv.
+    codex_bin = settings.resolve_setting("runners.codex_bin", start=project_root)
     argv = [
         codex_bin,
         "exec",

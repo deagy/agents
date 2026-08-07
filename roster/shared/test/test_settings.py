@@ -153,6 +153,89 @@ class EmptyEnvVarTests(SettingsTestCase):
             )
 
 
+class ProjectTierAnchorTests(SettingsTestCase):
+    """`start=` anchors the project tier; without it the tier is discovered
+    by walking up from cwd, which is only meaningful for a CLI a human ran
+    inside a project. A long-lived, project-agnostic process (an stdio MCP
+    server) has an incidental cwd, and resolving from it lets an unrelated
+    checkout's `.agents/cadre.yaml` steer a call it has nothing to do with.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.addCleanup(
+            setattr, settings, "_PROJECT_TIER_CWD_FALLBACK_DISABLED", False
+        )
+
+    def test_explicit_start_anchors_the_project_tier_regardless_of_cwd(self) -> None:
+        _write_project_config(
+            self.project_dir, "gitlab:\n  supports_work_item_hierarchy: true\n"
+        )
+        elsewhere = Path(tempfile.mkdtemp(prefix="cadre-settings-elsewhere-"))
+        self.addCleanup(lambda: __import__("shutil").rmtree(elsewhere, ignore_errors=True))
+        with mock.patch.object(settings.Path, "cwd", return_value=elsewhere):
+            value = settings.resolve_setting(
+                "gitlab.supports_work_item_hierarchy", start=self.project_dir, env={}
+            )
+        self.assertIs(value, True)
+
+    def test_without_start_the_cwd_decides_which_project_is_read(self) -> None:
+        # Documents the behavior that makes the opt-out below necessary:
+        # an unrelated directory's config is what gets picked up.
+        _write_project_config(
+            self.project_dir, "gitlab:\n  supports_work_item_hierarchy: true\n"
+        )
+        with mock.patch.object(settings.Path, "cwd", return_value=self.project_dir):
+            settings.reset_cache()
+            value = settings.resolve_setting(
+                "gitlab.supports_work_item_hierarchy", start=None, env={}
+            )
+        self.assertIs(value, True)
+
+    def test_disabling_the_cwd_fallback_skips_the_project_tier(self) -> None:
+        _write_project_config(
+            self.project_dir, "gitlab:\n  supports_work_item_hierarchy: true\n"
+        )
+        settings.disable_project_tier_cwd_fallback()
+        with mock.patch.object(settings.Path, "cwd", return_value=self.project_dir):
+            settings.reset_cache()
+            value = settings.resolve_setting(
+                "gitlab.supports_work_item_hierarchy", start=None, env={}
+            )
+        # Falls through to the field default rather than the cwd's project.
+        self.assertIsNone(value)
+
+    def test_explicit_start_still_honored_after_disabling_the_cwd_fallback(self) -> None:
+        # The opt-out suppresses only the *implicit* anchor. A caller that
+        # supplies a validated project root on purpose (dispatch_core's
+        # project_root) must still resolve against it.
+        _write_project_config(
+            self.project_dir, "gitlab:\n  supports_work_item_hierarchy: true\n"
+        )
+        settings.disable_project_tier_cwd_fallback()
+        settings.reset_cache()
+        value = settings.resolve_setting(
+            "gitlab.supports_work_item_hierarchy", start=self.project_dir, env={}
+        )
+        self.assertIs(value, True)
+
+    def test_scope_violation_still_raises_through_an_explicit_start(self) -> None:
+        _write_project_config(self.project_dir, 'gitlab:\n  base_url: "https://evil.example.com"\n')
+        settings.disable_project_tier_cwd_fallback()
+        settings.reset_cache()
+        with self.assertRaises(settings.SettingsScopeError):
+            settings.resolve_setting("gitlab.base_url", start=self.project_dir, env={})
+
+    def test_failure_message_does_not_name_a_cwd_path_when_the_tier_is_skipped(self) -> None:
+        settings.disable_project_tier_cwd_fallback()
+        settings.reset_cache()
+        with self.assertRaises(settings.SettingsError) as ctx:
+            settings.resolve_setting("gitlab.base_url", start=None, env={})
+        message = str(ctx.exception)
+        self.assertIn("not consulted", message)
+        self.assertNotIn(".agents/cadre.yaml", message)
+
+
 class GlobalOnlyScopeTests(SettingsTestCase):
     def test_project_local_file_setting_a_global_only_field_is_rejected(self) -> None:
         _write_project_config(self.project_dir, 'gitlab:\n  base_url: "https://evil.example.com"\n')
