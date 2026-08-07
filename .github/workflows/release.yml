@@ -1,59 +1,68 @@
 name: Release
 
-# Tags and publishes a GitHub Release whenever a version bump lands on
-# main. This is the release flow tools/plugin_version.py's docstring and
-# README.md's "Releasing" section already describe -- previously aspirational,
-# now real.
+# Tags and publishes a GitHub Release whenever a version bump lands on main.
 #
-# A "version bump" is defined operationally, not just by these paths
-# triggering: all 8 plugin manifests (4 plugins, see tools/plugin_version.py)
-# must agree on a valid semver (checked below) and there must be no existing
-# `v<version>` tag yet (also checked below). That second check is what makes
-# this workflow idempotent -- a re-run, a push that touches these files
-# without actually changing the version, or a manually-created tag/Release
-# for the same version all become safe no-ops instead of a duplicate or
-# failing run.
+# This repository carries three independent version lines, and that is
+# deliberate -- provider/provider.json's kernel_compatibility window is only
+# meaningful if the kernel can move separately from the role catalog, and
+# roster/orchestration/test/test_kernel_boundary.py asserts the kernel keeps
+# its own distribution name and console script. So there are two release
+# jobs, each with its own component-prefixed tag namespace:
 #
-# Once this lands, do not tag or create the Release by hand for a version
-# bump pushed to main -- this workflow will do it. Manual tagging is still
-# fine for backfilling a version that predates this workflow (as v0.1.0
-# through v0.2.4 were).
+#   plugin-v<version>   the packaged plugin distribution (plugin/**/plugin.json,
+#                       all 8 manifests, see plugin/tools/plugin_version.py)
+#   kernel-v<version>   the G1-G10 kernel (kernel/agentic_sdlc/__init__.py)
+#
+# Prefixes are not cosmetic. This repository inherited 25 bare `v*` tags from
+# the pre-monorepo deagy/cadre (v0.1.1 through v0.16.0, plus v1..v7), so a
+# bare `v<version>` scheme collides: the plugin is at 0.10.1 and v0.11.0
+# through v0.16.0 already exist, pointing at old-cadre history. The
+# already-tagged check below would then match an unrelated tag and report
+# "nothing to do" -- a silent no-op rather than a failure, which is the worst
+# possible way for a release to break.
+#
+# Both jobs are idempotent: they no-op when their component's version is
+# already tagged, so a re-run, a push that touches these files without
+# changing a version, or a hand-created tag are all safe.
 on:
   push:
     branches: [main]
     paths:
-      - ".claude-plugin/plugin.json"
-      - ".codex-plugin/plugin.json"
-      - "plugins/lifecycle/.claude-plugin/plugin.json"
-      - "plugins/lifecycle/.codex-plugin/plugin.json"
-      - "plugins/lifecycle-github/.claude-plugin/plugin.json"
-      - "plugins/lifecycle-github/.codex-plugin/plugin.json"
-      - "plugins/lifecycle-gitlab/.claude-plugin/plugin.json"
-      - "plugins/lifecycle-gitlab/.codex-plugin/plugin.json"
+      - "plugin/.claude-plugin/plugin.json"
+      - "plugin/.codex-plugin/plugin.json"
+      - "plugin/plugins/lifecycle/.claude-plugin/plugin.json"
+      - "plugin/plugins/lifecycle/.codex-plugin/plugin.json"
+      - "plugin/plugins/lifecycle-github/.claude-plugin/plugin.json"
+      - "plugin/plugins/lifecycle-github/.codex-plugin/plugin.json"
+      - "plugin/plugins/lifecycle-gitlab/.claude-plugin/plugin.json"
+      - "plugin/plugins/lifecycle-gitlab/.codex-plugin/plugin.json"
+      - "kernel/agentic_sdlc/__init__.py"
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  plugin:
+    name: Release the plugin distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Verify manifests agree on a valid version
-        run: python3 tools/plugin_version.py --check
+        run: python3 plugin/tools/plugin_version.py --check
 
       - name: Read version
         id: version
-        run: echo "value=$(python3 tools/plugin_version.py)" >> "$GITHUB_OUTPUT"
+        run: echo "value=$(python3 plugin/tools/plugin_version.py)" >> "$GITHUB_OUTPUT"
 
       - name: Skip if this version is already tagged
         id: tag
         run: |
-          if git rev-parse "refs/tags/v${{ steps.version.outputs.value }}" >/dev/null 2>&1; then
-            echo "This version is already tagged; nothing to do."
+          if git rev-parse "refs/tags/plugin-v${{ steps.version.outputs.value }}" >/dev/null 2>&1; then
+            echo "plugin-v${{ steps.version.outputs.value }} already tagged; nothing to do."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
@@ -61,22 +70,119 @@ jobs:
 
       - name: Extract this version's CHANGELOG entry
         if: steps.tag.outputs.skip == 'false'
-        run: python3 tools/changelog_entry.py "${{ steps.version.outputs.value }}" > /tmp/release-notes.md
+        run: python3 plugin/tools/changelog_entry.py "${{ steps.version.outputs.value }}" > /tmp/release-notes.md
 
       - name: Tag
         if: steps.tag.outputs.skip == 'false'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "v${{ steps.version.outputs.value }}" -m "Release v${{ steps.version.outputs.value }}"
-          git push origin "v${{ steps.version.outputs.value }}"
+          git tag -a "plugin-v${{ steps.version.outputs.value }}" \
+            -m "Plugin distribution v${{ steps.version.outputs.value }}"
+          git push origin "plugin-v${{ steps.version.outputs.value }}"
 
       - name: Publish GitHub Release
         if: steps.tag.outputs.skip == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "v${{ steps.version.outputs.value }}" \
-            --title "v${{ steps.version.outputs.value }}" \
+          gh release create "plugin-v${{ steps.version.outputs.value }}" \
+            --title "Plugin distribution v${{ steps.version.outputs.value }}" \
             --notes-file /tmp/release-notes.md \
             --latest
+
+  kernel:
+    name: Release the lifecycle kernel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Read kernel version
+        id: version
+        run: |
+          set -eu
+          value=$(python3 -c "
+          import re, pathlib
+          text = pathlib.Path('kernel/agentic_sdlc/__init__.py').read_text(encoding='utf-8')
+          match = re.search(r'^VERSION = \"(\d+\.\d+\.\d+)\"', text, re.MULTILINE)
+          if not match:
+              raise SystemExit('kernel VERSION not found or not MAJOR.MINOR.PATCH')
+          print(match.group(1))
+          ")
+          echo "value=$value" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the kernel version satisfies provider.json's compatibility window
+        run: |
+          set -eu
+          python3 - <<'PY'
+          import json, os, pathlib
+          version = os.environ["KERNEL_VERSION"]
+          window = json.loads(pathlib.Path("provider/provider.json").read_text())["kernel_compatibility"]
+
+          def parts(value):
+              return tuple(int(p) for p in value.split("."))
+
+          if not parts(window["minimum"]) <= parts(version) < parts(window["maximum_exclusive"]):
+              raise SystemExit(
+                  f"kernel {version} falls outside provider.json's declared window "
+                  f"[{window['minimum']}, {window['maximum_exclusive']}). Releasing it would "
+                  "ship a kernel this repository's own provider refuses to run."
+              )
+          print(f"kernel {version} is inside [{window['minimum']}, {window['maximum_exclusive']})")
+          PY
+        env:
+          KERNEL_VERSION: ${{ steps.version.outputs.value }}
+
+      - name: Skip if this version is already tagged
+        id: tag
+        run: |
+          if git rev-parse "refs/tags/kernel-v${{ steps.version.outputs.value }}" >/dev/null 2>&1; then
+            echo "kernel-v${{ steps.version.outputs.value }} already tagged; nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Version-pinned for the same reason validate.yml pins it: a single
+      # build-only tool, not part of the hash-pinned requirements lock.
+      - name: Build wheel and sdist
+        if: steps.tag.outputs.skip == 'false'
+        run: |
+          set -eu
+          pip install --no-cache-dir build==1.5.0
+          python -m build --wheel --sdist --outdir dist ./kernel
+
+      # bootstrap_sdlc.py installs the kernel from a release asset rather than
+      # a git ref so the download can be hash-checked. A moving tag cannot be
+      # pinned, and a git+ URL additionally needs git and direct GitHub
+      # access -- the first thing a corporate proxy breaks.
+      - name: Checksum the artifacts
+        if: steps.tag.outputs.skip == 'false'
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS
+
+      - name: Tag
+        if: steps.tag.outputs.skip == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "kernel-v${{ steps.version.outputs.value }}" \
+            -m "Lifecycle kernel v${{ steps.version.outputs.value }}"
+          git push origin "kernel-v${{ steps.version.outputs.value }}"
+
+      # Never --latest: that marks the repository's headline release, and the
+      # plugin distribution is what an end user installs.
+      - name: Publish GitHub Release with artifacts
+        if: steps.tag.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "kernel-v${{ steps.version.outputs.value }}" \
+            --title "Lifecycle kernel v${{ steps.version.outputs.value }}" \
+            --notes "G1-G10 lifecycle kernel v${{ steps.version.outputs.value }}. Verify downloads against SHA256SUMS." \
+            dist/*

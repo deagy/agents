@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for plugins/lifecycle/tools/bootstrap_sdlc.py.
+"""Tests for plugin/tools/bootstrap_sdlc.py.
 
 Covers the decision logic around whether to install, reuse, or refuse an
 existing `agentic-sdlc` binary, and that the `init` command it builds matches
@@ -8,7 +8,7 @@ what `bin/cadre sdlc` itself would invoke. Subprocess calls (`pipx`,
 `bootstrap_sdlc._run` so these tests never touch the network or a real
 install.
 
-    python3 -m unittest discover -s plugins/lifecycle/tools -p "test_*.py"
+    python3 -m unittest discover -s plugin/tools -p "test_*.py"
 """
 
 from __future__ import annotations
@@ -199,3 +199,50 @@ class BootstrapTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class InstallTargetTests(unittest.TestCase):
+    """The kernel install ref. Untested until it broke in production.
+
+    `bootstrap_sdlc.py` installed `@v{version}#subdirectory=kernel` from
+    deagy/cadre after the monorepo merge. That tag *exists* -- the monorepo
+    inherited 25 bare `v*` tags from the pre-merge deagy/cadre -- but it
+    points at old-cadre history with no kernel/ directory, so pip resolved a
+    real ref and then found nothing to install. Nothing here asserted the
+    ref, so nothing caught it.
+    """
+
+    def test_target_uses_the_component_prefixed_tag(self) -> None:
+        target = bootstrap_sdlc.install_target("0.13.0")
+        self.assertIn("@kernel-v0.13.0#", target)
+        self.assertIn("subdirectory=kernel", target)
+        self.assertTrue(target.startswith("git+https://github.com/deagy/cadre.git@"))
+
+    def test_target_never_uses_a_bare_version_tag(self) -> None:
+        """`@v0.13.0` collides with inherited pre-merge tags."""
+        target = bootstrap_sdlc.install_target("0.13.0")
+        self.assertNotIn("@v0.13.0", target)
+        self.assertNotIn(".git@v", target)
+
+    def test_dry_run_reports_the_same_target_it_would_install(self) -> None:
+        """A --dry-run that prints a different ref than it installs is worse
+        than no dry run at all."""
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "provider.json"
+            manifest.write_text(
+                json.dumps({"kernel_compatibility": {"minimum": "0.13.0",
+                                                     "maximum_exclusive": "1.0.0"}}),
+                encoding="utf-8",
+            )
+            with mock.patch.object(bootstrap_sdlc, "PROVIDER_MANIFEST_PATH", manifest), \
+                 mock.patch.object(bootstrap_sdlc, "PACKAGED_COMPATIBILITY_PATH",
+                                   Path(directory) / "absent.json"), \
+                 mock.patch.object(bootstrap_sdlc, "resolve_existing_binary", return_value=None), \
+                 mock.patch.object(bootstrap_sdlc.shutil, "which", return_value="/usr/bin/pipx"), \
+                 mock.patch("sys.stdout") as stdout:
+                code, binary = bootstrap_sdlc.ensure_kernel(_args(dry_run=True))
+
+        self.assertEqual(0, code)
+        self.assertIsNone(binary)
+        printed = "".join(call.args[0] for call in stdout.write.call_args_list if call.args)
+        self.assertIn(bootstrap_sdlc.install_target("0.13.0"), printed)

@@ -12,17 +12,17 @@ then runs `agentic-sdlc init` against a target project using this plugin's
 own `provider.json`.
 
 It intentionally does *not* wire into `bin/cadre` as a subcommand.
-`generate_global_plugin.py` (in the separate `deagy/cadre` register repo)
-fully regenerates `bin/cadre` from scratch on every `cadre generate-plugin`
-run -- see that generator's `GENERATED_TOP_LEVEL` -- so any hand-added case
-there would be silently deleted on the next sync. `tools/` is not part of
-that generated set (see `tools/plugin_version.py`, the existing precedent
-for a hand-authored script invoked directly rather than through `bin/cadre`).
+`generate_global_plugin.py` fully regenerates `bin/cadre` from scratch on
+every `cadre generate-plugin` run -- see that generator's
+`GENERATED_TOP_LEVEL` -- so any hand-added case there would be silently
+deleted on the next regeneration. `plugin/tools/` is not part of that
+generated set (see `plugin_version.py`, the existing precedent for a
+hand-authored script invoked directly rather than through `bin/cadre`).
 
-    python3 plugins/lifecycle/tools/bootstrap_sdlc.py                       # install (if needed) + configure this project
-    python3 plugins/lifecycle/tools/bootstrap_sdlc.py --dry-run              # report what would happen, change nothing
-    python3 plugins/lifecycle/tools/bootstrap_sdlc.py --skip-init             # install/verify the kernel only
-    python3 plugins/lifecycle/tools/bootstrap_sdlc.py --root /path/to/project --profile secure-cloud
+    python3 plugin/tools/bootstrap_sdlc.py                    # install (if needed) + configure this project
+    python3 plugin/tools/bootstrap_sdlc.py --dry-run          # report what would happen, change nothing
+    python3 plugin/tools/bootstrap_sdlc.py --skip-init        # install/verify the kernel only
+    python3 plugin/tools/bootstrap_sdlc.py --root /path/to/project --profile secure-cloud
 
 Never reinstalls over an existing `agentic-sdlc` the human already has on
 `PATH` or pointed at via `AGENTIC_SDLC_BIN`, even if its version falls
@@ -30,15 +30,10 @@ outside this plugin's supported range -- it reports the mismatch and stops,
 the same fail-closed posture as `bin/cadre sdlc` itself, rather than
 guessing which install the human intended to keep.
 
-This file is an intentional duplicate, not copy-paste debt:
-`plugins/lifecycle/tools/bootstrap_sdlc.py` is the source, and
-`plugins/lifecycle-github/tools/bootstrap_sdlc.py` and
-`plugins/lifecycle-gitlab/tools/bootstrap_sdlc.py` are self-sufficiency
-copies of it so each forge plugin needs no dependency on the others (see
-AGENTS.md's plugin-split rationale). Keep all three in sync when editing;
-only the four example-invocation lines above are expected to differ between
-copies, and `tools/test_plugin_duplication_health.py` enforces exactly
-that.
+Before the monorepo merge this file existed three times over -- once per
+lifecycle plugin, byte-identical apart from four docstring lines, held in
+sync by a `test_plugin_duplication_health.py` that existed only to police
+the copies. The merge left one.
 """
 
 from __future__ import annotations
@@ -72,8 +67,16 @@ REPO_ROOT = _HERE.parent.parent
 PROVIDER_MANIFEST_PATH = REPO_ROOT / "provider" / "provider.json"
 
 # The kernel now ships from the monorepo; deagy/agentic-sdlc is archived.
+#
+# The tag is `kernel-v<version>`, not `v<version>`. The monorepo inherited
+# 25 bare `v*` tags from the pre-merge deagy/cadre (v0.1.1 through v0.16.0),
+# and those point at old-cadre history that has no kernel/ directory at all --
+# so `@v0.13.0#subdirectory=kernel` resolves to a real tag and then fails to
+# find anything to install. Component-prefixed tags are what release.yml
+# publishes precisely to avoid that collision.
 AGENTIC_SDLC_GIT_URL = "https://github.com/deagy/cadre.git"
 AGENTIC_SDLC_SUBDIRECTORY = "kernel"
+AGENTIC_SDLC_TAG_PREFIX = "kernel-v"
 
 SEMVER_PATTERN = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 
@@ -144,8 +147,19 @@ def binary_version(binary: str) -> str:
     return result.stdout.strip()
 
 
+def install_target(ref: str) -> str:
+    """The git ref to install the kernel from.
+
+    Kept as a function so the tag scheme is asserted in one place by
+    test_bootstrap_sdlc.py rather than reconstructed at each call site.
+    """
+    return (
+        f"git+{AGENTIC_SDLC_GIT_URL}@{AGENTIC_SDLC_TAG_PREFIX}{ref}#subdirectory={AGENTIC_SDLC_SUBDIRECTORY}"
+    )
+
+
 def pipx_install(ref: str) -> int:
-    target = f"git+{AGENTIC_SDLC_GIT_URL}@v{ref}#subdirectory={AGENTIC_SDLC_SUBDIRECTORY}"
+    target = install_target(ref)
     print(f"bootstrap-sdlc: installing Agentic SDLC v{ref} via pipx ({target})")
     # Our own prints above are Python-buffered; pipx's subprocess writes to
     # the same inherited stdout fd directly, so without an explicit flush
@@ -217,7 +231,7 @@ def ensure_kernel(args: argparse.Namespace, env: dict[str, str] | None = None) -
         return 1, None
 
     if args.dry_run:
-        target = f"git+{AGENTIC_SDLC_GIT_URL}@v{minimum}#subdirectory={AGENTIC_SDLC_SUBDIRECTORY}"
+        target = install_target(minimum)
         print(f"bootstrap-sdlc: would run: pipx install {target}")
         return 0, None
 
