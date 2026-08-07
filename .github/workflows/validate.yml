@@ -89,7 +89,7 @@ jobs:
             -e "s|AGENTIC_SDLC_ROOT = Path.*/home/deagy/sdk/agentic-sdlc|AGENTIC_SDLC_ROOT = Path(\"$GITHUB_WORKSPACE/.dependencies/agentic-sdlc\")|" \
             -e "s|new_repo_path = Path.*/home/deagy/sdk/cadre-profile-secure-cloud|new_repo_path = Path(\"$GITHUB_WORKSPACE/.dependencies/cadre-profile-secure-cloud\")|" \
             tests/integration/test_cross_repo_integration.py
-          python -m unittest tests/integration/test_cross_repo_integration.py
+          python tests/integration/test_cross_repo_integration.py
 
   cadre-pip-package:
     runs-on: ubuntu-latest
