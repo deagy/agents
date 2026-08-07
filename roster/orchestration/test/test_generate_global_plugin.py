@@ -400,6 +400,95 @@ class SharedPolicyOptionalityTests(unittest.TestCase):
         self.assertIn("status: active", inputs["instructions"])
 
 
+class TierScopedPolicyOptionalityTests(unittest.TestCase):
+    """TIER_SCOPED_POLICIES files (e.g. roster/shared/workspace-isolation.md)
+    follow the exact same missing/emptied/present optionality contract as
+    SHARED_POLICIES, but only for tiers listed against them -- a read-only
+    role's wrapper must never see the section at all."""
+
+    def _fake_role_tree(self, root: Path) -> None:
+        _write(
+            root / "roster" / "sample-role" / "AGENT.md",
+            "# Sample Role\n\nBody text.\n",
+        )
+
+    def _metadata(self, capability: str) -> dict:
+        return {
+            "definition": "sample-role/AGENT.md",
+            "phase": "build",
+            "capability": capability,
+            "model": "sonnet",
+            "codex_model": "gpt-5.6-terra",
+        }
+
+    def test_missing_tier_scoped_policy_file_is_skipped_without_crashing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._fake_role_tree(root)
+            # Deliberately do not create roster/shared/workspace-isolation.md.
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(
+                ggp, "AGENTS_ROOT", root / "roster"
+            ), mock.patch.object(ggp, "SHARED_POLICIES", []), mock.patch.object(
+                ggp,
+                "TIER_SCOPED_POLICIES",
+                {"roster/shared/workspace-isolation.md": frozenset({"code_author"})},
+            ):
+                inputs = ggp.role_wrapper_inputs("sample-role", self._metadata("code_author"))
+
+        self.assertNotIn("Shared policy: roster/shared/workspace-isolation.md", inputs["instructions"])
+        self.assertNotIn("\n\n\n\n", inputs["instructions"])
+
+    def test_emptied_tier_scoped_policy_file_is_skipped_without_crashing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._fake_role_tree(root)
+            _write(root / "roster" / "shared" / "workspace-isolation.md", "   \n")
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(
+                ggp, "AGENTS_ROOT", root / "roster"
+            ), mock.patch.object(ggp, "SHARED_POLICIES", []), mock.patch.object(
+                ggp,
+                "TIER_SCOPED_POLICIES",
+                {"roster/shared/workspace-isolation.md": frozenset({"code_author"})},
+            ):
+                inputs = ggp.role_wrapper_inputs("sample-role", self._metadata("code_author"))
+
+        self.assertNotIn("Shared policy: roster/shared/workspace-isolation.md", inputs["instructions"])
+        self.assertNotIn("\n\n\n\n", inputs["instructions"])
+
+    def test_present_tier_scoped_policy_file_is_embedded_for_listed_tier(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._fake_role_tree(root)
+            _write(root / "roster" / "shared" / "workspace-isolation.md", "Isolate before editing.\n")
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(
+                ggp, "AGENTS_ROOT", root / "roster"
+            ), mock.patch.object(ggp, "SHARED_POLICIES", []), mock.patch.object(
+                ggp,
+                "TIER_SCOPED_POLICIES",
+                {"roster/shared/workspace-isolation.md": frozenset({"code_author"})},
+            ):
+                inputs = ggp.role_wrapper_inputs("sample-role", self._metadata("code_author"))
+
+        self.assertIn("Shared policy: roster/shared/workspace-isolation.md", inputs["instructions"])
+        self.assertIn("Isolate before editing.", inputs["instructions"])
+
+    def test_tier_scoped_policy_file_absent_for_untiered_capability(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._fake_role_tree(root)
+            _write(root / "roster" / "shared" / "workspace-isolation.md", "Isolate before editing.\n")
+            with mock.patch.object(ggp, "REPOSITORY_ROOT", root), mock.patch.object(
+                ggp, "AGENTS_ROOT", root / "roster"
+            ), mock.patch.object(ggp, "SHARED_POLICIES", []), mock.patch.object(
+                ggp,
+                "TIER_SCOPED_POLICIES",
+                {"roster/shared/workspace-isolation.md": frozenset({"code_author"})},
+            ):
+                inputs = ggp.role_wrapper_inputs("sample-role", self._metadata("read_only"))
+
+        self.assertNotIn("Shared policy: roster/shared/workspace-isolation.md", inputs["instructions"])
+
+
 class GenerateSkillCopiesPackageTargetTests(unittest.TestCase):
     """SKILL_PACKAGE_TARGETS lets specific skills (lifecycle-onboarding,
     lifecycle-review) generate into a sub-plugin directory instead of the

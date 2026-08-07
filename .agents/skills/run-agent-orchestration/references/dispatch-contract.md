@@ -16,7 +16,8 @@ Each dispatch prompt must include:
 - nested citation `source_uri` omitted or redacted by default, and included only when separately authorized and necessary because it may reveal a local path;
 - explicit permitted and prohibited actions;
 - expected response template or schema;
-- named receiving role or human owner.
+- named receiving role or human owner;
+- for any write-capable role (`sandbox_mode != "read-only"`), require the workspace-isolation result block defined in `roster/shared/workspace-isolation.md` (mode, path, branch, base revision, committed, reason if in-place) as part of that role's response.
 
 Do not dispatch an implementation or review agent when its required artifact is absent. Mark that role `deferred` with the missing prerequisite.
 
@@ -41,7 +42,8 @@ risk acceptance, policy exceptions, merge/push, and self-approval unless an
 authorized human explicitly grants the specific action.
 
 Return: <required template/schema>, evidence, disposition, unresolved risks,
-and handoff to <receiver>.
+handoff to <receiver>, and (write-capable roles only) the workspace-isolation
+result block: mode, path, branch, base revision, committed, reason if in-place.
 ```
 
 ## Wave and gate rules

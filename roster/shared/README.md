@@ -60,11 +60,35 @@ silent fallback to the default.
 - **Prose files** (`*.md` — `operating-principles.md`,
   `technology-standards.md`, `cloud-guardrails.md`,
   `secure-development-policy.md`, `risk-severity-model.md`,
-  `knowledge-use-policy.md`, `definition-of-done.md`): additive, never
-  replaced. If an overlay exists, the resolved text is the global default
-  plus an appended `## Project addendum` section. On a direct conflict
-  between the default and the addendum, the more specific/restrictive
+  `knowledge-use-policy.md`, `definition-of-done.md`, `workspace-isolation.md`):
+  additive, never replaced. If an overlay exists, the resolved text is the
+  global default plus an appended `## Project addendum` section. On a direct
+  conflict between the default and the addendum, the more specific/restrictive
   instruction wins, per the existing rule in `operating-principles.md`.
+
+### Tier-scoped shared policies
+
+Most files in this directory are embedded into *every* generated role
+wrapper (`SHARED_POLICIES` in `generate_global_plugin.py`). A smaller set is
+embedded only into wrappers for capability tiers the file names, via
+`TIER_SCOPED_POLICIES` in the same module — currently just
+`workspace-isolation.md`, scoped to `WRITE_CAPABLE_TIERS` (every capability
+tier whose `sandbox_mode` in `roster/runner-capabilities.json` is not
+`read-only`; a read-only role has no edits to isolate). A tier-scoped file
+still follows the same missing/emptied/present optionality rule as any
+`SHARED_POLICIES` file for the tiers it applies to, and still opens with an
+explicit applicability header naming those tiers, because the scoping below
+is generated-wrapper-only.
+
+**This scoping applies only to the generated wrapper, not to
+`cadre resolve-shared`.** `resolve.py` is filename-based and knows nothing
+about capability tiers, so running `cadre resolve-shared
+workspace-isolation.md` from a read-only role (or from any shell) still
+returns the file's full resolved text — the tier gate only decides whether
+`generate_global_plugin.py` embeds the section into a *specific role's*
+generated wrapper instructions. That asymmetry is why every tier-scoped
+file must state its own applicability in its own text: `cadre
+resolve-shared` cannot do that filtering for it.
 
 ## Where overlays live
 

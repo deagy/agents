@@ -39,7 +39,8 @@
       "team_size_guidance": { "minimum": 3, "maximum": 5, "note": "disjoint file ownership per teammate" },
       "named_agent_dispatch_supported": true,
       "named_agent_dispatch_workaround": null,
-      "concurrency_bound_config_key": null
+      "concurrency_bound_config_key": null,
+      "native_workspace_isolation": "worktree"
     },
     "codex": {
       "has_generated_wrapper": true,
@@ -50,7 +51,8 @@
       "team_size_guidance": null,
       "named_agent_dispatch_supported": false,
       "named_agent_dispatch_workaround": "dispatch_secure_cloud_role MCP tool (cadre mcp-dispatch-server), preferred; manual per-file developer_instructions injection into spawn_agent, fallback",
-      "concurrency_bound_config_key": "agents.max_concurrent_threads_per_session (native spawn_agent) or MAX_CONCURRENT_CHILDREN (this repo's MCP dispatch server path)"
+      "concurrency_bound_config_key": "agents.max_concurrent_threads_per_session (native spawn_agent) or MAX_CONCURRENT_CHILDREN (this repo's MCP dispatch server path)",
+      "native_workspace_isolation": null
     },
     "cline": {
       "has_generated_wrapper": false,
@@ -61,7 +63,8 @@
       "team_size_guidance": null,
       "named_agent_dispatch_supported": false,
       "named_agent_dispatch_workaround": "manual per-file injection only (no MCP-equivalent documented)",
-      "concurrency_bound_config_key": null
+      "concurrency_bound_config_key": null,
+      "native_workspace_isolation": null
     }
   }
 }

@@ -56,6 +56,29 @@ authoritative for the *why*.
   - No nested teams: only the lead manages the team; a teammate cannot spawn
     its own teammates. This is a runner limitation, not a repo policy choice.
 
+- **Workspace isolation (see `roster/shared/workspace-isolation.md`).**
+  Claude Code has its own native worktree-isolation feature
+  (`roster/runner-capabilities.json`'s `native_workspace_isolation:
+  "worktree"` for `claude-code`), independent of the
+  `workspace-isolation.md` policy an individual write-capable role follows.
+  Two things are **explicitly unverified assumptions**, not confirmed
+  behavior, and Step 0's detection (`git rev-parse --git-dir` vs
+  `--git-common-dir`) is written to be correct regardless of how either
+  resolves:
+  - The exact parameter/setting name that turns this native isolation on
+    (this document does not assert one — do not guess a flag name in a
+    dispatch prompt without checking the installed Claude Code version's own
+    docs/settings first).
+  - Whether, when native isolation is enabled for an Agent Team, every
+    teammate is isolated into its own separate worktree unconditionally, or
+    the team can share one. **If it is unconditionally per-teammate**, this
+    skill's "one shared worktree per team" preference
+    (`workspace-isolation.md`'s "Teams" section) is not achievable on Claude
+    Code and each teammate's Step 0 will correctly report its own separate
+    worktree instead — that is not a bug in the policy, it is Step 0 doing
+    its job under a runner constraint the policy already anticipates by
+    keeping detection authoritative over any stated preference.
+
 ## Codex CLI
 
 - **Ordinary dispatch**: custom agents are `.toml` files under
@@ -228,6 +251,27 @@ authoritative for the *why*.
   but the "teammates challenge each other" step degrades to "this
   orchestrating session reviews all N results and reconciles disagreements
   itself," since Codex has no way to let the roles do that directly.
+- **Workspace isolation (see `roster/shared/workspace-isolation.md`).**
+  `roster/runner-capabilities.json` records `native_workspace_isolation:
+  null` for `codex` — Codex CLI has no runner-native worktree-isolation
+  parameter, so a dispatched Codex role follows `workspace-isolation.md`'s
+  own `git worktree add` steps entirely on its own, not through any
+  runner-level flag. This is why the design forces the in-root
+  `<repository_root>/.worktrees/<task-id>/<role-id>/` location instead of a
+  sibling directory: `dispatch_core.py`'s `build_child_argv()` spawns the
+  child with `--cd <project_root> --sandbox workspace-write`
+  (`dispatch_core.py:1186-1215`), and **it is an explicitly unverified
+  assumption, not independently confirmed against Codex CLI's own sandbox
+  documentation from inside this sandbox (no live `codex` binary available,
+  same limitation noted elsewhere in this file), that `--sandbox
+  workspace-write`'s writable scope is exactly the `--cd` directory and
+  nothing outside it** — this document treats "in-root only" as the safe
+  assumption precisely because a sibling-directory worktree would silently
+  fail to write (or worse, silently succeed against some broader writable
+  scope this file cannot verify) if that assumption is wrong in either
+  direction. Do not relax the in-root requirement based on this note without
+  first confirming the actual `--sandbox workspace-write` boundary against a
+  live Codex CLI session.
 
 ## Cline
 

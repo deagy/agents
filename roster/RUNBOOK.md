@@ -1027,3 +1027,63 @@ approval completes a ready gate, the lifecycle record advances to the next
 applicable gate; it does not authorize deployment or bypass an unresolved
 finding. Review the resulting record and preserve the command output as
 evidence according to the target project's retention policy.
+
+## 19. Discover, inspect, and remove agent-created worktrees
+
+Every write-capable role follows `roster/shared/workspace-isolation.md`,
+which defaults to creating a `git worktree` under
+`<repository_root>/.worktrees/<task-id>/<role-id>/` before editing, rather
+than editing the caller's main working tree directly (advisory prompt
+policy, not mechanically enforced — see that file). Agents are explicitly
+instructed never to remove or prune their own worktree (`destructive_action:
+human_approval`), so this is operator-run cleanup, not something a task's
+dispatched role does for you.
+
+```sh
+# List every worktree registered against this repository, including path,
+# HEAD commit, and branch.
+git worktree list
+
+# Inspect one before deciding what to do with it -- treat it like any other
+# unreviewed branch: diff it, read its commits, or dispatch a review role
+# against it.
+git -C .worktrees/<task-id>/<role-id> log --oneline -5
+git -C .worktrees/<task-id>/<role-id> status
+
+# Once its contents are merged, abandoned, or otherwise no longer needed,
+# remove the worktree registration and its directory together:
+git worktree remove .worktrees/<task-id>/<role-id>
+
+# `remove` refuses a worktree with uncommitted changes unless forced; only
+# force past that after confirming the changes are genuinely disposable:
+git worktree remove --force .worktrees/<task-id>/<role-id>
+
+# If a worktree's directory was deleted out from under git (manually, by a
+# disk cleanup, or by some other means) without going through `git worktree
+# remove`, its registration becomes an orphan: `git worktree list` still
+# shows it, but the path no longer exists. `prune` clears those stale
+# registrations (and, with --dry-run, previews what it would remove first):
+git worktree prune --dry-run
+git worktree prune
+```
+
+**Known live orphan in this repository (as of this section's writing):**
+`.claude/worktrees/agent-a83df7effdf1e9eba` is registered but its directory
+is gone — a `git worktree prune` candidate. This predates and is unrelated
+to `.worktrees/` (this repository's own in-root worktree convention
+introduced above); `.claude/worktrees/` is Claude Code's own native
+worktree-isolation feature writing directly into the project tree (see
+`roster/runner-capabilities.json`'s `native_workspace_isolation` and
+`.agents/skills/run-agent-orchestration/references/runner-adapters.md`'s
+Claude Code section). Both locations are now covered by `.gitignore` (see
+that file's comment) so a populated worktree under either path no longer
+gets swept into `cadre select`'s git-status-mode `inputs.changed_files`.
+
+A project that wants to opt entirely out of the worktree-by-default
+behavior can narrow `repository.create_local_branch_or_worktree` in its own
+`.agents/shared/agent-autonomy.yaml` overlay (`allowed` → `never` /
+`human_approval` / `on_request`; legitimate under the narrowing-only merge
+rule) — `cadre init`'s RG-B allowlist surfaces this key. With it narrowed,
+`workspace-isolation.md`'s Step 1 condition fails for every dispatched
+write-capable role and edits land in-place instead, exactly as they did
+before this change.
