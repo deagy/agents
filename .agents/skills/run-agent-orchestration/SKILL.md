@@ -123,6 +123,12 @@ Return an outcome-first summary containing:
 - findings and conflicting recommendations by severity;
 - human gates reached;
 - changed or generated artifacts and validation performed;
+- for every dispatched write-capable role, its reported workspace-isolation
+  result block (mode, path, branch, base revision, committed, reason if
+  in-place — see `roster/shared/workspace-isolation.md`), relayed as
+  reported rather than re-derived; if a write-capable role's response
+  omitted the block, note that explicitly instead of silently dropping the
+  gap;
 - final disposition and next safe action.
 
 If subagent dispatch is unavailable, return the validated plan and clearly state that no agents were executed.

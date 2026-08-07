@@ -247,6 +247,22 @@ ALLOWED_CODEX_MODELS = {data["codex_model"] for data in MODEL_TIERS.values()}
 # of this list.
 ALLOWED_REASONING_EFFORTS = set(_RUNNER_CAPABILITIES["allowed_reasoning_efforts"])
 
+# Tiers whose sandbox_mode is not "read-only" -- i.e. every capability tier
+# that can make a repository edit. Derived from the manifest rather than
+# hardcoded tier names, so a future tier is picked up automatically (idea:
+# "write-capable Cadre roles work in a git worktree by default").
+WRITE_CAPABLE_TIERS = frozenset(
+    name for name, profile in CAPABILITY_PROFILES.items() if profile["sandbox_mode"] != "read-only"
+)
+# Shared-policy files that are only embedded into write-capable roles' wrapper
+# instructions, keyed by the same repository-relative path convention as
+# SHARED_POLICIES. A read-only role can still read the file directly (or via
+# `cadre resolve-shared`), so it must open with its own applicability header
+# rather than relying on this tier gate for enforcement.
+TIER_SCOPED_POLICIES: dict[str, frozenset[str]] = {
+    "roster/shared/workspace-isolation.md": WRITE_CAPABLE_TIERS,
+}
+
 GENERATED_MARKER = "<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->"
 GENERATED_TOP_LEVEL = {
     "skills", "agents", "suite", "bin",
@@ -473,20 +489,30 @@ def role_wrapper_inputs(agent_id: str, metadata: dict[str, Any]) -> dict[str, An
     """
     definition = metadata["definition"]
     phase = metadata.get("phase", "unknown")
-    profile = CAPABILITY_PROFILES[metadata["capability"]]
-    # Shared policy files are optional: a project (or this repository) may not
-    # have every one of them, or may have emptied one, and neither state is a
-    # defect. Skip missing or emptied files rather than failing, and don't
-    # leave a stray blank section behind.
-    shared_sections = []
-    for relative in SHARED_POLICIES:
-        path = REPOSITORY_ROOT / relative
-        if not path.is_file():
-            continue
-        body = path.read_text(encoding="utf-8").strip()
-        if not body:
-            continue
-        shared_sections.append(f"# Shared policy: {relative}\n\n{body}")
+    capability = metadata["capability"]
+    profile = CAPABILITY_PROFILES[capability]
+
+    def load_policy_sections(relatives: list[str]) -> list[str]:
+        # Shared policy files are optional: a project (or this repository)
+        # may not have every one of them, or may have emptied one, and
+        # neither state is a defect. Skip missing or emptied files rather
+        # than failing, and don't leave a stray blank section behind.
+        sections = []
+        for relative in relatives:
+            path = REPOSITORY_ROOT / relative
+            if not path.is_file():
+                continue
+            body = path.read_text(encoding="utf-8").strip()
+            if not body:
+                continue
+            sections.append(f"# Shared policy: {relative}\n\n{body}")
+        return sections
+
+    shared_sections = load_policy_sections(SHARED_POLICIES)
+    tier_scoped_relatives = [
+        relative for relative, tiers in TIER_SCOPED_POLICIES.items() if capability in tiers
+    ]
+    shared_sections.extend(load_policy_sections(tier_scoped_relatives))
     shared_content = "\n\n".join(shared_sections)
     # A migrated role's AGENT.md carries `---`-delimited frontmatter
     # ahead of its prose body (see role_metadata.py); that frontmatter

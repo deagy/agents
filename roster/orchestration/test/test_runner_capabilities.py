@@ -232,6 +232,36 @@ class RunnerAdaptersStructuralFactCoverageTests(unittest.TestCase):
         self.assertIsNone(self.runners["claude-code"]["concurrency_bound_config_key"])
         self.assertIsNone(self.runners["cline"]["concurrency_bound_config_key"])
 
+    # Fact 9: native workspace isolation (roster/shared/workspace-isolation.md).
+    def test_fact_9_native_workspace_isolation(self) -> None:
+        self.assertEqual("worktree", self.runners["claude-code"]["native_workspace_isolation"])
+        self.assertIsNone(self.runners["codex"]["native_workspace_isolation"])
+        self.assertIsNone(self.runners["cline"]["native_workspace_isolation"])
+        self.assertIn("native_workspace_isolation", self.prose)
+
+    def test_native_workspace_isolation_has_no_runtime_consumer(self) -> None:
+        """This field is build-time descriptive data only (see idea #8's
+        OD-2 disposition, matching every other field on this manifest) --
+        no dispatch-time code path may branch on it.
+
+        Covers all three plausible runtime consumers, not just one: the MCP
+        dispatch server, the dispatch-plan builder, and the selector CLI.
+        Grepping only dispatch_core.py would let a future branch in
+        build_dispatch_plan.py or select_agents.py regress OD-2 silently.
+        """
+        runtime_consumers = (
+            REPOSITORY_ROOT / "roster" / "orchestration" / "mcp" / "dispatch_core.py",
+            REPOSITORY_ROOT / "roster" / "orchestration" / "src" / "build_dispatch_plan.py",
+            REPOSITORY_ROOT / "roster" / "orchestration" / "src" / "select_agents.py",
+        )
+        for path in runtime_consumers:
+            self.assertTrue(path.is_file(), f"expected runtime-consumer file is missing: {path}")
+            self.assertNotIn(
+                "native_workspace_isolation",
+                path.read_text(encoding="utf-8"),
+                f"{path.name} branches on a build-time-only manifest field (idea #8 OD-2)",
+            )
+
 
 class NarrativeContentUndisturbedTests(unittest.TestCase):
     """AC-5: runner-adapters.md's narrative/investigative paragraphs remain
@@ -267,6 +297,7 @@ class ClineScopeRespectedTests(unittest.TestCase):
         self.assertNotIn("sandbox_mode", cline)
         self.assertFalse(cline["has_generated_wrapper"])
         self.assertFalse(cline["named_agent_dispatch_supported"])
+        self.assertIsNone(cline["native_workspace_isolation"])
 
     # The companion grounding check -- that no code in the Cline plugin reads a
     # tools/sandbox_mode grant -- used to live here as

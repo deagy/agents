@@ -453,6 +453,58 @@ class RepositoryHealthTests(unittest.TestCase):
                 self.assertIn("tools: Read, Grep, Glob, Bash, Edit, Write", author)
                 self.assertIn('sandbox_mode = "workspace-write"', (plugin_root / "codex-agents" / f"agents-{agent_id}.toml").read_text(encoding="utf-8"))
 
+            # roster/shared/workspace-isolation.md (TIER_SCOPED_POLICIES) must be
+            # embedded only into write-capable roles' wrappers, never read-only
+            # roles' -- covering code_author, test_author, environment_operator,
+            # and document_author tiers, plus the read-only absence case above.
+            marker = "Shared policy: roster/shared/workspace-isolation.md"
+            for agent_id in ("code-reviewer", "security-reviewer"):
+                markdown = (plugin_root / "agents" / f"{agent_id}.md").read_text(encoding="utf-8")
+                self.assertNotIn(marker, markdown)
+            for agent_id in (
+                "application-engineer",  # code_author
+                "test-engineer",  # test_author
+                "incident-commander",  # environment_operator
+                "requirements-agent",  # document_author
+            ):
+                markdown = (plugin_root / "agents" / f"{agent_id}.md").read_text(encoding="utf-8")
+                self.assertIn(marker, markdown)
+
+            sys.path.insert(0, str(ROOT / "orchestration" / "src"))
+            try:
+                import generate_global_plugin
+            finally:
+                sys.path.pop(0)
+            manifest = json.loads(
+                (REPOSITORY_ROOT / "roster" / "runner-capabilities.json").read_text(encoding="utf-8")
+            )
+            expected_write_capable = {
+                tier for tier, data in manifest["capability_tiers"].items()
+                if data["sandbox_mode"] != "read-only"
+            }
+            self.assertEqual(expected_write_capable, set(generate_global_plugin.WRITE_CAPABLE_TIERS))
+
+            tracked = set(
+                subprocess.run(
+                    ["git", "ls-files", "roster"],
+                    cwd=REPOSITORY_ROOT,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                ).stdout.splitlines()
+            )
+            for relative in generate_global_plugin.TIER_SCOPED_POLICIES:
+                self.assertIn(
+                    relative,
+                    tracked,
+                    f"{relative} is not git-tracked under roster/",
+                )
+                self.assertTrue(
+                    (plugin_root / "suite" / relative).is_file(),
+                    f"{relative} did not land under suite/ in the generated package",
+                )
+
     def test_every_relative_link_in_the_generated_package_resolves(self) -> None:
         """The generator rewrites relative links as it copies docs into
         suite/, and a rewrite that lands on the wrong depth produces a link

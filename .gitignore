@@ -57,3 +57,14 @@ node_modules/
 # (pyproject.toml / cadre_cli/); `python -m build` writes here.
 /dist/
 /build/
+
+# Agent-created git worktrees (see roster/shared/workspace-isolation.md).
+# `.worktrees/` is this repository's own in-root worktree convention;
+# `.claude/worktrees/` is Claude Code's own worktree-isolation feature
+# writing directly into the project tree. Neither was ignored before this
+# entry, which is a latent defect on its own: `cadre select`'s git-status
+# mode folds untracked paths into `inputs.changed_files`, so a populated,
+# untracked, in-repo worktree would get swept into selection input and
+# re-route the whole dispatch decision around its own scratch content.
+/.worktrees/
+/.claude/worktrees/

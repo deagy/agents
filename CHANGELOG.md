@@ -17,6 +17,24 @@ point are cut manually rather than via an automated version-bump PR.
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING (behavioral): write-capable Cadre roles now default to working in a dedicated `git worktree` instead of the caller's main working tree.** All 43 capability tiers with `sandbox_mode != "read-only"` (derived from `roster/runner-capabilities.json`, not hardcoded) now embed a new shared policy, `roster/shared/workspace-isolation.md`, into their generated wrapper instructions (`generate_global_plugin.py`'s new `TIER_SCOPED_POLICIES`, alongside the existing `SHARED_POLICIES`). It instructs an agent to check whether it is already inside a linked worktree, and if not and conditions allow (`agent-autonomy.yaml`'s `repository.create_local_branch_or_worktree: allowed`, no dirty paths intersecting the task's scope), create one in-root at `<repository_root>/.worktrees/<task-id>/<role-id>/` and work there, reporting the path/branch in its result. This is **prompt policy plus an orchestrator dispatch-contract expectation, not a mechanically enforced gate** — `roster/orchestration/mcp/dispatch_core.py` is unchanged, and no `agent-autonomy.yaml` value moved (`commit: on_request`, `push: on_request`, `merge: never`, and `create_local_branch_or_worktree: allowed` are all exactly as they were; this loosens no permission, it only changes where allowed edits land by default).
+
+  **Consumer impact:** a project that dispatches these roles and then inspects its main working tree for changes will see none — the changes land in `.worktrees/<task-id>/<role-id>/` on a new branch instead, and must be discovered, reviewed, and merged from there. Projects with existing tooling that assumes edits appear directly in the dispatching working tree should account for this before adopting the updated role wrappers.
+
+  **Opt-out:** a project that wants the previous in-place-only behavior can narrow `repository.create_local_branch_or_worktree` in its own `.agents/shared/agent-autonomy.yaml` overlay from `allowed` to `never`, `human_approval`, or `on_request` — legitimate under `agent-autonomy.yaml`'s narrowing-only merge rule (moving from rank 0 to rank 3/8/10 is a tightening, not a loosening). With the value narrowed, `workspace-isolation.md`'s Step 1 condition fails and every write-capable role degrades explicitly to in-place edits instead. `cadre init`'s RG-B flow already surfaces this key — it walks every leaf of `agent-autonomy.yaml` dynamically rather than using a fixed allowlist — so it is discoverable without hand-authoring the overlay. No code change was needed for that; it is called out here only because this change makes the key newly relevant.
+
+- **`.gitignore` now ignores `/.worktrees/` (this repository's own in-root worktree convention) and `/.claude/worktrees/`** (Claude Code's own worktree-isolation feature, which writes directly into the project tree and was not ignored before — a pre-existing latent defect: `cadre select`'s git-status mode folds untracked paths into `inputs.changed_files`, so a populated, untracked, in-repo worktree could get swept into selection input and re-route dispatch around its own scratch content).
+
+- **`roster/shared/README.md`** documents the new tier-scoped shared-policy mechanism and its asymmetry: `TIER_SCOPED_POLICIES` gates what the *generated wrapper* embeds per capability tier, but `cadre resolve-shared <filename>` remains filename-only and returns a tier-scoped file's full text regardless of the caller's tier — each tier-scoped file states its own applicability in its own text for that reason.
+
+- **`.agents/skills/run-agent-orchestration/`**: `references/dispatch-contract.md` now requires the same end-of-task workspace-isolation result block `workspace-isolation.md` defines, and `SKILL.md`'s "Consolidate Results" step relays it; `references/runner-adapters.md` gains per-runner isolation notes (Claude Code's worktree-isolation feature and Codex's `--cd`/`--sandbox workspace-write` path scoping), flagged where the exact behavior is not independently verified against runner documentation.
+
+- **`roster/runner-capabilities.json`** gains a `native_workspace_isolation` field per runner (`"worktree"` for `claude-code`, `null` for `codex` and `cline`), documenting which runners natively support workspace isolation as a launch parameter. Build-time only — no runtime code currently reads it.
+
+- **`roster/RUNBOOK.md`** gains an operator section on discovering, inspecting, and removing agent-created worktrees (`git worktree list`, `git worktree remove`, `git worktree prune` — operator-run only, never self-run by an agent per `workspace-isolation.md`).
+
 ## [0.16.0] - 2026-08-07
 
 ### Added

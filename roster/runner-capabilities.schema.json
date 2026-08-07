@@ -79,7 +79,8 @@
         "team_size_guidance",
         "named_agent_dispatch_supported",
         "named_agent_dispatch_workaround",
-        "concurrency_bound_config_key"
+        "concurrency_bound_config_key",
+        "native_workspace_isolation"
       ],
       "properties": {
         "has_generated_wrapper": { "type": "boolean" },
@@ -99,7 +100,11 @@
         },
         "named_agent_dispatch_supported": { "type": "boolean" },
         "named_agent_dispatch_workaround": { "type": ["string", "null"] },
-        "concurrency_bound_config_key": { "type": ["string", "null"] }
+        "concurrency_bound_config_key": { "type": ["string", "null"] },
+        "native_workspace_isolation": {
+          "description": "Which runner-native mechanism, if any, isolates a dispatched role's edits into a separate workspace before it runs (see roster/shared/workspace-isolation.md, which every write-capable role follows regardless of this value). Build-time descriptive data only -- no dispatch-time code currently reads this field (matching this manifest's own OD-2 disposition for its other fields).",
+          "enum": ["worktree", null]
+        }
       }
     }
   }
