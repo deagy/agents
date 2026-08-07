@@ -17,6 +17,28 @@ point are cut manually rather than via an automated version-bump PR.
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-08-07
+
+### Added
+
+- **`settings.disable_project_tier_cwd_fallback()`**, for processes whose working directory is not a project anchor. Without an explicit `start=`, the project tier is discovered by walking up from `Path.cwd()` — right for a CLI a human ran inside a project, wrong for a long-lived, project-agnostic one. Both stdio MCP servers now call it at import (alongside the existing `disable_interactive()`), so an unrelated checkout's `.agents/cadre.yaml` can no longer steer a tool call it has nothing to do with. It suppresses only the *implicit* anchor; an explicit `start=` is always honored, and scope violations still raise through it.
+
+- **`docs/examples/role-selection-workflow.md`**, an end-to-end walkthrough from task to dispatched agents, linked from a new README "Examples" section. Also adds `bin/README.md` documenting the CLI entry points, a Dependabot configuration, and a pre-commit configuration.
+
+- The pip/pipx distribution channel's own version (`cadre_cli/_version.py`) moves to `0.3.0`. This is a separate version line from this repository's tags and from the packaged plugin's version, as that file's docstring records.
+
+### Fixed
+
+- **Operator settings resolved the project tier from the process's working directory instead of the project being acted on.** No call site passed `start=`, so every project-tier lookup guessed from cwd — including `dispatch_core`'s runner-binary resolution, which already receives a validated `project_root` for the dispatch and ignored it. Both `build_claude_child_argv` and `build_child_argv` now anchor to that `project_root`. Impact was bounded (every runner/sdlc/knowledge-store field is `global_only`, and `gitlab.supports_work_item_hierarchy` is currently the only `project_or_global` field), but the pattern was established repo-wide and would have become a live bug the moment a project-scoped field mattered to dispatch.
+
+- **Executable-valued settings accepted a leading `-`, which the program that runs them parses as an option rather than a command.** Verified under bash: `bin="-a"; exec "$bin" --provider p.json --version` makes `exec` consume `--provider` as `-a`'s argv[0] argument and then attempt to execute `p.json`, so an inert-looking value silently reinterprets the rest of the command line. dash's `exec` has no `-a` and merely fails, but the packaged `bin/cadre` wrapper is `#!/bin/sh`, which is bash on some systems. Executable and path fields also now reject embedded control characters — a newline in particular breaks `cadre config resolve`'s contract of printing one value on stdout, which that wrapper captures with `$(...)`. Internal spaces remain legal by design (`/opt/My Tools/bin/x` is a real path, and every consumer quotes the value).
+
+- **Secret-shaped-key rejection walked mappings only, not sequences.** A key like `gitlab.extra[0].token` was never scanned. No registered field is list-shaped, so such a key could not be resolved — but `write_setting`'s "preserve unknown keys" merge would have round-tripped it into every later rewrite of the file, silently persisting a pasted credential that `settings.py` promises is never stored.
+
+### Changed
+
+- **`roster/shared/README.md` now reconciles the three project-local mechanisms under `.agents/`**, which look interchangeable and are not: `.agents/shared/<filename>` policy overlays (trusted, deep-merged, narrowing-only for autonomy), `.agents/knowledge-store/config.json` (its *presence* selects a security-relevant tier), and `.agents/cadre.yaml` (untrusted — it arrives with `git clone` — first-wins, with `global_only` fields rejected outright). Records why the asymmetry is deliberate and why the knowledge-store config is not folded into the new one.
+
 ## [0.15.0] - 2026-08-07
 
 ### Added
