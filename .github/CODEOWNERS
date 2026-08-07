@@ -5,3 +5,21 @@
 # generate_global_plugin.py into generated role wrappers.
 
 * @deagy
+
+# --- Kernel ownership boundary -------------------------------------------
+#
+# kernel/ owns the G1-G10 gate schemas, run-record validation, and
+# gate-authority semantics; roster/ owns the role catalog, routing, and
+# policy. Before the monorepo merge that split was enforced by the two
+# living in separate repositories with separate release cadences. Merging
+# removed that guarantee, so it is re-stated here and enforced by
+# roster/orchestration/test/test_kernel_boundary.py.
+#
+# These entries are deliberately narrower than the catch-all above: a change
+# under kernel/contracts/ alters what "approved" means for every project
+# that has adopted the lifecycle, which is a different class of change from
+# adding a role definition. Give it its own review, and split the reviewers
+# here the moment more than one person maintains this repository.
+/kernel/                @deagy
+/kernel/contracts/      @deagy
+/provider/provider.json @deagy
