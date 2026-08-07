@@ -75,6 +75,17 @@ class SettingsError(Exception):
     """A setting could not be resolved, or a config file/value is invalid."""
 
 
+class SettingsScopeError(SettingsError):
+    """A project-local file set a `global_only` field.
+
+    This is a security event (untrusted, clonable repository content trying
+    to steer an executable path, a data-store location, or an exfiltration
+    endpoint), not an ordinary "value unavailable" outcome -- it must never
+    be silently swallowed, including by resolve_optional(), which otherwise
+    treats every other SettingsError as "field simply isn't configured."
+    """
+
+
 @dataclass(frozen=True)
 class Resolved:
     key: str
@@ -530,7 +541,7 @@ def _resolve_core(
         data = _load_config_file(project_path)
         found, raw_value = _lookup_nested(data, key)
         if found and spec.scope == SCOPE_GLOBAL_ONLY and raw_value is not None:
-            raise SettingsError(
+            raise SettingsScopeError(
                 f"{key} may only be set via {spec.env_var or 'the environment'} or the "
                 f"user-global config file, never the project-local file ({project_path}); "
                 "project-local configuration is untrusted, clonable repository content -- "
@@ -627,15 +638,25 @@ def resolve_optional(
     input_func: Callable[[str], str] | None = None,
     output_func: Callable[[str], None] | None = None,
 ) -> Any:
-    spec = _spec(key)
-    if spec.required:
-        try:
-            return resolve_setting(
-                key, start=start, env=env, input_func=input_func, output_func=output_func
-            )
-        except SettingsError:
-            return None
-    return resolve_setting(key, start=start, env=env, input_func=input_func, output_func=output_func)
+    # Unlike resolve_setting, this is documented to never raise for an
+    # ordinary "field simply isn't configured" outcome -- it resolves to
+    # None instead, so callers like
+    # agentic_sdlc_contracts.try_lifecycle_contract() can keep their
+    # documented graceful "unavailable" fallback rather than crashing.
+    # SettingsScopeError is deliberately NOT caught here: a project-local
+    # file setting a global_only field is a security event (untrusted,
+    # clonable repository content trying to steer an executable path or a
+    # data-store location), and per this module's own trust-scope
+    # invariant it must never be silently ignored, even by the "optional"
+    # resolver.
+    try:
+        return resolve_setting(
+            key, start=start, env=env, input_func=input_func, output_func=output_func
+        )
+    except SettingsScopeError:
+        raise
+    except SettingsError:
+        return None
 
 
 def resolve_many(

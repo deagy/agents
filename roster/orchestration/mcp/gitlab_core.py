@@ -100,9 +100,12 @@ import settings as _settings  # noqa: E402  (sys.path set above)
 # closed with a message naming *this* variable, never silently picking up a
 # same-shaped alias.
 GITLAB_TOKEN_ENV_VAR = "GITLAB_SVC_TOKEN"
-GITLAB_BASE_URL_ENV_VAR = "GITLAB_BASE_URL"
-GITLAB_PROJECT_ID_ENV_VAR = "GITLAB_DOCS_PROJECT_ID"
-GITLAB_HIERARCHY_ENV_VAR = "GITLAB_SUPPORTS_WORK_ITEM_HIERARCHY"
+# The plain (non-secret) three are sourced from settings.FIELDS rather than
+# hardcoded here, so this name and the one actually consulted by
+# resolve_config() (via settings.resolve_many) cannot drift apart.
+GITLAB_BASE_URL_ENV_VAR = _settings.FIELDS["gitlab.base_url"].env_var
+GITLAB_PROJECT_ID_ENV_VAR = _settings.FIELDS["gitlab.project_id"].env_var
+GITLAB_HIERARCHY_ENV_VAR = _settings.FIELDS["gitlab.supports_work_item_hierarchy"].env_var
 
 MAX_EVIDENCE_COMMENT_BYTES = 1 * 1024 * 1024  # 1 MiB, UTF-8 encoded content
 # Wiki pages are documented as this integration's home for durable,

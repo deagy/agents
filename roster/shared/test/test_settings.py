@@ -115,6 +115,18 @@ class PrecedenceMatrixTests(SettingsTestCase):
         value = settings.resolve_optional("knowledge_store.home", start=self.project_dir, env={})
         self.assertIsNone(value)
 
+    def test_optional_field_still_raises_on_a_global_only_scope_violation(self) -> None:
+        # resolve_optional() swallows "simply unconfigured" (above), but a
+        # project-local file setting a global_only field is a security
+        # event, not an ordinary absence -- it must surface even through
+        # the "optional" resolver, never silently degrade to None.
+        _write_project_config(
+            self.project_dir, 'agentic_sdlc:\n  bin_path: "/tmp/should-not-be-honored"\n'
+        )
+        with self.assertRaises(settings.SettingsScopeError) as ctx:
+            settings.resolve_optional("agentic_sdlc.bin_path", start=self.project_dir, env={})
+        self.assertIn("agentic_sdlc.bin_path", str(ctx.exception))
+
 
 class EmptyEnvVarTests(SettingsTestCase):
     def test_empty_env_var_errors_rather_than_falling_back(self) -> None:

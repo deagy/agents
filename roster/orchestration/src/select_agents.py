@@ -13,17 +13,26 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
-from build_dispatch_plan import build_dispatch_plan
-from routing import load_catalog, load_routing
-from selection_telemetry import (
+ORCHESTRATION_ROOT = Path(__file__).resolve().parent.parent
+ROSTER_ROOT = ORCHESTRATION_ROOT.parent
+REPOSITORY_ROOT = ROSTER_ROOT.parent
+
+# Not relying on agentic_sdlc_contracts' own sys.path append (transitively
+# reached via build_dispatch_plan below) for this -- appended directly so
+# the `from settings import SettingsError` import below is correct even if
+# that transitive chain is ever reordered.
+_SHARED_SRC_DIR = ROSTER_ROOT / "shared" / "src"
+if str(_SHARED_SRC_DIR) not in sys.path:
+    sys.path.append(str(_SHARED_SRC_DIR))
+
+from build_dispatch_plan import build_dispatch_plan  # noqa: E402
+from routing import load_catalog, load_routing  # noqa: E402
+from selection_telemetry import (  # noqa: E402
     include_task_enabled,
     is_enabled as telemetry_is_enabled,
     record_selection,
 )
-
-ORCHESTRATION_ROOT = Path(__file__).resolve().parent.parent
-ROSTER_ROOT = ORCHESTRATION_ROOT.parent
-REPOSITORY_ROOT = ROSTER_ROOT.parent
+from settings import SettingsError  # noqa: E402
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -221,6 +230,6 @@ def main(argv: list[str] | None = None) -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as error:
+    except (OSError, RuntimeError, ValueError, json.JSONDecodeError, SettingsError) as error:
         print(str(error), file=sys.stderr)
         raise SystemExit(1) from error

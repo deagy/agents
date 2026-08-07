@@ -97,8 +97,11 @@ DISPATCH_JOB_TTL_SECONDS = 1800.0
 
 DEPTH_ENV_VAR = "SECURE_CLOUD_AGENTS_DISPATCH_DEPTH"
 PARENT_CLASSIFICATION_ENV_VAR = "SECURE_CLOUD_AGENTS_PARENT_CLASSIFICATION"
-CODEX_BIN_ENV_VAR = "SECURE_CLOUD_AGENTS_CODEX_BIN"
-CLAUDE_BIN_ENV_VAR = "SECURE_CLOUD_AGENTS_CLAUDE_BIN"
+# Sourced from settings.FIELDS rather than hardcoded here, so this name and
+# the one actually consulted by build_claude_child_argv/build_codex_child_argv
+# (via settings.resolve_setting) cannot drift apart.
+CODEX_BIN_ENV_VAR = settings.FIELDS["runners.codex_bin"].env_var
+CLAUDE_BIN_ENV_VAR = settings.FIELDS["runners.claude_bin"].env_var
 
 # Runner abstraction (OD-4 from INTENT-CADRE-TEAM-DISPATCH-001). "codex" is
 # the original, fully-verified runner (see build_child_argv's own VERIFIED

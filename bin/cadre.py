@@ -76,7 +76,9 @@ def _child_env(interactive: bool) -> dict[str, str] | None:
 
 
 def dispatch_sdlc(rest: list[str], *, interactive: bool = False) -> int:
-    sdlc_bin = settings.resolve_optional("agentic_sdlc.bin_path")
+    sdlc_bin = settings.resolve_optional(
+        "agentic_sdlc.bin_path", env=_child_env(interactive) or os.environ
+    )
     if not sdlc_bin:
         print(SDLC_INSTALL_MESSAGE, file=sys.stderr)
         return 1
