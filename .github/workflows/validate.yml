@@ -201,6 +201,15 @@ jobs:
       fail-fast: false
       matrix:
         package: [cline, cline-agents, cline-lifecycle]
+    env:
+      # cline-lifecycle's "real bin/cadre sdlc subprocess calls" tests invoke
+      # the actual kernel binary and assert real output, so they need one on
+      # hand. The archived cadre-lifecycle repo had to `pip install` it from a
+      # git URL for this job -- it lived in a different repository. Here it is
+      # in the tree, so point at it directly: no network install, no version
+      # pin to keep in sync, and the tests exercise the same kernel the rest
+      # of this workflow does.
+      AGENTIC_SDLC_BIN: ${{ github.workspace }}/bin/agentic-sdlc
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
