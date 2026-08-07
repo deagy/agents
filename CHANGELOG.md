@@ -17,6 +17,10 @@ point are cut manually rather than via an automated version-bump PR.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`cadre generate-plugin --output` could silently clobber a downstream package's hand-authored README.md.** The existing guard against overwriting a non-empty `--output` directory only checked for the *presence* of a `.codex-plugin/plugin.json` marker, not whether the target's declared identity actually matched what this generator would produce — so it passed trivially for a repository that is both a legitimate regeneration target and its own initialized downstream package (e.g. `deagy/cadre-lifecycle`, which merges Cadre with Agentic SDLC/Cline/LangGraph and hand-authors its own README describing that identity), and generation proceeded straight to an unconditional README.md write. `generate-plugin --output` now leaves README.md untouched whenever the target already has a `.codex-plugin/plugin.json`; `--check` correspondingly excludes README.md from its drift comparison in that case. Pass the new `--force-readme` flag to write this generator's own README.md over an existing marker anyway (fixes #97).
+
 ## [0.14.0] - 2026-08-06
 
 ### Added
