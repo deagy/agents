@@ -81,6 +81,33 @@ Only files a project actually wants to extend or override need to exist
 under `.agents/shared/`; anything absent resolves straight to the global
 default.
 
+### The three things that live under `.agents/`
+
+`.agents/` hosts three separate project-local mechanisms. They look alike
+and are **not** interchangeable — each has its own resolver, merge rule,
+and, most importantly, its own trust posture. Read the trust column before
+adding anything here.
+
+| Path | What it is | Trust | Merge |
+| --- | --- | --- | --- |
+| `.agents/shared/<filename>` | Policy overlays — this document | **Trusted.** Alters agent policy; `agent-autonomy.yaml` is narrowing-only so an overlay can tighten but never loosen autonomy. | Deep-merged over the global default (`resolve.py`) |
+| `.agents/knowledge-store/config.json` | Knowledge-store configuration | Security-relevant. Its *presence* selects the project-local tier, which gates database confinement, prohibits remote embeddings, and changes `--source` enforcement. | Own three-tier resolver (`knowledge-store/src/config.py`) |
+| `.agents/cadre.yaml` (or `.json`) | Operator settings — endpoints, binary paths, store location | **Untrusted.** Arrives with `git clone` and is editable by anyone who can open a pull request. Fields that select an executable, a data-store location, or a token-receiving destination are `global_only` and are rejected outright if set here. | First-wins precedence, no merging (`shared/src/settings.py`) |
+
+The asymmetry is deliberate. A policy overlay can only ever *narrow* what
+agents may do, so trusting it is safe. An operator setting picks which
+binary gets executed and where a service token is sent, so a file that
+travels with a repository must not be able to choose it — see
+`roster/RUNBOOK.md`'s configuration section for the full trust-scope table
+and the reasoning behind each `global_only` field.
+
+`.agents/knowledge-store/config.json` is deliberately **not** folded into
+`.agents/cadre.yaml`: only its `home` directory is an operator setting, and
+that one field now resolves through `settings.py` as a lower-precedence
+fallback beneath `KNOWLEDGE_STORE_HOME`. The rest of that file is store
+schema, and its tier detection is load-bearing security state that a second
+resolver must not perturb.
+
 ## Generating overlays with `cadre init`
 
 Rather than hand-authoring `.agents/shared/<filename>` overlays from scratch,
