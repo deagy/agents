@@ -846,6 +846,98 @@ generate-role-metadata --check` is the CI drift-guard equivalent. The
 packaged plugin then picks the change up when it is regenerated in a [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle)
 checkout.
 
+## 17a. Unified operator settings (`roster/shared/src/settings.py`)
+
+This repository's own tooling (the GitLab-evidence MCP server, the dispatch
+MCP server's Claude Code / Codex runner selection, the Agentic SDLC bin-path
+lookup, and the knowledge store's global-fallback home directory) reads its
+operator-configurable settings through one resolver,
+`roster/shared/src/settings.py`, instead of scattered `os.environ.get(...)`
+calls. Every setting resolves in this order, per field:
+
+1. an environment variable (an env var that is *set but empty/whitespace*
+   is an error, not a silent fall-through to the next source)
+2. a project-local config file — `.agents/cadre.yaml` (or `.agents/
+   cadre.json`; having both at once is an error), discovered by walking up
+   from the current directory to the nearest `.git` boundary, the same
+   convention `.agents/shared/<filename>` overlays and the knowledge store's
+   own project-local `config.json` already use
+3. a user-global config file — `${XDG_CONFIG_HOME:-~/.config}/cadre/
+   config.yaml` (or `config.json`; same both-at-once rule)
+4. a built-in static default
+5. a computed default (e.g. `agentic_sdlc.bin_path` falls back to
+   `shutil.which("agentic-sdlc")`)
+6. an interactive prompt, only when explicitly enabled (see below) — a
+   valid answer is optionally written back to the project-local or
+   user-global file
+7. otherwise, a fail-closed error naming every source checked and its state
+
+### Trust scope: some fields are global-only
+
+Project-local `.agents/cadre.yaml` is untrusted, clonable repository
+content — anyone who can send a pull request can edit it. A handful of
+fields select an executable to run, a data-store location, or an
+exfiltration-sensitive network endpoint/destination, so they may **only**
+come from an environment variable or the user-global file, never the
+project-local file. A project-local file that sets one of these anyway is
+a hard, loud `SettingsError` — this fires on the key's mere *presence* in
+the project-local file, including an explicit `null`, never only on a
+non-null value, and is never a silent ignore.
+
+| Key | Env var | Scope | Notes |
+|---|---|---|---|
+| `gitlab.base_url` | `GITLAB_BASE_URL` | **global-only** | must be `https://`, no URL userinfo; trailing `/` stripped |
+| `gitlab.project_id` | `GITLAB_DOCS_PROJECT_ID` | **global-only** | must be a string (an unquoted numeric-looking YAML scalar like `007` is rejected). Global-only alongside `base_url`, not project-or-global: `roster/orchestration/mcp/SECURITY-CONTROLS.md` records a human-accepted residual-risk control for the GitLab integration that depends on *both* fields being operator-fixed (a single dedicated, docs-only project with a least-privilege service token) — a project-local file redirecting the destination project would silently weaken that control |
+| `gitlab.supports_work_item_hierarchy` | `GITLAB_SUPPORTS_WORK_ITEM_HIERARCHY` | project-or-global | tri-state: absent/`null` = unset, native YAML bool or `"true"`/`"false"` (case-insensitive) accepted. This is currently the only project-or-global field |
+| `runners.claude_bin` | `SECURE_CLOUD_AGENTS_CLAUDE_BIN` | **global-only** | default `"claude"` |
+| `runners.codex_bin` | `SECURE_CLOUD_AGENTS_CODEX_BIN` | **global-only** | default `"codex"` |
+| `agentic_sdlc.bin_path` | `AGENTIC_SDLC_BIN` | **global-only** | computed default: `shutil.which("agentic-sdlc")` |
+| `knowledge_store.home` | `KNOWLEDGE_STORE_HOME` | **global-only** | no default (caller keeps its own fallback) |
+
+The project-local *read* path is guarded the same way the write path
+already was: `.agents/cadre.yaml`/`.json` (or a symlinked `.agents`
+directory) resolving outside the discovered project root is rejected
+before the file is ever opened, and a malformed/unparseable config file
+(YAML or JSON, at either tier) fails closed with a `SettingsError` naming
+only the file's path — never the parser's own message, which can quote a
+snippet of the file's content.
+
+### Secrets are always environment-variable-only
+
+`GITLAB_SVC_TOKEN` and the knowledge store's embedding API key are never
+read from, or written to, a cadre config file — they stay direct
+`os.environ` reads in `gitlab_core.resolve_token()` and
+`knowledge-store/src/embeddings.py`. If a config file contains a
+secret-shaped key (`*.token`, `*_token`, `*.api_key`, `*.password`,
+`*.secret`, `gitlab.svc_token`), loading that file fails loudly, naming the
+offending key and never echoing its value.
+
+### `--interactive` and the prompt flow
+
+`cadre --interactive <subcommand> ...` (the flag must come *before* the
+subcommand name) opts the dispatched subcommand into interactive prompting
+by passing `CADRE_INTERACTIVE=1` through an explicit `env=` argument to the
+child process — `bin/cadre.py` never mutates its own `os.environ`. A prompt
+only actually fires when `CADRE_INTERACTIVE=1`, `sys.stdin`/`sys.stdout` are
+both a real terminal, and `settings.disable_interactive()` was not called —
+that last hard opt-out is invoked unconditionally at the top of both stdio
+MCP servers (`dispatch_server.py`, `gitlab_server.py`), since stdin there is
+the JSON-RPC transport channel and a blocking prompt would corrupt it.
+Prompting is lazy (only the one field that actually failed to resolve, only
+when that code path is actually reached), validates an answer with the same
+per-field validator env/file values go through, never prompts for a
+secret-classified field, and after a valid answer asks which tier to save
+it to (project, if the field's scope allows it; global; or skip to use for
+this run only).
+
+### `cadre config show` / `cadre config path`
+
+```sh
+cadre config show   # every known setting's resolved value, origin, and source path;
+                     # secrets print as "env-only: GITLAB_SVC_TOKEN (set|not set)", never a value
+cadre config path    # both candidate config file paths (project-local, resolved or "not found"; global)
+```
+
 ## 18. Record a GitHub-backed human gate approval
 
 The portable lifecycle kernel supports two GitHub review paths. Use the

@@ -30,6 +30,14 @@ if str(_MODULE_DIR) not in sys.path:
     sys.path.insert(0, str(_MODULE_DIR))
 
 import dispatch_core as core  # noqa: E402  (sys.path set above)
+import settings  # noqa: E402  (dispatch_core.py already appends roster/shared/src to sys.path)
+
+# Unconditional, at import time, not just inside main(): stdin is this
+# server's JSON-RPC transport channel, so roster/shared/src/settings.py must
+# never fall through to an interactive input() prompt here, no matter how
+# this module is imported/run. See settings.disable_interactive()'s
+# docstring.
+settings.disable_interactive()
 
 # dispatch_team_recipe below needs routing.yaml/catalog.yaml loading and the
 # recipe-expansion helper, both of which live in src/ alongside dispatch_core's

@@ -42,6 +42,12 @@ sys.path.insert(0, str(MCP_DIR))
 import dispatch_core  # noqa: E402
 import gitlab_core as gcore  # noqa: E402
 
+_SHARED_TEST_DIR = ORCHESTRATION_ROOT.parent / "shared" / "test"
+if str(_SHARED_TEST_DIR) not in sys.path:
+    sys.path.append(str(_SHARED_TEST_DIR))
+
+from settings_test_helpers import isolate_settings_module  # noqa: E402  (sys.path set above)
+
 FAKE_TOKEN = "glpat-FAKE-TEST-TOKEN-0000"
 
 # Module-wide safety net: every test in this file that calls any of the
@@ -57,14 +63,25 @@ _AUDIT_LOG_PATCHER = mock.patch.object(
     gcore, "GITLAB_AUDIT_LOG_PATH", Path(_AUDIT_LOG_TMP_DIR.name) / "audit.jsonl"
 )
 
+# Module-wide settings isolation: gcore.resolve_config() now goes through
+# roster/shared/src/settings.py, which -- for any test in this file that
+# pops an env var (e.g. ConfigResolutionTests.test_missing_project_id_fails_closed)
+# -- would otherwise fall through to the real developer machine's
+# ${XDG_CONFIG_HOME:-~/.config}/cadre/config.yaml and become
+# machine-dependent, silently passing (or masking a real fail-closed
+# regression) whenever such a file happens to exist locally.
+_SETTINGS_ISOLATION = isolate_settings_module()
+
 
 def setUpModule() -> None:
     _AUDIT_LOG_PATCHER.start()
+    _SETTINGS_ISOLATION.start()
 
 
 def tearDownModule() -> None:
     _AUDIT_LOG_PATCHER.stop()
     _AUDIT_LOG_TMP_DIR.cleanup()
+    _SETTINGS_ISOLATION.stop()
 
 
 def _base_env(**overrides: str) -> dict[str, str]:

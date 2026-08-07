@@ -18,13 +18,18 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
+_SHARED_TEST_DIR = ROOT.parent / "shared" / "test"
+if str(_SHARED_TEST_DIR) not in sys.path:
+    sys.path.append(str(_SHARED_TEST_DIR))
+
 from cli import run  # noqa: E402
-from config import load_config  # noqa: E402
+from config import TIER_GLOBAL_FALLBACK, load_config  # noqa: E402
 from content import chunk_text, protect_content  # noqa: E402
 from database import open_store, store_stats  # noqa: E402
 from embeddings import MAX_RESPONSE_BYTES, _RejectRedirects, embed_texts, hashing_embedding  # noqa: E402
 from normalize import normalize_file  # noqa: E402
 from service import build_agent_context, ingest_file, search_store, stable_query_id, top_limit  # noqa: E402
+from settings_test_helpers import isolate_settings  # noqa: E402  (sys.path set above)
 
 
 def test_config(database: Path, **embedding_overrides: object) -> dict[str, object]:
@@ -45,6 +50,11 @@ class KnowledgeStoreTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(prefix="knowledge-store-")
         self.directory = Path(self.temporary.name)
         self.connections = []
+        # config.py's load_config() -> default_config_path() now consults
+        # settings.py for KNOWLEDGE_STORE_HOME's global fallback; isolate the
+        # user-global settings tier so these tests never read a real
+        # developer machine's ~/.config/cadre/config.yaml.
+        self.xdg_config_home = isolate_settings(self)
 
     def tearDown(self) -> None:
         for connection in reversed(self.connections):
@@ -264,6 +274,53 @@ class KnowledgeStoreTests(unittest.TestCase):
             with mock.patch("config.Path.cwd", return_value=nested):
                 config = load_config()
         self.assertEqual(str((global_home / "data" / "knowledge.db").resolve()), config["database"])
+
+    def test_project_local_cadre_yaml_setting_knowledge_store_home_is_rejected(self) -> None:
+        # knowledge_store.home is global_only in settings.py's trust-scope
+        # table -- a project-local .agents/cadre.yaml that sets it must be
+        # rejected loudly, never silently ignored, even though this is a
+        # different file from knowledge-store's own project-local
+        # .agents/knowledge-store/config.json.
+        project = self.directory / "project-cadre-yaml"
+        project.mkdir()
+        (project / ".git").mkdir()
+        agents_dir = project / ".agents"
+        agents_dir.mkdir()
+        (agents_dir / "cadre.yaml").write_text(
+            'knowledge_store:\n  home: "/tmp/should-not-be-honored"\n', encoding="utf-8"
+        )
+        with mock.patch("config.Path.cwd", return_value=project):
+            with self.assertRaises(Exception) as captured:
+                load_config()
+        self.assertIn("knowledge_store.home", str(captured.exception))
+
+    def test_knowledge_store_home_value_never_influences_tier_only_where_global_tier_points(self) -> None:
+        # A knowledge_store.home config value changes WHERE the global tier's
+        # store lives, never WHICH tier is selected: with no project-local
+        # .agents/knowledge-store/config.json, the tier must stay
+        # TIER_GLOBAL_FALLBACK regardless of what knowledge_store.home
+        # resolves to.
+        no_project_local_cwd = self.directory / "no-project-local-tier-check"
+        no_project_local_cwd.mkdir()
+        with mock.patch.dict(os.environ, {"KNOWLEDGE_STORE_HOME": str(self.directory / "via-env")}):
+            with mock.patch("config.Path.cwd", return_value=no_project_local_cwd):
+                _config, tier = load_config(return_tier=True)
+        self.assertEqual(tier, TIER_GLOBAL_FALLBACK)
+
+        global_config_dir = self.xdg_config_home / "cadre"
+        global_config_dir.mkdir(parents=True)
+        (global_config_dir / "config.yaml").write_text(
+            f'knowledge_store:\n  home: "{self.directory / "via-settings-file"}"\nschema_version: 1\n',
+            encoding="utf-8",
+        )
+        import settings as _settings
+
+        _settings.reset_cache()
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("KNOWLEDGE_STORE_HOME", None)
+            with mock.patch("config.Path.cwd", return_value=no_project_local_cwd):
+                _config2, tier2 = load_config(return_tier=True)
+        self.assertEqual(tier2, TIER_GLOBAL_FALLBACK)
 
     def test_cli_utf8_json_and_no_raw_query_on_stderr(self) -> None:
         config_path = self._write_json("config.json", {"database": "store.db", "embedding": {"dimensions": 128}})

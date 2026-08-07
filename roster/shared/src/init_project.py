@@ -42,8 +42,10 @@ from resolve import (  # noqa: E402
     _autonomy_leaf_paths,
     _autonomy_rank,
     _check_autonomy_overlay,
+    _is_same_or_descendant,
     _load_structured,
     _require_yaml,
+    _resolve_existing_ancestor,
     OverlayError,
     PROJECT_OVERLAY_RELATIVE_DIR,
     SHARED_DEFAULTS_DIR,
@@ -102,53 +104,6 @@ def _self_checkout_markers_present(root: Path) -> bool:
     return (root / "roster" / "shared" / TEAM_PROFILE_FILENAME).is_file() and (
         root / "bin" / "subcommands.tsv"
     ).is_file()
-
-
-def _resolve_existing_ancestor(path: Path) -> Path:
-    """Return the nearest existing ancestor of `path` (or `path` itself, if
-    it already exists), resolved. Used so filesystem-identity comparisons
-    still work against a path that does not exist yet (e.g. a write target
-    about to be created), by anchoring the comparison at whatever prefix of
-    it is already real on disk."""
-    current = path.resolve(strict=False)
-    while True:
-        if current.exists():
-            return current.resolve()
-        parent = current.parent
-        if parent == current:
-            return current
-        current = parent
-
-
-def _is_same_or_descendant(path: Path, ancestor: Path) -> bool:
-    """Filesystem-identity containment check (finding 4): True if `path` IS
-    `ancestor`, or is located under it.
-
-    Uses `os.path.samestat` (device/inode identity) rather than string or
-    `Path.resolve()` equality, which stays case-sensitive on POSIX `pathlib`
-    regardless of whether the underlying filesystem is actually case-
-    insensitive (e.g. macOS APFS/HFS+ default). Two differently-cased paths
-    that are the identical on-disk directory on such a filesystem compare
-    equal here even though their string forms differ, closing the bypass a
-    pure string/path comparison would miss.
-
-    `ancestor` is required to already exist (both real call sites — this
-    suite's own checkout root, and a --target already validated as a
-    directory — always satisfy this). `path` may not exist yet; its nearest
-    existing ancestor is used as the anchor for the walk up.
-    """
-    resolved_ancestor = ancestor.resolve()
-    probe = _resolve_existing_ancestor(path)
-    while True:
-        try:
-            if os.path.samestat(os.stat(probe), os.stat(resolved_ancestor)):
-                return True
-        except OSError:
-            return False
-        parent = probe.parent
-        if parent == probe:
-            return False
-        probe = parent
 
 
 def _refuse_if_self_checkout_resolved(resolved: Path) -> None:

@@ -5,8 +5,20 @@ from __future__ import annotations
 import copy
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
+
+# Appended (never inserted at sys.path[0]): this module is itself imported
+# under the name "config", and roster/shared/src/settings.py has no
+# same-named module here to shadow, but keeping this at the end of sys.path
+# (rather than the front) means a caller's own same-named module always
+# wins first, matching every other settings.py consumer's discipline.
+_SHARED_SRC_DIR = Path(__file__).resolve().parents[2] / "shared" / "src"
+if str(_SHARED_SRC_DIR) not in sys.path:
+    sys.path.append(str(_SHARED_SRC_DIR))
+
+import settings  # noqa: E402  (sys.path set above)
 
 
 DEFAULTS: dict[str, Any] = {
@@ -84,11 +96,19 @@ def default_config_path() -> Path:
     partitioning this requires of callers when no project-local override
     exists. A project opts into its own private store simply by creating the
     project-local file.
+
+    May raise `settings.SettingsError` (specifically `SettingsScopeError`)
+    if a project-local `.agents/cadre.yaml`/`.json` sets `knowledge_store.home`
+    -- that field is global-only, since a project-local file is untrusted,
+    clonable content and this value picks where a database is read/written.
+    `cli.py`'s top-level handler catches `SettingsError` alongside its other
+    caught exception types so this surfaces as a clean CLI error, not a
+    traceback.
     """
     project_local = find_project_local_config(Path.cwd())
     if project_local:
         return project_local
-    home = os.environ.get("KNOWLEDGE_STORE_HOME")
+    home = settings.resolve_optional("knowledge_store.home")
     base = Path(home).expanduser() if home else Path.home() / ".agents" / "knowledge-store"
     return base / "config.json"
 

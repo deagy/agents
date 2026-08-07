@@ -36,6 +36,15 @@ them — an operator who sets a differently-named variable gets a fail-closed
 "not set" error naming the exact variable this module checks, not a silent
 fallback.
 
+All four variables below can also be set via a config file, resolved
+through `roster/shared/src/settings.py` (env var still wins if both are
+set) -- see `roster/RUNBOOK.md`'s config-file section for the full
+precedence chain and file locations. `GITLAB_BASE_URL` and
+`GITLAB_DOCS_PROJECT_ID` are `global_only` there and may only come from an
+environment variable or the user-global config file, never a project-local
+one; `GITLAB_SVC_TOKEN` is never accepted from any config file at all, and
+`GITLAB_SUPPORTS_WORK_ITEM_HIERARCHY` may come from a project-local file.
+
 | Variable | Required | Meaning |
 | --- | --- | --- |
 | `GITLAB_SVC_TOKEN` | yes | The GitLab service-account (project access) token. This is the **only** recognized name — `GL_SVC_TOKEN` and `GITLAB_SERVICE_TOKEN` are explicitly *not* honored as aliases; there is no alias-lookup code in `gitlab_core.py` at all. Read lazily, only from inside a tool call that needs it, never at import/startup time; never written to a log line, exception message, or audit record. |
