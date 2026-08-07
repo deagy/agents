@@ -152,21 +152,25 @@ Claude Code discovers `agents/*.md` directly from the plugin.
 **Generated — never hand-edit here.** `skills/`, `roster/`, `codex-agents/`,
 `suite/`, `bin/cadre`, `agent-catalog.json`, `provider.json`, `profiles/`,
 `extensions/`, and **`README.md` (this file)** are all produced from
-[`deagy/cadre`](https://github.com/deagy/cadre). Editing any of them here
-breaks this repository's `validate.yml` with a drift failure. Their sources in
-the register are `roster/`, `.agents/skills/`, `provider/`, and
-`packaging/plugin-README.md` — change them there and regenerate:
+[`deagy/cadre`](https://github.com/deagy/cadre). Their sources in the register
+are `roster/`, `.agents/skills/`, `provider/`, and `packaging/plugin-README.md`
+— change them there and regenerate.
+
+**Never run `cadre generate-plugin --output` directly against this checkout.**
+The generator has no concept of this repository's 4-plugin split and will
+clobber hand-authored content (the root `README.md`, `plugins/lifecycle-github/`,
+`plugins/lifecycle-gitlab/`, etc.). Generate into a scratch directory instead
+and diff:
 
 ```sh
 git clone https://github.com/deagy/cadre.git
 git -C cadre checkout "$(grep -v '^[[:space:]]*#' /path/to/cadre-lifecycle/cadre-ref.txt \
   | grep -v '^[[:space:]]*$' | head -1)"
-cadre/bin/cadre generate-plugin --output /path/to/cadre-lifecycle
+cadre/bin/cadre generate-plugin --output /tmp/cadre-lifecycle-regen   # scratch directory, never this checkout directly
+diff -rq /tmp/cadre-lifecycle-regen /path/to/cadre-lifecycle          # review the diff
 ```
 
-Check out exactly the revision `cadre-ref.txt` names, not a release tag:
-`.github/workflows/validate.yml` runs the same command with `--check` against
-that revision, so regenerating from anything else produces a diff CI rejects.
+Check out exactly the revision `cadre-ref.txt` names, not a release tag.
 Picking up register changes is a deliberate act: bump `cadre-ref.txt` and
 commit the regenerated diff in the same pull request.
 
