@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Evidence Package"
+  short_description: "Assemble auditable evidence."
+  default_prompt: "Use $release-evidence-package to build an auditable evidence bundle."

@@ -220,6 +220,35 @@ jobs:
       - run: npm run typecheck
         working-directory: plugin/${{ matrix.package }}
 
+  generated-content:
+    name: plugin/ generated content matches its source
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      # The generated half of plugin/ is committed because a GitHub-sourced
+      # marketplace serves the repository tree -- an uncommitted distribution
+      # installs a plugin with no roles in it. This job is what makes that
+      # safe: source and output live in one commit, and drift fails the PR
+      # that introduced it rather than being reconciled weeks later by a
+      # scheduled cross-repo job.
+      - name: Regenerate into a scratch directory
+        run: ./bin/cadre generate-plugin --output "$RUNNER_TEMP/regen"
+      - name: Fail on any difference from the committed distribution
+        run: |
+          set -eu
+          # README.md is hand-authored here (the generator leaves an
+          # already-initialized package's README alone); everything else the
+          # generator emits must match byte for byte.
+          for path in agents skills suite codex-agents profiles extensions \
+                      agent-catalog.json provider.json bin; do
+            diff -r "$RUNNER_TEMP/regen/$path" "plugin/$path"
+          done
+          diff -r "$RUNNER_TEMP/regen/plugins/lifecycle/skills" plugin/plugins/lifecycle/skills
+
   secret-scan:
     runs-on: ubuntu-latest
     timeout-minutes: 10

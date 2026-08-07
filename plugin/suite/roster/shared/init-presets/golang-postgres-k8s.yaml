@@ -1,0 +1,21 @@
+# Example `cadre init --stack golang-postgres-k8s` starter preset.
+#
+# A stack preset is a static, human-reviewed RG-A-only starter fragment: it
+# may only propose values for team-profile.yaml / library-standards.yaml /
+# technology-standards.md. It is never a target-repo detection heuristic, and
+# it is structurally forbidden (see init_project.load_stack_preset) from
+# containing anything that would touch agent-autonomy.yaml or
+# cloud-guardrails.md — governance answers always start blank and always
+# require explicit human input (THREAT-MODEL-HARDENING-5).
+#
+# A preset only *suggests* values; `cadre init` still requires an explicit
+# kept/overridden/deferred field_decisions entry for every field it touches,
+# same as any other answer.
+rg_a_stack:
+  backend:
+    database: postgresql
+    primary_language: golang
+  platform:
+    orchestration: kubernetes
+    package_deployment: helm
+rg_a_libraries: {}

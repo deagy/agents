@@ -1,0 +1,4 @@
+interface:
+  display_name: "Knowledge Ingestion"
+  short_description: "Safely ingest chat history."
+  default_prompt: "Use $knowledge-ingestion to safely import and retrieve historical chat context."

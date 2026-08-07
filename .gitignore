@@ -69,12 +69,21 @@ node_modules/
 /.worktrees/
 /.claude/worktrees/
 
-# Generated plugin distribution. Before the monorepo merge these ~340 files
-# were committed into deagy/cadre-lifecycle and kept in sync by cadre-ref.txt
-# plus drift-check.yml/regenerate.yml. `cadre generate-plugin` now writes
-# them here at build/release time instead, so there is exactly one copy of
-# every role, skill, and provider file in this repository.
-/plugin-dist/
+# The generated half of plugin/ IS committed, deliberately.
+#
+# A GitHub-sourced marketplace serves whatever is in the repository tree, so
+# an uncommitted distribution means `/plugin marketplace add deagy/cadre`
+# installs a plugin with no roles or skills in it. Generated content
+# therefore has to be present.
+#
+# This is not a return to the pre-merge arrangement. What was wrong there was
+# *cross-repo* drift: a separate repository pinning a cadre revision in
+# cadre-ref.txt, reconciled by a weekly drift-check.yml and a
+# regenerate.yml that opened PRs after the fact. Here the source
+# (roster/, .agents/skills/, provider/) and its output sit in one commit, and
+# validate.yml regenerates and fails on any diff in the same CI run --
+# drift cannot outlive a pull request. Never hand-edit generated files under
+# plugin/; edit the source and run `cadre generate-plugin --output plugin`.
 
 # The LangGraph engine's uv environment.
 /engine/.venv/

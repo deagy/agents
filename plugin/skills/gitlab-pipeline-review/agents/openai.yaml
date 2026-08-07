@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitLab Pipeline Review"
+  short_description: "Review GitLab pipeline safety."
+  default_prompt: "Use $gitlab-pipeline-review to inspect a GitLab pipeline change."

@@ -1,0 +1,31 @@
+{
+  "name": "cadre-team",
+  "owner": {
+    "name": "Cadre maintainers"
+  },
+  "metadata": {
+    "pluginRoot": "./plugin"
+  },
+  "plugins": [
+    {
+      "name": "cadre",
+      "source": "./plugin",
+      "description": "Cadre role selection: 71 specialist roles with deterministic dispatch planning. The only plugin most projects need."
+    },
+    {
+      "name": "cadre-lifecycle-core",
+      "source": "./plugin/plugins/lifecycle",
+      "description": "Forge-agnostic Agentic SDLC G1-G10 lifecycle governance."
+    },
+    {
+      "name": "cadre-lifecycle-github",
+      "source": "./plugin/plugins/lifecycle-github",
+      "description": "GitHub-flavored Agentic SDLC gate governance."
+    },
+    {
+      "name": "cadre-lifecycle-gitlab",
+      "source": "./plugin/plugins/lifecycle-gitlab",
+      "description": "GitLab-flavored Agentic SDLC gate governance."
+    }
+  ]
+}

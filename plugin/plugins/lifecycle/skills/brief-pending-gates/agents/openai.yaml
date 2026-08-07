@@ -1,0 +1,4 @@
+interface:
+  display_name: "Brief Pending Gates"
+  short_description: "Summarize which lifecycle gates are pending and who is required to decide them, no CLI needed."
+  default_prompt: "Use $brief-pending-gates to summarize which Agentic SDLC lifecycle gates are pending for this project and who needs to decide them."
