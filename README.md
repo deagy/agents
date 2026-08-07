@@ -418,3 +418,9 @@ runs unattended and asks no further confirmation, so review of that PR is
 where a human deliberately authorizes the release — treat a `version` bump
 in a PR's diff as an explicit release request, not an incidental change, and
 review it accordingly.
+
+## Examples
+
+See [docs/examples/](docs/examples/) for end-to-end workflow documentation:
+
+- [Role selection workflow](docs/examples/role-selection-workflow.md) — from task to dispatched agents

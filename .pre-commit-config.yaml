@@ -1,0 +1,41 @@
+# Pre-commit hooks for deagy/cadre
+#
+# Catalog consistency, schema validation, and generated-artifact drift checks.
+# See: https://pre-commit.com/
+
+repos:
+  # YAML syntax validation for all YAML files
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-yaml
+        files: "\.ya?ml$"
+        exclude: "^roster/catalog\.yaml$|^roster/orchestration/routing\.yaml$"  # validated by schema_validate.py
+      - id: end-of-file-fixer
+        files: "\\.md$"
+      - id: trailing-whitespace
+        files: "\\.md$"
+
+  # Catalog.yaml ↔ agent-catalog.json consistency
+  - repo: local
+    hooks:
+      - id: catalog-schema-validate
+        name: Validate catalog.yaml and routing.yaml schemas
+        entry: python3 roster/orchestration/src/schema_validate.py
+        language: python
+        pass_filenames: false
+        files: "roster/catalog\\.yaml$|roster/orchestration/routing\\.yaml$"
+
+      - id: catalog-health
+        name: Check catalog health (orphan/dangling references)
+        entry: python3 roster/orchestration/src/routing_health.py --check
+        language: python
+        pass_filenames: false
+        files: "roster/catalog\\.yaml$"
+
+      - id: generate-role-metadata-check
+        name: Verify generated role metadata is in sync
+        entry: python3 roster/orchestration/src/generate_role_metadata.py --check
+        language: python
+        pass_filenames: false
+        files: "roster/.*AGENT\\.md$|roster/catalog\\.yaml$|roster/catalog-order\\.txt$"
