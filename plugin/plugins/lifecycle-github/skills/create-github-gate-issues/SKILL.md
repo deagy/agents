@@ -1,6 +1,13 @@
 ---
 name: create-github-gate-issues
-description: Conversationally publish GitHub tracking issues for a task's lifecycle gates, and linked approval issues assigned to each gate's authority, for a human who does not want to touch a CLI or JSON directly. Use when a user asks to "create GitHub issues for this task's gates," "track approvals in GitHub," "publish gate issues," or "make GitHub issues for the approvers" for a project already onboarded with lifecycle-onboarding-github. This is the opposite direction from lifecycle-review-github: it writes new issues to GitHub, it does not read an existing approval back into the kernel.
+description: >-
+  Conversationally publish GitHub tracking issues for a task's lifecycle gates, and linked
+  approval issues assigned to each gate's authority, for a human who does not want to
+  touch a CLI or JSON directly. Use when a user asks to "create GitHub issues for this
+  task's gates," "track approvals in GitHub," "publish gate issues," or "make GitHub
+  issues for the approvers" for a project already onboarded with lifecycle-onboarding-
+  github. This is the opposite direction from lifecycle-review-github: it writes new
+  issues to GitHub, it does not read an existing approval back into the kernel.
 ---
 
 > Packaged suite note: when the current project has no local `roster/` tree, resolve suite files under `../../../../suite/roster/` relative to this `SKILL.md`. The packaged plugin is self-contained; do not look for the source checkout.

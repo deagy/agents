@@ -1,6 +1,13 @@
 ---
 name: gitlab-gate-tracking
-description: Conversationally publish GitLab tracking issues for a task's lifecycle gates, and linked approval-subtask issues assigned to each gate's authority, for a human who does not want to touch a CLI or JSON directly. Use when a user asks to "create GitLab issues for this task's gates," "track approvals in GitLab," "publish gate issues," or "make GitLab subtasks for the approvers" for a project already onboarded with lifecycle-onboarding-gitlab. This is the opposite direction from lifecycle-review-gitlab: it writes new issues to GitLab, it does not read an existing approval back into the kernel.
+description: >-
+  Conversationally publish GitLab tracking issues for a task's lifecycle gates, and linked
+  approval-subtask issues assigned to each gate's authority, for a human who does not want
+  to touch a CLI or JSON directly. Use when a user asks to "create GitLab issues for this
+  task's gates," "track approvals in GitLab," "publish gate issues," or "make GitLab
+  subtasks for the approvers" for a project already onboarded with lifecycle-onboarding-
+  gitlab. This is the opposite direction from lifecycle-review-gitlab: it writes new
+  issues to GitLab, it does not read an existing approval back into the kernel.
 ---
 
 > Packaged suite note: when the current project has no local `roster/` tree, resolve suite files under `../../../../suite/roster/` relative to this `SKILL.md`. The packaged plugin is self-contained; do not look for the source checkout.

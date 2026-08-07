@@ -104,6 +104,15 @@ AGENTIC_SDLC_GIT_URL = "https://github.com/deagy/cadre.git"
 AGENTIC_SDLC_SUBDIRECTORY = "kernel"
 AGENTIC_SDLC_TAG_PREFIX = "kernel-v"
 
+# Claude Code exports each `userConfig` option to hook processes as
+# CLAUDE_PLUGIN_OPTION_<KEY>, uppercased. Shell-form hook commands are not
+# allowed to substitute ${user_config.*} (a configured value interpolated
+# into a shell command would be executed by that shell), so reading the
+# environment is the supported route, not a workaround.
+KERNEL_INSTALL_ENV_VAR = "CLAUDE_PLUGIN_OPTION_KERNELINSTALL"
+PROFILE_ENV_VAR = "CLAUDE_PLUGIN_OPTION_PROFILE"
+MODE_AUTO, MODE_SYSTEM, MODE_OFF = "auto", "system", "off"
+
 SEMVER_PATTERN = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 
 # Distinct from a plain non-zero exit: the venv could not be *created*,
@@ -114,6 +123,22 @@ VENV_UNAVAILABLE = 127
 # Overridable so tests (and, in principle, a caller with an unusual
 # environment) don't have to actually invoke pipx/agentic-sdlc as a subprocess.
 _run = subprocess.run
+
+
+def install_mode(args: argparse.Namespace, env: dict[str, str] | None = None) -> str:
+    """How this plugin is permitted to obtain a kernel.
+
+    `auto` manages its own copy, `system` uses only what the operator
+    installed and never installs anything, `off` disables the check
+    entirely. An unrecognized value falls back to `auto` rather than
+    failing: `userConfig` has no enum type, so the value is free text and a
+    typo must not break lifecycle governance outright.
+    """
+    explicit = getattr(args, "mode", None)
+    if explicit:
+        return explicit
+    value = (env or os.environ).get(KERNEL_INSTALL_ENV_VAR, "").strip().lower()
+    return value if value in {MODE_AUTO, MODE_SYSTEM, MODE_OFF} else MODE_AUTO
 
 
 def parse_semver(value: str) -> tuple[int, int, int]:
@@ -270,7 +295,9 @@ def pipx_install(ref: str) -> int:
     return result.returncode
 
 
-def build_init_command(sdlc_bin: str, args: argparse.Namespace) -> list[str]:
+def build_init_command(
+    sdlc_bin: str, args: argparse.Namespace, env: dict[str, str] | None = None
+) -> list[str]:
     command = [
         sdlc_bin,
         "--provider",
@@ -279,8 +306,12 @@ def build_init_command(sdlc_bin: str, args: argparse.Namespace) -> list[str]:
         "--root",
         str(args.root),
     ]
-    if args.profile is not None:
-        command += ["--profile", args.profile]
+    # Falls back to the plugin's configured `profile` option so an operator
+    # (or a managed-settings fleet) can set it once instead of passing it to
+    # every invocation.
+    profile = args.profile or (env or os.environ).get(PROFILE_ENV_VAR, "").strip() or None
+    if profile is not None:
+        command += ["--profile", profile]
     for extension in args.extension:
         command += ["--extension", extension]
     if args.project_id is not None:
@@ -303,6 +334,7 @@ def ensure_kernel(args: argparse.Namespace, env: dict[str, str] | None = None) -
     """
     minimum, maximum_exclusive = read_kernel_compatibility()
     data_dir = getattr(args, "data_dir", None)
+    mode = install_mode(args, env)
 
     def in_range(binary: str) -> bool | None:
         """True/False, or None if the binary could not be interrogated."""
@@ -352,6 +384,14 @@ def ensure_kernel(args: argparse.Namespace, env: dict[str, str] | None = None) -
             return 0, on_path
         if verdict is False:
             outranged = on_path
+
+    if mode in {MODE_SYSTEM, MODE_OFF}:
+        print(
+            f"bootstrap-sdlc: kernelInstall={mode}, so nothing will be installed. Provide a "
+            f"kernel in [{minimum}, {maximum_exclusive}) on PATH or via AGENTIC_SDLC_BIN.",
+            file=sys.stderr,
+        )
+        return 1, None
 
     root = managed_root(data_dir, env)
 
@@ -429,6 +469,12 @@ def check(args: argparse.Namespace, env: dict[str, str] | None = None) -> int:
     Prints nothing at all when a compatible kernel is already resolvable, so
     the common case is silent.
     """
+    mode = install_mode(args, env)
+    if mode == MODE_OFF:
+        # The operator turned this off deliberately. Saying so every session
+        # would just be nagging about a decision already made.
+        return 0
+
     try:
         minimum, maximum_exclusive = read_kernel_compatibility()
     except SystemExit:
@@ -449,6 +495,16 @@ def check(args: argparse.Namespace, env: dict[str, str] | None = None) -> int:
                 return 0
         except (RuntimeError, OSError, ValueError):
             continue
+
+    if mode == MODE_SYSTEM:
+        # Offering to install would contradict the configured mode.
+        print(
+            "Lifecycle governance needs the Agentic SDLC kernel "
+            f"(v{minimum} or newer, below v{maximum_exclusive}). This plugin is configured "
+            "with kernelInstall=system, so install one yourself and put it on PATH or set "
+            "AGENTIC_SDLC_BIN."
+        )
+        return 0
 
     print(
         "Lifecycle governance needs the Agentic SDLC kernel "
@@ -477,7 +533,7 @@ def bootstrap(args: argparse.Namespace, env: dict[str, str] | None = None) -> in
         return 0
 
     sys.stdout.flush()
-    result = _run(build_init_command(sdlc_bin, args), check=False)
+    result = _run(build_init_command(sdlc_bin, args, env), check=False)
     return result.returncode
 
 
@@ -499,6 +555,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--skip-init", action="store_true", help="Install/verify the kernel only; do not configure a project")
     parser.add_argument("--dry-run", action="store_true", help="Report what would happen without installing or writing anything")
+    parser.add_argument(
+        "--mode",
+        choices=[MODE_AUTO, MODE_SYSTEM, MODE_OFF],
+        help=(
+            "Override the plugin's kernelInstall option for this run. Normally read "
+            "from the CLAUDE_PLUGIN_OPTION_KERNELINSTALL environment variable."
+        ),
+    )
     parser.add_argument(
         "--check",
         action="store_true",

@@ -1,6 +1,14 @@
 ---
 name: publish-gate-status-gitlab
-description: Conversationally publish (and idempotently update in place on re-run) a one-way, read-only gate-status summary comment on a task's GitLab MR, via publish-gate-status/list-gate-status, for a human who does not want to touch a CLI or JSON directly. Use when a user asks to "post gate status on this MR," "update the gate-status note," "show reviewers the current gate table on GitLab," or "keep the MR's gate summary current" for a project already onboarded with lifecycle-onboarding-gitlab. This is unrelated to lifecycle-review-gitlab and gitlab-gate-tracking: it never records or reads back an approval and never creates assigned issues, it only posts a diagnostics summary note.
+description: >-
+  Conversationally publish (and idempotently update in place on re-run) a one-way, read-
+  only gate-status summary comment on a task's GitLab MR, via publish-gate-status/list-
+  gate-status, for a human who does not want to touch a CLI or JSON directly. Use when a
+  user asks to "post gate status on this MR," "update the gate-status note," "show
+  reviewers the current gate table on GitLab," or "keep the MR's gate summary current" for
+  a project already onboarded with lifecycle-onboarding-gitlab. This is unrelated to
+  lifecycle-review-gitlab and gitlab-gate-tracking: it never records or reads back an
+  approval and never creates assigned issues, it only posts a diagnostics summary note.
 ---
 
 > Packaged suite note: when the current project has no local `roster/` tree, resolve suite files under `../../../../suite/roster/` relative to this `SKILL.md`. The packaged plugin is self-contained; do not look for the source checkout.

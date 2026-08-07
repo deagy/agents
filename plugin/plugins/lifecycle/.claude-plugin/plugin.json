@@ -15,5 +15,23 @@
     "agentic-sdlc"
   ],
   "skills": "./skills/",
-  "hooks": "./hooks/hooks.json"
+  "dependencies": [
+    {
+      "name": "cadre",
+      "version": ">=0.10.1"
+    }
+  ],
+  "userConfig": {
+    "kernelInstall": {
+      "type": "string",
+      "title": "Kernel install mode",
+      "description": "How to obtain the Agentic SDLC kernel. 'auto' (default) lets this plugin install and manage its own copy under its data directory. 'system' uses only a kernel you installed yourself and never installs anything. 'off' disables the check entirely -- set AGENTIC_SDLC_BIN yourself. Unrecognized values are treated as 'auto'.",
+      "default": "auto"
+    },
+    "profile": {
+      "type": "string",
+      "title": "Provider profile",
+      "description": "Provider profile id passed to `agentic-sdlc init`, e.g. secure-cloud. Leave blank for kernel-only lifecycle operation with no profile."
+    }
+  }
 }

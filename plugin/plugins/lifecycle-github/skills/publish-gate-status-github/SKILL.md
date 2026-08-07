@@ -1,6 +1,14 @@
 ---
 name: publish-gate-status-github
-description: Conversationally publish (and idempotently update in place on re-run) a one-way, read-only gate-status summary comment on a task's GitHub PR, via publish-gate-status/list-gate-status, for a human who does not want to touch a CLI or JSON directly. Use when a user asks to "post gate status on this PR," "update the gate-status comment," "show reviewers the current gate table on GitHub," or "keep the PR's gate summary current" for a project already onboarded with lifecycle-onboarding-github. This is unrelated to lifecycle-review-github: it never records or reads back an approval, it only posts a diagnostics summary.
+description: >-
+  Conversationally publish (and idempotently update in place on re-run) a one-way, read-
+  only gate-status summary comment on a task's GitHub PR, via publish-gate-status/list-
+  gate-status, for a human who does not want to touch a CLI or JSON directly. Use when a
+  user asks to "post gate status on this PR," "update the gate-status comment," "show
+  reviewers the current gate table on GitHub," or "keep the PR's gate summary current" for
+  a project already onboarded with lifecycle-onboarding-github. This is unrelated to
+  lifecycle-review-github: it never records or reads back an approval, it only posts a
+  diagnostics summary.
 ---
 
 > Packaged suite note: when the current project has no local `roster/` tree, resolve suite files under `../../../../suite/roster/` relative to this `SKILL.md`. The packaged plugin is self-contained; do not look for the source checkout.

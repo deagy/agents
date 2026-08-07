@@ -39,6 +39,7 @@ def _args(**overrides) -> argparse.Namespace:
         dry_run=False,
         data_dir=None,
         check=False,
+        mode=None,
     )
     defaults.update(overrides)
     return argparse.Namespace(**defaults)
@@ -402,3 +403,74 @@ class CheckModeTests(unittest.TestCase):
             bootstrap_sdlc.check(_args(check=True), {})
         install.assert_not_called()
         run.assert_not_called()
+
+
+class InstallModeTests(unittest.TestCase):
+    """`kernelInstall` reaches this script as CLAUDE_PLUGIN_OPTION_KERNELINSTALL.
+
+    Shell-form hook commands cannot substitute `${user_config.*}` -- Claude
+    Code rejects it, because interpolating a configured value into a shell
+    command would let the shell execute whatever it contains -- so the
+    environment variable is the supported route, not a workaround.
+    """
+
+    def test_unset_defaults_to_auto(self) -> None:
+        self.assertEqual("auto", bootstrap_sdlc.install_mode(_args(), {}))
+
+    def test_unrecognized_value_falls_back_to_auto(self) -> None:
+        """`userConfig` has no enum type, so this is free text. A typo must
+        not disable lifecycle governance outright."""
+        env = {"CLAUDE_PLUGIN_OPTION_KERNELINSTALL": "atuo"}
+        self.assertEqual("auto", bootstrap_sdlc.install_mode(_args(), env))
+
+    def test_each_documented_value_is_honoured(self) -> None:
+        for value in ("auto", "system", "off"):
+            with self.subTest(value=value):
+                env = {"CLAUDE_PLUGIN_OPTION_KERNELINSTALL": value.upper() + " "}
+                self.assertEqual(value, bootstrap_sdlc.install_mode(_args(), env))
+
+    def test_explicit_flag_overrides_the_environment(self) -> None:
+        env = {"CLAUDE_PLUGIN_OPTION_KERNELINSTALL": "off"}
+        self.assertEqual("system", bootstrap_sdlc.install_mode(_args(mode="system"), env))
+
+    def test_off_makes_check_completely_silent(self) -> None:
+        env = {"CLAUDE_PLUGIN_OPTION_KERNELINSTALL": "off"}
+        with mock.patch("sys.stdout") as stdout:
+            code = bootstrap_sdlc.check(_args(check=True), env)
+        self.assertEqual(0, code)
+        self.assertEqual("", "".join(c.args[0] for c in stdout.write.call_args_list if c.args))
+
+    def test_system_and_off_never_install(self) -> None:
+        for value in ("system", "off"):
+            env = {"CLAUDE_PLUGIN_OPTION_KERNELINSTALL": value}
+            with self.subTest(mode=value), \
+                 mock.patch.object(bootstrap_sdlc, "read_kernel_compatibility",
+                                   return_value=("0.13.0", "1.0.0")), \
+                 mock.patch.object(bootstrap_sdlc.shutil, "which", return_value=None), \
+                 mock.patch.object(bootstrap_sdlc, "venv_install") as venv, \
+                 mock.patch.object(bootstrap_sdlc, "pipx_install") as pipx, \
+                 mock.patch("sys.stderr"):
+                code, binary = bootstrap_sdlc.ensure_kernel(_args(), env)
+            venv.assert_not_called()
+            pipx.assert_not_called()
+            self.assertEqual(1, code)
+            self.assertIsNone(binary)
+
+
+class ProfileOptionTests(unittest.TestCase):
+    def test_configured_profile_is_used_when_none_is_passed(self) -> None:
+        env = {"CLAUDE_PLUGIN_OPTION_PROFILE": "secure-cloud"}
+        command = bootstrap_sdlc.build_init_command("/bin/agentic-sdlc", _args(profile=None), env)
+        self.assertIn("--profile", command)
+        self.assertEqual("secure-cloud", command[command.index("--profile") + 1])
+
+    def test_explicit_profile_wins_over_the_configured_one(self) -> None:
+        env = {"CLAUDE_PLUGIN_OPTION_PROFILE": "secure-cloud"}
+        command = bootstrap_sdlc.build_init_command("/bin/agentic-sdlc", _args(profile="generic"), env)
+        self.assertEqual("generic", command[command.index("--profile") + 1])
+
+    def test_blank_configured_profile_is_treated_as_unset(self) -> None:
+        command = bootstrap_sdlc.build_init_command(
+            "/bin/agentic-sdlc", _args(profile=None), {"CLAUDE_PLUGIN_OPTION_PROFILE": "   "}
+        )
+        self.assertNotIn("--profile", command)
