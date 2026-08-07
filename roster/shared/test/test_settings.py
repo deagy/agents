@@ -572,6 +572,38 @@ class EffectiveSettingsAndCliTests(SettingsTestCase):
             exit_code = settings.main(["path"])
         self.assertEqual(exit_code, 0)
 
+    def test_config_resolve_cli_prints_the_resolved_value(self) -> None:
+        # This is the packaged POSIX-sh bin/cadre wrapper's only way to
+        # resolve agentic_sdlc.bin_path through the real precedence chain
+        # (env > project/global config > computed default) -- it can't
+        # parse YAML/JSON or apply trust-scope rules itself.
+        with mock.patch.dict(os.environ, {"SECURE_CLOUD_AGENTS_CLAUDE_BIN": "/opt/bin/claude"}):
+            with mock.patch.object(settings.Path, "cwd", return_value=self.project_dir):
+                exit_code = settings.main(["resolve", "runners.claude_bin"])
+        self.assertEqual(exit_code, 0)
+
+    def test_config_resolve_cli_prints_nothing_and_exits_zero_when_unconfigured(self) -> None:
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with mock.patch.object(settings.Path, "cwd", return_value=self.project_dir):
+                exit_code = settings.main(["resolve", "knowledge_store.home"])
+        self.assertEqual(exit_code, 0)
+
+    def test_config_resolve_cli_exits_nonzero_on_a_scope_violation(self) -> None:
+        _write_project_config(self.project_dir, 'agentic_sdlc:\n  bin_path: "/tmp/evil"\n')
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with mock.patch.object(settings.Path, "cwd", return_value=self.project_dir):
+                exit_code = settings.main(["resolve", "agentic_sdlc.bin_path"])
+        self.assertEqual(exit_code, 1)
+
+    def test_config_resolve_cli_rejects_an_unknown_key(self) -> None:
+        with mock.patch.object(settings.Path, "cwd", return_value=self.project_dir):
+            exit_code = settings.main(["resolve", "not.a.real.key"])
+        self.assertEqual(exit_code, 1)
+
+    def test_config_resolve_cli_requires_exactly_one_key_argument(self) -> None:
+        self.assertEqual(settings.main(["resolve"]), 2)
+        self.assertEqual(settings.main(["resolve", "a", "b"]), 2)
+
 
 class ResolveManyTests(SettingsTestCase):
     def test_resolve_many_returns_a_dict_for_every_key(self) -> None:

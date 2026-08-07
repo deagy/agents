@@ -947,13 +947,52 @@ def _cmd_path(args: list[str]) -> int:
     return 0
 
 
+def _cmd_resolve(args: list[str]) -> int:
+    """`cadre config resolve <key>` -- print a single non-secret setting's
+    resolved value (or nothing, with exit 0, if it resolves to "unset") for
+    a shell caller to consume via command substitution. Exists specifically
+    so the packaged POSIX-sh `bin/cadre` wrapper (which cannot itself parse
+    YAML/JSON or apply trust-scope rules) can resolve `agentic_sdlc.bin_path`
+    through the exact same precedence chain as this repo's Python
+    `bin/cadre.py` dispatcher, instead of the wrapper hand-rolling a second,
+    env-var-and-`command -v`-only resolution that silently ignores a
+    configured value. `CADRE_INTERACTIVE` is honored from the real process
+    environment exactly as any other caller would see it -- the wrapper
+    exports it before invoking this, never passes it as an argument here.
+    On a `SettingsError` (including a `global_only` scope violation), the
+    message is printed to stderr and this exits 1, matching every other
+    fail-closed path in this module -- callers must propagate that exit
+    code, not swallow it."""
+    if len(args) != 1:
+        print("usage: cadre config resolve <key>", file=sys.stderr)
+        return 2
+    key = args[0]
+    try:
+        spec = _spec(key)
+        if spec.secret:
+            print(
+                f"{key} is a secret-classified field and cannot be resolved via this command",
+                file=sys.stderr,
+            )
+            return 2
+        value = resolve_optional(key)
+    except SettingsError as error:
+        print(str(error), file=sys.stderr)
+        return 1
+    if value is not None:
+        print(value)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    if not argv or argv[0] not in ("show", "path"):
-        print("usage: cadre config <show|path>", file=sys.stderr)
+    if not argv or argv[0] not in ("show", "path", "resolve"):
+        print("usage: cadre config <show|path|resolve KEY>", file=sys.stderr)
         return 2
     if argv[0] == "show":
         return _cmd_show(argv[1:])
+    if argv[0] == "resolve":
+        return _cmd_resolve(argv[1:])
     return _cmd_path(argv[1:])
 
 

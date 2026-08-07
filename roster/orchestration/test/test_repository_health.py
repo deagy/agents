@@ -1151,6 +1151,52 @@ class RepositoryHealthTests(unittest.TestCase):
                 request["invocation"]["args"][0] = "<packaged-knowledge-cli>"
         self.assertEqual(direct_payload, wrapper_payload)
 
+    def test_packaged_bin_wrapper_sdlc_resolves_agentic_sdlc_bin_through_settings_py(self) -> None:
+        """The packaged wrapper's `sdlc` branch must resolve
+        agentic_sdlc.bin_path through roster/shared/src/settings.py's real
+        precedence chain (env > project/global config file > shutil.which),
+        not a second, hand-rolled shell-only ${AGENTIC_SDLC_BIN}/`command -v`
+        resolution that would silently ignore a configured value -- this was
+        a real gap flagged in review: the generated wrapper previously never
+        consulted a config file at all.
+        """
+        wrapper = generated_package() / "bin" / "cadre"
+        self.assertTrue(wrapper.is_file(), str(wrapper))
+        with tempfile.TemporaryDirectory() as xdg_home:
+            (Path(xdg_home) / "cadre").mkdir(parents=True)
+            (Path(xdg_home) / "cadre" / "config.yaml").write_text(
+                'agentic_sdlc:\n  bin_path: "/nonexistent/fake-agentic-sdlc-from-config"\n',
+                encoding="utf-8",
+            )
+            env = os.environ.copy()
+            env.pop("AGENTIC_SDLC_BIN", None)
+            env["XDG_CONFIG_HOME"] = xdg_home
+            with tempfile.TemporaryDirectory() as cwd:
+                result = subprocess.run(
+                    [str(wrapper), "sdlc", "--version"],
+                    cwd=cwd,
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    env=env,
+                )
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("fake-agentic-sdlc-from-config", result.stderr)
+
+    def test_packaged_bin_wrapper_accepts_a_leading_interactive_flag(self) -> None:
+        wrapper = generated_package() / "bin" / "cadre"
+        result = subprocess.run(
+            [str(wrapper), "--interactive", "help"],
+            cwd=REPOSITORY_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            env=os.environ.copy(),
+        )
+        self.assertIn("Usage: cadre [--interactive]", result.stdout)
+
     def test_bin_agents_subcommand_table_is_the_single_source_of_truth(self) -> None:
         table = REPOSITORY_ROOT / "bin" / "subcommands.tsv"
         self.assertTrue(table.is_file(), str(table))
