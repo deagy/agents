@@ -16,7 +16,25 @@ if str(_SHARED_SRC_DIR) not in sys.path:
 
 import settings  # noqa: E402  (sys.path set above)
 
-_PROVIDER_MANIFEST = _SRC_DIR.parent.parent.parent / "provider" / "provider.json"
+def _provider_manifest() -> Path | None:
+    """Find provider.json in either layout this module ships in.
+
+    In a checkout this file is roster/orchestration/src/, and the manifest is
+    at <repo>/provider/provider.json. In the packaged plugin the same file is
+    suite/roster/orchestration/src/ while the manifest sits at the *plugin*
+    root as provider.json -- so the checkout-relative walk lands on
+    suite/provider/provider.json, which does not exist. That miss is silent:
+    kernel_requirement() falls back to "a compatible version", and the
+    packaged plugin's install message loses the version it exists to state.
+    """
+    candidates = (
+        _SRC_DIR.parent.parent.parent / "provider" / "provider.json",  # checkout
+        _SRC_DIR.parent.parent.parent.parent / "provider.json",        # packaged plugin
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 def kernel_requirement() -> str:
@@ -29,8 +47,11 @@ def kernel_requirement() -> str:
     quote the former while meaning the latter, which sent operators to a
     kernel ten minor versions too old.
     """
+    path = _provider_manifest()
+    if path is None:
+        return "a compatible version"
     try:
-        manifest = json.loads(_PROVIDER_MANIFEST.read_text(encoding="utf-8"))
+        manifest = json.loads(path.read_text(encoding="utf-8"))
         compatibility = manifest["kernel_compatibility"]
         return f"v{compatibility['minimum']} or newer (below v{compatibility['maximum_exclusive']})"
     except (OSError, ValueError, KeyError, TypeError):
@@ -42,7 +63,7 @@ def kernel_requirement() -> str:
 def install_message() -> str:
     return (
         f"Agentic SDLC {kernel_requirement()} is required; set AGENTIC_SDLC_BIN "
-        "or install https://github.com/deagy/agentic-sdlc"
+        "or install https://github.com/deagy/cadre"
     )
 
 

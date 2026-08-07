@@ -46,7 +46,7 @@ def sdlc_install_message() -> str:
         pass
     return (
         f"cadre: Agentic SDLC {requirement} is required; install it from "
-        "https://github.com/deagy/agentic-sdlc"
+        "https://github.com/deagy/cadre"
     )
 
 _SHARED_SRC_DIR = REPO_ROOT / "roster" / "shared" / "src"

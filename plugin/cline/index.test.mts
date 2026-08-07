@@ -316,7 +316,15 @@ describe("cadre plugin", () => {
       )) as Record<string, unknown>;
 
       expect(typeof result.error).toBe("string");
-      expect(result.error).toMatch(/Agentic SDLC v0\.3\.x is required/);
+      // The version comes from provider.json's kernel_compatibility, not a
+      // literal. It used to be hardcoded as "v0.3.x" -- which was actually
+      // provider.json's own `version` field, not the kernel range it meant,
+      // and was ten minor versions behind the kernel by the time anyone
+      // noticed. Match the shape, and separately assert it is not the
+      // "a compatible version" fallback, which is what this returns when it
+      // cannot find the manifest at all.
+      expect(result.error).toMatch(/Agentic SDLC v\d+\.\d+\.\d+ or newer/);
+      expect(result.error).not.toMatch(/a compatible version/);
     });
 
     it("omits --require-sdlc by default and degrades to standalone mode instead of failing", async () => {

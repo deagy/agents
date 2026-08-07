@@ -806,7 +806,7 @@ def generate_bin_wrapper(plugin_root: Path) -> Path:
             '      sdlc_bin=$(command -v agentic-sdlc || true)',
             "    fi",
             "  fi",
-            f'  [ -n "$sdlc_bin" ] || {{ echo "cadre: install Agentic SDLC {kernel_requirement_text()} from https://github.com/deagy/agentic-sdlc" >&2; exit 1; }}',
+            f'  [ -n "$sdlc_bin" ] || {{ echo "cadre: install Agentic SDLC {kernel_requirement_text()} from https://github.com/deagy/cadre" >&2; exit 1; }}',
             '  exec "$sdlc_bin" --provider "$PLUGIN_ROOT/provider.json" "$@"',
             "fi",
             "detect_agent_python",
