@@ -528,6 +528,19 @@ def port_skills(root: Path, source_root: Path | None = None) -> list[str]:
         replace_path(skill_md, target_dir / f"{name}.md")  # ensure clean slate
         (target_dir / f"{name}.md").write_text(content, encoding="utf-8")
         ported.append(name)
+
+    # Remove ports of skills that are no longer sourced here. Without this the
+    # port only ever adds: a skill that moves to a sub-plugin (or is renamed or
+    # deleted) leaves its old copy behind forever, and cline-agents keeps
+    # advertising a skill nothing generates. That is exactly how
+    # cadre-install-kernel.md ended up stranded here after being routed to the
+    # lifecycle plugins.
+    if target_dir.is_dir():
+        keep = {f"{name}.md" for name in ported}
+        for stale in sorted(target_dir.glob("*.md")):
+            if stale.name not in keep:
+                stale.unlink()
+
     return ported
 
 

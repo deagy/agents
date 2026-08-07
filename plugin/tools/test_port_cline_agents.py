@@ -19,6 +19,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -274,3 +275,39 @@ class RealRepoRegressionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PrunesStalePortsTests(unittest.TestCase):
+    """The port must remove copies of skills it no longer sources.
+
+    It only ever added, so a skill that was renamed, deleted, or (as actually
+    happened with cadre-install-kernel) routed into a sub-plugin left its old
+    copy behind permanently, and cline-agents kept advertising a skill nothing
+    generated. The stale file then failed the bundled-skill count assertion in
+    a completely different package, which is a poor way to find out.
+    """
+
+    def test_skill_no_longer_sourced_is_removed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            (source / "skills" / "kept").mkdir(parents=True)
+            (source / "skills" / "kept" / "SKILL.md").write_text(
+                "---\nname: kept\ndescription: still generated\n---\n\nBody.\n",
+                encoding="utf-8",
+            )
+            target = root / "cline-agents" / "skills"
+            target.mkdir(parents=True)
+            stale = target / "gone.md"
+            stale.write_text("---\nname: gone\n---\n", encoding="utf-8")
+
+            # Stub the body converter: this test is about pruning, and the
+            # real converter enforces packaging conventions the minimal
+            # fixture above deliberately does not carry.
+            with mock.patch.object(p, "_convert_skill_body", lambda name, body: body), \
+                 mock.patch.object(p, "_check_no_skill_leaks", lambda name, body: None):
+                ported = p.port_skills(root, source)
+
+            self.assertEqual(["kept"], ported)
+            self.assertFalse(stale.exists(), "a no-longer-sourced port must be removed")
+            self.assertTrue((target / "kept.md").is_file())
