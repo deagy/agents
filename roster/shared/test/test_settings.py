@@ -5,10 +5,12 @@ static default > computed default > interactive prompt > fail-closed)."""
 from __future__ import annotations
 
 import builtins
+import io
 import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -571,6 +573,202 @@ class EffectiveSettingsAndCliTests(SettingsTestCase):
         with mock.patch.object(settings.Path, "cwd", return_value=self.project_dir):
             exit_code = settings.main(["path"])
         self.assertEqual(exit_code, 0)
+
+    def test_config_resolve_cli_prints_the_resolved_value(self) -> None:
+        # This is the packaged POSIX-sh bin/cadre wrapper's only way to
+        # resolve agentic_sdlc.bin_path through the real precedence chain
+        # (env > project/global config > computed default) -- it can't
+        # parse YAML/JSON or apply trust-scope rules itself.
+        with mock.patch.dict(os.environ, {"SECURE_CLOUD_AGENTS_CLAUDE_BIN": "/opt/bin/claude"}):
+            with mock.patch.object(settings.Path, "cwd", return_value=self.project_dir):
+                exit_code = settings.main(["resolve", "runners.claude_bin"])
+        self.assertEqual(exit_code, 0)
+
+    def test_config_resolve_cli_prints_nothing_and_exits_zero_when_unconfigured(self) -> None:
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with mock.patch.object(settings.Path, "cwd", return_value=self.project_dir):
+                exit_code = settings.main(["resolve", "knowledge_store.home"])
+        self.assertEqual(exit_code, 0)
+
+    def test_config_resolve_cli_exits_nonzero_on_a_scope_violation(self) -> None:
+        _write_project_config(self.project_dir, 'agentic_sdlc:\n  bin_path: "/tmp/evil"\n')
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with mock.patch.object(settings.Path, "cwd", return_value=self.project_dir):
+                exit_code = settings.main(["resolve", "agentic_sdlc.bin_path"])
+        self.assertEqual(exit_code, 1)
+
+    def test_config_resolve_cli_rejects_an_unknown_key(self) -> None:
+        with mock.patch.object(settings.Path, "cwd", return_value=self.project_dir):
+            exit_code = settings.main(["resolve", "not.a.real.key"])
+        self.assertEqual(exit_code, 1)
+
+    def test_config_resolve_cli_requires_exactly_one_key_argument(self) -> None:
+        self.assertEqual(settings.main(["resolve"]), 2)
+        self.assertEqual(settings.main(["resolve", "a", "b"]), 2)
+
+
+class StdoutTtyOverrideTests(SettingsTestCase):
+    """`cadre config resolve <key>` is always invoked by the packaged shell
+    wrapper as `x=$(... resolve key)` -- a command substitution whose
+    stdout is unconditionally a pipe, never a real tty, regardless of
+    CADRE_INTERACTIVE=1 or the caller's actual terminal. Without the
+    override machinery below, --interactive prompting through that
+    subcommand would be permanently unreachable."""
+
+    def test_gate_still_requires_stdin_tty_even_with_override(self) -> None:
+        with mock.patch.object(sys.stdin, "isatty", return_value=False):
+            with settings._stdout_tty_override(True):
+                self.assertFalse(settings._interactive_gate_open({"CADRE_INTERACTIVE": "1"}))
+
+    def test_gate_opens_on_stdin_tty_alone_when_override_is_true(self) -> None:
+        with mock.patch.object(sys.stdin, "isatty", return_value=True), mock.patch.object(
+            sys.stdout, "isatty", return_value=False
+        ):
+            self.assertFalse(settings._interactive_gate_open({"CADRE_INTERACTIVE": "1"}))
+            with settings._stdout_tty_override(True):
+                self.assertTrue(settings._interactive_gate_open({"CADRE_INTERACTIVE": "1"}))
+            # Override is scoped to the `with` block only.
+            self.assertFalse(settings._interactive_gate_open({"CADRE_INTERACTIVE": "1"}))
+
+    def test_open_tty_io_returns_none_without_a_controlling_terminal(self) -> None:
+        with mock.patch("builtins.open", side_effect=OSError("no such device")):
+            self.assertIsNone(settings._open_tty_io())
+
+    @unittest.skipUnless(sys.platform != "win32", "requires a POSIX pty/controlling terminal")
+    def test_open_tty_io_round_trips_through_a_real_controlling_terminal(self) -> None:
+        """Exercises the REAL /dev/tty open, not a stub.
+
+        Every other test here either mocks `builtins.open` to fail or
+        replaces `_open_tty_io` wholesale, so the actual file-open
+        semantics were previously untested -- which is exactly where a
+        latent defect lived: `open("/dev/tty", "r+")` raises on modern
+        CPython (a buffered read-write text stream needs a seekable file;
+        a character device isn't), and `_open_tty_io`'s own `except`
+        turned that into a silent `None`, degrading prompting to
+        permanently unavailable with no error anywhere. This test fails
+        (child exits 2) against that buggy form and passes against the
+        two-separate-handles form. `pty.fork()` is required rather than
+        handing a pty fd to `subprocess.Popen` -- only the former gives
+        the child a real *controlling* terminal, which is what /dev/tty
+        resolves through.
+        """
+        import pty
+
+        pid, master_fd = pty.fork()
+        if pid == 0:  # pragma: no cover - child process
+            try:
+                io_pair = settings._open_tty_io()
+                if io_pair is None:
+                    os._exit(2)
+                child_input, child_output = io_pair
+                child_output("PROMPT-MARKER")
+                answer = child_input("give me a value: ")
+                child_output("GOT:" + answer)
+                os._exit(0 if answer == "hello-world" else 4)
+            except BaseException:  # noqa: BLE001 - child must never raise into the harness
+                os._exit(3)
+
+        transcript = b""
+        try:
+            os.write(master_fd, b"hello-world\n")
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                try:
+                    chunk = os.read(master_fd, 4096)
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                transcript += chunk
+                if b"GOT:" in transcript:
+                    break
+            _pid, status = os.waitpid(pid, 0)
+        finally:
+            os.close(master_fd)
+
+        self.assertTrue(os.WIFEXITED(status), f"child did not exit normally: {transcript!r}")
+        self.assertEqual(os.WEXITSTATUS(status), 0, f"child exit status; transcript={transcript!r}")
+        self.assertIn(b"PROMPT-MARKER", transcript)
+        self.assertIn(b"GOT:hello-world", transcript)
+
+    def test_prompt_eof_becomes_a_settings_error_not_a_raw_traceback(self) -> None:
+        # Ctrl-D (or a controlling terminal closing mid-prompt) is an
+        # ordinary way to abandon a prompt; it must surface as this
+        # module's usual fail-closed SettingsError, so callers'
+        # `except SettingsError` handling applies and the CLI prints a
+        # clean message instead of dumping a traceback.
+        def eof_input(_prompt: str) -> str:
+            raise EOFError("simulated Ctrl-D")
+
+        with mock.patch.object(sys.stdin, "isatty", return_value=True), mock.patch.object(
+            sys.stdout, "isatty", return_value=True
+        ):
+            with self.assertRaises(settings.SettingsError) as ctx:
+                settings.resolve_setting(
+                    "gitlab.base_url",
+                    start=self.project_dir,
+                    env={"CADRE_INTERACTIVE": "1"},
+                    input_func=eof_input,
+                    output_func=lambda _text: None,
+                )
+        self.assertIn("gitlab.base_url", str(ctx.exception))
+
+    def test_resolve_cli_handles_prompt_eof_without_a_traceback(self) -> None:
+        # A cancelled prompt (Ctrl-D) resolves to "unset": `resolve`'s
+        # contract is that a SettingsError for a non-scope reason means
+        # "no value", so it exits 0 printing nothing, and the packaged
+        # wrapper's own `[ -n "$sdlc_bin" ] ||` check then produces the
+        # actionable install pointer. The point being pinned here is that
+        # the EOFError never escapes as an unhandled traceback (it used to)
+        # and nothing partial is written to the captured stdout.
+        def eof_input(_prompt: str) -> str:
+            raise EOFError("simulated Ctrl-D")
+
+        with mock.patch.object(sys.stdin, "isatty", return_value=True), mock.patch.object(
+            settings, "_open_tty_io", return_value=(eof_input, lambda _text: None)
+        ), mock.patch.object(
+            settings.Path, "cwd", return_value=self.project_dir
+        ), mock.patch.dict(
+            os.environ, {"CADRE_INTERACTIVE": "1"}, clear=False
+        ):
+            captured_stdout = io.StringIO()
+            with mock.patch.object(sys, "stdout", captured_stdout):
+                exit_code = settings.main(["resolve", "gitlab.base_url"])
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(captured_stdout.getvalue().strip(), "")
+
+    def test_resolve_cli_prompts_via_tty_without_leaking_into_captured_stdout(self) -> None:
+        # Simulates the real command-substitution scenario end to end:
+        # stdout is not a tty (as it never is under `$(...)`), stdin is,
+        # and _open_tty_io is stubbed to a fake terminal so no real
+        # /dev/tty is required in a test environment. Only the final
+        # resolved value may reach real stdout.
+        answers = iter(["https://prompted.example.com", "skip"])
+        tty_transcript: list[str] = []
+
+        def fake_input(_prompt: str) -> str:
+            return next(answers)
+
+        def fake_output(text: str) -> None:
+            tty_transcript.append(text)
+
+        with mock.patch.object(sys.stdin, "isatty", return_value=True), mock.patch.object(
+            settings, "_open_tty_io", return_value=(fake_input, fake_output)
+        ), mock.patch.object(
+            settings.Path, "cwd", return_value=self.project_dir
+        ), mock.patch.dict(
+            os.environ, {"CADRE_INTERACTIVE": "1"}, clear=False
+        ):
+            # Replaces sys.stdout wholesale with a StringIO (isatty() is
+            # False on a StringIO by default, matching a real command-
+            # substitution pipe) rather than only patching .isatty, so
+            # print(value)'s actual destination is captured too.
+            captured_stdout = io.StringIO()
+            with mock.patch.object(sys, "stdout", captured_stdout):
+                exit_code = settings.main(["resolve", "gitlab.base_url"])
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(captured_stdout.getvalue().strip(), "https://prompted.example.com")
+        self.assertTrue(any("gitlab.base_url" in line for line in tty_transcript))
 
 
 class ResolveManyTests(SettingsTestCase):

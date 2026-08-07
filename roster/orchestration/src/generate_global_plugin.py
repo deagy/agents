@@ -691,23 +691,73 @@ def generate_bin_wrapper(plugin_root: Path) -> Path:
             'BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)',
             'PLUGIN_ROOT=$(CDPATH= cd -- "$BIN_DIR/.." && pwd)',
             'SUITE_ROOT="$PLUGIN_ROOT/suite"',
+            'if [ "${1:-}" = "--interactive" ]; then',
+            "  CADRE_INTERACTIVE=1",
+            "  export CADRE_INTERACTIVE",
+            "  shift",
+            "fi",
             'command_name="${1:-help}"',
             '[ "$#" -gt 0 ] && shift || true',
+            "detect_agent_python() {",
+            "  AGENT_PYTHON=",
+            "  for candidate in python3 python; do",
+            '    command -v "$candidate" >/dev/null 2>&1 || continue',
+            "    if \"$candidate\" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; then AGENT_PYTHON=\"$candidate\"; break; fi",
+            "  done",
+            "}",
             'if [ "$command_name" = "sdlc" ]; then',
+            # AGENTIC_SDLC_BIN is settings.py's *highest*-precedence source
+            # for this field, so honoring it directly here needs no Python
+            # and cannot get the precedence order wrong. Everything below
+            # that -- a project/global config file (only where the field's
+            # trust scope allows it), then a bare PATH lookup as the lowest-
+            # precedence computed default -- MUST go through settings.py's
+            # resolve_optional() so the config file is actually consulted
+            # and wins over a same-named binary that merely happens to be
+            # on PATH; jumping straight to `command -v agentic-sdlc` here
+            # (as the pre-#109 wrapper did) would silently skip the config
+            # file and reintroduce the exact gap this PR exists to close.
+            # Python is only truly required for that config-file check, so
+            # its absence degrades to the same PATH-only behavior this
+            # wrapper already had, rather than becoming a new hard failure.
             '  sdlc_bin="${AGENTIC_SDLC_BIN:-}"',
-            '  if [ -z "$sdlc_bin" ]; then sdlc_bin=$(command -v agentic-sdlc || true); fi',
+            '  if [ -z "$sdlc_bin" ]; then',
+            "    detect_agent_python",
+            '    if [ -n "$AGENT_PYTHON" ]; then',
+            # `|| exit 1` normalizes the exit code and states the intent
+            # explicitly; `set -e` alone already aborts here (a bare
+            # `var=$(failing-cmd)` IS subject to errexit -- only forms like
+            # `export var=$(...)` are exempt). What must never be added is a
+            # fallback that swallows the failure, e.g.
+            # `|| sdlc_bin=$(command -v agentic-sdlc || true)`: a
+            # SettingsScopeError means an untrusted project-local config
+            # tried to set this global-only field, and silently exec'ing
+            # whatever is on PATH instead is exactly the bypass this whole
+            # branch exists to prevent.
+            '      sdlc_bin=$("$AGENT_PYTHON" "$SUITE_ROOT/roster/shared/src/settings.py" resolve agentic_sdlc.bin_path) || exit 1',
+            "    else",
+            # This branch cannot tell "no config file exists" from "a config
+            # file exists and pins agentic_sdlc.bin_path, but no interpreter
+            # is available to read it" -- without Python there is no way to
+            # parse YAML/JSON or apply trust-scope rules. Degrading to a bare
+            # PATH lookup keeps the pre-existing no-Python behavior working,
+            # but it must never do so *silently*: an operator who pinned a
+            # path in ~/.config/cadre/config.yaml would otherwise have that
+            # pin quietly replaced by whatever `agentic-sdlc` happens to be
+            # first on PATH, with no signal. Warn on stderr (never stdout --
+            # this branch's value is consumed via command substitution).
+            '      echo "cadre: no Python 3.10+ found; falling back to PATH for agentic-sdlc without reading any cadre config file (a configured agentic_sdlc.bin_path, if set, is being ignored)" >&2',
+            '      sdlc_bin=$(command -v agentic-sdlc || true)',
+            "    fi",
+            "  fi",
             '  [ -n "$sdlc_bin" ] || { echo "cadre: install Agentic SDLC v0.3.x from https://github.com/deagy/agentic-sdlc" >&2; exit 1; }',
             '  exec "$sdlc_bin" --provider "$PLUGIN_ROOT/provider.json" "$@"',
             "fi",
-            "AGENT_PYTHON=",
-            "for candidate in python3 python; do",
-            '  command -v "$candidate" >/dev/null 2>&1 || continue',
-            '  if "$candidate" -c \'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)\' 2>/dev/null; then AGENT_PYTHON="$candidate"; break; fi',
-            "done",
+            "detect_agent_python",
             '[ -n "$AGENT_PYTHON" ] || { echo "cadre: Python 3.10+ is required" >&2; exit 1; }',
             'case "$command_name" in',
             *case_lines,
-            f'  help|-h|--help) echo "Usage: cadre {{{usage}}} [args...]" ;;',
+            f'  help|-h|--help) echo "Usage: cadre [--interactive] {{{usage}}} [args...]" ;;',
             '  *) echo "cadre: unknown subcommand $command_name" >&2; exit 1 ;;',
             "esac",
             "",

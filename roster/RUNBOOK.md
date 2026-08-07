@@ -930,13 +930,41 @@ secret-classified field, and after a valid answer asks which tier to save
 it to (project, if the field's scope allows it; global; or skip to use for
 this run only).
 
-### `cadre config show` / `cadre config path`
+### `cadre config show` / `cadre config path` / `cadre config resolve`
 
 ```sh
 cadre config show   # every known setting's resolved value, origin, and source path;
                      # secrets print as "env-only: GITLAB_SVC_TOKEN (set|not set)", never a value
 cadre config path    # both candidate config file paths (project-local, resolved or "not found"; global)
+cadre config resolve <key>   # a single non-secret setting's resolved value on stdout (nothing,
+                              # exit 0, if unset); exit 1 with a message on stderr for a SettingsError
 ```
+
+`resolve` exists primarily for the *packaged* plugin's POSIX-sh `bin/cadre`
+wrapper (built by `generate_bin_wrapper()` in `generate_global_plugin.py`),
+which cannot itself parse YAML/JSON or apply trust-scope rules -- its `sdlc`
+branch shells out to `cadre config resolve agentic_sdlc.bin_path` instead of
+a second, shell-only `${AGENTIC_SDLC_BIN}`/`command -v` resolution that
+would silently ignore a configured value. This repository's own Python
+`bin/cadre.py` dispatcher resolves the same field directly in-process and
+does not need this subcommand.
+
+Two properties of that wrapper are worth knowing, since both are easy to
+break:
+
+- **`cadre sdlc ...` still needs no Python at all** when the binary is
+  already locatable without a config file (`AGENTIC_SDLC_BIN` set, or
+  `agentic-sdlc` on `PATH`). Only a config-file-supplied value requires a
+  Python interpreter, and its absence degrades to the same `PATH`-only
+  behavior the wrapper had before, never a new hard failure.
+- **`cadre --interactive sdlc ...` can still prompt**, even though the
+  wrapper necessarily calls `resolve` inside a `$(...)` command
+  substitution whose stdout is a pipe rather than a terminal. `resolve`
+  binds prompt input/output to `/dev/tty` (the *controlling* terminal,
+  independent of this process's own redirection) and opens the interactive
+  gate on that basis for exactly that one resolution, so prompt text never
+  contaminates the captured stdout -- only the final resolved value is
+  printed there.
 
 ## 18. Record a GitHub-backed human gate approval
 
