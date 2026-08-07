@@ -21,7 +21,7 @@ from agentic_sdlc_langgraph.export import export_run_record
 from agentic_sdlc_langgraph.validate import validate_run_record
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-CONTRACTS = REPO_ROOT / "plugins" / "agentic-sdlc" / "contracts"
+CONTRACTS = REPO_ROOT / "kernel" / "contracts"
 
 SCHEMA = json.loads((CONTRACTS / "run-record.schema.json").read_text(encoding="utf-8"))
 

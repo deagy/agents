@@ -53,7 +53,7 @@ from agentic_sdlc_langgraph.github_approval import (
 from agentic_sdlc_langgraph.graph import build_graph
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-CONTRACTS = REPO_ROOT / "plugins" / "agentic-sdlc" / "contracts"
+CONTRACTS = REPO_ROOT / "kernel" / "contracts"
 PROVIDER_DEFAULTS = REPO_ROOT / "providers" / "agentic-sdlc-defaults"
 
 TASK_TEXT = "Define and review a small internal order-processing API architecture and service"

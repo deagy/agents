@@ -52,7 +52,7 @@ from agentic_sdlc_langgraph.provider import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-CONTRACTS = REPO_ROOT / "plugins" / "agentic-sdlc" / "contracts"
+CONTRACTS = REPO_ROOT / "kernel" / "contracts"
 PROVIDER_DEFAULTS = REPO_ROOT / "providers" / "agentic-sdlc-defaults"
 DEFAULT_MANIFEST = PROVIDER_DEFAULTS / "provider.json"
 
