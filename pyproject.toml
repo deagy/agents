@@ -33,7 +33,7 @@ yaml = [
 # subcommand works without it, and it fails closed with an install pointer
 # if invoked without this extra installed.
 mcp = [
-    "mcp==1.2.1",
+    "mcp==2.0.0",
 ]
 
 [project.urls]
