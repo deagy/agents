@@ -19,10 +19,10 @@ there would be silently deleted on the next sync. `tools/` is not part of
 that generated set (see `tools/plugin_version.py`, the existing precedent
 for a hand-authored script invoked directly rather than through `bin/cadre`).
 
-    python3 plugins/lifecycle-gitlab/tools/bootstrap_sdlc.py                       # install (if needed) + configure this project
-    python3 plugins/lifecycle-gitlab/tools/bootstrap_sdlc.py --dry-run              # report what would happen, change nothing
-    python3 plugins/lifecycle-gitlab/tools/bootstrap_sdlc.py --skip-init             # install/verify the kernel only
-    python3 plugins/lifecycle-gitlab/tools/bootstrap_sdlc.py --root /path/to/project --profile secure-cloud
+    python3 plugins/lifecycle/tools/bootstrap_sdlc.py                       # install (if needed) + configure this project
+    python3 plugins/lifecycle/tools/bootstrap_sdlc.py --dry-run              # report what would happen, change nothing
+    python3 plugins/lifecycle/tools/bootstrap_sdlc.py --skip-init             # install/verify the kernel only
+    python3 plugins/lifecycle/tools/bootstrap_sdlc.py --root /path/to/project --profile secure-cloud
 
 Never reinstalls over an existing `agentic-sdlc` the human already has on
 `PATH` or pointed at via `AGENTIC_SDLC_BIN`, even if its version falls
@@ -53,15 +53,23 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
-# This script lives in this plugin's own tools/ directory, three
-# directories below the repository root (core, github, and gitlab each
-# carry their own copy -- see tools/test_plugin_duplication_health.py).
-# provider.json itself is not duplicated: it stays a single shared file at
-# the repository root (see cadre-ref.txt), referenced here by relative
-# path, the same convention this repository's skills already use for
-# reaching root-level shared content.
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-PROVIDER_MANIFEST_PATH = REPO_ROOT / "provider.json"
+# Two locations have to work, and before the monorepo merge only one did.
+#
+# In a checkout this file sits at plugin/tools/, and the compatibility data
+# lives in the register's own provider manifest at provider/provider.json.
+#
+# In an *installed plugin* it sits at <plugin>/tools/, and there is no
+# repository around it at all. That case used to be unreachable: the three
+# lifecycle plugins are packaged from plugins/lifecycle*/ subdirectories,
+# so provider.json -- a repository-root file -- was never shipped inside
+# them, and the old `parents[3]` walk climbed out of the plugin entirely.
+# read_kernel_compatibility() then died with "missing provider manifest" for
+# every plugin user, at any path. The build now emits a small derived
+# kernel-compatibility.json next to this script, which is checked first.
+_HERE = Path(__file__).resolve().parent
+PACKAGED_COMPATIBILITY_PATH = _HERE / "kernel-compatibility.json"
+REPO_ROOT = _HERE.parent.parent
+PROVIDER_MANIFEST_PATH = REPO_ROOT / "provider" / "provider.json"
 
 # The kernel now ships from the monorepo; deagy/agentic-sdlc is archived.
 AGENTIC_SDLC_GIT_URL = "https://github.com/deagy/cadre.git"
@@ -81,11 +89,30 @@ def parse_semver(value: str) -> tuple[int, int, int]:
     return tuple(int(part) for part in match.groups())  # type: ignore[return-value]
 
 
-def read_kernel_compatibility(manifest_path: Path = PROVIDER_MANIFEST_PATH) -> tuple[str, str]:
+def read_kernel_compatibility(manifest_path: Path | None = None) -> tuple[str, str]:
+    """Resolve the supported kernel range, packaged copy first.
+
+    An installed plugin has no repository around it, so the build-emitted
+    kernel-compatibility.json beside this script is the only thing present.
+    A checkout has no such file and reads the provider manifest directly.
+    Passing an explicit path overrides both (used by the tests).
+    """
+    if manifest_path is None:
+        manifest_path = (
+            PACKAGED_COMPATIBILITY_PATH
+            if PACKAGED_COMPATIBILITY_PATH.is_file()
+            else PROVIDER_MANIFEST_PATH
+        )
     if not manifest_path.is_file():
-        raise SystemExit(f"bootstrap-sdlc: missing provider manifest {manifest_path}")
+        raise SystemExit(
+            f"bootstrap-sdlc: no kernel compatibility data at {manifest_path}. "
+            "In a checkout this is provider/provider.json; in an installed plugin "
+            "it is tools/kernel-compatibility.json, emitted by the plugin build."
+        )
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    compatibility = manifest.get("kernel_compatibility")
+    # The packaged file *is* the compatibility object; the provider manifest
+    # nests it under a key alongside unrelated provider metadata.
+    compatibility = manifest.get("kernel_compatibility", manifest)
     if not isinstance(compatibility, dict):
         raise SystemExit(f"bootstrap-sdlc: {manifest_path} has no \"kernel_compatibility\" object")
     minimum = compatibility.get("minimum")

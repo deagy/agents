@@ -26,6 +26,11 @@ import port_cline_agents as p  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
+# `agents/` and `skills/` stopped being committed at the monorepo merge --
+# they are generated into a build directory now. Build them on demand.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from generated_package import generated_package  # noqa: E402
+
 
 class ToolAndModelMappingTests(unittest.TestCase):
     def test_tools_map_to_canonical_cline_names_deduped_in_order(self) -> None:
@@ -171,7 +176,7 @@ class RealRepoRegressionTests(unittest.TestCase):
             (root / "cline-agents" / "agents").mkdir(parents=True)
             import shutil
 
-            shutil.copytree(REPO_ROOT / "agents", root / "agents")
+            shutil.copytree(generated_package() / "agents", root / "agents")
 
             ported = p.port_agents(root)
             self.assertEqual(len(ported), 71)
@@ -194,7 +199,7 @@ class RealRepoRegressionTests(unittest.TestCase):
             (root / "cline-agents" / "skills").mkdir(parents=True)
             import shutil
 
-            shutil.copytree(REPO_ROOT / "skills", root / "skills")
+            shutil.copytree(generated_package() / "skills", root / "skills")
 
             ported = p.port_skills(root)
             self.assertEqual(len(ported), 7)
@@ -216,7 +221,7 @@ class RealRepoRegressionTests(unittest.TestCase):
             (root / "cline-agents" / "skills").mkdir(parents=True)
             import shutil
 
-            shutil.copytree(REPO_ROOT / "skills", root / "skills")
+            shutil.copytree(generated_package() / "skills", root / "skills")
             p.port_skills(root)
 
             content = (root / "cline-agents" / "skills" / "run-agent-orchestration.md").read_text(encoding="utf-8")
@@ -230,8 +235,8 @@ class RealRepoRegressionTests(unittest.TestCase):
             (root / "cline-agents" / "skills").mkdir(parents=True)
             import shutil
 
-            shutil.copytree(REPO_ROOT / "agents", root / "agents")
-            shutil.copytree(REPO_ROOT / "skills", root / "skills")
+            shutil.copytree(generated_package() / "agents", root / "agents")
+            shutil.copytree(generated_package() / "skills", root / "skills")
 
             p.port_agents(root)
             p.port_skills(root)
@@ -248,8 +253,18 @@ class RealRepoRegressionTests(unittest.TestCase):
             self.assertEqual(first_pass, second_pass)
 
     def test_cli_runs_cleanly_against_this_checkout(self) -> None:
+        # --source is separate from --root since the monorepo merge: the
+        # agents/ and skills/ being ported are build artifacts now, while
+        # cline-agents/ (the port target) is committed under plugin/.
         result = subprocess.run(
-            [sys.executable, str(REPO_ROOT / "tools" / "port_cline_agents.py"), "--root", str(REPO_ROOT)],
+            [
+                sys.executable,
+                str(REPO_ROOT / "tools" / "port_cline_agents.py"),
+                "--root",
+                str(REPO_ROOT),
+                "--source",
+                str(generated_package()),
+            ],
             capture_output=True,
             text=True,
         )

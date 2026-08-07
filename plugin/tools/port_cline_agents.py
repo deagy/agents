@@ -29,12 +29,32 @@ from __future__ import annotations
 
 import argparse
 import re
+import shutil
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from apply_regeneration import replace_path  # noqa: E402
+
+def replace_path(src: Path, dst: Path) -> None:
+    """Make dst match src exactly (src missing => dst removed).
+
+    Inlined from the former apply_regeneration.py, which existed only to
+    apply a cross-repo `cadre generate-plugin` diff into a separate plugin
+    checkout. The monorepo merge removed that whole workflow; this one
+    helper was its only reusable part.
+    """
+    if dst.exists():
+        if dst.is_dir():
+            shutil.rmtree(dst)
+        else:
+            dst.unlink()
+    if src.exists():
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if src.is_dir():
+            shutil.copytree(src, dst)
+        else:
+            shutil.copy2(src, dst)
 
 # ---------------------------------------------------------------------------
 # Agents
@@ -96,6 +116,26 @@ PATH_SUBSTITUTIONS: list[tuple[str, str]] = [
     ("`roster/shared/`", "this project's shared-policy directory"),
     ("`roster/shared/README.md`", "this project's shared-policy documentation"),
     ("roster/shared/README.md", "this project's shared-policy documentation"),
+    # roster/shared/workspace-isolation.md is embedded verbatim into every
+    # wrapper as tier-scoped shared policy, and cites this manifest by path.
+    # The rule was missing because the committed cline-agents/ snapshot
+    # predated that policy file: with the distribution living in a separate
+    # repository, nothing re-ported it until the monorepo merge made every
+    # test build from source.
+    (
+        "`roster/runner-capabilities.json`",
+        "this project's runner-capability manifest",
+    ),
+    (
+        "`roster/knowledge-store/src/config.py`",
+        "this project's knowledge-store configuration module",
+    ),
+    (
+        "`roster/knowledge-store/SECURITY.md`",
+        "this project's knowledge-store security documentation",
+    ),
+    ("`roster/RUNBOOK.md`", "this project's operating runbook"),
+    ("roster/RUNBOOK.md", "this project's operating runbook"),
 ]
 ROUTING_YAML_RE = re.compile(r"roster/orchestration/\s+routing\.yaml's")
 ROUTING_YAML_REPLACEMENT = "this project's routing configuration's"
@@ -225,8 +265,8 @@ def _convert_agent_file(source_path: Path, role: str) -> str:
     return "\n".join(frontmatter_lines) + body
 
 
-def port_agents(root: Path) -> list[str]:
-    source_dir = root / "agents"
+def port_agents(root: Path, source_root: Path | None = None) -> list[str]:
+    source_dir = (source_root or root) / "agents"
     target_dir = root / "cline-agents" / "agents"
     ported: list[str] = []
     for source_path in sorted(source_dir.glob("*.md")):
@@ -247,6 +287,16 @@ def port_agents(root: Path) -> list[str]:
 # doc set agents reference) -- authored fresh for this port, since the
 # previous skills port never rewrote any of this.
 SKILL_PATH_SUBSTITUTIONS: list[tuple[str, str]] = [
+    # Same late-arriving shared policy as PATH_SUBSTITUTIONS'
+    # workspace-isolation entry: skills cite it too.
+    (
+        "`roster/shared/workspace-isolation.md`",
+        "this project's workspace-isolation policy documentation",
+    ),
+    (
+        "roster/shared/workspace-isolation.md",
+        "this project's workspace-isolation policy documentation",
+    ),
     # Longest/most specific multi-line phrases must come first -- a later,
     # shorter rule (e.g. plain `roster/catalog.yaml`) would otherwise
     # partially consume this one's interior text before it gets a chance
@@ -443,8 +493,8 @@ def _check_no_skill_leaks(name: str, body: str) -> None:
         )
 
 
-def port_skills(root: Path) -> list[str]:
-    source_dir = root / "skills"
+def port_skills(root: Path, source_root: Path | None = None) -> list[str]:
+    source_dir = (source_root or root) / "skills"
     target_dir = root / "cline-agents" / "skills"
     ported: list[str] = []
     for skill_dir in sorted(p for p in source_dir.iterdir() if p.is_dir()):
@@ -483,12 +533,25 @@ def port_skills(root: Path) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", type=Path, default=Path("."))
+    parser.add_argument(
+        "--root", type=Path, default=Path("."),
+        help="Directory containing cline-agents/ (the port target).",
+    )
+    parser.add_argument(
+        "--source", type=Path, default=None,
+        help=(
+            "Directory containing the generated agents/ and skills/ to port from. "
+            "Defaults to --root. Since the monorepo merge these are build "
+            "artifacts rather than committed files, so this normally points at a "
+            "`cadre generate-plugin` output directory."
+        ),
+    )
     args = parser.parse_args(argv)
     root = args.root.resolve()
+    source_root = args.source.resolve() if args.source else None
 
-    agents = port_agents(root)
-    skills = port_skills(root)
+    agents = port_agents(root, source_root)
+    skills = port_skills(root, source_root)
     print(f"Ported {len(agents)} agent(s) and {len(skills)} skill(s) into cline-agents/.")
     return 0
 

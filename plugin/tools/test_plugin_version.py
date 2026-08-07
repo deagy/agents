@@ -102,8 +102,12 @@ class CheckVersionsTests(unittest.TestCase):
         """
         import re
 
-        package_root = Path(__file__).resolve().parent.parent
-        catalog = json.loads((package_root / "agent-catalog.json").read_text(encoding="utf-8"))
+        # agent-catalog.json is a build artifact since the monorepo merge;
+        # provider/agent-catalog.json is the committed source of the same data.
+        repo_root = Path(__file__).resolve().parents[2]
+        catalog = json.loads(
+            (repo_root / "provider" / "agent-catalog.json").read_text(encoding="utf-8")
+        )
         expected = len(catalog["agents"])
         for name in ("claude", "codex"):
             path = plugin_version.MANIFESTS[name]

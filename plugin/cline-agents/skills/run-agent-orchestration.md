@@ -125,6 +125,12 @@ Return an outcome-first summary containing:
 - findings and conflicting recommendations by severity;
 - human gates reached;
 - changed or generated artifacts and validation performed;
+- for every dispatched write-capable role, its reported workspace-isolation
+  result block (mode, path, branch, base revision, committed, reason if
+  in-place — see this project's workspace-isolation policy documentation), relayed as
+  reported rather than re-derived; if a write-capable role's response
+  omitted the block, note that explicitly instead of silently dropping the
+  gap;
 - final disposition and next safe action.
 
 If subagent dispatch is unavailable, return the validated plan and clearly state that no agents were executed.
@@ -149,7 +155,8 @@ Each dispatch prompt must include:
 - nested citation `source_uri` omitted or redacted by default, and included only when separately authorized and necessary because it may reveal a local path;
 - explicit permitted and prohibited actions;
 - expected response template or schema;
-- named receiving role or human owner.
+- named receiving role or human owner;
+- for any write-capable role (`sandbox_mode != "read-only"`), require the workspace-isolation result block defined in this project's workspace-isolation policy documentation (mode, path, branch, base revision, committed, reason if in-place) as part of that role's response.
 
 Do not dispatch an implementation or review agent when its required artifact is absent. Mark that role `deferred` with the missing prerequisite.
 
@@ -174,7 +181,8 @@ risk acceptance, policy exceptions, merge/push, and self-approval unless an
 authorized human explicitly grants the specific action.
 
 Return: <required template/schema>, evidence, disposition, unresolved risks,
-and handoff to <receiver>.
+handoff to <receiver>, and (write-capable roles only) the workspace-isolation
+result block: mode, path, branch, base revision, committed, reason if in-place.
 ```
 
 ## Wave and gate rules
@@ -278,6 +286,29 @@ authoritative for the *why*.
   - No nested teams: only the lead manages the team; a teammate cannot spawn
     its own teammates. This is a runner limitation, not a repo policy choice.
 
+- **Workspace isolation (see this project's workspace-isolation policy documentation).**
+  Claude Code has its own native worktree-isolation feature
+  (the bundled runner-capabilities manifest's `native_workspace_isolation:
+  "worktree"` for `claude-code`), independent of the
+  `workspace-isolation.md` policy an individual write-capable role follows.
+  Two things are **explicitly unverified assumptions**, not confirmed
+  behavior, and Step 0's detection (`git rev-parse --git-dir` vs
+  `--git-common-dir`) is written to be correct regardless of how either
+  resolves:
+  - The exact parameter/setting name that turns this native isolation on
+    (this document does not assert one — do not guess a flag name in a
+    dispatch prompt without checking the installed Claude Code version's own
+    docs/settings first).
+  - Whether, when native isolation is enabled for an Agent Team, every
+    teammate is isolated into its own separate worktree unconditionally, or
+    the team can share one. **If it is unconditionally per-teammate**, this
+    skill's "one shared worktree per team" preference
+    (`workspace-isolation.md`'s "Teams" section) is not achievable on Claude
+    Code and each teammate's Step 0 will correctly report its own separate
+    worktree instead — that is not a bug in the policy, it is Step 0 doing
+    its job under a runner constraint the policy already anticipates by
+    keeping detection authoritative over any stated preference.
+
 ## Codex CLI
 
 - **Ordinary dispatch**: custom agents are `.toml` files under
@@ -342,7 +373,7 @@ authoritative for the *why*.
        this file's other live-execution caveats:
        ```toml
        [mcp_servers.agents-dispatch]
-       command = "agents"
+       command = "cadre"
        args = ["mcp-dispatch-server"]
        ```
     3. This server only ever spawns `codex exec` child processes for
@@ -448,6 +479,27 @@ authoritative for the *why*.
   but the "teammates challenge each other" step degrades to "this
   orchestrating session reviews all N results and reconciles disagreements
   itself," since Codex has no way to let the roles do that directly.
+- **Workspace isolation (see this project's workspace-isolation policy documentation).**
+  the bundled runner-capabilities manifest records `native_workspace_isolation:
+  null` for `codex` — Codex CLI has no runner-native worktree-isolation
+  parameter, so a dispatched Codex role follows `workspace-isolation.md`'s
+  own `git worktree add` steps entirely on its own, not through any
+  runner-level flag. This is why the design forces the in-root
+  `<repository_root>/.worktrees/<task-id>/<role-id>/` location instead of a
+  sibling directory: `dispatch_core.py`'s `build_child_argv()` spawns the
+  child with `--cd <project_root> --sandbox workspace-write`
+  (`dispatch_core.py:1186-1215`), and **it is an explicitly unverified
+  assumption, not independently confirmed against Codex CLI's own sandbox
+  documentation from inside this sandbox (no live `codex` binary available,
+  same limitation noted elsewhere in this file), that `--sandbox
+  workspace-write`'s writable scope is exactly the `--cd` directory and
+  nothing outside it** — this document treats "in-root only" as the safe
+  assumption precisely because a sibling-directory worktree would silently
+  fail to write (or worse, silently succeed against some broader writable
+  scope this file cannot verify) if that assumption is wrong in either
+  direction. Do not relax the in-root requirement based on this note without
+  first confirming the actual `--sandbox workspace-write` boundary against a
+  live Codex CLI session.
 
 ## Cline
 

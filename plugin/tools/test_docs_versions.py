@@ -36,14 +36,14 @@ import re
 import unittest
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Directories whose Markdown this repository does not author:
 #   suite/      - regenerated verbatim from deagy/cadre by `cadre
 #                 generate-plugin`; fix the source there, not here (the
 #                 register has its own copy of this test).
 #   node_modules/, .git/ - vendored / VCS internals.
-EXCLUDED_DIRS = frozenset({"suite", "node_modules", ".git"})
+EXCLUDED_DIRS = frozenset({"suite", "node_modules", ".git", "plugin-dist"})
 
 # CHANGELOG.md legitimately records historical tags ("v0.7.0 -- ...").
 EXCLUDED_FILES = frozenset({"CHANGELOG.md"})
@@ -125,7 +125,9 @@ class TestDocsCarryNoPinnedTags(unittest.TestCase):
 
 class TestKernelVersionProseMatchesProvider(unittest.TestCase):
     def test_quoted_kernel_version_matches_provider_manifest(self) -> None:
-        manifest = json.loads((REPO_ROOT / "provider.json").read_text(encoding="utf-8"))
+        manifest = json.loads(
+            (REPO_ROOT / "provider" / "provider.json").read_text(encoding="utf-8")
+        )
         minimum = manifest["kernel_compatibility"]["minimum"]
         supported_series = ".".join(minimum.split(".")[:2])
 
