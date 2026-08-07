@@ -65,12 +65,15 @@ the copies. The merge left one.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
+import urllib.request
 from pathlib import Path
 from typing import Sequence
 
@@ -103,6 +106,15 @@ PROVIDER_MANIFEST_PATH = REPO_ROOT / "provider" / "provider.json"
 AGENTIC_SDLC_GIT_URL = "https://github.com/deagy/cadre.git"
 AGENTIC_SDLC_SUBDIRECTORY = "kernel"
 AGENTIC_SDLC_TAG_PREFIX = "kernel-v"
+RELEASE_DOWNLOAD_BASE = "https://github.com/deagy/cadre/releases/download"
+NETWORK_TIMEOUT_SECONDS = 60
+
+# Indirected so tests never reach the network.
+_urlopen = urllib.request.urlopen
+
+
+class KernelIntegrityError(Exception):
+    """A downloaded artifact did not match its published checksum."""
 
 # Claude Code exports each `userConfig` option to hook processes as
 # CLAUDE_PLUGIN_OPTION_<KEY>, uppercased. Shell-form hook commands are not
@@ -242,7 +254,6 @@ def venv_install(root: Path, ref: str) -> int:
     bin/agentic-sdlc shim reaches it without the user's shell profile being
     involved at all.
     """
-    target = install_target(ref)
     print(f"bootstrap-sdlc: installing Agentic SDLC v{ref} into {root}")
     sys.stdout.flush()
 
@@ -266,15 +277,54 @@ def venv_install(root: Path, ref: str) -> int:
         shutil.rmtree(root, ignore_errors=True)
         return VENV_UNAVAILABLE
 
-    result = _run(
-        [str(pip), "install", "--disable-pip-version-check", target],
-        check=False,
-    )
+    # Prefer the published wheel, verified against the release's SHA256SUMS,
+    # over the git ref. A tag can be moved; a checksum cannot. Note this
+    # pins *the kernel artifact*, not its transitive dependencies -- pip's
+    # own --require-hashes would demand a hash for every dependency in the
+    # tree, which would mean shipping and maintaining a full lockfile here.
+    # Those dependencies come from PyPI exactly as they did before.
+    with tempfile.TemporaryDirectory() as scratch:
+        pinned = resolve_release_wheel(ref)
+        if pinned is None:
+            print(
+                f"bootstrap-sdlc: no published wheel for {AGENTIC_SDLC_TAG_PREFIX}{ref}; "
+                "falling back to the git ref, which cannot be checksum-verified.",
+                file=sys.stderr,
+            )
+            spec = install_target(ref)
+        else:
+            url, digest = pinned
+            try:
+                spec = str(download_verified_wheel(url, digest, Path(scratch)))
+            except KernelIntegrityError as error:
+                # Never silently fall back here: a checksum mismatch is not
+                # "this route is unavailable", it is "something is wrong with
+                # what was served".
+                print(f"bootstrap-sdlc: {error}", file=sys.stderr)
+                return 1
+            except Exception as error:
+                print(
+                    f"bootstrap-sdlc: could not download {url} ({error}); "
+                    "falling back to the git ref.",
+                    file=sys.stderr,
+                )
+                spec = install_target(ref)
+
+        result = _run(
+            [str(pip), "install", "--disable-pip-version-check", spec],
+            check=False,
+        )
     return result.returncode
 
 
 def install_target(ref: str) -> str:
     """The git ref to install the kernel from.
+
+    The fallback route, used when a release carries no published wheel (any
+    kernel tagged before release.yml started attaching artifacts). A git ref
+    cannot be verified after the fact -- a tag can be moved -- and it needs
+    `git` plus direct GitHub access, which is the first thing a corporate
+    proxy breaks. Prefer `resolve_release_wheel()`.
 
     Kept as a function so the tag scheme is asserted in one place by
     test_bootstrap_sdlc.py rather than reconstructed at each call site.
@@ -284,14 +334,95 @@ def install_target(ref: str) -> str:
     )
 
 
+def release_asset_url(ref: str, filename: str) -> str:
+    tag = f"{AGENTIC_SDLC_TAG_PREFIX}{ref}"
+    return f"{RELEASE_DOWNLOAD_BASE}/{tag}/{filename}"
+
+
+def resolve_release_wheel(ref: str, opener=None) -> tuple[str, str] | None:
+    """Return (wheel URL, expected sha256) from the release's SHA256SUMS.
+
+    Returns None when the release has no SHA256SUMS or no wheel listed in
+    it, so the caller can fall back to the git ref rather than failing --
+    kernels tagged before release.yml attached artifacts have neither.
+    """
+    opener = opener or _urlopen
+    try:
+        with opener(release_asset_url(ref, "SHA256SUMS"), timeout=NETWORK_TIMEOUT_SECONDS) as handle:
+            sums = handle.read().decode("utf-8")
+    except Exception:
+        # Missing release, no network, proxy, rate limit -- all mean the same
+        # thing here: no pinned artifact is available to install.
+        return None
+
+    for line in sums.splitlines():
+        parts = line.split()
+        if len(parts) == 2 and parts[1].endswith(".whl"):
+            digest, filename = parts
+            if re.fullmatch(r"[0-9a-f]{64}", digest):
+                return release_asset_url(ref, filename), digest
+    return None
+
+
+def download_verified_wheel(url: str, expected_sha256: str, into: Path, opener=None) -> Path:
+    """Download a wheel and refuse to return it unless its hash matches.
+
+    This is the point of the whole exercise: the artifact that gets
+    installed is provably the one this project published, rather than
+    whatever a mutable tag currently points at.
+
+    The filename is preserved because pip rejects a wheel that has been
+    renamed ("not a valid wheel filename") -- it parses the name for the
+    distribution, version, and compatibility tags.
+    """
+    opener = opener or _urlopen
+    with opener(url, timeout=NETWORK_TIMEOUT_SECONDS) as handle:
+        payload = handle.read()
+
+    actual = hashlib.sha256(payload).hexdigest()
+    if actual != expected_sha256:
+        raise KernelIntegrityError(
+            f"checksum mismatch for {url}\n"
+            f"  expected {expected_sha256}\n"
+            f"  actual   {actual}\n"
+            "Refusing to install. This means the downloaded file is not the artifact "
+            "this project published."
+        )
+
+    into.mkdir(parents=True, exist_ok=True)
+    target = into / url.rsplit("/", 1)[-1]
+    target.write_bytes(payload)
+    return target
+
+
 def pipx_install(ref: str) -> int:
-    target = install_target(ref)
-    print(f"bootstrap-sdlc: installing Agentic SDLC v{ref} via pipx ({target})")
-    # Our own prints above are Python-buffered; pipx's subprocess writes to
-    # the same inherited stdout fd directly, so without an explicit flush
-    # here its output can appear before ours despite running after it.
-    sys.stdout.flush()
-    result = _run(["pipx", "install", target], check=False)
+    # Same preference as the venv route: a checksum-verified wheel over a
+    # movable git ref. pipx has no hash-checking of its own, so the
+    # verification happens here and pipx installs the already-verified local
+    # file.
+    with tempfile.TemporaryDirectory() as scratch:
+        pinned = resolve_release_wheel(ref)
+        target = install_target(ref)
+        if pinned is not None:
+            url, digest = pinned
+            try:
+                target = str(download_verified_wheel(url, digest, Path(scratch)))
+            except KernelIntegrityError as error:
+                print(f"bootstrap-sdlc: {error}", file=sys.stderr)
+                return 1
+            except Exception as error:
+                print(
+                    f"bootstrap-sdlc: could not download {url} ({error}); "
+                    "falling back to the git ref.",
+                    file=sys.stderr,
+                )
+
+        print(f"bootstrap-sdlc: installing Agentic SDLC v{ref} via pipx ({target})")
+        # Our own prints above are Python-buffered; pipx's subprocess writes to
+        # the same inherited stdout fd directly, so without an explicit flush
+        # here its output can appear before ours despite running after it.
+        sys.stdout.flush()
+        result = _run(["pipx", "install", target], check=False)
     return result.returncode
 
 

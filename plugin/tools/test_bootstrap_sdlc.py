@@ -14,6 +14,7 @@ install.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
@@ -474,3 +475,103 @@ class ProfileOptionTests(unittest.TestCase):
             "/bin/agentic-sdlc", _args(profile=None), {"CLAUDE_PLUGIN_OPTION_PROFILE": "   "}
         )
         self.assertNotIn("--profile", command)
+
+
+class _FakeResponse:
+    def __init__(self, payload: bytes) -> None:
+        self._payload = payload
+
+    def read(self) -> bytes:
+        return self._payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        return None
+
+
+def _opener_for(mapping: dict[str, bytes]):
+    def opener(url, timeout=None):
+        if url not in mapping:
+            raise OSError(f"404 {url}")
+        return _FakeResponse(mapping[url])
+    return opener
+
+
+class ReleaseWheelTests(unittest.TestCase):
+    """Installing a checksum-verified published artifact instead of a git ref.
+
+    A tag can be moved after the fact, so a `git+...@kernel-v0.13.0` install
+    proves nothing about what you received. It also needs `git` plus direct
+    GitHub access. A published wheel plus its SHA256SUMS is verifiable.
+    """
+
+    SUMS = (
+        b"a" * 64 + b"  agentic_sdlc-0.13.0-py3-none-any.whl\n"
+        + b"b" * 64 + b"  agentic_sdlc-0.13.0.tar.gz\n"
+    )
+
+    def test_resolves_the_wheel_and_its_digest(self) -> None:
+        url = bootstrap_sdlc.release_asset_url("0.13.0", "SHA256SUMS")
+        resolved = bootstrap_sdlc.resolve_release_wheel("0.13.0", _opener_for({url: self.SUMS}))
+        self.assertIsNotNone(resolved)
+        wheel_url, digest = resolved
+        self.assertTrue(wheel_url.endswith("agentic_sdlc-0.13.0-py3-none-any.whl"))
+        self.assertIn("kernel-v0.13.0", wheel_url)
+        self.assertEqual("a" * 64, digest)
+
+    def test_picks_the_wheel_not_the_sdist(self) -> None:
+        url = bootstrap_sdlc.release_asset_url("0.13.0", "SHA256SUMS")
+        _wheel_url, digest = bootstrap_sdlc.resolve_release_wheel(
+            "0.13.0", _opener_for({url: self.SUMS})
+        )
+        self.assertNotEqual("b" * 64, digest)
+
+    def test_missing_release_returns_none_so_the_caller_can_fall_back(self) -> None:
+        """Kernels tagged before release.yml attached artifacts have no
+        SHA256SUMS, and neither does an offline machine. Both mean the same
+        thing: no pinned artifact, use the git ref."""
+        self.assertIsNone(bootstrap_sdlc.resolve_release_wheel("0.13.0", _opener_for({})))
+
+    def test_matching_checksum_writes_the_wheel_under_its_original_name(self) -> None:
+        payload = b"pretend wheel bytes"
+        digest = hashlib.sha256(payload).hexdigest()
+        url = bootstrap_sdlc.release_asset_url("0.13.0", "agentic_sdlc-0.13.0-py3-none-any.whl")
+        with tempfile.TemporaryDirectory() as directory:
+            written = bootstrap_sdlc.download_verified_wheel(
+                url, digest, Path(directory), _opener_for({url: payload})
+            )
+            self.assertEqual(payload, written.read_bytes())
+            # pip rejects a renamed wheel -- it parses the filename for the
+            # distribution, version, and compatibility tags.
+            self.assertEqual("agentic_sdlc-0.13.0-py3-none-any.whl", written.name)
+
+    def test_tampered_payload_is_refused(self) -> None:
+        payload = b"tampered"
+        wrong = hashlib.sha256(b"the real thing").hexdigest()
+        url = bootstrap_sdlc.release_asset_url("0.13.0", "agentic_sdlc-0.13.0-py3-none-any.whl")
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaises(bootstrap_sdlc.KernelIntegrityError):
+                bootstrap_sdlc.download_verified_wheel(
+                    url, wrong, Path(directory), _opener_for({url: payload})
+                )
+
+    def test_checksum_mismatch_aborts_rather_than_falling_back(self) -> None:
+        """The distinction that matters: "this route is unavailable" falls
+        back to the git ref, but "what was served does not match what was
+        published" must stop. Falling back there would turn a tampering
+        signal into a silent alternate install path."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "kernel"
+            (root / "bin").mkdir(parents=True)
+            (root / "bin" / "pip").write_text("", encoding="utf-8")
+            with mock.patch.object(
+                bootstrap_sdlc, "resolve_release_wheel", return_value=("https://x/w.whl", "0" * 64)
+            ), mock.patch.object(
+                bootstrap_sdlc, "download_verified_wheel",
+                side_effect=bootstrap_sdlc.KernelIntegrityError("checksum mismatch"),
+            ), mock.patch.object(bootstrap_sdlc, "_run") as run, mock.patch("sys.stderr"):
+                code = bootstrap_sdlc.venv_install(root, "0.13.0")
+        self.assertEqual(1, code)
+        run.assert_not_called()

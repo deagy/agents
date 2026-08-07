@@ -175,8 +175,11 @@ jobs:
             -m "Lifecycle kernel v${{ steps.version.outputs.value }}"
           git push origin "kernel-v${{ steps.version.outputs.value }}"
 
-      # Never --latest: that marks the repository's headline release, and the
-      # plugin distribution is what an end user installs.
+      # --latest=false, not merely omitting --latest: gh defaults to marking
+      # the newest release as latest, so omitting it is not neutral. The
+      # kernel job runs after the plugin job, so the default handed the
+      # headline release to the kernel -- which is not what an end user
+      # installs. Observed on the first real run.
       - name: Publish GitHub Release with artifacts
         if: steps.tag.outputs.skip == 'false'
         env:
@@ -185,4 +188,5 @@ jobs:
           gh release create "kernel-v${{ steps.version.outputs.value }}" \
             --title "Lifecycle kernel v${{ steps.version.outputs.value }}" \
             --notes "G1-G10 lifecycle kernel v${{ steps.version.outputs.value }}. Verify downloads against SHA256SUMS." \
+            --latest=false \
             dist/*
