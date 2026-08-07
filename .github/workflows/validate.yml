@@ -23,12 +23,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: deagy/agentic-sdlc
-          # SHA-pinned, not `v0.3.0`: this checkout's bin/agentic-sdlc is
+          # SHA-pinned, not `v0.13.0`: this checkout's bin/agentic-sdlc is
           # *executed* by the steps below, so a moved tag would be arbitrary
           # code execution in this workflow. Same convention as the actions
           # pinned above. Bump deliberately alongside the kernel_compatibility
           # range in provider/provider.json.
-          ref: ccc9b6a80a4b61291c903ca3e3c9904680a11628 # v0.3.0
+          ref: b105388b465aa6b4ec1b331d24579b6160242927 # v0.13.0
           path: .dependencies/agentic-sdlc
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
