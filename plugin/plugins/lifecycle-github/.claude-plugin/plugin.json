@@ -9,6 +9,12 @@
   },
   "homepage": "https://github.com/deagy/cadre-lifecycle",
   "repository": "https://github.com/deagy/cadre-lifecycle",
-  "keywords": ["cadre", "lifecycle-governance", "agentic-sdlc", "github"],
-  "skills": "./skills/"
+  "keywords": [
+    "cadre",
+    "lifecycle-governance",
+    "agentic-sdlc",
+    "github"
+  ],
+  "skills": "./skills/",
+  "hooks": "./hooks/hooks.json"
 }

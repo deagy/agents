@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -36,6 +37,8 @@ def _args(**overrides) -> argparse.Namespace:
         runner=None,
         skip_init=False,
         dry_run=False,
+        data_dir=None,
+        check=False,
     )
     defaults.update(overrides)
     return argparse.Namespace(**defaults)
@@ -84,52 +87,68 @@ class EnsureKernelTests(unittest.TestCase):
         self._compat_patch.start()
         self.addCleanup(self._compat_patch.stop)
 
+    @staticmethod
+    def _which(mapping: dict[str, str | None]):
+        """`shutil.which` is now consulted for more than one name, so the
+        stub has to answer per-name rather than returning one value."""
+        return mock.patch.object(
+            bootstrap_sdlc.shutil, "which", side_effect=lambda name: mapping.get(name)
+        )
+
     def test_compatible_existing_binary_is_reused_without_reinstalling(self) -> None:
-        with mock.patch.object(bootstrap_sdlc, "resolve_existing_binary", return_value="/usr/local/bin/agentic-sdlc"):
-            with mock.patch.object(bootstrap_sdlc, "binary_version", return_value="0.3.0"):
-                with mock.patch.object(bootstrap_sdlc, "pipx_install") as install:
-                    exit_code, binary = bootstrap_sdlc.ensure_kernel(_args())
+        with self._which({"agentic-sdlc": "/usr/local/bin/agentic-sdlc"}), \
+             mock.patch.object(bootstrap_sdlc, "binary_version", return_value="0.3.0"), \
+             mock.patch.object(bootstrap_sdlc, "pipx_install") as install:
+            exit_code, binary = bootstrap_sdlc.ensure_kernel(_args(), {})
         install.assert_not_called()
         self.assertEqual(0, exit_code)
         self.assertEqual("/usr/local/bin/agentic-sdlc", binary)
 
-    def test_incompatible_existing_binary_is_refused_not_replaced(self) -> None:
-        with mock.patch.object(bootstrap_sdlc, "resolve_existing_binary", return_value="/usr/local/bin/agentic-sdlc"):
-            with mock.patch.object(bootstrap_sdlc, "binary_version", return_value="0.9.0"):
-                with mock.patch.object(bootstrap_sdlc, "pipx_install") as install:
-                    exit_code, binary = bootstrap_sdlc.ensure_kernel(_args())
-        install.assert_not_called()
-        self.assertEqual(1, exit_code)
-        self.assertIsNone(binary)
+    def test_incompatible_binary_on_path_is_left_alone_and_superseded(self) -> None:
+        """Behaviour change, deliberate. This used to exit 1 with "not
+        reinstalling automatically", which left the user with a broken plugin
+        and no way forward except uninstalling their own tool. The operator's
+        install is still never modified -- it is simply not used."""
+        with self._which({"agentic-sdlc": "/usr/local/bin/agentic-sdlc", "pipx": "/usr/bin/pipx"}), \
+             mock.patch.object(bootstrap_sdlc, "binary_version", return_value="0.9.0"), \
+             mock.patch.object(bootstrap_sdlc, "pipx_install", return_value=0) as install:
+            exit_code, _binary = bootstrap_sdlc.ensure_kernel(_args(), {})
+        self.assertEqual(0, exit_code)
+        install.assert_called_once_with("0.3.0")
 
-    def test_missing_pipx_fails_closed(self) -> None:
-        with mock.patch.object(bootstrap_sdlc, "resolve_existing_binary", return_value=None):
-            with mock.patch.object(bootstrap_sdlc.shutil, "which", return_value=None):
-                exit_code, binary = bootstrap_sdlc.ensure_kernel(_args())
+    def test_no_install_route_at_all_fails_closed(self) -> None:
+        with self._which({}), mock.patch("sys.stderr"):
+            exit_code, binary = bootstrap_sdlc.ensure_kernel(_args(), {})
         self.assertEqual(1, exit_code)
         self.assertIsNone(binary)
 
     def test_dry_run_never_installs(self) -> None:
-        with mock.patch.object(bootstrap_sdlc, "resolve_existing_binary", return_value=None):
-            with mock.patch.object(bootstrap_sdlc.shutil, "which", return_value="/usr/bin/pipx"):
-                with mock.patch.object(bootstrap_sdlc, "pipx_install") as install:
-                    exit_code, binary = bootstrap_sdlc.ensure_kernel(_args(dry_run=True))
+        with self._which({"pipx": "/usr/bin/pipx"}), \
+             mock.patch.object(bootstrap_sdlc, "pipx_install") as install:
+            exit_code, binary = bootstrap_sdlc.ensure_kernel(_args(dry_run=True), {})
         install.assert_not_called()
         self.assertEqual(0, exit_code)
         self.assertIsNone(binary)
 
     def test_pinned_install_uses_the_declared_minimum_version(self) -> None:
-        with mock.patch.object(bootstrap_sdlc, "resolve_existing_binary", side_effect=[None, "/usr/local/bin/agentic-sdlc"]):
-            with mock.patch.object(bootstrap_sdlc.shutil, "which", return_value="/usr/bin/pipx"):
-                with mock.patch.object(bootstrap_sdlc, "pipx_install", return_value=0) as install:
-                    exit_code, binary = bootstrap_sdlc.ensure_kernel(_args())
+        # Absent before the install, present after -- the post-install lookup
+        # is what turns a successful install into a usable binary path.
+        resolved = {"pipx": "/usr/bin/pipx", "agentic-sdlc": None}
+
+        def installed(_ref):
+            resolved["agentic-sdlc"] = "/usr/local/bin/agentic-sdlc"
+            return 0
+
+        with mock.patch.object(
+            bootstrap_sdlc.shutil, "which", side_effect=lambda name: resolved.get(name)
+        ), mock.patch.object(bootstrap_sdlc, "pipx_install", side_effect=installed) as install:
+            exit_code, binary = bootstrap_sdlc.ensure_kernel(_args(), {})
         install.assert_called_once_with("0.3.0")
         self.assertEqual(0, exit_code)
         self.assertEqual("/usr/local/bin/agentic-sdlc", binary)
 
     def test_install_success_but_still_unresolvable_reports_path_guidance(self) -> None:
-        with mock.patch.object(bootstrap_sdlc, "resolve_existing_binary", return_value=None):
-            with mock.patch.object(bootstrap_sdlc.shutil, "which", return_value=None):
+        with mock.patch.object(bootstrap_sdlc.shutil, "which", return_value=None):
                 with mock.patch.object(bootstrap_sdlc, "pipx_install", return_value=0):
                     exit_code, binary = bootstrap_sdlc.ensure_kernel(_args())
         self.assertEqual(1, exit_code)
@@ -237,7 +256,6 @@ class InstallTargetTests(unittest.TestCase):
             with mock.patch.object(bootstrap_sdlc, "PROVIDER_MANIFEST_PATH", manifest), \
                  mock.patch.object(bootstrap_sdlc, "PACKAGED_COMPATIBILITY_PATH",
                                    Path(directory) / "absent.json"), \
-                 mock.patch.object(bootstrap_sdlc, "resolve_existing_binary", return_value=None), \
                  mock.patch.object(bootstrap_sdlc.shutil, "which", return_value="/usr/bin/pipx"), \
                  mock.patch("sys.stdout") as stdout:
                 code, binary = bootstrap_sdlc.ensure_kernel(_args(dry_run=True))
@@ -246,3 +264,141 @@ class InstallTargetTests(unittest.TestCase):
         self.assertIsNone(binary)
         printed = "".join(call.args[0] for call in stdout.write.call_args_list if call.args)
         self.assertIn(bootstrap_sdlc.install_target("0.13.0"), printed)
+
+
+def _compat(directory: str) -> Path:
+    manifest = Path(directory) / "provider.json"
+    manifest.write_text(
+        json.dumps({"kernel_compatibility": {"minimum": "0.13.0", "maximum_exclusive": "1.0.0"}}),
+        encoding="utf-8",
+    )
+    return manifest
+
+
+class OwnershipTests(unittest.TestCase):
+    """Who owns an install decides whether this script may act on it.
+
+    The pre-merge rule was one-size: never touch an existing install, even an
+    incompatible one. That was right for a binary the human chose and wrong
+    for everything else -- an out-of-range `agentic-sdlc` on PATH left the
+    user with a broken plugin and no way forward except uninstalling their
+    own tool.
+    """
+
+    def setUp(self) -> None:
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.manifest = _compat(self.directory.name)
+        patcher = mock.patch.object(bootstrap_sdlc, "PROVIDER_MANIFEST_PATH", self.manifest)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        absent = mock.patch.object(
+            bootstrap_sdlc, "PACKAGED_COMPATIBILITY_PATH", Path(self.directory.name) / "absent.json"
+        )
+        absent.start()
+        self.addCleanup(absent.stop)
+
+    def _versions(self, mapping: dict[str, str]):
+        return mock.patch.object(bootstrap_sdlc, "binary_version", lambda b: mapping[b])
+
+    def test_explicit_bin_out_of_range_still_fails_closed(self) -> None:
+        """The human named this binary. Substituting another silently would
+        be the wrong answer, so this remains a hard stop."""
+        env = {"AGENTIC_SDLC_BIN": "/opt/mine/agentic-sdlc"}
+        with self._versions({"/opt/mine/agentic-sdlc": "0.9.0"}):
+            code, binary = bootstrap_sdlc.ensure_kernel(_args(dry_run=True), env)
+        self.assertEqual(1, code)
+        self.assertIsNone(binary)
+
+    def test_explicit_bin_in_range_wins_over_everything(self) -> None:
+        env = {"AGENTIC_SDLC_BIN": "/opt/mine/agentic-sdlc"}
+        with self._versions({"/opt/mine/agentic-sdlc": "0.13.0"}):
+            code, binary = bootstrap_sdlc.ensure_kernel(_args(), env)
+        self.assertEqual(0, code)
+        self.assertEqual("/opt/mine/agentic-sdlc", binary)
+
+    def test_managed_copy_is_preferred_over_path(self) -> None:
+        data = Path(self.directory.name) / "data"
+        managed = data / "kernel" / "bin" / "agentic-sdlc"
+        managed.parent.mkdir(parents=True)
+        managed.write_text("#!/bin/sh\n", encoding="utf-8")
+        with self._versions({str(managed): "0.13.0", "/usr/bin/agentic-sdlc": "0.13.0"}), \
+             mock.patch.object(bootstrap_sdlc.shutil, "which", return_value="/usr/bin/agentic-sdlc"):
+            code, binary = bootstrap_sdlc.ensure_kernel(_args(data_dir=str(data)), {})
+        self.assertEqual(0, code)
+        self.assertEqual(str(managed), binary)
+
+    def test_out_of_range_path_install_is_left_alone_not_a_dead_end(self) -> None:
+        """The regression this whole split exists to prevent."""
+        data = Path(self.directory.name) / "data"
+        with self._versions({"/usr/bin/agentic-sdlc": "0.9.0"}), \
+             mock.patch.object(bootstrap_sdlc.shutil, "which", return_value="/usr/bin/agentic-sdlc"), \
+             mock.patch("sys.stdout") as stdout:
+            code, _binary = bootstrap_sdlc.ensure_kernel(
+                _args(dry_run=True, data_dir=str(data)), {}
+            )
+        self.assertEqual(0, code, "an out-of-range PATH install must not be a hard stop")
+        printed = "".join(c.args[0] for c in stdout.write.call_args_list if c.args)
+        self.assertIn("leaving it alone", printed)
+
+
+class VenvFallbackTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+
+    def test_venv_creation_failure_is_distinguishable_from_a_pip_failure(self) -> None:
+        """Debian and Ubuntu ship ensurepip separately, so venv creation
+        failing is an ordinary environment, not a bug -- and it must route to
+        the pipx fallback rather than aborting."""
+        root = Path(self.directory.name) / "kernel"
+        with mock.patch.object(
+            bootstrap_sdlc, "_run",
+            return_value=subprocess.CompletedProcess([], 1, "", "ensurepip is not available"),
+        ):
+            code = bootstrap_sdlc.venv_install(root, "0.13.0")
+        self.assertEqual(bootstrap_sdlc.VENV_UNAVAILABLE, code)
+        self.assertFalse(root.exists(), "a half-built venv must not be left behind")
+
+
+class CheckModeTests(unittest.TestCase):
+    """`--check` is what the SessionStart hook runs, so its contract is
+    narrow: never install, never write, never fail, and stay silent when
+    there is nothing to say."""
+
+    def setUp(self) -> None:
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.manifest = _compat(self.directory.name)
+        for name, value in (
+            ("PROVIDER_MANIFEST_PATH", self.manifest),
+            ("PACKAGED_COMPATIBILITY_PATH", Path(self.directory.name) / "absent.json"),
+        ):
+            patcher = mock.patch.object(bootstrap_sdlc, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def test_silent_and_zero_when_a_compatible_kernel_exists(self) -> None:
+        with mock.patch.object(bootstrap_sdlc, "binary_version", lambda b: "0.13.0"), \
+             mock.patch.object(bootstrap_sdlc.shutil, "which", return_value="/usr/bin/agentic-sdlc"), \
+             mock.patch("sys.stdout") as stdout:
+            code = bootstrap_sdlc.check(_args(check=True), {})
+        self.assertEqual(0, code)
+        self.assertEqual("", "".join(c.args[0] for c in stdout.write.call_args_list if c.args))
+
+    def test_reports_and_still_exits_zero_when_missing(self) -> None:
+        with mock.patch.object(bootstrap_sdlc.shutil, "which", return_value=None), \
+             mock.patch("sys.stdout") as stdout:
+            code = bootstrap_sdlc.check(_args(check=True), {})
+        printed = "".join(c.args[0] for c in stdout.write.call_args_list if c.args)
+        self.assertEqual(0, code, "a hook must never fail a session start")
+        self.assertIn("cadre-install-kernel", printed)
+
+    def test_check_never_installs(self) -> None:
+        with mock.patch.object(bootstrap_sdlc.shutil, "which", return_value=None), \
+             mock.patch.object(bootstrap_sdlc, "_run") as run, \
+             mock.patch.object(bootstrap_sdlc, "venv_install") as install, \
+             mock.patch("sys.stdout"):
+            bootstrap_sdlc.check(_args(check=True), {})
+        install.assert_not_called()
+        run.assert_not_called()

@@ -8,7 +8,11 @@
   },
   "homepage": "https://github.com/deagy/cadre-lifecycle",
   "repository": "https://github.com/deagy/cadre-lifecycle",
-  "keywords": ["cadre", "lifecycle-governance", "agentic-sdlc"],
+  "keywords": [
+    "cadre",
+    "lifecycle-governance",
+    "agentic-sdlc"
+  ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Cadre Lifecycle (Core)",
@@ -16,10 +20,14 @@
     "longDescription": "Conversationally onboard a project onto G1-G10 lifecycle gates and record gate decisions, without touching a CLI, YAML, or JSON directly. Optional companion to the cadre plugin.",
     "developerName": "Cadre maintainers",
     "category": "Productivity",
-    "capabilities": ["Interactive", "Write"],
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
     "defaultPrompt": [
       "Use lifecycle-onboarding to set up Agentic SDLC lifecycle tracking for this project.",
       "Use lifecycle-review to record a gate decision."
     ]
-  }
+  },
+  "hooks": "./hooks/hooks.json"
 }

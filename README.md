@@ -201,7 +201,7 @@ Most projects want the per-project `--profile secure-cloud` path above instead
 of this section — it avoids forcing this repository's cloud-specific roles
 onto projects with a different stack, and each project's generated wrappers
 are static files it owns, not a live link back to this checkout. This section
-is for the narrower case of genuinely wanting all 71 roles, the 10 skills, and
+is for the narrower case of genuinely wanting all 71 roles, the 11 skills, and
 the knowledge store reachable from *every* project on the machine
 unconditionally, via the same global/user-scope plugin install mechanism. The
 marketplace and the packaged plugin live in

@@ -1,0 +1,27 @@
+#!/bin/sh
+set -eu
+BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+if [ -n "${AGENTIC_SDLC_BIN:-}" ]; then
+  exec "$AGENTIC_SDLC_BIN" "$@"
+fi
+
+if [ -n "${CLAUDE_PLUGIN_DATA:-}" ]; then
+  for subdir in bin Scripts; do
+    candidate="$CLAUDE_PLUGIN_DATA/kernel/$subdir/agentic-sdlc"
+    if [ -x "$candidate" ]; then
+      exec "$candidate" "$@"
+    fi
+  done
+fi
+
+# Strip this shim's own directory from PATH before looking, or `command -v`
+# resolves back to this file and loops.
+CLEANED_PATH=$(printf '%s' "$PATH" | tr ':' '\n' | grep -vxF "$BIN_DIR" | paste -sd: -)
+FOUND=$(PATH="$CLEANED_PATH" command -v agentic-sdlc 2>/dev/null || true)
+if [ -n "$FOUND" ]; then
+  exec "$FOUND" "$@"
+fi
+
+echo "agentic-sdlc: no lifecycle kernel available. Run cadre-install-kernel (or the /cadre-install-kernel skill) to set one up." >&2
+exit 1

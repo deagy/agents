@@ -8,7 +8,12 @@
   },
   "homepage": "https://github.com/deagy/cadre-lifecycle",
   "repository": "https://github.com/deagy/cadre-lifecycle",
-  "keywords": ["cadre", "lifecycle-governance", "agentic-sdlc", "github"],
+  "keywords": [
+    "cadre",
+    "lifecycle-governance",
+    "agentic-sdlc",
+    "github"
+  ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Cadre Lifecycle (GitHub)",
@@ -16,7 +21,10 @@
     "longDescription": "Conversationally record a lifecycle gate decision sourced from an actual GitHub pull request review, or record a real GitHub issue as the recorded source for a task's G1 (Intent) or G2 (Requirements Baseline) gate, or publish GitHub tracking issues per applicable lifecycle gate plus linked approval issues assigned to each gate's authority, or report (read-only, never requests) which GitHub logins would be requested as PR reviewers for a task's lifecycle gates, or post (and idempotently update) a one-way, read-only gate-status summary comment on a task's GitHub PR, or post (and idempotently update) an advisory, suggestion-only comment naming reviewer candidates -- never a review request and never notifies anyone. Bundles its own onboarding, generic gate-decision, and pending-gates briefing skills plus kernel bootstrap -- cadre-lifecycle-core is optional.",
     "developerName": "Cadre maintainers",
     "category": "Productivity",
-    "capabilities": ["Interactive", "Write"],
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
     "defaultPrompt": [
       "Use lifecycle-onboarding-github to set up Agentic SDLC lifecycle tracking for this project.",
       "Use lifecycle-review-github to record a gate decision from a GitHub PR review.",
@@ -28,5 +36,6 @@
       "Use publish-gate-status-github to post or refresh a one-way, read-only gate-status summary comment on this task's GitHub PR.",
       "Use publish-reviewer-nudge-github to post or refresh an advisory, suggestion-only reviewer nudge comment on this task's GitHub PR (never a review request, never notifies anyone)."
     ]
-  }
+  },
+  "hooks": "./hooks/hooks.json"
 }

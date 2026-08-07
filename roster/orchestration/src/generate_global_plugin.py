@@ -139,7 +139,146 @@ PACKAGE_ASSETS = (".claude-plugin", ".codex-plugin")
 # claiming the rest of plugins/lifecycle/ -- or plugins/lifecycle-github/,
 # plugins/lifecycle-gitlab/, which this generator never writes to at all -- is
 # generated too.
-GENERATED_NESTED_PATHS = ("plugins/lifecycle/skills",)
+# The lifecycle plugins that ship a kernel bootstrap and therefore need the
+# compatibility window travelling with them (see KERNEL_COMPATIBILITY_TARGETS).
+LIFECYCLE_PLUGIN_DIRS = (
+    "plugins/lifecycle",
+    "plugins/lifecycle-github",
+    "plugins/lifecycle-gitlab",
+)
+# `bootstrap_sdlc.py` needs the supported kernel range, and an installed
+# plugin has no repository around it -- provider.json is a package-root file,
+# while these plugins are packaged from their own subdirectories, so it is
+# simply not present inside them. Emitting a small derived file into each
+# plugin's own tools/ is what makes the packaged code path reachable at all;
+# without it the bootstrap dies with "no kernel compatibility data" for every
+# plugin user, at any path.
+KERNEL_COMPATIBILITY_TARGETS = tuple(
+    f"{directory}/tools/kernel-compatibility.json" for directory in LIFECYCLE_PLUGIN_DIRS
+)
+# The bootstrap itself has to travel with each lifecycle plugin too. Its one
+# hand-authored source lives at plugin/tools/, which belongs to the `cadre`
+# plugin -- an installed cadre-lifecycle-core would otherwise carry the
+# compatibility window and no script to read it. Fanned out at build time so
+# there is still exactly one copy to edit, with the generated-content CI job
+# catching any hand-edit to the copies. Before the merge this was three
+# hand-maintained duplicates policed by a dedicated test.
+BOOTSTRAP_SOURCE = REPOSITORY_ROOT / "plugin" / "tools" / "bootstrap_sdlc.py"
+BOOTSTRAP_TARGETS = tuple(
+    f"{directory}/tools/bootstrap_sdlc.py" for directory in LIFECYCLE_PLUGIN_DIRS
+)
+# Claude Code puts a plugin's bin/ on the Bash tool's PATH while the plugin is
+# enabled, which is what lets the kernel be reachable without touching the
+# user's shell profile -- and is why the pipx "ensurepath, restart your shell"
+# dead end disappears.
+LIFECYCLE_BIN_TARGETS = tuple(
+    f"{directory}/bin/{name}"
+    for directory in LIFECYCLE_PLUGIN_DIRS
+    for name in ("agentic-sdlc", "cadre-install-kernel")
+)
+# Every lifecycle plugin needs the install skill and the detection hook, and
+# each is packaged independently, so both are fanned out rather than shared.
+LIFECYCLE_HOOK_TARGETS = tuple(
+    f"{directory}/hooks/hooks.json" for directory in LIFECYCLE_PLUGIN_DIRS
+)
+# plugins/lifecycle/ gets this skill through SKILL_PACKAGE_TARGETS like the
+# other lifecycle skills; only the two forge plugins, whose skills/ are
+# hand-authored, need it fanned out.
+LIFECYCLE_INSTALL_SKILL_TARGETS = tuple(
+    f"{directory}/skills/cadre-install-kernel/SKILL.md"
+    for directory in LIFECYCLE_PLUGIN_DIRS
+    if directory != "plugins/lifecycle"
+)
+
+# Detect and report only. This runs before the human has asked for anything,
+# on every session start, so it must not install, must not write, and must
+# not fail -- `--check` is built to those constraints and is silent when a
+# compatible kernel is already resolvable. Installing here instead would mean
+# a plugin fetching and executing code from the network unprompted, which is
+# a supply-chain objection rather than a convenience.
+LIFECYCLE_HOOKS = {
+    "hooks": {
+        "SessionStart": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": '"${CLAUDE_PLUGIN_ROOT}/bin/cadre-install-kernel" --check',
+                        # A hook that stalls degrades every session start for
+                        # a problem that is at worst "one optional feature is
+                        # not set up yet".
+                        "timeout": 15,
+                    }
+                ]
+            }
+        ]
+    }
+}
+GENERATED_NESTED_PATHS = (
+    ("plugins/lifecycle/skills",)
+    + KERNEL_COMPATIBILITY_TARGETS
+    + BOOTSTRAP_TARGETS
+    + LIFECYCLE_BIN_TARGETS
+    + LIFECYCLE_HOOK_TARGETS
+    + LIFECYCLE_INSTALL_SKILL_TARGETS
+)
+
+# Resolution order matches bootstrap_sdlc.py's: an explicitly named binary,
+# then the plugin-managed copy, then whatever the operator installed.
+#
+# The PATH search deliberately removes this script's own directory first.
+# This shim *is* `agentic-sdlc` on the PATH while the plugin is enabled, so a
+# plain `command -v agentic-sdlc` finds itself and re-execs forever.
+AGENTIC_SDLC_SHIM = """\
+#!/bin/sh
+set -eu
+BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+
+if [ -n "${AGENTIC_SDLC_BIN:-}" ]; then
+  exec "$AGENTIC_SDLC_BIN" "$@"
+fi
+
+if [ -n "${CLAUDE_PLUGIN_DATA:-}" ]; then
+  for subdir in bin Scripts; do
+    candidate="$CLAUDE_PLUGIN_DATA/kernel/$subdir/agentic-sdlc"
+    if [ -x "$candidate" ]; then
+      exec "$candidate" "$@"
+    fi
+  done
+fi
+
+# Strip this shim's own directory from PATH before looking, or `command -v`
+# resolves back to this file and loops.
+CLEANED_PATH=$(printf '%s' "$PATH" | tr ':' '\\n' | grep -vxF "$BIN_DIR" | paste -sd: -)
+FOUND=$(PATH="$CLEANED_PATH" command -v agentic-sdlc 2>/dev/null || true)
+if [ -n "$FOUND" ]; then
+  exec "$FOUND" "$@"
+fi
+
+echo "agentic-sdlc: no lifecycle kernel available. Run cadre-install-kernel (or the /cadre-install-kernel skill) to set one up." >&2
+exit 1
+"""
+
+# The install entry point a human invokes. Never called from the hook -- see
+# bootstrap_sdlc.py's --check mode for the detect-and-report half.
+INSTALL_KERNEL_SHIM = """\
+#!/bin/sh
+set -eu
+BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PLUGIN_ROOT=$(CDPATH= cd -- "$BIN_DIR/.." && pwd)
+
+AGENT_PYTHON=
+for candidate in python3 python; do
+  command -v "$candidate" >/dev/null 2>&1 || continue
+  if "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; then
+    AGENT_PYTHON="$candidate"
+    break
+  fi
+done
+[ -n "$AGENT_PYTHON" ] || { echo "cadre-install-kernel: Python 3.10+ is required" >&2; exit 1; }
+
+exec "$AGENT_PYTHON" "$PLUGIN_ROOT/tools/bootstrap_sdlc.py" "$@"
+"""
 # Skills whose packaged home is a sub-plugin directory (see
 # GENERATED_NESTED_PATHS), not the package root skills/. Anything not listed
 # here keeps generating to skills/<name>/ as always -- the core role-
@@ -148,6 +287,7 @@ SKILL_PACKAGE_TARGETS = {
     "lifecycle-onboarding": "plugins/lifecycle/skills",
     "lifecycle-review": "plugins/lifecycle/skills",
     "brief-pending-gates": "plugins/lifecycle/skills",
+    "cadre-install-kernel": "plugins/lifecycle/skills",
 }
 SHARED_POLICIES = [
     "roster/shared/operating-principles.md",
@@ -728,6 +868,66 @@ def kernel_requirement_text() -> str:
         return "a compatible version"
 
 
+def generate_kernel_compatibility(plugin_root: Path) -> list[Path]:
+    """Ship the kernel compatibility window into each lifecycle plugin.
+
+    Derived from provider.json rather than copied wholesale: the bootstrap
+    only needs `{minimum, maximum_exclusive}`, and provider.json also carries
+    an unrelated `version` field that has been mistaken for the kernel range
+    before. Emitting just the window removes that ambiguity from the packaged
+    artifact entirely.
+    """
+    manifest = json.loads((PROVIDER_ROOT / "provider.json").read_text(encoding="utf-8"))
+    compatibility = manifest["kernel_compatibility"]
+    payload = {
+        "_comment": (
+            "Generated from provider.json's kernel_compatibility by "
+            "cadre generate-plugin. Do not hand-edit; edit provider/provider.json "
+            "and regenerate."
+        ),
+        "minimum": compatibility["minimum"],
+        "maximum_exclusive": compatibility["maximum_exclusive"],
+    }
+    written: list[Path] = []
+    for relative in KERNEL_COMPATIBILITY_TARGETS:
+        target = plugin_root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        written.append(target)
+
+    bootstrap = BOOTSTRAP_SOURCE.read_text(encoding="utf-8")
+    for relative in BOOTSTRAP_TARGETS:
+        target = plugin_root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(bootstrap, encoding="utf-8")
+        written.append(target)
+
+    hooks_json = json.dumps(LIFECYCLE_HOOKS, indent=2) + "\n"
+    for relative in LIFECYCLE_HOOK_TARGETS:
+        target = plugin_root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(hooks_json, encoding="utf-8")
+        written.append(target)
+
+    install_skill = (SKILLS_ROOT / "cadre-install-kernel" / "SKILL.md").read_text(encoding="utf-8")
+    for relative in LIFECYCLE_INSTALL_SKILL_TARGETS:
+        target = plugin_root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(install_skill, encoding="utf-8")
+        written.append(target)
+
+    for relative in LIFECYCLE_BIN_TARGETS:
+        target = plugin_root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        body = AGENTIC_SDLC_SHIM if target.name == "agentic-sdlc" else INSTALL_KERNEL_SHIM
+        target.write_text(body, encoding="utf-8")
+        # Useless without the executable bit: Claude Code adds bin/ to PATH
+        # but does not chmod anything.
+        target.chmod(0o755)
+        written.append(target)
+    return written
+
+
 def generate_bin_wrapper(plugin_root: Path) -> Path:
     target = plugin_root / "bin" / "cadre"
     rows = packaged_subcommands(REPOSITORY_ROOT)
@@ -1052,6 +1252,7 @@ def generate_package(
         + generate_suite_copy(catalog, plugin_root, write_readme=write_readme)
         + generate_agent_wrappers(catalog, plugin_root)
         + generate_provider_copy(catalog, plugin_root)
+        + generate_kernel_compatibility(plugin_root)
         + [generate_bin_wrapper(plugin_root)]
     )
 
