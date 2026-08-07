@@ -30,7 +30,7 @@ Use this index to choose the shortest useful path.
 ## Source of truth
 
 Canonical role definitions, policies, routing, workflows, and orchestration
-contracts live under `roster/`. The packaged plugin ([`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle)) is
+contracts live under `roster/`. The packaged plugin ([`plugin/`](https://github.com/deagy/cadre/tree/main/plugin)) is
 a self-contained distribution and may contain generated copies. Edit canonical
 source files, then regenerate the package when the change requires it.
 

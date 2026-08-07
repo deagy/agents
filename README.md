@@ -221,7 +221,7 @@ For a fleet, see [`docs/enterprise.md`](docs/enterprise.md).
 The first `run-agent-orchestration` or `knowledge-ingestion` invocation with no
 knowledge-store config anywhere asks whether to create an isolated project-local
 one or use this shared global one — it does not create the global one silently.
-See [packaging/plugin-README.md](packaging/plugin-README.md)
+See [roster/RUNBOOK.md](roster/RUNBOOK.md)
 for how namespaced Codex subagent wrappers get into `~/.codex/agents/` without
 overwriting bare project/global roles or unowned namespaced files (Codex has no
 plugin-bundled-agent mechanism) and for how to regenerate after adding a role.

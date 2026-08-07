@@ -29,8 +29,8 @@ approval gates at each phase.
 
 ## Related Repositories
 
-- [cadre](https://github.com/deagy/cadre) - Core framework and CLI
-- [cadre-lifecycle](https://github.com/deagy/cadre-lifecycle) - Cline plugin for lifecycle management
+- [`roster/`](../../roster/) - role catalog, routing, and the `cadre` CLI
+- [`plugin/`](../../plugin/) - the installable Claude Code / Codex / Cline distribution
 
 ## Version
 

@@ -42,7 +42,7 @@ graph TD
         P4["provider bundle (provider/)"]
     end
 
-    subgraph L["Cadre plugin (deagy/cadre-lifecycle)"]
+    subgraph L["Cadre plugin (plugin/)"]
         L1["generated Claude Code / Codex distribution"]
         L2["hand-authored Cline CLI plugin"]
     end

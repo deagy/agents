@@ -158,16 +158,18 @@ cicd:
   container_registry: gitlab container registry
   artifact_signing: >
     cosign keyless (Sigstore OIDC), sign once at build tier, verify before every
-    promotion. This repository's own published artifact is the Cadre plugin,
-    now packaged in deagy/cadre-lifecycle (successor to the archived
-    deagy/cadre-plugin, which met this through GitHub's hosted Sigstore
-    instance rather than the cosign CLI, attesting SLSA build provenance for
-    the release tarball and an SBOM, verifiable with `gh attestation verify`).
-    deagy/cadre-lifecycle's release workflow does not currently attach a
-    release tarball, SBOM, or attestation -- this is a known regression from
-    the archived repository's release process, not yet closed. The pip/pipx
-    wheel is deliberately not published anywhere, so it has
-    no promotion path to verify.
+    promotion. This repository publishes two artifacts, on separate tags:
+    the plugin distribution (plugin-v*) and the lifecycle kernel (kernel-v*).
+    The kernel release attaches a wheel, an sdist, and SHA256SUMS, and
+    bootstrap_sdlc.py verifies the checksum before installing -- refusing to
+    install on a mismatch rather than falling back. The plugin release is a
+    tag plus release notes with no attached archive, since a marketplace
+    installs from the repository tree rather than a downloaded artifact.
+    Still open, and a known regression from the archived deagy/cadre-plugin's
+    release process: no SBOM and no SLSA build provenance attestation on
+    either, so there is nothing to `gh attestation verify` yet. The pip/pipx
+    wheel is deliberately not published anywhere, so it has no promotion path
+    to verify.
 
 observability:
   platform: prometheus + grafana + loki + tempo, opentelemetry for instrumentation

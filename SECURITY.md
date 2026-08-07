@@ -48,8 +48,9 @@ you have the wrong package. Uninstall it before continuing.
 
 ### Automated installers
 
-`deagy/cadre-lifecycle`'s `bootstrap_sdlc.py` installs this kernel from a
-pinned git tag or a release asset, never from PyPI, for exactly this reason.
+`plugin/tools/bootstrap_sdlc.py` installs this kernel from a checksum-verified
+release asset (falling back to a pinned git tag), never from PyPI, for exactly
+this reason.
 If you write your own automation, do the same.
 
 ## Reporting a vulnerability
