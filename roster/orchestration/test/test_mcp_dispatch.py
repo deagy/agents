@@ -35,9 +35,17 @@ SRC_DIR = ORCHESTRATION_ROOT / "src"
 
 sys.path.insert(0, str(SRC_DIR))
 sys.path.insert(0, str(MCP_DIR))
+# This test directory itself, so the mcp_absence helper below imports
+# under both `unittest discover -s <this dir>` (which adds it) and a
+# dotted `python3 -m unittest roster.orchestration.test.<mod>` run
+# (which does not).
+_TEST_DIR = Path(__file__).resolve().parent
+if str(_TEST_DIR) not in sys.path:
+    sys.path.insert(0, str(_TEST_DIR))
 
 import dispatch_core as core  # noqa: E402
 from build_dispatch_plan import CLASSIFICATIONS as SELECTOR_CLASSIFICATIONS  # noqa: E402
+from mcp_absence import mcp_unimportable  # noqa: E402  (sibling test helper)
 
 _SHARED_TEST_DIR = AGENTS_ROOT / "shared" / "test"
 if str(_SHARED_TEST_DIR) not in sys.path:
@@ -1332,14 +1340,15 @@ class _StubFastMCP:
 
 class DispatchServerFailClosedTests(unittest.TestCase):
     def test_missing_mcp_dependency_fails_closed_with_an_install_pointer(self) -> None:
-        # The real 'mcp' package is not installed in this environment, so
-        # this exercises the actual fail-closed path, not a simulation.
-        for name in list(sys.modules):
-            if name == "mcp" or name.startswith("mcp."):
-                self.fail(f"unexpected pre-loaded module {name}; test assumes mcp is absent")
-        module = _load_dispatch_server_module()
-        with self.assertRaises(RuntimeError) as ctx:
-            module.build_server()
+        # Simulates mcp's absence rather than asserting the host doesn't
+        # have it (see mcp_absence.py): this repository ships MCP servers,
+        # so a developer running them has the real package installed, and
+        # the previous host-dependent form failed on exactly those machines
+        # while passing on a CI runner that never installs it.
+        with mcp_unimportable():
+            module = _load_dispatch_server_module()
+            with self.assertRaises(RuntimeError) as ctx:
+                module.build_server()
         self.assertIn("pip install", str(ctx.exception))
 
 
