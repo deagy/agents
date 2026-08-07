@@ -79,6 +79,17 @@ if str(_MODULE_DIR) not in sys.path:
 
 import dispatch_core as _dispatch_core  # noqa: E402  (sys.path set above)
 
+# roster/shared/src is appended (never inserted at index 0): this module's
+# own directory already holds nothing named "settings", but appending keeps
+# the discipline consistent with every other call site that reuses this
+# module across the repository, so a caller's own same-named module is never
+# shadowed by this one.
+_SHARED_SRC_DIR = _MODULE_DIR.parent.parent / "shared" / "src"
+if str(_SHARED_SRC_DIR) not in sys.path:
+    sys.path.append(str(_SHARED_SRC_DIR))
+
+import settings as _settings  # noqa: E402  (sys.path set above)
+
 # ---------------------------------------------------------------------------
 # Configuration: exactly three required env vars, no aliases.
 # ---------------------------------------------------------------------------
@@ -280,7 +291,14 @@ def resolve_token() -> str:
     function that actually needs it, never at import or server-startup time.
     Fails closed on unset/empty/whitespace-only, naming the env var checked
     but never any value. Callers must never place the returned token in a
-    log line, exception message, audit record, or generated artifact."""
+    log line, exception message, audit record, or generated artifact.
+
+    Deliberately NOT routed through `settings.py`: secrets are always
+    environment-variable-only and are never read from, or written to, a
+    cadre config file (`settings.py` actively rejects a secret-shaped key
+    found in one) -- this function stays a direct `os.environ` read so the
+    token can never accidentally land in a config file's resolution path.
+    """
     raw = os.environ.get(GITLAB_TOKEN_ENV_VAR)
     if raw is None or not raw.strip():
         raise GitLabConfigError(f"{GITLAB_TOKEN_ENV_VAR} is not set or is empty/whitespace-only")
@@ -300,51 +318,51 @@ class GitLabConfig:
 
 
 def _parse_hierarchy_flag(raw: str | None) -> bool | None:
-    if raw is None:
-        return None
-    normalized = raw.strip().lower()
-    if normalized == "true":
-        return True
-    if normalized == "false":
-        return False
-    raise GitLabConfigError(f"{GITLAB_HIERARCHY_ENV_VAR} must be 'true' or 'false' if set: {raw!r}")
+    """Thin wrapper kept for existing tests/call sites -- the canonical
+    validation logic (must also accept a native YAML bool, not only the
+    'true'/'false' strings this env-var-shaped signature implies) now lives
+    once, in `settings.py`, as the tri-state validator for
+    `gitlab.supports_work_item_hierarchy`."""
+    try:
+        return _settings.validate_tristate_bool(raw, "gitlab.supports_work_item_hierarchy")
+    except _settings.SettingsError as error:
+        raise GitLabConfigError(str(error)) from error
 
 
 def resolve_config() -> GitLabConfig:
     """Resolve the three (well, two required + one optional) target-project
-    env vars lazily, mirroring `resolve_token()`'s fail-closed discipline.
-    Requires HTTPS -- there is no flag anywhere in this module that can
-    accept an http:// base URL or disable TLS certificate verification."""
-    base_url = os.environ.get(GITLAB_BASE_URL_ENV_VAR)
-    if base_url is None or not base_url.strip():
-        raise GitLabConfigError(f"{GITLAB_BASE_URL_ENV_VAR} is not set or is empty/whitespace-only")
-    base_url = base_url.strip()
-    if not base_url.lower().startswith("https://"):
-        raise GitLabConfigError(f"{GITLAB_BASE_URL_ENV_VAR} must start with https://: {base_url!r}")
-    # Reject URL-userinfo host-confusion (e.g.
-    # "https://gitlab.example.com@attacker.com/") -- urllib/browsers parse
-    # everything before the last "@" in the authority component as userinfo
-    # and connect to whatever host follows it, so a value that *looks* like
-    # it targets the expected host at a glance can silently send the
-    # PRIVATE-TOKEN header to an attacker-controlled host instead. `netloc`
-    # containing "@" at all is refused outright; this integration has no
-    # legitimate use for HTTP Basic userinfo in GITLAB_BASE_URL.
-    if "@" in urllib.parse.urlparse(base_url).netloc:
-        raise GitLabConfigError(
-            f"{GITLAB_BASE_URL_ENV_VAR} must not contain URL userinfo (an '@' in the host "
-            f"component): {base_url!r}"
+    settings via `settings.py`'s unified resolver (env var > project-local
+    file, when the field's trust scope allows it > user-global file >
+    default), mirroring `resolve_token()`'s fail-closed discipline.
+    `gitlab.base_url` is `global_only` (never settable from a project-local
+    file -- see settings.py's trust-scope table) because it selects the
+    exfiltration-sensitive network endpoint every write in this module talks
+    to; `gitlab.project_id` may come from either tier. Requires HTTPS --
+    there is no flag anywhere in this module that can accept an http://
+    base URL or disable TLS certificate verification (enforced inside
+    settings.py's `gitlab.base_url` validator, which also rejects URL
+    userinfo host-confusion, e.g. "https://gitlab.example.com@attacker.com/",
+    the same way this function always has).
+
+    Failures are re-raised as `GitLabConfigError` with the same message the
+    field-level validator already produced (same shape/wording this
+    function has always used, since `settings.py`'s per-field validators for
+    these two fields were written to match it) -- callers and tests that
+    assert on `GitLabConfigError`'s message therefore keep seeing the same
+    text, now with `settings.py`'s own "checked: <source> -> <state>" lines
+    appended when the value is entirely unresolved.
+    """
+    try:
+        values = _settings.resolve_many(
+            ["gitlab.base_url", "gitlab.project_id", "gitlab.supports_work_item_hierarchy"]
         )
-
-    project_id = os.environ.get(GITLAB_PROJECT_ID_ENV_VAR)
-    if project_id is None or not project_id.strip():
-        raise GitLabConfigError(f"{GITLAB_PROJECT_ID_ENV_VAR} is not set or is empty/whitespace-only")
-
-    supports_hierarchy = _parse_hierarchy_flag(os.environ.get(GITLAB_HIERARCHY_ENV_VAR))
+    except _settings.SettingsError as error:
+        raise GitLabConfigError(str(error)) from error
 
     return GitLabConfig(
-        base_url=base_url.rstrip("/"),
-        project_id=project_id.strip(),
-        supports_work_item_hierarchy=supports_hierarchy,
+        base_url=values["gitlab.base_url"],
+        project_id=values["gitlab.project_id"],
+        supports_work_item_hierarchy=values["gitlab.supports_work_item_hierarchy"],
     )
 
 

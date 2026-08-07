@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 import json
-import os
-import shutil
 import subprocess
+import sys
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
+
+_SRC_DIR = Path(__file__).resolve().parent
+_SHARED_SRC_DIR = _SRC_DIR.parent.parent / "shared" / "src"
+if str(_SHARED_SRC_DIR) not in sys.path:
+    sys.path.append(str(_SHARED_SRC_DIR))
+
+import settings  # noqa: E402  (sys.path set above)
 
 INSTALL_MESSAGE = (
     "Agentic SDLC v0.3.x is required; set AGENTIC_SDLC_BIN or install "
@@ -18,7 +25,13 @@ SUPPORTED_LIFECYCLE_CONTRACT_VERSION = 2
 
 
 def _resolve_executable() -> str | None:
-    return os.environ.get("AGENTIC_SDLC_BIN") or shutil.which("agentic-sdlc")
+    """The single implementation of this resolution -- env var >
+    project-local/user-global `agentic_sdlc.bin_path` config (global-only
+    scope: this selects an executable, so a project-local file can never
+    set it) > `shutil.which("agentic-sdlc")` as the computed default.
+    `generate_global_plugin.py` reuses this function rather than
+    duplicating the expression."""
+    return settings.resolve_optional("agentic_sdlc.bin_path")
 
 
 @lru_cache(maxsize=1)

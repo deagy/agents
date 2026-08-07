@@ -78,6 +78,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from role_metadata import frontmatter_closing_delimiter_end, is_migrated, strip_frontmatter  # noqa: E402
 from routing import parse_catalog_entries  # noqa: E402
+import agentic_sdlc_contracts  # noqa: E402  (reuses its single _resolve_executable() implementation)
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 AGENTS_ROOT = REPOSITORY_ROOT / "roster"
@@ -1023,7 +1024,7 @@ def main() -> int:
             if not output_root.exists() or not files_equal(candidate, output_root, compare_readme=write_readme):
                 print("Generated plugin is stale or non-deterministic; run cadre generate-plugin", file=sys.stderr)
                 return 1
-        kernel = os.environ.get("AGENTIC_SDLC_BIN") or shutil.which("agentic-sdlc")
+        kernel = agentic_sdlc_contracts._resolve_executable()
         if kernel:
             checked = subprocess.run(
                 [kernel, "--provider", str(PROVIDER_ROOT / "provider.json"), "provider", "list"],

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -133,6 +134,59 @@ def find_file_at_project_root(
             return None
         current = parent
     return None
+
+
+def _resolve_existing_ancestor(path: Path) -> Path:
+    """Return the nearest existing ancestor of `path` (or `path` itself, if
+    it already exists), resolved. Used so filesystem-identity comparisons
+    still work against a path that does not exist yet (e.g. a write target
+    about to be created), by anchoring the comparison at whatever prefix of
+    it is already real on disk.
+
+    Shared by `roster/shared/src/init_project.py` (self-checkout / write
+    containment) and `roster/shared/src/settings.py` (project-local config
+    write containment) -- moved here so neither module duplicates it.
+    """
+    current = path.resolve(strict=False)
+    while True:
+        if current.exists():
+            return current.resolve()
+        parent = current.parent
+        if parent == current:
+            return current
+        current = parent
+
+
+def _is_same_or_descendant(path: Path, ancestor: Path) -> bool:
+    """Filesystem-identity containment check: True if `path` IS `ancestor`,
+    or is located under it.
+
+    Uses `os.path.samestat` (device/inode identity) rather than string or
+    `Path.resolve()` equality, which stays case-sensitive on POSIX `pathlib`
+    regardless of whether the underlying filesystem is actually case-
+    insensitive (e.g. macOS APFS/HFS+ default). Two differently-cased paths
+    that are the identical on-disk directory on such a filesystem compare
+    equal here even though their string forms differ, closing the bypass a
+    pure string/path comparison would miss.
+
+    `ancestor` is required to already exist. `path` may not exist yet; its
+    nearest existing ancestor is used as the anchor for the walk up.
+
+    Shared by `init_project.py` and `settings.py` -- see
+    `_resolve_existing_ancestor`'s docstring.
+    """
+    resolved_ancestor = ancestor.resolve()
+    probe = _resolve_existing_ancestor(path)
+    while True:
+        try:
+            if os.path.samestat(os.stat(probe), os.stat(resolved_ancestor)):
+                return True
+        except OSError:
+            return False
+        parent = probe.parent
+        if parent == probe:
+            return False
+        probe = parent
 
 
 def find_project_overlay(filename: str, start: Path | None = None) -> Path | None:

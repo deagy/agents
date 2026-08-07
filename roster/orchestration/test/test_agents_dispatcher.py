@@ -19,11 +19,17 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 REPOSITORY_ROOT = ROOT.parent
 DISPATCHER_PATH = REPOSITORY_ROOT / "bin" / "cadre.py"
+
+_SHARED_TEST_DIR = ROOT / "shared" / "test"
+if str(_SHARED_TEST_DIR) not in sys.path:
+    sys.path.append(str(_SHARED_TEST_DIR))
+from settings_test_helpers import isolate_settings  # noqa: E402  (sys.path set above)
 
 _spec = importlib.util.spec_from_file_location("agents_cli_dispatcher", DISPATCHER_PATH)
 agents_cli = importlib.util.module_from_spec(_spec)
@@ -89,7 +95,41 @@ class MainTests(unittest.TestCase):
         code, _out, err = _run_capturing(agents_cli.main, ["not-a-real-subcommand"])
         self.assertEqual(code, 1)
         self.assertIn("cadre: unknown subcommand 'not-a-real-subcommand'", err)
-        self.assertIn("Usage: cadre <subcommand> [args...]", err)
+
+    def test_leading_interactive_flag_is_stripped_and_forwarded_as_env(self) -> None:
+        captured: dict[str, Any] = {}
+
+        def fake_run(args, **kwargs):
+            captured["args"] = args
+            captured["env"] = kwargs.get("env")
+            return subprocess.CompletedProcess(args, 0)
+
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("CADRE_INTERACTIVE", None)
+            with mock.patch.object(agents_cli.subprocess, "run", side_effect=fake_run):
+                code = agents_cli.main(["--interactive", "select", "--help"])
+        self.assertEqual(code, 0)
+        # The subcommand name itself, not "--interactive", reaches the
+        # dispatched child's argv.
+        self.assertNotIn("--interactive", captured["args"])
+        self.assertEqual(captured["env"]["CADRE_INTERACTIVE"], "1")
+        self.assertNotIn("CADRE_INTERACTIVE", os.environ)
+
+    def test_interactive_flag_only_honored_when_leading(self) -> None:
+        # A bare "select --interactive" (flag after the subcommand name) is
+        # forwarded to the subcommand unchanged, not consumed here.
+        captured: dict[str, Any] = {}
+
+        def fake_run(args, **kwargs):
+            captured["args"] = args
+            captured["env"] = kwargs.get("env")
+            return subprocess.CompletedProcess(args, 0)
+
+        with mock.patch.object(agents_cli.subprocess, "run", side_effect=fake_run):
+            code = agents_cli.main(["select", "--interactive"])
+        self.assertEqual(code, 0)
+        self.assertIn("--interactive", captured["args"])
+        self.assertIsNone(captured["env"])
 
     def test_dispatches_to_the_matching_script_and_relays_its_exit_code(self) -> None:
         # main()'s dispatch path shells out via subprocess.run, which writes
@@ -112,10 +152,18 @@ class MainTests(unittest.TestCase):
 
 
 class SdlcDispatchTests(unittest.TestCase):
+    def setUp(self) -> None:
+        # dispatch_sdlc now resolves AGENTIC_SDLC_BIN through
+        # roster/shared/src/settings.py (agentic_sdlc.bin_path) instead of a
+        # direct os.environ.get/shutil.which pair, so isolate the user-global
+        # settings tier to avoid reading a real developer machine's
+        # ~/.config/cadre/config.yaml.
+        isolate_settings(self)
+
     def test_missing_binary_fails_closed(self) -> None:
         with mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop("AGENTIC_SDLC_BIN", None)
-            with mock.patch.object(agents_cli.shutil, "which", return_value=None):
+            with mock.patch.object(agents_cli.settings.shutil, "which", return_value=None):
                 code, _out, err = _run_capturing(agents_cli.dispatch_sdlc, ["--version"])
         self.assertEqual(code, 1)
         self.assertIn("Agentic SDLC v0.3.x is required", err)
@@ -128,7 +176,9 @@ class SdlcDispatchTests(unittest.TestCase):
             return subprocess.CompletedProcess(args, 0)
 
         with mock.patch.dict(os.environ, {"AGENTIC_SDLC_BIN": "/fake/agentic-sdlc"}):
-            with mock.patch.object(agents_cli.shutil, "which", side_effect=AssertionError("should not be called")):
+            with mock.patch.object(
+                agents_cli.settings.shutil, "which", side_effect=AssertionError("should not be called")
+            ):
                 with mock.patch.object(agents_cli.subprocess, "run", side_effect=fake_run):
                     code = agents_cli.dispatch_sdlc(["plan", "--foo"])
 
@@ -146,6 +196,22 @@ class SdlcDispatchTests(unittest.TestCase):
             with mock.patch.object(agents_cli.subprocess, "run", side_effect=fake_run):
                 code = agents_cli.dispatch_sdlc(["--version"])
         self.assertEqual(code, 7)
+
+    def test_interactive_flag_passes_cadre_interactive_via_explicit_env_not_os_environ(self) -> None:
+        captured: dict[str, Any] = {}
+
+        def fake_run(args, **kwargs):
+            captured["args"] = args
+            captured["env"] = kwargs.get("env")
+            return subprocess.CompletedProcess(args, 0)
+
+        with mock.patch.dict(os.environ, {"AGENTIC_SDLC_BIN": "/fake/agentic-sdlc"}, clear=False):
+            os.environ.pop("CADRE_INTERACTIVE", None)
+            with mock.patch.object(agents_cli.subprocess, "run", side_effect=fake_run):
+                code = agents_cli.dispatch_sdlc(["--version"], interactive=True)
+        self.assertEqual(code, 0)
+        self.assertEqual(captured["env"]["CADRE_INTERACTIVE"], "1")
+        self.assertNotIn("CADRE_INTERACTIVE", os.environ)
 
 
 if __name__ == "__main__":

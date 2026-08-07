@@ -16,7 +16,6 @@ Also runnable directly: `python bin/cadre.py <subcommand> [args...]`.
 from __future__ import annotations
 
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -28,6 +27,14 @@ SDLC_DESCRIPTION = "Delegated Agentic SDLC v0.3.x CLI"
 SDLC_INSTALL_MESSAGE = (
     "cadre: Agentic SDLC v0.3.x is required; install it from https://github.com/deagy/agentic-sdlc"
 )
+
+_SHARED_SRC_DIR = REPO_ROOT / "roster" / "shared" / "src"
+if str(_SHARED_SRC_DIR) not in sys.path:
+    sys.path.append(str(_SHARED_SRC_DIR))
+
+import settings  # noqa: E402  (sys.path set above)
+
+INTERACTIVE_FLAG = "--interactive"
 
 
 def load_subcommands(path: Path = SUBCOMMANDS_PATH) -> list[tuple[str, str, str]]:
@@ -48,20 +55,44 @@ def usage(subcommands: list[tuple[str, str, str]]) -> str:
     lines.append(f"  {'help':<16} Show this message")
     lines.append("")
     lines.append("Each subcommand's own --help documents its arguments, e.g. `cadre sdlc plan --help`.")
+    lines.append("")
+    lines.append(
+        f"`{INTERACTIVE_FLAG}`, given as the leading argument before the subcommand name (e.g. "
+        f"`cadre {INTERACTIVE_FLAG} select ...`), opts the dispatched subcommand into "
+        "roster/shared/src/settings.py's interactive configuration prompt (CADRE_INTERACTIVE=1, "
+        "passed via an explicit subprocess env= rather than mutating this process's own "
+        "environment) -- only honored when stdin/stdout are both a real terminal; a value entered "
+        "is offered a write to the project-local or user-global cadre config file."
+    )
     return "\n".join(lines)
 
 
-def dispatch_sdlc(rest: list[str]) -> int:
-    sdlc_bin = os.environ.get("AGENTIC_SDLC_BIN") or shutil.which("agentic-sdlc")
+def _child_env(interactive: bool) -> dict[str, str] | None:
+    if not interactive:
+        return None
+    child_env = dict(os.environ)
+    child_env["CADRE_INTERACTIVE"] = "1"
+    return child_env
+
+
+def dispatch_sdlc(rest: list[str], *, interactive: bool = False) -> int:
+    sdlc_bin = settings.resolve_optional("agentic_sdlc.bin_path")
     if not sdlc_bin:
         print(SDLC_INSTALL_MESSAGE, file=sys.stderr)
         return 1
     provider = REPO_ROOT / "provider" / "provider.json"
-    result = subprocess.run([sdlc_bin, "--provider", str(provider), *rest])
+    result = subprocess.run(
+        [sdlc_bin, "--provider", str(provider), *rest], env=_child_env(interactive)
+    )
     return result.returncode
 
 
 def main(argv: list[str]) -> int:
+    interactive = False
+    if argv and argv[0] == INTERACTIVE_FLAG:
+        interactive = True
+        argv = argv[1:]
+
     subcommands = load_subcommands()
     command = argv[0] if argv else "help"
     rest = argv[1:]
@@ -71,7 +102,7 @@ def main(argv: list[str]) -> int:
         return 0
 
     if command == "sdlc":
-        return dispatch_sdlc(rest)
+        return dispatch_sdlc(rest, interactive=interactive)
 
     match = next((row for row in subcommands if row[0] == command), None)
     if match is None:
@@ -85,7 +116,9 @@ def main(argv: list[str]) -> int:
     # Windows, so any argument containing a space (e.g. --task "multi word
     # value") silently gets re-split by the child process. subprocess.run
     # quotes correctly on every platform this needs to run on.
-    result = subprocess.run([sys.executable, str(REPO_ROOT / script), *rest])
+    result = subprocess.run(
+        [sys.executable, str(REPO_ROOT / script), *rest], env=_child_env(interactive)
+    )
     return result.returncode
 
 
