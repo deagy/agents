@@ -1,5 +1,22 @@
 name: validate
 
+# One workflow for what used to be three, in three repositories. The jobs
+# that existed only to reconcile those repositories are gone:
+#
+#   cross-repo-integration  checked out deagy/cadre-lifecycle and
+#                           deagy/cadre-profile-secure-cloud, rewrote three
+#                           hardcoded /home/deagy/sdk/* paths with sed, then
+#                           ran tests/integration/test_cross_repo_integration.py
+#                           -- a committed 0-byte file. It had been passing
+#                           without testing anything.
+#   generated-content       (cadre-lifecycle) re-generated the plugin from the
+#                           cadre revision pinned in cadre-ref.txt and diffed
+#                           it against the committed copy. There is no
+#                           committed copy now, and no pinned revision.
+#
+# The kernel is no longer checked out from another repository either, so
+# AGENTIC_SDLC_BIN points into this tree.
+
 on:
   pull_request:
   push:
@@ -13,33 +30,14 @@ permissions:
   contents: read
 
 jobs:
-  python-contracts:
+  roster:
+    name: roster/ (selection, knowledge store, shared policy)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      AGENTIC_SDLC_BIN: ${{ github.workspace }}/.dependencies/agentic-sdlc/bin/agentic-sdlc
+      AGENTIC_SDLC_BIN: ${{ github.workspace }}/bin/agentic-sdlc
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: deagy/agentic-sdlc
-          # SHA-pinned, not `v0.13.0`: this checkout's bin/agentic-sdlc is
-          # *executed* by the steps below, so a moved tag would be arbitrary
-          # code execution in this workflow. Same convention as the actions
-          # pinned above. Bump deliberately alongside the kernel_compatibility
-          # range in provider/provider.json.
-          ref: b105388b465aa6b4ec1b331d24579b6160242927 # v0.13.0
-          path: .dependencies/agentic-sdlc
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: deagy/cadre-lifecycle
-          ref: main
-          path: .dependencies/cadre-lifecycle
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: deagy/cadre-profile-secure-cloud
-          ref: master
-          path: .dependencies/cadre-profile-secure-cloud
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.14"
@@ -50,48 +48,76 @@ jobs:
       - run: ./bin/cadre help
       - run: ./bin/cadre select --task "CI wrapper smoke test" --files README.md --classification internal --task-id CI-SMOKE-1 >/dev/null
       - run: python roster/orchestration/src/schema_validate.py
-      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc --version
-      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc provider list
-      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc profile list
-      - run: AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc extension list
+      # The kernel is in-tree now, so these exercise the real wiring rather
+      # than a SHA-pinned checkout of another repository.
+      - run: ./bin/cadre sdlc --version
+      - run: ./bin/cadre sdlc provider list
+      - run: ./bin/cadre sdlc profile list
+      - run: ./bin/cadre sdlc extension list
       - run: |
-          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract provider.schema >/dev/null
-          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract profile.schema >/dev/null
-          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract extension.schema >/dev/null
-          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract selection.schema >/dev/null
-          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract agent-catalog.schema >/dev/null
-          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract artifact.schema >/dev/null
-          AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract dispatch-bindings.schema >/dev/null
+          set -eu
+          for contract in provider.schema profile.schema extension.schema \
+                          selection.schema agent-catalog.schema artifact.schema \
+                          dispatch-bindings.schema; do
+            ./bin/cadre sdlc show-contract "$contract" >/dev/null
+          done
 
-  cross-repo-integration:
+  kernel:
+    name: kernel/ (G1-G10 lifecycle kernel)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - run: pip install --no-cache-dir -r kernel/requirements-validation.txt
+      - run: python -B -m unittest discover -s kernel/test -p "test_*.py"
+      - run: ./bin/agentic-sdlc --version
+      - name: Install the packaged distribution (pip/pipx install path)
+        run: pip install --no-cache-dir ./kernel
+      - name: Verify the installed console script works outside the checkout
+        working-directory: ${{ runner.temp }}
+        run: |
+          agentic-sdlc --version
+          agentic-sdlc show-contract lifecycle-gates >/dev/null
+
+  engine:
+    name: engine/ (LangGraph orchestration)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Install locked dependencies (fails on lockfile drift)
+        working-directory: engine
+        run: uv sync --locked
+      - name: Run LangGraph engine tests
+        working-directory: engine
+        run: uv run pytest
+
+  plugin-tools:
+    name: plugin/tools (packaging, docs guards, kernel bootstrap)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: deagy/cadre-lifecycle
-          ref: main
-          path: .dependencies/cadre-lifecycle
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: deagy/cadre-profile-secure-cloud
-          ref: master
-          path: .dependencies/cadre-profile-secure-cloud
+          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.14"
-      - name: Run cross-repository integration tests
-        run: |
-          # Update paths in integration test to use CI checkout locations
-          sed -i \
-            -e "s|CADRE_LIFECYCLE_ROOT = Path.*/home/deagy/sdk/cadre-lifecycle|CADRE_LIFECYCLE_ROOT = Path(\"$GITHUB_WORKSPACE/.dependencies/cadre-lifecycle\")|" \
-            -e "s|AGENTIC_SDLC_ROOT = Path.*/home/deagy/sdk/agentic-sdlc|AGENTIC_SDLC_ROOT = Path(\"$GITHUB_WORKSPACE/.dependencies/agentic-sdlc\")|" \
-            -e "s|new_repo_path = Path.*/home/deagy/sdk/cadre-profile-secure-cloud|new_repo_path = Path(\"$GITHUB_WORKSPACE/.dependencies/cadre-profile-secure-cloud\")|" \
-            tests/integration/test_cross_repo_integration.py
-          python tests/integration/test_cross_repo_integration.py
+      # One tools/ directory now: bootstrap_sdlc.py used to exist as three
+      # byte-identical copies under plugins/lifecycle{,-github,-gitlab}/tools/,
+      # each with its own test module and a duplication-health test holding
+      # them in sync.
+      - run: python3 -m unittest discover -s plugin/tools -p "test_*.py" -v
 
   cadre-pip-package:
+    name: cadre pip/pipx distribution
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -120,8 +146,7 @@ jobs:
           "$RUNNER_TEMP/cadre-venv/bin/pip" install --no-cache-dir dist/cadre-*.whl
       # Run every smoke command from outside the checkout ($RUNNER_TEMP, not
       # $GITHUB_WORKSPACE) so this only exercises what an installed
-      # distribution can see on its own, the same regression guard the
-      # deagy/cadre-lifecycle's own CI provides for the plugin distribution.
+      # distribution can see on its own.
       - name: Smoke test the installed cadre distribution from outside the checkout
         run: |
           set -eu
@@ -167,6 +192,33 @@ jobs:
             echo "$output" >&2
             exit 1
           fi
+
+  cline-plugins:
+    name: plugin/cline* (npm test, typecheck)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [cline, cline-agents, cline-lifecycle]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: plugin/package-lock.json
+      # plugin/package.json declares npm workspaces (cline, cline-agents,
+      # cline-lifecycle) backed by a single lockfile, so `npm ci` runs from
+      # plugin/ rather than each package directory.
+      - run: npm ci
+        working-directory: plugin
+      - run: npm test
+        working-directory: plugin/${{ matrix.package }}
+      - run: npm run typecheck
+        working-directory: plugin/${{ matrix.package }}
 
   secret-scan:
     runs-on: ubuntu-latest

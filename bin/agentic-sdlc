@@ -1,0 +1,30 @@
+#!/bin/sh
+set -eu
+
+BIN_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+REPO_ROOT=$(CDPATH= cd -- "$BIN_DIR/.." && pwd)
+KERNEL_ROOT="$REPO_ROOT/kernel"
+
+# Runs the checked-out kernel package in place (dev/CI use, no install
+# required), via dev_entrypoint.py rather than `python3 -m agentic_sdlc`:
+# `-m` puts the *caller's* current working directory at sys.path[0], so a
+# caller invoking `agentic-sdlc --root .` from inside a target project that
+# happens to contain its own top-level `agentic_sdlc` name would silently
+# shadow this package. Invoking dev_entrypoint.py as a plain script instead
+# puts *that file's own directory* at sys.path[0] (CPython's default script
+# behavior) -- never dependent on the caller's cwd, so the caller's working
+# directory stays intact for relative --root arguments without needing
+# PYTHONPATH tricks or `cd`-ing. A real pip/pipx install of this package
+# (see kernel/pyproject.toml) instead puts an `agentic-sdlc`
+# executable directly on PATH; this script is only the from-checkout
+# convenience wrapper, and dev_entrypoint.py is deliberately excluded from
+# the packaged distribution (see pyproject.toml).
+for candidate in python3 python; do
+  command -v "$candidate" >/dev/null 2>&1 || continue
+  if "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)' 2>/dev/null; then
+    exec "$candidate" "$KERNEL_ROOT/dev_entrypoint.py" "$@"
+  fi
+done
+
+echo "agentic-sdlc: Python 3.10+ is required" >&2
+exit 1

@@ -109,6 +109,16 @@ def dispatch_sdlc(rest: list[str], *, interactive: bool = False) -> int:
         print(f"cadre: {error}", file=sys.stderr)
         return 1
     if not sdlc_bin:
+        # The kernel ships in this repository since the monorepo merge, so a
+        # checkout needs no install and no AGENTIC_SDLC_BIN. This is the last
+        # resort deliberately: an explicit env var or a configured
+        # agentic_sdlc.bin_path still wins, and so does an `agentic-sdlc`
+        # the operator installed themselves, because either is a choice the
+        # human made about which kernel to run.
+        in_tree = REPO_ROOT / "bin" / "agentic-sdlc"
+        if in_tree.is_file():
+            sdlc_bin = str(in_tree)
+    if not sdlc_bin:
         print(sdlc_install_message(), file=sys.stderr)
         return 1
     provider = REPO_ROOT / "provider" / "provider.json"

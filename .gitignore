@@ -78,3 +78,4 @@ node_modules/
 
 # The LangGraph engine's uv environment.
 /engine/.venv/
+plugin/node_modules/

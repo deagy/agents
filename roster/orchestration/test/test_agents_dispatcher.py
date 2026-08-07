@@ -161,11 +161,41 @@ class SdlcDispatchTests(unittest.TestCase):
         # ~/.config/cadre/config.yaml.
         isolate_settings(self)
 
-    def test_missing_binary_fails_closed(self) -> None:
+    def test_resolves_the_in_tree_kernel_without_any_configuration(self) -> None:
+        """A checkout needs no install and no AGENTIC_SDLC_BIN.
+
+        The kernel lives in this repository since the monorepo merge, so
+        bin/agentic-sdlc is the last-resort fallback after the env var,
+        configured bin_path, and PATH -- all of which represent a human's
+        explicit choice of which kernel to run and still win.
+        """
+        captured: dict[str, list[str]] = {}
+
+        def fake_run(command, **_kwargs):
+            captured["command"] = command
+            return subprocess.CompletedProcess(command, 0)
+
         with mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop("AGENTIC_SDLC_BIN", None)
             with mock.patch.object(agents_cli.settings.shutil, "which", return_value=None):
-                code, _out, err = _run_capturing(agents_cli.dispatch_sdlc, ["--version"])
+                with mock.patch.object(agents_cli.subprocess, "run", fake_run):
+                    code, _out, _err = _run_capturing(agents_cli.dispatch_sdlc, ["--version"])
+        self.assertEqual(code, 0)
+        self.assertEqual(str(REPOSITORY_ROOT / "bin" / "agentic-sdlc"), captured["command"][0])
+
+    def test_missing_binary_fails_closed(self) -> None:
+        """With no in-tree kernel either -- the installed-distribution case.
+
+        A pip/pipx install vendors bin/cadre.py but not bin/agentic-sdlc
+        (see pyproject.toml's force-include list), so this path is still
+        reachable and must still fail closed with an install pointer rather
+        than a traceback.
+        """
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("AGENTIC_SDLC_BIN", None)
+            with mock.patch.object(agents_cli.settings.shutil, "which", return_value=None):
+                with mock.patch.object(agents_cli, "REPO_ROOT", Path(tempfile.mkdtemp())):
+                    code, _out, err = _run_capturing(agents_cli.dispatch_sdlc, ["--version"])
         self.assertEqual(code, 1)
         # The quoted range must come from provider.json's kernel_compatibility,
         # not a hardcoded literal -- these drifted ten minor versions apart once.
