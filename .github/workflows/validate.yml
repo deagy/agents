@@ -30,6 +30,16 @@ jobs:
           # range in provider/provider.json.
           ref: b105388b465aa6b4ec1b331d24579b6160242927 # v0.13.0
           path: .dependencies/agentic-sdlc
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: deagy/cadre-lifecycle
+          ref: ${{ github.sha }}
+          path: .dependencies/cadre-lifecycle
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: deagy/cadre-profile-secure-cloud
+          ref: ${{ github.sha }}
+          path: .dependencies/cadre-profile-secure-cloud
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.14"
@@ -52,6 +62,34 @@ jobs:
           AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract agent-catalog.schema >/dev/null
           AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract artifact.schema >/dev/null
           AGENTIC_SDLC_BIN="$AGENTIC_SDLC_BIN" ./bin/cadre sdlc show-contract dispatch-bindings.schema >/dev/null
+
+  cross-repo-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: deagy/cadre-lifecycle
+          ref: ${{ github.sha }}
+          path: .dependencies/cadre-lifecycle
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: deagy/cadre-profile-secure-cloud
+          ref: ${{ github.sha }}
+          path: .dependencies/cadre-profile-secure-cloud
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - name: Run cross-repository integration tests
+        run: |
+          # Update paths in integration test to use CI checkout locations
+          sed -i \
+            -e "s|CADRE_LIFECYCLE_ROOT = Path.*/home/deagy/sdk/cadre-lifecycle|CADRE_LIFECYCLE_ROOT = Path(\"$GITHUB_WORKSPACE/.dependencies/cadre-lifecycle\")|" \
+            -e "s|AGENTIC_SDLC_ROOT = Path.*/home/deagy/sdk/agentic-sdlc|AGENTIC_SDLC_ROOT = Path(\"$GITHUB_WORKSPACE/.dependencies/agentic-sdlc\")|" \
+            -e "s|new_repo_path = Path.*/home/deagy/sdk/cadre-profile-secure-cloud|new_repo_path = Path(\"$GITHUB_WORKSPACE/.dependencies/cadre-profile-secure-cloud\")|" \
+            tests/integration/test_cross_repo_integration.py
+          python -m unittest tests/integration/test_cross_repo_integration.py
 
   cadre-pip-package:
     runs-on: ubuntu-latest
