@@ -133,8 +133,27 @@ def _reject_secret_shaped_keys(data: dict[str, Any], path_prefix: str, file_path
                 "*.api_key/*.password/*.secret pattern) and must never be stored in a cadre "
                 "config file; secrets are always read from an environment variable"
             )
-        if isinstance(value, dict):
-            _reject_secret_shaped_keys(value, dotted, file_path)
+        _reject_secret_shaped_keys_in_value(value, dotted, file_path)
+
+
+def _reject_secret_shaped_keys_in_value(value: Any, dotted: str, file_path: Path) -> None:
+    """Walk into both mappings and sequences.
+
+    The dict-only walk this replaces meant a secret-shaped key nested under
+    a list (`gitlab:\\n  extra:\\n    - token: "..."`) was never scanned. No
+    registered field is list-shaped today, so such a key could not be
+    *resolved* -- but `write_setting`'s "preserve unknown keys" merge would
+    have round-tripped it into every subsequent rewrite of the file,
+    silently persisting a pasted credential the module's own docstring
+    promises is never stored. Strings are deliberately not descended into
+    (they are values, not key containers).
+    """
+    if isinstance(value, dict):
+        _reject_secret_shaped_keys(value, dotted, file_path)
+        return
+    if isinstance(value, (list, tuple)):
+        for index, item in enumerate(value):
+            _reject_secret_shaped_keys_in_value(item, f"{dotted}[{index}]", file_path)
 
 
 # ---------------------------------------------------------------------------
@@ -207,6 +226,26 @@ def _validate_tristate_bool(value: Any, spec: FieldSpec) -> bool | None:
     )
 
 
+def _reject_control_characters(value: str, spec: FieldSpec) -> None:
+    """Reject embedded control characters (newline, tab, NUL, ...).
+
+    None is legitimate in an executable name or a filesystem path, and a
+    newline in particular breaks `cadre config resolve`'s contract of
+    printing exactly one value on stdout for a shell caller to capture --
+    the packaged `bin/cadre` wrapper reads it with `$(...)`, so an embedded
+    newline would silently produce a multi-line value. Reported by position
+    and repr rather than echoed raw, so an invisible character is
+    identifiable in the message.
+    """
+    for index, character in enumerate(value):
+        if character.isprintable():
+            continue
+        raise SettingsError(
+            f"{spec.key} must not contain control characters; found {character!r} "
+            f"at position {index} of {value!r}"
+        )
+
+
 def _has_path_separator(value: str) -> bool:
     if "/" in value:
         return True
@@ -222,11 +261,36 @@ def _validate_executable(value: Any, spec: FieldSpec) -> str:
             f"{spec.key} must be an absolute path or a bare executable name found on PATH, "
             f"not a relative path: {stripped!r}"
         )
+    if stripped.startswith("-"):
+        # A leading '-' is read as an option by the thing that runs this
+        # value, not as a program name. Verified under bash:
+        # `bin="-a"; exec "$bin" --provider p.json --version` makes exec
+        # consume `--provider` as -a's argv[0] argument and then attempt to
+        # execute `p.json` -- i.e. a value that looks inert silently
+        # reinterprets the rest of the command line. dash's exec has no -a
+        # and merely fails, but the packaged wrapper is `#!/bin/sh`, which
+        # is bash on some systems. No legitimate executable name or path
+        # begins with '-'; use './-name' or an absolute path if one ever
+        # does.
+        raise SettingsError(
+            f"{spec.key} must not begin with '-' (it would be parsed as an option by the "
+            f"program that runs it, not as a command): {stripped!r}"
+        )
+    _reject_control_characters(stripped, spec)
+    # Internal spaces are deliberately allowed: '/opt/My Tools/bin/x' is a
+    # legitimate path, every consumer quotes the value ("$sdlc_bin",
+    # subprocess list form), and rejecting them would break real installs
+    # for no security gain.
     return stripped
 
 
 def _validate_path(value: Any, spec: FieldSpec) -> str:
-    return _validate_string(value, spec)
+    stripped = _validate_string(value, spec)
+    # Same reasoning as the executable validator: a newline here would also
+    # break `cadre config resolve`'s one-value-per-line stdout contract.
+    # Internal spaces stay legal -- paths routinely contain them.
+    _reject_control_characters(stripped, spec)
+    return stripped
 
 
 _VALIDATORS: dict[str, Callable[[Any, FieldSpec], Any]] = {

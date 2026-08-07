@@ -317,6 +317,31 @@ class SecretShapedKeyTests(SettingsTestCase):
                 with self.assertRaises(settings.SettingsError):
                     settings.resolve_setting("gitlab.project_id", start=project, env={})
 
+    def test_secret_shaped_key_nested_under_a_list_is_rejected(self) -> None:
+        # The scan used to walk dicts only. No registered field is
+        # list-shaped, so such a key could never be *resolved* -- but
+        # write_setting's "preserve unknown keys" merge would round-trip it
+        # into every later rewrite, silently persisting a pasted credential
+        # this module promises is never stored.
+        _write_project_config(
+            self.project_dir,
+            'gitlab:\n  extra:\n    - name: "a"\n      token: "glpat-nested-secret"\n',
+        )
+        with self.assertRaises(settings.SettingsError) as ctx:
+            settings.resolve_setting("gitlab.supports_work_item_hierarchy", start=self.project_dir, env={})
+        message = str(ctx.exception)
+        self.assertIn("token", message)
+        self.assertNotIn("glpat-nested-secret", message)
+
+    def test_secret_shaped_key_deeper_in_a_list_of_lists_is_rejected(self) -> None:
+        _write_project_config(
+            self.project_dir,
+            'gitlab:\n  extra:\n    - - api_key: "sk-deeply-nested"\n',
+        )
+        with self.assertRaises(settings.SettingsError) as ctx:
+            settings.resolve_setting("gitlab.supports_work_item_hierarchy", start=self.project_dir, env={})
+        self.assertNotIn("sk-deeply-nested", str(ctx.exception))
+
 
 class TristateHierarchyFlagTests(SettingsTestCase):
     def _resolve(self, raw_yaml_value: str) -> object:
@@ -442,6 +467,54 @@ class YamlScalarHazardTests(SettingsTestCase):
         settings.reset_cache()
         value = settings.resolve_setting("runners.claude_bin", start=self.project_dir, env={})
         self.assertEqual(value, "my-claude")
+
+    def test_leading_dash_executable_is_rejected(self) -> None:
+        # Verified under bash: `bin="-a"; exec "$bin" --provider p.json ...`
+        # makes exec consume `--provider` as -a's argv[0] argument and then
+        # try to execute p.json -- an inert-looking value silently
+        # reinterprets the rest of the command line. The packaged wrapper is
+        # `#!/bin/sh`, which is bash on some systems.
+        for candidate in ("-a", "-c", "--login"):
+            with self.subTest(candidate=candidate):
+                with self.assertRaises(settings.SettingsError) as ctx:
+                    settings.resolve_setting(
+                        "runners.claude_bin",
+                        start=self.project_dir,
+                        env={"SECURE_CLOUD_AGENTS_CLAUDE_BIN": candidate},
+                    )
+                self.assertIn("must not begin with '-'", str(ctx.exception))
+
+    def test_control_characters_in_an_executable_are_rejected(self) -> None:
+        # A newline would break `cadre config resolve`'s contract of one
+        # value on stdout, which the packaged wrapper captures with $(...).
+        for candidate in ("clau\nde", "clau\tde", "clau\x00de"):
+            with self.subTest(candidate=candidate):
+                with self.assertRaises(settings.SettingsError) as ctx:
+                    settings.resolve_setting(
+                        "runners.claude_bin",
+                        start=self.project_dir,
+                        env={"SECURE_CLOUD_AGENTS_CLAUDE_BIN": candidate},
+                    )
+                self.assertIn("control characters", str(ctx.exception))
+
+    def test_internal_spaces_in_a_path_are_still_accepted(self) -> None:
+        # Deliberately legal: real installs live under paths with spaces,
+        # and every consumer quotes the value.
+        value = settings.resolve_setting(
+            "runners.claude_bin",
+            start=self.project_dir,
+            env={"SECURE_CLOUD_AGENTS_CLAUDE_BIN": "/opt/My Tools/bin/claude"},
+        )
+        self.assertEqual(value, "/opt/My Tools/bin/claude")
+
+    def test_control_characters_in_a_path_field_are_rejected(self) -> None:
+        with self.assertRaises(settings.SettingsError) as ctx:
+            settings.resolve_setting(
+                "knowledge_store.home",
+                start=self.project_dir,
+                env={"KNOWLEDGE_STORE_HOME": "/tmp/store\nwith-newline"},
+            )
+        self.assertIn("control characters", str(ctx.exception))
 
 
 class MissingPyYamlAndDualFileTests(SettingsTestCase):
