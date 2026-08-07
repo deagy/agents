@@ -38,9 +38,14 @@ from unittest import mock
 ORCHESTRATION_ROOT = Path(__file__).resolve().parent.parent
 MCP_DIR = ORCHESTRATION_ROOT / "mcp"
 sys.path.insert(0, str(MCP_DIR))
+# This test directory itself -- see the same note in test_mcp_dispatch.py.
+_TEST_DIR = Path(__file__).resolve().parent
+if str(_TEST_DIR) not in sys.path:
+    sys.path.insert(0, str(_TEST_DIR))
 
 import dispatch_core  # noqa: E402
 import gitlab_core as gcore  # noqa: E402
+from mcp_absence import mcp_unimportable  # noqa: E402  (sibling test helper)
 
 _SHARED_TEST_DIR = ORCHESTRATION_ROOT.parent / "shared" / "test"
 if str(_SHARED_TEST_DIR) not in sys.path:
@@ -1359,24 +1364,23 @@ class _StubFastMCP:
 
 class GitlabServerFailClosedTests(unittest.TestCase):
     def test_require_mcp_fails_closed_with_an_install_pointer_when_mcp_is_absent(self) -> None:
-        # The real 'mcp' package is not installed in this environment, so
-        # this exercises the actual fail-closed path, not a simulation.
-        for name in list(sys.modules):
-            if name == "mcp" or name.startswith("mcp."):
-                self.fail(f"unexpected pre-loaded module {name}; test assumes mcp is absent")
-        module = _load_gitlab_server_module()
-        with self.assertRaises(RuntimeError) as ctx:
-            module._require_mcp()
+        # Simulates mcp's absence rather than asserting the host doesn't
+        # have it (see mcp_absence.py): this repository ships MCP servers,
+        # so a developer running them has the real package installed, and
+        # the previous host-dependent form failed on exactly those machines
+        # while passing on a CI runner that never installs it.
+        with mcp_unimportable():
+            module = _load_gitlab_server_module()
+            with self.assertRaises(RuntimeError) as ctx:
+                module._require_mcp()
         self.assertIn("pip install", str(ctx.exception))
         self.assertIn("requirements-mcp.txt", str(ctx.exception))
 
     def test_build_server_fails_closed_through_require_mcp(self) -> None:
-        for name in list(sys.modules):
-            if name == "mcp" or name.startswith("mcp."):
-                self.fail(f"unexpected pre-loaded module {name}; test assumes mcp is absent")
-        module = _load_gitlab_server_module()
-        with self.assertRaises(RuntimeError) as ctx:
-            module.build_server()
+        with mcp_unimportable():
+            module = _load_gitlab_server_module()
+            with self.assertRaises(RuntimeError) as ctx:
+                module.build_server()
         self.assertIn("pip install", str(ctx.exception))
 
 
