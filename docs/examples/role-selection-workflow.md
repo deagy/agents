@@ -70,4 +70,4 @@ In integrated mode, the dispatch plan includes `required_quality_gates` and `hum
 
 - [docs/orchestration.md](../orchestration.md) — detailed orchestration guide
 - [roster/RUNBOOK.md](../../roster/RUNBOOK.md) — complete operating reference
-- [bin/README.md](../../bin/README.md) — CLI dispatch mechanism
+- [bin/README.md](https://github.com/deagy/cadre/blob/main/bin/README.md) — CLI dispatch mechanism. Absolute on purpose: `bin/README.md` documents this *register's* `bin/` layout (`cadre.py`, `cadre.ps1`, `subcommands.tsv`) and is deliberately not packaged, since the generated plugin ships a single POSIX-sh `bin/cadre` instead. A relative link would dangle in the package.
