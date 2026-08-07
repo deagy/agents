@@ -4,7 +4,7 @@ Covers:
 
 - `parse_gitlab_issue_uri`'s shape parsing/rejection, porting the kernel
   test `test_parse_gitlab_issue_uri`
-  (plugins/agentic-sdlc/test/test_agentic_sdlc.py) onto this port.
+  (kernel/test/test_agentic_sdlc.py) onto this port.
 - `fetch_gitlab_issue` reading from `AGENTIC_SDLC_TEST_GITLAB_ISSUE_FILE`
   when set (never shelling out to `glab`), and rejecting a response
   missing a title/state.

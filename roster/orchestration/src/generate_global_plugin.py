@@ -698,6 +698,19 @@ def packaged_subcommands(repository_root: Path) -> list[tuple[str, str]]:
     ]
 
 
+def _is_kernel_doc(path: Path) -> bool:
+    """`docs/kernel/` documents the lifecycle kernel, not the role suite.
+
+    Before the monorepo merge these lived in a separate repository and could
+    not have been packaged here even by accident. They describe G1-G10 gate
+    semantics and the LangGraph engine -- neither of which the packaged role
+    suite contains -- and their relative links point at `kernel/` and
+    `engine/` siblings that the package does not ship, so copying them in
+    produces a plugin full of dangling links.
+    """
+    return "kernel" in path.relative_to(REPOSITORY_ROOT).parts
+
+
 def kernel_requirement_text() -> str:
     """Interpolate the declared kernel range into the generated launcher.
 
@@ -883,7 +896,7 @@ def generate_suite_copy(
         *(
             str(path.relative_to(REPOSITORY_ROOT))
             for path in (REPOSITORY_ROOT / "docs").rglob("*")
-            if path.is_file()
+            if path.is_file() and not _is_kernel_doc(path)
         ),
     }
     selected: list[str] = []

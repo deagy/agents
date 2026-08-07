@@ -15,8 +15,8 @@ project, done by humans or dispatched agents).
 
 | Part | Role |
 |---|---|
-| **The kernel** (`plugins/agentic-sdlc/`, pip/pipx-installable as `agentic-sdlc`) | Bootstraps a target project, tracks gate/approval state as JSON on disk, validates it. Deterministic bookkeeping — no orchestration. |
-| **The LangGraph engine** (`agentic_sdlc_langgraph/`, installed as `agentic-sdlc-lg`) | Actually *drives* a task through the gates as a compiled graph: dispatches author/reviewer agents, enforces separation-of-duties, stops at human/mutation-gate interrupts. This is what replaced the earlier prompt-driven "six `SKILL.md` files an LLM had to interpret step by step." |
+| **The kernel** (`kernel/`, pip/pipx-installable as `agentic-sdlc`) | Bootstraps a target project, tracks gate/approval state as JSON on disk, validates it. Deterministic bookkeeping — no orchestration. |
+| **The LangGraph engine** (`engine/`, installed as `agentic-sdlc-lg`) | Actually *drives* a task through the gates as a compiled graph: dispatches author/reviewer agents, enforces separation-of-duties, stops at human/mutation-gate interrupts. This is what replaced the earlier prompt-driven "six `SKILL.md` files an LLM had to interpret step by step." |
 | **A provider** (e.g. `providers/agentic-sdlc-defaults/`, or an external one like `deagy/agents`) | Supplies the domain-specific pieces the kernel deliberately ships none of: an agent catalog, profiles (routing/gate bindings), optional extensions. The kernel is generic; providers make it concrete for a given team's stack. |
 
 **Key architectural rule**: a consuming project owns its own decisions and
@@ -28,10 +28,10 @@ stay put.
 ## The actual usage flow
 
 1. **Install** — `pipx install` the kernel (puts `agentic-sdlc` on `PATH`;
-   see the [plugin guide](../plugins/agentic-sdlc/README.md#install) for the
+   see the [plugin guide](../kernel/README.md#install) for the
    exact command and current release tag), and separately set up the
    LangGraph engine if you want real orchestration (`uv sync` in
-   `agentic_sdlc_langgraph/`, or install it too).
+   `engine/`, or install it too).
 2. **Initialize a target project**:
    ```sh
    agentic-sdlc init --root /path/to/target [--provider provider.json --profile <id>]

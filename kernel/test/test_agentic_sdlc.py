@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest import mock
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
-REPOSITORY_ROOT = PLUGIN_ROOT.parents[1]
+REPOSITORY_ROOT = PLUGIN_ROOT.parent
 DEFAULT_PROVIDER = REPOSITORY_ROOT / "providers" / "agentic-sdlc-defaults" / "provider.json"
 sys.path.insert(0, str(PLUGIN_ROOT))
 import agentic_sdlc  # type: ignore
@@ -1349,7 +1349,7 @@ class AgentCatalogSchemaTests(unittest.TestCase):
 
     def test_default_provider_catalog_is_unaffected_by_the_new_optional_fields(self):
         default_provider_catalog = (
-            PLUGIN_ROOT.parents[1] / "providers" / "agentic-sdlc-defaults" / "agent-catalog.json"
+            PLUGIN_ROOT.parent / "providers" / "agentic-sdlc-defaults" / "agent-catalog.json"
         )
         catalog = json.loads(default_provider_catalog.read_text(encoding="utf-8"))
         self.assert_valid(catalog)

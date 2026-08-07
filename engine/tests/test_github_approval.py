@@ -5,7 +5,7 @@ Covers:
 - `select_github_review`'s "latest review wins" semantics, porting the
   legacy CLI test
   `test_github_latest_change_request_invalidates_older_approval`
-  (plugins/agentic-sdlc/test/test_agentic_sdlc.py ~117-123) onto the new
+  (kernel/test/test_agentic_sdlc.py ~117-123) onto the new
   function verbatim (same two-review scenario, same expected raise).
 - A happy-path selection + adapter test: two reviews (an old one from a
   different reviewer, a later effective APPROVED from the right

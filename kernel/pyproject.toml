@@ -30,8 +30,8 @@ pattern = "VERSION = \"(?P<version>[^\"]+)\""
 # installed/pipx distribution.
 packages = ["agentic_sdlc"]
 
-# contracts/ stays a single source of truth at plugins/agentic-sdlc/contracts/
-# (agentic_sdlc_langgraph/agentic_sdlc_langgraph/runtime.py also reads it
+# contracts/ stays a single source of truth at kernel/contracts/
+# (engine/agentic_sdlc_langgraph/runtime.py also reads it
 # directly from that fixed repo-relative path) rather than being duplicated
 # under agentic_sdlc/ in the source tree. force-include copies it into the
 # built wheel only, at build time, so an installed/pipx distribution carries

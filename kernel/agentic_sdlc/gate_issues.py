@@ -10,7 +10,7 @@ sidecar ledger.
 from the project overlay's `authorities.json` via `load_overlay`
 (`agentic_sdlc/__init__.py:1452-1454`) -- an overlay concept that exists
 only in the kernel. The engine's authority map is hardcoded empty
-(`agentic_sdlc_langgraph/agentic_sdlc_langgraph/runtime.py:473-495`; that
+(`engine/agentic_sdlc_langgraph/runtime.py:473-495`; that
 docstring records "neither the CLI nor the service surface a way to assign
 authorities today"), so an engine-side implementation of this feature would
 resolve every authority requirement to zero assignable approval issues. The

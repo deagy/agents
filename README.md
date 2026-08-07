@@ -139,7 +139,7 @@ stale otherwise.
 
 The kernel is a real pip/pipx-installable distribution (puts `agentic-sdlc`
 directly on `PATH`, no repository checkout needed at runtime) — see the
-[standalone lifecycle guide](https://github.com/deagy/agentic-sdlc/tree/main/plugins/agentic-sdlc)
+[standalone lifecycle guide](https://github.com/deagy/agentic-sdlc/tree/main/kernel)
 for the exact `pipx install` command and current release tag, since
 duplicating that command here would just go stale again.
 
@@ -169,7 +169,7 @@ A project with a different stack should stay on `quick`/`generic`/`web-service` 
 
 Initialization detects candidate technologies and validation commands, but deliberately leaves human authorities, compliance applicability, persistent/production environment classification, and other consequential decisions unresolved. The target project owns those decisions and its lifecycle records under `.agentic-sdlc/`.
 
-See the [standalone lifecycle guide](https://github.com/deagy/agentic-sdlc/tree/main/plugins/agentic-sdlc) for commands and upgrades.
+See the [standalone lifecycle guide](https://github.com/deagy/agentic-sdlc/tree/main/kernel) for commands and upgrades.
 
 ### No A2A surface today
 

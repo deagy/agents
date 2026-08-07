@@ -22,10 +22,10 @@ collision, and it predates this project's use of the name.
 
 ```sh
 # From a checkout of this repository
-pipx install ./plugins/agentic-sdlc
+pipx install ./kernel
 
 # From a pinned git tag
-pipx install "git+https://github.com/deagy/agentic-sdlc.git@v<version>#subdirectory=plugins/agentic-sdlc"
+pipx install "git+https://github.com/deagy/agentic-sdlc.git@v<version>#subdirectory=kernel"
 
 # From a checkout, without installing anything
 ./bin/agentic-sdlc --help

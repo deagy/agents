@@ -1,7 +1,7 @@
 """GitLab *write* helpers for `create-gate-issues` / `list-gate-issues`
 (`agentic_sdlc/gate_issues.py`).
 
-Ported near-verbatim from `agentic_sdlc_langgraph/agentic_sdlc_langgraph/
+Ported near-verbatim from `engine/agentic_sdlc_langgraph/
 gitlab_issue.py`'s bottom section (`verify_gitlab_identity`,
 `search_gitlab_issues_by_labels`, `create_gitlab_issue`,
 `fetch_gitlab_issue_verification`, and the `ISSUE_CREATE_MOCK_ENV_VAR`

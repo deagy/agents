@@ -3,7 +3,7 @@
 `load_provider` (~124-230) and `merge_profile` (~566-625).
 
 These port the *intent* of the legacy CLI's provider tests
-(`plugins/agentic-sdlc/test/test_agentic_sdlc.py`) onto the new
+(`kernel/test/test_agentic_sdlc.py`) onto the new
 side-effect-free API:
 
 - `test_provider_backed_profile_binds_dispatch_and_digests` ports

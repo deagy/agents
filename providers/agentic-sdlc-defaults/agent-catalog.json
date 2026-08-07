@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "agents": {
+    "product-intent-agent": {"kind": "author", "capabilities": ["author"]},
+    "requirements-agent": {"kind": "author", "capabilities": ["author"]},
+    "cloud-architect": {"kind": "author", "capabilities": ["author"]},
+    "governance-planner": {"kind": "author", "capabilities": ["author"]},
+    "data-governance-engineer": {"kind": "author", "capabilities": ["author"]},
+    "threat-modeler": {"kind": "author", "capabilities": ["author"]},
+    "cryptographic-assurance-engineer": {"kind": "author", "capabilities": ["author"]},
+    "application-engineer": {"kind": "author", "capabilities": ["author"]},
+    "evidence-curator": {"kind": "author", "capabilities": ["author"]},
+    "release-engineer": {"kind": "author", "capabilities": ["author"]},
+    "observability-sre": {"kind": "author", "capabilities": ["author"]},
+    "code-reviewer": {"kind": "reviewer", "capabilities": ["reviewer"]},
+    "compliance-reviewer": {"kind": "reviewer", "capabilities": ["reviewer"]},
+    "security-reviewer": {"kind": "reviewer", "capabilities": ["reviewer"]},
+    "test-engineer": {"kind": "reviewer", "capabilities": ["reviewer"]}
+  }
+}

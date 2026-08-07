@@ -13,11 +13,11 @@ This plugin makes the repository's G1–G10 Agentic SDLC portable. It supplies a
 > [SECURITY.md](../../SECURITY.md).
 
 ```sh
-pipx install ./plugins/agentic-sdlc        # from a checkout
-pipx install git+https://github.com/deagy/agentic-sdlc.git#subdirectory=plugins/agentic-sdlc
+pipx install ./kernel        # from a checkout
+pipx install git+https://github.com/deagy/agentic-sdlc.git#subdirectory=kernel
 ```
 
-Either form puts a real `agentic-sdlc` executable on `PATH`, isolated in its own environment, with no repository checkout required at runtime — `contracts/` is bundled into the installed distribution at build time (see `pyproject.toml`). `pip install` works the same way if you'd rather manage the environment yourself; use `pip install -e ./plugins/agentic-sdlc` for an editable install while developing the kernel itself. Requires Python 3.10+.
+Either form puts a real `agentic-sdlc` executable on `PATH`, isolated in its own environment, with no repository checkout required at runtime — `contracts/` is bundled into the installed distribution at build time (see `pyproject.toml`). `pip install` works the same way if you'd rather manage the environment yourself; use `pip install -e ./kernel` for an editable install while developing the kernel itself. Requires Python 3.10+.
 
 Orchestrating actual work against this kernel — dispatching author/reviewer roles, stopping at human/mutation gates, tracking gate state across a task's lifetime — is done by the LangGraph engine in [`../../agentic_sdlc_langgraph/`](../../agentic_sdlc_langgraph), not by this plugin. See that package's README for the `agentic-sdlc-lg` CLI and the standalone service. (An earlier version of this plugin shipped that orchestration as six Claude Code/Codex CLI skills an LLM host had to interpret step by step; those were retired once the LangGraph engine replaced them with real, testable control flow.)
 
@@ -149,7 +149,7 @@ version, and manifest digest are recorded in the project version lock.
 
 ## Commands
 
-The bundled command entry point is `plugins/agentic-sdlc/agentic_sdlc/` (the `agentic-sdlc` distribution's `[project.scripts]` entry point; see "Install" above):
+The bundled command entry point is `kernel/agentic_sdlc/` (the `agentic-sdlc` distribution's `[project.scripts]` entry point; see "Install" above):
 
 ```text
 init        Create or update a project overlay using safe defaults.
@@ -355,7 +355,7 @@ Initialization, detection, planning, status, and invalidation work with Python 3
 2020-12 structural validation in CI or assurance environments with:
 
 ```sh
-python3 -m pip install -r plugins/agentic-sdlc/requirements-validation.txt
+python3 -m pip install -r kernel/requirements-validation.txt
 ```
 
 This kernel CLI covers bootstrapping and bookkeeping (`init`/`detect`/`validate`/`status`/`invalidate`/`approve-from-github*`). For actually dispatching and driving a task through the G1–G10 lifecycle — author/reviewer dispatch, human/mutation-gate interrupts, invalidation with real re-execution — use the LangGraph engine's `agentic-sdlc-lg` CLI or service in [`../../agentic_sdlc_langgraph/`](../../agentic_sdlc_langgraph).

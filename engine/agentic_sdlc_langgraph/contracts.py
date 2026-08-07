@@ -2,7 +2,7 @@
 phrase-matching predicates ported from `agentic_sdlc.py`.
 
 These are read-only ports against the reference files under
-`plugins/agentic-sdlc/contracts/` and `providers/agentic-sdlc-defaults/`.
+`kernel/contracts/` and `providers/agentic-sdlc-defaults/`.
 Nothing here writes to those trees.
 
 Simplification: `load_profile` returns the profile JSON as-is. The legacy

@@ -862,7 +862,7 @@ class PortIntegrityTests(unittest.TestCase):
     """Item 34."""
 
     def test_fixed_label_and_mock_env_var_match_the_langgraph_engine_copy(self):
-        engine_root = PLUGIN_ROOT.parents[1] / "agentic_sdlc_langgraph" / "agentic_sdlc_langgraph"
+        engine_root = PLUGIN_ROOT.parent / "engine" / "agentic_sdlc_langgraph"
         requirement_issues_path = engine_root / "requirement_issues.py"  # FIXED_LABEL lives here
         gitlab_issue_path = engine_root / "gitlab_issue.py"  # ISSUE_CREATE_MOCK_ENV_VAR lives here
         if not requirement_issues_path.is_file() or not gitlab_issue_path.is_file():

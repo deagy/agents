@@ -2,7 +2,7 @@
 
 Ports, in spirit, the legacy CLI test
 `test_invalidation_and_reentry_preserve_history_but_clear_stale_bindings`
-(plugins/agentic-sdlc/test/test_agentic_sdlc.py ~106-115), which drives
+(kernel/test/test_agentic_sdlc.py ~106-115), which drives
 `invalidate` then `reenter` as two separate steps against JSON files and
 asserts: `re_entry_history` gets 2 entries (one per call), the reentered
 gate's `status` is `"pending"`, and its `human_approvals` is `[]`.

@@ -34,11 +34,11 @@ from urllib.parse import quote
 VERSION = "0.13.0"
 
 # Packaged as the `agentic-sdlc` pip/pipx-installable distribution (see
-# plugins/agentic-sdlc/pyproject.toml); contracts/ is bundled as package data
+# kernel/pyproject.toml); contracts/ is bundled as package data
 # by hatchling's force-include at build time, but the checked-out source tree
-# deliberately keeps a single canonical copy at plugins/agentic-sdlc/contracts/
+# deliberately keeps a single canonical copy at kernel/contracts/
 # (not duplicated under this package directory) since
-# agentic_sdlc_langgraph/agentic_sdlc_langgraph/runtime.py also reads it
+# engine/agentic_sdlc_langgraph/runtime.py also reads it
 # directly from that fixed repo-relative path. Resolve either location
 # correctly: a bundled copy at agentic_sdlc/contracts/ (installed/built) if
 # present, else the sibling ../contracts/ (running from a checkout, installed
@@ -1911,7 +1911,7 @@ def validate_repository(args: argparse.Namespace) -> int:
     except ImportError:
         jsonschema = None
         errors.append(
-            "full validation dependency is unavailable; install plugins/agentic-sdlc/requirements-validation.txt"
+            "full validation dependency is unavailable; install kernel/requirements-validation.txt"
         )
     try:
         overlay, project, authorities, impact, routing = load_overlay(root)

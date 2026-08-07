@@ -1,7 +1,7 @@
 # Agentic SDLC — LangGraph engine
 
 Drives a task through the repository's G1-G10 lifecycle (see
-[`../plugins/agentic-sdlc/contracts/lifecycle-gates.json`](../plugins/agentic-sdlc/contracts/lifecycle-gates.json))
+[`../kernel/contracts/lifecycle-gates.json`](../kernel/contracts/lifecycle-gates.json))
 as a compiled [LangGraph](https://github.com/langchain-ai/langgraph)
 `StateGraph`, built declaratively from that contract plus a provider's
 profile/agent-catalog — not from prose an LLM host has to interpret. Gate
@@ -13,14 +13,14 @@ This replaces the plugin's earlier skill-based orchestration (six
 `SKILL.md` files a Claude Code/Codex CLI host read and followed step by
 step). That layer has been retired; this package is the only way to
 actually drive a task through the lifecycle now. The deterministic kernel
-CLI in [`../plugins/agentic-sdlc/`](../plugins/agentic-sdlc) is unaffected —
+CLI in [`../kernel/`](../kernel) is unaffected —
 it still owns the contracts/schemas this engine is built from, plus
 project-overlay bootstrapping (`init`/`detect`).
 
 ## Setup
 
 ```sh
-cd agentic_sdlc_langgraph
+cd engine
 uv sync
 uv run pytest
 ```

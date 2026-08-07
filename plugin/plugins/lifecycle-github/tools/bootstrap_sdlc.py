@@ -63,8 +63,9 @@ from typing import Sequence
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 PROVIDER_MANIFEST_PATH = REPO_ROOT / "provider.json"
 
-AGENTIC_SDLC_GIT_URL = "https://github.com/deagy/agentic-sdlc.git"
-AGENTIC_SDLC_SUBDIRECTORY = "plugins/agentic-sdlc"
+# The kernel now ships from the monorepo; deagy/agentic-sdlc is archived.
+AGENTIC_SDLC_GIT_URL = "https://github.com/deagy/cadre.git"
+AGENTIC_SDLC_SUBDIRECTORY = "kernel"
 
 SEMVER_PATTERN = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 

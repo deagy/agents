@@ -137,14 +137,14 @@ from .graph import build_graph
 from .planning import derive_gate_sequence
 from .provider import LoadedProvider, fingerprint, load_provider, merge_profile
 
-# Root of *this* kernel checkout (contains `plugins/` and `providers/`) --
+# Root of *this* monorepo checkout (contains `kernel/` and `providers/`) --
 # NOT the project root a CLI/service caller operates against (that's the
 # `root` parameter threaded through every function below: an arbitrary
 # project directory that owns its own `.agentic-sdlc/` state). Resolved
 # relative to this file rather than hardcoded so the module works from
 # any checkout location.
 KERNEL_ROOT = Path(__file__).resolve().parents[2]
-CONTRACTS_DIR = KERNEL_ROOT / "plugins" / "agentic-sdlc" / "contracts"
+CONTRACTS_DIR = KERNEL_ROOT / "kernel" / "contracts"
 DEFAULT_PROVIDER_ROOT = KERNEL_ROOT / "providers" / "agentic-sdlc-defaults"
 
 GRAPH_CONFIG_SCHEMA_VERSION = 2
@@ -374,7 +374,7 @@ def _load_contracts_and_profile(
 
     `lifecycle-gates.json`/`mutation-gates.json` are kernel contracts, not
     provider content, so they're always read from this checkout's own
-    `plugins/agentic-sdlc/contracts/` regardless of which provider is
+    `kernel/contracts/` regardless of which provider is
     active.
     """
     all_gates = load_lifecycle_gates(CONTRACTS_DIR / "lifecycle-gates.json")
