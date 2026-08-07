@@ -1,0 +1,13 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+
+# Local knowledge-store runtime state (config + embeddings db)
+.agents/knowledge-store/

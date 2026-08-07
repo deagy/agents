@@ -1,0 +1,80 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+*/**/sample-*-run
+/*/sample-*-run
+sample-*-run
+
+# Local/demo data and credentials for any sample-NNN example directory.
+# New examples (sample-002, etc.) get this coverage automatically; add a
+# dedicated block above only if an example needs something beyond this.
+sample-*/**/*
+sample-*/*
+sample-*/
+sample-*/.env.local
+sample-*/**/.env.local
+sample-*/**/compose.override.yaml
+sample-*/**/compose.override.yml
+sample-*/**/data/
+sample-*/**/objects/
+sample-*/**/tmp/
+sample-*/**/.cache/
+sample-*/**/*.log
+sample-*/**/coverage/
+sample-*/**/dist/
+sample-*/**/node_modules/
+sample-*/**/*.tsbuildinfo
+sample-*/**/test-results/
+sample-*/**/playwright-report/
+sample-*/**/*.db
+sample-*/**/*.tfstate*
+sample-*/**/generated-credentials/
+sample-*/services/build/
+sample-*/services/coverage.out
+sample-*/services/dependencies.json
+sample-*/deploy/helm-rendered.yaml
+sample-*/evidence/
+evidence/
+
+# Local knowledge-store configuration and data are operator-controlled.
+.agents/knowledge-store/config.json
+.agents/knowledge-store/data/
+
+# Local Claude Code settings (not portable across contributors).
+.claude/settings.local.json
+
+# Node/TypeScript build artifacts. This repository has no Node code of its own
+# since the plugin split (see deagy/cadre-plugin); kept so a stray local
+# install under a sample-*/ tree can't be committed by accident.
+node_modules/
+
+# Build artifacts for the root-level `cadre` pip/pipx distribution
+# (pyproject.toml / cadre_cli/); `python -m build` writes here.
+/dist/
+/build/
+
+# Agent-created git worktrees (see roster/shared/workspace-isolation.md).
+# `.worktrees/` is this repository's own in-root worktree convention;
+# `.claude/worktrees/` is Claude Code's own worktree-isolation feature
+# writing directly into the project tree. Neither was ignored before this
+# entry, which is a latent defect on its own: `cadre select`'s git-status
+# mode folds untracked paths into `inputs.changed_files`, so a populated,
+# untracked, in-repo worktree would get swept into selection input and
+# re-route the whole dispatch decision around its own scratch content.
+/.worktrees/
+/.claude/worktrees/
+
+# Generated plugin distribution. Before the monorepo merge these ~340 files
+# were committed into deagy/cadre-lifecycle and kept in sync by cadre-ref.txt
+# plus drift-check.yml/regenerate.yml. `cadre generate-plugin` now writes
+# them here at build/release time instead, so there is exactly one copy of
+# every role, skill, and provider file in this repository.
+/plugin-dist/
+
+# The LangGraph engine's uv environment.
+/engine/.venv/

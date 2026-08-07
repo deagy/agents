@@ -1,0 +1,20 @@
+{
+  "name": "cadre-lifecycle",
+  "version": "0.1.1",
+  "private": true,
+  "description": "Combined Cadre role selection and Agentic SDLC lifecycle governance",
+  "type": "module",
+  "workspaces": [
+    "cline",
+    "cline-agents",
+    "cline-lifecycle"
+  ],
+  "keywords": [
+    "cadre",
+    "lifecycle-governance",
+    "agent-orchestration",
+    "agentic-sdlc"
+  ],
+  "author": "deagy",
+  "license": "Apache-2.0"
+}

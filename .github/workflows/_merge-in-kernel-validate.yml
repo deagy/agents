@@ -1,0 +1,43 @@
+name: validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.14"
+      - run: pip install --no-cache-dir -r plugins/agentic-sdlc/requirements-validation.txt
+      - run: python -B -m unittest discover -s plugins/agentic-sdlc/test -p "test_*.py"
+      - run: ./bin/agentic-sdlc --version
+      - name: Install the packaged distribution (pip/pipx install path)
+        run: pip install --no-cache-dir ./plugins/agentic-sdlc
+      - name: Verify the installed console script works outside the checkout
+        working-directory: ${{ runner.temp }}
+        run: |
+          agentic-sdlc --version
+          agentic-sdlc show-contract lifecycle-gates >/dev/null
+
+  test-langgraph:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Install locked dependencies (fails on lockfile drift)
+        working-directory: agentic_sdlc_langgraph
+        run: uv sync --locked
+      - name: Run LangGraph engine tests
+        working-directory: agentic_sdlc_langgraph
+        run: uv run pytest

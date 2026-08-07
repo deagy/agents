@@ -1,0 +1,167 @@
+"""Routing configuration loading and deterministic rule matching."""
+
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+from typing import Any, Pattern
+
+
+def glob_to_regex(pattern: str) -> Pattern[str]:
+    """Translate the selector's small glob dialect to a compiled regex."""
+    normalized = pattern.replace("\\", "/")
+    expression = "^"
+    index = 0
+    while index < len(normalized):
+        character = normalized[index]
+        if character == "*" and index + 1 < len(normalized) and normalized[index + 1] == "*":
+            index += 1
+            if index + 1 < len(normalized) and normalized[index + 1] == "/":
+                index += 1
+                expression += "(?:.*/)?"
+            else:
+                expression += ".*"
+        elif character == "*":
+            expression += "[^/]*"
+        elif character == "?":
+            expression += "[^/]"
+        else:
+            expression += re.escape(character)
+        index += 1
+    return re.compile(f"{expression}$", re.IGNORECASE)
+
+
+def _keyword_matches(text: str, keyword: str) -> bool:
+    escaped = re.escape(keyword.lower()).replace(r"\ ", r"\s+")
+    return re.search(rf"(^|[^a-z0-9]){escaped}([^a-z0-9]|$)", text, re.IGNORECASE) is not None
+
+
+def match_rule(rule: dict[str, Any], task_text: str, changed_files: list[str]) -> dict[str, Any]:
+    normalized_task = task_text.lower()
+    matched_keywords = [
+        keyword for keyword in rule.get("keywords", []) if _keyword_matches(normalized_task, keyword)
+    ]
+    matched_keyword_groups = [
+        [keyword for keyword in group if _keyword_matches(normalized_task, keyword)]
+        for group in rule.get("keyword_groups", [])
+    ]
+    conjunctive_match = bool(matched_keyword_groups) and all(matched_keyword_groups)
+    matched_paths: list[dict[str, str]] = []
+    for pattern in rule.get("paths", []):
+        matcher = glob_to_regex(pattern)
+        for file_name in changed_files:
+            normalized_file = file_name.replace("\\", "/")
+            if matcher.search(normalized_file):
+                matched_paths.append({"pattern": pattern, "file": file_name})
+    return {
+        "matched": bool(matched_keywords or conjunctive_match or matched_paths),
+        "keywords": matched_keywords,
+        "keyword_groups": matched_keyword_groups if conjunctive_match else [],
+        "paths": matched_paths,
+    }
+
+
+def load_routing(file_path: Path) -> dict[str, Any]:
+    with file_path.open("r", encoding="utf-8") as source:
+        config = json.load(source)
+    if (
+        config.get("version") != 1
+        or not isinstance(config.get("routes"), list)
+        or not isinstance(config.get("risk_rules"), list)
+    ):
+        raise ValueError("routing.yaml must contain version 1 routes and risk_rules")
+    ids = [
+        rule.get("id")
+        for rule in [*config["routes"], *config["risk_rules"], *config.get("team_recipes", [])]
+    ]
+    if len(set(ids)) != len(ids):
+        raise ValueError("Routing, risk rule, and team recipe IDs must be unique")
+    for rule in [*config["routes"], *config["risk_rules"]]:
+        groups = rule.get("keyword_groups", [])
+        if groups and (
+            not isinstance(groups, list)
+            or any(
+                not isinstance(group, list)
+                or not group
+                or any(not isinstance(keyword, str) or not keyword for keyword in group)
+                for group in groups
+            )
+        ):
+            raise ValueError(
+                f"{rule.get('id', 'rule')} keyword_groups must contain non-empty string groups"
+            )
+    for recipe in config.get("team_recipes", []):
+        if recipe.get("type") == "dynamic":
+            instances = recipe.get("instances", {})
+            minimum, maximum = instances.get("min"), instances.get("max")
+            if (
+                not isinstance(minimum, int)
+                or isinstance(minimum, bool)
+                or not isinstance(maximum, int)
+                or isinstance(maximum, bool)
+                or minimum < 1
+                or maximum < minimum
+            ):
+                raise ValueError(f"{recipe.get('id', 'team recipe')} instances must satisfy 1 <= min <= max")
+    return config
+
+
+def parse_keyed_entries(content: str, fields: tuple[str, ...]) -> dict[str, dict[str, str]]:
+    """Parse a `  <id>:\\n    <field>: <value>` block list into id -> metadata.
+
+    The shared low-level primitive behind this repo's line-oriented
+    (non-PyYAML) config tables: catalog.yaml's `agents:` block, via
+    parse_catalog_entries() below, and aides.yaml's `aides:` block, via
+    generate_authority_aides.py. One parser for the shape means a fix to it
+    (e.g. field-order handling) benefits every table built on it instead of
+    only the one it was written for. `fields` restricts which `key:` lines
+    under an id are captured, so unrelated fields present in the file are
+    ignored rather than misparsed. Raises on a duplicate id rather than
+    silently keeping the last occurrence.
+    """
+    entries: dict[str, dict[str, str]] = {}
+    current: str | None = None
+    field_prefixes = tuple(f"{field}:" for field in fields)
+    for line_number, line in enumerate(content.splitlines(), start=1):
+        match = re.match(r"^  ([a-z0-9-]+):\s*$", line)
+        if match:
+            current = match.group(1)
+            if current in entries:
+                raise ValueError(f"line {line_number}: duplicate id {current!r}")
+            entries[current] = {}
+            continue
+        if current and line.strip().startswith(field_prefixes):
+            key, value = line.strip().split(":", 1)
+            entries[current][key] = value.strip()
+    return entries
+
+
+def parse_catalog_entries(content: str) -> dict[str, dict[str, str]]:
+    """Parse catalog.yaml's line-oriented agent blocks into id -> metadata.
+
+    Shared by this module (which only needs agent IDs) and
+    generate_global_plugin.py (which needs the full per-agent metadata) so
+    the two never silently diverge on catalog.yaml's format.
+    """
+    return parse_keyed_entries(
+        content, ("definition", "phase", "capability", "model", "codex_model", "reasoning_effort")
+    )
+
+
+def load_catalog(file_path: Path) -> list[str]:
+    agents = parse_catalog_entries(file_path.read_text(encoding="utf-8"))
+    if not agents:
+        raise ValueError("No agents found in catalog.yaml")
+    return list(agents.keys())
+
+
+def match_routes(
+    config: dict[str, Any], task_text: str, changed_files: list[str]
+) -> list[dict[str, Any]]:
+    matches = []
+    for route in config["routes"]:
+        reasons = match_rule(route, task_text, changed_files)
+        if reasons["matched"]:
+            matches.append({"id": route["id"], "reasons": reasons, "rule": route})
+    return matches

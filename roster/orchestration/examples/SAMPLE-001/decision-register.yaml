@@ -1,0 +1,108 @@
+version: 1
+task_id: SAMPLE-001
+overall_status: human_decisions_required
+
+decisions:
+  - id: DEC-001
+    topic: OIDC and browser session architecture
+    proposal: same_origin_bff_with_authorization_code_pkce_and_server_side_tokens
+    adr: adrs/0001-oidc-bff.md
+    status: proposed
+    owner_role: application_and_security_owner
+    human_owner: unassigned
+    blocking: true
+
+  - id: DEC-002
+    topic: tenant and object authorization
+    proposal: server_derived_tenant_subject_and_object_level_authorization
+    adr: adrs/0002-tenant-object-authorization.md
+    status: proposed
+    owner_role: product_data_and_security_owner
+    human_owner: unassigned
+    blocking: true
+
+  - id: DEC-003
+    topic: data classification and lifecycle
+    proposal: confidential_by_default_pending_owner_confirmation
+    status: human-decision-required
+    owner_role: data_owner
+    human_owner: unassigned
+    required_values:
+      - classification
+      - permitted_formats_and_sizes
+      - retention_and_legal_hold
+      - deletion_and_backup_expiry
+      - download_and_rendering_policy
+    blocking: true
+
+  - id: DEC-004
+    topic: object storage and malware scanning
+    proposal: private_quarantine_plus_isolated_scanner_plus_trusted_promotion
+    adr: adrs/0003-quarantine-scan-promotion.md
+    status: product-selection-required
+    owner_role: platform_and_security_owner
+    human_owner: unassigned
+    blocking: true
+
+  - id: DEC-005
+    topic: PostgreSQL and durable jobs
+    proposal: postgresql_metadata_sessions_idempotency_audit_and_leased_jobs
+    adr: adrs/0004-postgresql-jobs-and-migrations.md
+    status: topology-and-objectives-required
+    owner_role: database_and_service_owner
+    human_owner: unassigned
+    required_values:
+      - version_and_topology
+      - migration_tool
+      - capacity_and_ha
+      - rpo_and_rto
+      - backup_pitr_and_restore_test
+    blocking: true
+
+  - id: DEC-006
+    topic: Kubernetes isolation and platform placement
+    proposal: dedicated_namespace_distinct_identities_default_deny_and_restricted_pods
+    adr: adrs/0005-kubernetes-isolation.md
+    status: platform-selection-required
+    owner_role: platform_and_security_owner
+    human_owner: unassigned
+    blocking: true
+
+  - id: DEC-007
+    topic: Terraform provider and state
+    proposal: encrypted_locked_versioned_audited_state_with_recovery
+    status: human-decision-required
+    owner_role: platform_owner
+    human_owner: unassigned
+    required_values:
+      - Proxmox_provider_and_version_policy
+      - state_backend
+      - environment_isolation
+      - credential_scope
+      - backup_and_recovery
+    blocking: true
+
+  - id: DEC-008
+    topic: GitLab runners and artifact trust
+    proposal: isolated_trust_tiers_build_once_sign_and_promote
+    adr: adrs/0006-gitlab-artifact-promotion.md
+    status: platform-selection-required
+    owner_role: cicd_platform_and_security_owner
+    human_owner: unassigned
+    blocking: true
+
+  - id: DEC-009
+    topic: React project tooling and accessibility
+    proposal: react_typescript_with_project_local_approved_tooling
+    adr: adrs/0007-react-typescript-baseline.md
+    status: human-decision-required
+    owner_role: frontend_and_product_owner
+    human_owner: unassigned
+    required_values:
+      - Node_version_and_package_manager
+      - framework_or_build_tool
+      - styling_and_component_system
+      - test_stack
+      - supported_browsers
+      - accessibility_target
+    blocking: true

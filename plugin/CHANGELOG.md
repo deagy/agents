@@ -1,0 +1,592 @@
+# Changelog
+
+This changelog tracks **consumer-visible** changes to the packaged plugins:
+what installing `cadre@cadre-lifecycle-team` (and its optional companions)
+gives you, and how this repository is built and released. Changes to the
+roles, skills, routing, and CLI behaviour
+*inside* the package are recorded in the register repository's own changelog
+([`deagy/cadre`](https://github.com/deagy/cadre/blob/main/CHANGELOG.md)) —
+this file does not restate them.
+
+Format loosely follows [Keep a Changelog](https://keepachangelog.com/). The
+release convention (see `README.md`'s "Releasing" section) ties git tags
+(`vMAJOR.MINOR.PATCH`) to a deliberate, reviewed version bump of
+`.claude-plugin/plugin.json` / `.codex-plugin/plugin.json`, checked with
+`python3 tools/plugin_version.py --check`/`--set`. Each version heading
+below links to its [GitHub Release](https://github.com/deagy/cadre-lifecycle/releases).
+
+## [0.10.1](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.10.1) - 2026-08-07
+
+### Fixed
+
+- **Bumped `cadre-ref.txt` to [`deagy/cadre@v0.16.0`](https://github.com/deagy/cadre/blob/main/CHANGELOG.md) and reapplied regeneration.** Corrections to how the packaged CLI resolves operator settings: the project tier is now anchored to the project being acted on rather than the process's working directory (so a dispatched role's runner binary resolves against the project being dispatched, and the bundled MCP servers no longer read an unrelated checkout's `.agents/cadre.yaml`), executable-valued settings reject a leading `-` and embedded control characters, and secret-shaped-key rejection now walks sequences as well as mappings. No new or changed CLI surface, so nothing here changes how the plugins are invoked. See cadre's own 0.16.0 entry for the detail — this changelog does not restate register-side changes.
+
+  Also ships `suite/docs/examples/role-selection-workflow.md`, a new end-to-end walkthrough from task to dispatched agents, and `suite/roster/shared/README.md`'s reconciliation of the three differently-trusted project-local mechanisms that share `.agents/`.
+
+  This is the first regeneration to land after the `regenerate.yml` patch-truncation fix in 0.10.0, and it exercised the fixed path: the new example doc is a *newly added* file, exactly the class of content the previous `git diff`-based patch silently dropped.
+
+## [0.10.0](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.10.0) - 2026-08-07
+
+### Added
+
+- **Bumped `cadre-ref.txt` to [`deagy/cadre@v0.15.0`](https://github.com/deagy/cadre/releases/tag/v0.15.0) and reapplied regeneration**, which adds new packaged CLI surface: `cadre config` (`show`/`path`/`resolve`) for inspecting where each operator setting resolved from, a leading `cadre --interactive <subcommand>` flag, config-file support for settings that were previously environment-variable-only (`.agents/cadre.yaml` project-local and `~/.config/cadre/config.yaml` user-global, with environment variables still winning), `cadre gitlab-evidence` as a non-MCP CLI over the GitLab evidence tools, and opt-in asynchronous MCP dispatch (`wait=False`) with new `poll_dispatch_status`/`poll_team_status` tools. Existing environment-variable-only setups are unaffected. See [cadre's own 0.15.0 entry](https://github.com/deagy/cadre/blob/main/CHANGELOG.md) for the full detail, including why secrets are never read from a config file and why a project-local config file is treated as untrusted content — this changelog does not restate register-side changes.
+
+  The packaged `bin/cadre` wrapper gained the corresponding `--interactive` handling and now resolves `agentic_sdlc.bin_path` through the same precedence chain as the register's own dispatcher, rather than an environment-variable-and-`PATH`-only lookup that ignored a configured value. It still requires no Python interpreter for `cadre sdlc` when the binary is already locatable via `AGENTIC_SDLC_BIN` or `PATH`.
+
+### Fixed
+
+- **`regenerate.yml` silently dropped every file a cadre release newly added, shipping a broken package.** The workflow built its patch artifact with a plain `git diff --binary`, which reports only *tracked* files — so a regeneration that both modified existing files and added new ones produced a patch containing only the modifications. Nothing failed: the `changed` check one step earlier uses `git status --porcelain`, which *does* see untracked files, so the workflow correctly decided there was something to ship and then shipped a truncated patch; and `validate.yml` does not run automatically on a PR opened with the default `GITHUB_TOKEN`, so CI was silent too. Found in the cadre v0.15.0 regeneration (PR #45), which updated six suite modules and `bin/cadre` to import `roster/shared/src/settings.py` while omitting that module entirely — `cadre select` and `cadre config` in that package died with `ModuleNotFoundError`. The patch is now taken from the index (`git add -A` then `git diff --cached --binary`), which also propagates deletions of generated files. New `tools/test_regenerate_workflow.py` pins both the workflow text and the underlying git behavior that makes staging necessary.
+
+## [0.9.8](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.9.8) - 2026-08-06
+
+### Added
+
+- **New `.github/workflows/drift-check.yml`, run weekly and on demand.** Regenerates from the revision `cadre-ref.txt` already pins (not cadre's latest) and diffs against this checkout, opening/updating a tracking issue if anything beyond the documented hand-authored exceptions differs. `regenerate.yml` only re-verifies content against a *new* cadre release; it never revisits an already-applied revision, so a generated file hand-edited directly here (bypassing "edit the canonical source in deagy/cadre and regenerate") previously produced no CI signal at all and would only surface the next time someone happened to run the manual regeneration procedure. Built after finding exactly that: `suite/AGENTS.md`, `suite/CONTRIBUTING.md`, `provider.json`'s `kernel_compatibility`, `skills/run-agent-orchestration/references/runner-adapters.md`, and `suite/README.md`'s regeneration-safety text had all drifted this way — see the `cadre-ref.txt` bump below, which reconciles all of it (ported the corresponding fixes to `deagy/cadre`: #105, #106, #107).
+
+- **`cline-lifecycle` gains a 21st tool, `sdlc_plan`**, wrapping `bin/cadre sdlc plan` (`agentic-sdlc plan`). Found during a routine Cline feature-parity scan: 13 forge-specific `SKILL.md` files reference `cadre sdlc plan` in passing ("... or `cadre sdlc plan` first") as the way to create a task's dispatch plan/run record before `sdlc_status`/`sdlc_decide` can operate on a brand-new task-id, but no skill gives it a numbered step of its own and no `cline-lifecycle` tool wrapped it — the only forge-agnostic `agentic-sdlc` subcommand referenced by the skills that had no Cline tool call. `sdlc_plan` takes `taskId`/`task` (both required) plus the usual optional `root`; like `sdlc_decide`, it is a real write with no dry-run mode (the kernel's `plan` subcommand has none).
+- **`tools/test_readme_identity.py` guards against an unsafe `cadre generate-plugin --output` run clobbering `README.md`.** The register's own safety guard against overwriting a non-empty `--output` directory passes trivially against this repository (it only checks for a `.codex-plugin/plugin.json`, which this repo has since it's itself a packaged plugin) — see [deagy/cadre-lifecycle#3](https://github.com/deagy/cadre-lifecycle/issues/3) and the upstream fix it tracks, [deagy/cadre#97](https://github.com/deagy/cadre/issues/97). Since that guard's real fix lives outside this repository, this test is a local backstop: it asserts `README.md` still carries this repository's own identity (the 4-plugin split, the per-runner Installing sub-headings) and fails the `python-tools` CI job if a clobber ever replaces it with the register's generic single-plugin template.
+- **`cline`'s `agents_select` now accepts cancellation via `context.signal`** (`AgentToolContext`, part of the `@cline/sdk` `AgentTool` contract). `execute()` previously omitted the `context` parameter entirely — permitted by TypeScript's parameter bivariance, so it compiled cleanly but left no way to interrupt a hung `cadre select` child process. `context.signal` is now threaded into the underlying `execFile` call; aborting it cancels the process instead of blocking the session indefinitely (deagy/cadre#64).
+
+### Fixed
+
+- **Bumped `cadre-ref.txt` to `deagy/cadre@15d8e76` and reapplied regeneration**, reconciling exactly the kind of drift `drift-check.yml` (above) now exists to catch: `suite/AGENTS.md`/`suite/CONTRIBUTING.md`'s prohibited-content cross-reference, `provider.json`'s `kernel_compatibility` (was `[0.3.0, 0.4.0)`, now `[0.13.0, 1.0.0)`, matching the fix already live here since the 0.9.8 kernel-version-history entry above), `skills/run-agent-orchestration/references/runner-adapters.md`'s Cline MCP re-verification finding, and `suite/README.md`'s regeneration-safety text had all previously been fixed in this repository directly instead of at their canonical source, so every prior regeneration silently reverted them. Also fixed `tools/test_plugin_duplication_health.py`: the three bundled lifecycle skills carry a "Duplication note" callout that can only ever live in the forge-specific copies (it references this repository's own `AGENTS.md`, a concept the register has no notion of), which a previous hand-edit had leaked into the register-generated core copy too; this regeneration correctly stripped it back out, and the test now asserts that placement explicitly instead of just diffing bodies.
+- **`cline`'s `agents_select` workspace-root-unresolved error omitted the `stderr` field** the CLI-failure catch path always includes, making the two error shapes structurally inconsistent for a caller that iterates over error response fields. Added `stderr: ""` — not `undefined`, since `sanitizeToolResult`'s JSON round-trip silently drops undefined-valued keys, so only a real (if empty) string actually reaches the caller (deagy/cadre#65).
+- **`cline`'s `agents_select` catch path could crash instead of returning a structured error, and passed unbounded content through unfiltered.** `caught as {message?, stderr?}` is a compile-time assertion only; nothing guarantees a thrown value's `.stderr`/`.message` are actually strings at runtime, and the code called `.trim()` directly on `err.stderr` without checking. A malformed error shape (e.g. a non-string, circular `.stderr`) threw an uncaught `TypeError`, defeating `agents_select`'s "never throw" guarantee regardless of `sanitizeToolResult`'s own shape-safety. Both fields are now normalized through a real `typeof` check before use, always producing a real (possibly empty) string. Separately, `sanitizeToolResult` only ever guaranteed JSON-serialization safety, never content bounding — a future change to the spawned binary's error output (e.g. an uncaught Python traceback) could pass through arbitrarily large or path-laden text verbatim. Both `stderr` and the error message are now capped at 2000 characters via `@cline/shared`'s `truncateStr`. Fixes deagy/cadre#72 (test coverage: sanitization is now exercised via a mocked circular-reference/oversized-stderr catch path, not just regex-matched CLI text) and deagy/cadre#73 (the unbounded-passthrough finding).
+- **`cline-agents/skills/run-agent-orchestration.md`'s "## Cline" section had drifted from its canonical source**, `skills/run-agent-orchestration/references/runner-adapters.md`. A 2026-08-06 live-verification correction (MCP registration now supports a real end-to-end dispatch, not just discovery — superseding an earlier 2026-08-05 finding) had been hand-added directly to the generated `cline-agents/` copy and never ported back to the canonical source, so the next `tools/port_cline_agents.py` regeneration (run automatically by `regenerate.yml`) would have silently regressed it back to stale text. Ported the correction into the canonical source and regenerated; this also fixed a leaked `suite/roster/orchestration/mcp/...` path in the previously hand-edited copy, now correctly abstracted by the generator's path-substitution table.
+- **`cline-lifecycle/README.md` miscounted its own forge-specific skills and tools.** Its intro claimed "all 8" GitHub-side skills (actually 9 — `publish-reviewer-nudge-github` has no GitLab equivalent, as the tool table already said) and its "GitLab (8 tools)"/"GitHub (8 tools)" bullet headers each actually list 7 tools (the other 2 are the forge-shared `sdlc_list_gate_status`/`sdlc_publish_gate_status`, already counted separately). Both counts corrected; 7 + 7 + 2 = 16 forge-specific tools, matching the stated total.
+- **`cline-lifecycle/README.md`'s kernel-version-history paragraph moved here, trimmed to a one-line pointer in the README.** `create-gate-issues`, `list-gate-issues`, `create-github-gate-issues`, `list-github-gate-issues`, `publish-gate-status`, `list-gate-status`, `request-gate-reviewers-gitlab`, `request-gate-reviewers`, `publish-reviewer-nudge`, and `list-reviewer-nudge` (10 of the 16 — every GitLab/GitHub tool except the 6 approve/link ones) were documented by the packaged skills but **missing** ("invalid choice") from the `agentic-sdlc` version installed when these 10 tools were first added here, despite being within this repository's then-declared `kernel_compatibility` range. Traced upstream: `agentic-sdlc`'s own `VERSION` constant hadn't been bumped across 9 tagged releases that actually shipped these subcommands — fixed in `deagy/agentic-sdlc` v0.13.0 (see that repo's `agentic_sdlc/__init__.py`). This repository's `provider.json` now pins `kernel_compatibility.minimum` to that fixed release (`[0.13.0, 1.0.0)`), and all 10 tools have been live-verified against it. This was never Cline-specific — Claude Code and Codex hit the identical error running the same commands their own skills document, against the same stale kernel.
+
+## [0.9.7](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.9.7) - 2026-08-06
+
+### Fixed
+
+- **`list_agent_presets` and `list_skills` (`cline-agents`) threw `Error: JSON.stringify cannot serialize cyclic structures`** — the same error class 0.9.6 fixed for `dispatch_selected_roles`, which only wrapped that one tool rather than every tool whose return value flows through the same Cline SDK serialization path.
+  - Audited every `execute()` in `cline-agents/index.ts` and `cline/index.ts`.
+  - Applied the existing `sanitizeToolResult()` helper to every tool return path that lacked it: `start_subagent`, `list_agent_presets`, `message_subagent`, `get_subagent`, `save_handoff`, `read_handoff`, `list_skills`, `get_skill`, `create_review_subtask`, `write_wiki_page`, `write_evidence_comment` in `cline-agents`, plus one previously-unwrapped early-return path in `cline`'s `agents_select`.
+  - No tool's behavior, error semantics, or return shape changed beyond sanitization.
+  - Added regression tests for `list_agent_presets`/`list_skills`, following the same genuine-self-referential-object-plus-control-assertion pattern as 0.9.6's `dispatch_selected_roles` test.
+
+## [0.9.6](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.9.6) - 2026-08-06
+
+### Fixed
+
+- **`dispatch_selected_roles` (`cline-agents`) now sanitizes its tool result against non-JSON-serializable values** before returning it, via a new `sanitizeToolResult()` helper (mirroring the existing pattern in `cline/index.ts`) built on `@cline/shared`'s `safeJsonStringify` (#31).
+  - Independent review found two problems with the original PR, both corrected before merge: the regression test didn't actually reproduce a cyclic-reference failure, and an unrelated `package-lock.json` version-pin drift on `typescript` had crept in.
+  - The lockfile now pins `typescript` exactly.
+  - The test suite includes a direct unit test against a genuinely self-referential object, with a control assertion proving it would have failed pre-fix.
+
+## [0.9.5](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.9.5) - 2026-08-06
+
+### Added
+
+- **`cline-agents` gains three GitLab evidence tools: `create_review_subtask`, `write_wiki_page`, `write_evidence_comment`** (#29). `cline-agents` has no MCP client and could not attach `suite/roster/orchestration/mcp/gitlab_server.py` (a stdio MCP server) directly, so these were previously unreachable from a Cline session. Rather than reimplementing GitLab HTTP/validation/audit logic in TypeScript, all three tools shell out to `cadre gitlab-evidence <op>` ([deagy/cadre#103](https://github.com/deagy/cadre/pull/103)'s new non-MCP CLI adapter), reaching the exact same safety-audited `gitlab_core.py` core Claude Code/Codex use via MCP. Every tool requires `GITLAB_SVC_TOKEN`/`GITLAB_BASE_URL`/`GITLAB_DOCS_PROJECT_ID` and returns `status="unavailable"` if unset. `write_wiki_page` is the `human_approval`-tier tool: its first call never writes, only returns a confirmation token a human must approve before a second, identical call actually writes.
+
+### Fixed
+
+- **`suite/roster/orchestration/mcp/` was missing `gitlab_core.py`/`gitlab_server.py`/`GITLAB-EVIDENCE.md` entirely**, despite `cadre-ref.txt` claiming sync with a `deagy/cadre` revision that already had them — a pre-existing regeneration-drift gap, found and fixed while adding the tools above. Regenerated `suite/` from `deagy/cadre@589e7d8`.
+
+## [0.9.4](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.9.4) - 2026-08-06
+
+### Fixed
+
+- **`cline plugin install https://github.com/deagy/cadre-lifecycle --force` still failed with `Cannot find module 'vitest'` after v0.9.3** (#27). v0.9.3's fix was based on the wrong theory (that Cline reads a package's `tsconfig.json` `include` set to decide which files to load). Verified empirically instead, using fast local-path installs: Cline's installer actually recursively `require()`s every `.ts` file anywhere under each workspace directory, ignoring `tsconfig.json`, `cline.plugins[].paths`, and node_modules entirely — but it only matches `.ts`, not `.mts`. Renamed `cline-agents/test/presets.test.ts` to `presets.test.mts`, matching the convention `cline/` and `cline-lifecycle/`'s test files already use (which is why they were never affected). A real `cline plugin install --force` against the fix now completes with no sync warnings at all.
+
+## [0.9.3](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.9.3) - 2026-08-06
+
+### Fixed
+
+- **`cline plugin install https://github.com/deagy/cadre-lifecycle --force` no longer fails with `Cannot find module 'vitest'`** (#25). Cline's plugin installer runs `npm install` without `devDependencies`, then syncs MCP servers using each sub-package's `tsconfig.json` `include` set. `cline-agents/tsconfig.json` was the only one of the three plugin packages whose `include` also pulled in `test/**`, so Cline's sync step tried to load `test/presets.test.ts`, which imports the never-installed `vitest`. Narrowed `cline-agents/tsconfig.json` back to `["*.ts"]`, matching `cline/` and `cline-lifecycle/`, and moved the test-inclusive program into a new `tsconfig.test.json` used only by the `typecheck` script, so CI still typechecks the test suite.
+
+## [0.9.2](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.9.2) - 2026-08-06
+
+### Fixed
+
+- **`cline plugin install https://github.com/deagy/cadre-lifecycle --force` no longer fails with `Cannot find module 'zod'`/`'vitest'`** (#23). Cline's plugin installer only runs `npm install` at the repository root; without an npm `workspaces` declaration, the root `package.json` had zero dependencies, so npm never visited the `cline`/`cline-agents`/`cline-lifecycle` subdirectories where the actual runtime deps live and no `node_modules/` was ever created. Added `workspaces` to root `package.json` and a `cline.plugins[].paths` block to `cline/package.json` (previously missing, making the `agents_select` plugin invisible to Cline's installer).
+- **Restored `npm ci` in this repository's own CI** (`.github/workflows/validate.yml`), broken by the same change: moving to npm workspaces requires a single root `package-lock.json` in place of the three per-plugin lockfiles it replaces, and CI still needed to install from that root lockfile instead of the deleted per-directory ones.
+
+## [0.9.1](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.9.1) - 2026-08-06
+
+### Fixed
+
+- **Synced register content that had been sitting unapplied since `deagy/cadre` v0.13.0/v0.14.0**, via this repository's new release-triggered regeneration bot (see 0.9.0's entry) — the first real run of that automation. Consumer-visible content that reaches installed plugins with this release:
+  - New `gitlab_issue_or_comment_write`/`gitlab_wiki_write`/`gitlab_approval_issue_state_change` autonomy policy entries added to all 71 role wrappers (from `cadre`'s GitLab evidence MCP server, which existing installs previously had no autonomy policy for at all).
+  - A new `gitlab-evidence` route in the packaged routing table, and a new `suite/roster/orchestration/mcp/SECURITY-CONTROLS.md` plus a defense-in-depth audit-key backstop in `dispatch_core.py` (`content`/`body`/`description` now always redacted from audit records, not just documented as forbidden).
+  - The `roster/README.md`/`RUNBOOK.md`/`shared/README.md`/`workflows/*.md` documentation restructure (tables, deduplication, verified Mermaid diagrams) from `cadre` v0.14.0.
+- **Regeneration also surfaced a real gap in this repository's own automation**: `regenerate.yml`'s first live run correctly generated, diffed, and pushed the regeneration branch, but failed to open the PR — this repository's "Allow GitHub Actions to create and approve pull requests" setting was off, so the default `GITHUB_TOKEN` `peter-evans/create-pull-request` uses was rejected by the GitHub API. Fixed by enabling that repository setting (affects every workflow's default token here, not only `regenerate.yml`).
+
+## [0.9.0](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.9.0) - 2026-08-06
+
+### Added
+
+- **A new plugin, `cline-lifecycle`, exposes G1–G10 Agentic SDLC lifecycle
+  governance on Cline as 4 deterministic tool calls** (`sdlc_init`,
+  `sdlc_validate`, `sdlc_status`, `sdlc_decide`), each a thin wrapper around
+  the exact `bin/cadre sdlc <subcommand>` invocation the
+  `cadre-lifecycle-core`/`-github`/`-gitlab` plugins' skills already
+  document for Claude Code/Codex. G1–G10 governance was previously
+  unreachable from Cline at all, since skills are a Claude Code/Codex
+  mechanism with no Cline equivalent. `sdlc_decide` adds no approval logic
+  of its own — the `agentic-sdlc` kernel already structurally refuses a
+  decision from the same identity as a gate's preparer/verifier; this tool
+  only relays that outcome, success or refusal.
+- **`cline-agents` gained `dispatch_selected_roles`**, closing the
+  plan-to-dispatch gap `agents_select`'s own tool description pointed at:
+  it calls `bin/cadre select` (the same authoritative selector) and, if the
+  plan is staffed, immediately dispatches every selected primary/reviewer
+  role in one call, instead of requiring a human/model to read the JSON
+  plan and match role IDs to `start_subagent` calls by hand. Support roles
+  stay advisory and are never auto-dispatched.
+- **`cline-agents` now bundles this repository's own skills**
+  (`list_skills`/`get_skill`), a static port of `skills/*/SKILL.md` with
+  any `references/*.md` content inlined. Previously these tools only read
+  global/project tiers and returned "none" for every skill in this
+  repository, including `run-agent-orchestration` itself.
+- **`dispatch_selected_roles` can retrieve knowledge-store context before
+  dispatch** (`retrieveKnowledge: true`, opt-in — `classification` is
+  caller-asserted, not authenticated, so this does not default on),
+  injecting it into each role's instructions as fenced, labeled untrusted
+  reference material with a trailing authority re-assertion, plus an
+  explicit count of any passage the store's own ingestion-time heuristics
+  flagged as containing instruction-like text. A retrieval failure or
+  timeout for one role never blocks dispatch or broadens access for any
+  role.
+- **`team-recipes.md` documents a Cline-specific approximation for all 3
+  named team recipes**, using `dispatch_selected_roles`/`start_subagent`
+  (persona-addressable, unlike Cline's native `/team`) plus
+  `save_handoff`/`read_handoff` for cross-teammate visibility — explicitly
+  described as orchestrator-relayed in substance, not a claim that
+  `communication_mode: "peer"` runs unmodified on Cline.
+- **Register regeneration is now release-triggered, not purely manual.**
+  When `deagy/cadre` cuts a new tag, it notifies this repository via
+  `repository_dispatch`, which regenerates the packaged plugin content and
+  opens a PR for review — the existing manual procedure in README.md's
+  "Regenerating Assets" remains available as a local-preview/fallback path.
+  The regeneration workflow itself is split into an unprivileged job (which
+  executes `cadre`'s own generator code, read-only token) and a privileged
+  job (which only applies the resulting diff and opens the PR, never
+  executing `cadre`'s code) so a compromised `cadre` revision can't use this
+  automation to push or open anything here on its own.
+
+All of the above were investigated first (see the "Cline feature parity"
+gap analysis referenced in this repository's own history) and then
+implemented across 5 independently reviewed changes; the knowledge-store
+retrieval work in particular went through two review rounds after the first
+found two High-severity findings (untrusted content injected into a
+subagent's system prompt with only a label as control, and retrieval
+defaulting on for a caller-asserted classification) — both fixed and
+re-verified, including by mutation-testing the fix itself.
+
+## [0.8.0](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.8.0) - 2026-08-05
+
+### Added
+
+- **A new plugin, `cline-agents`, ports all 71 Cadre catalog roles into
+  dispatchable Cline SDK subagent presets.** Distinct from the existing
+  `cline` plugin (which only exposes `agents_select`, a routing-plan tool
+  with no ability to spawn agents itself) — `cline-agents` lets a host Cline
+  session actually dispatch a role as a subagent that does real work, built
+  on the `agents-squad` reference pattern (`start_subagent`/
+  `message_subagent`/`get_subagent`/`list_agent_presets`/`list_skills`/
+  `get_skill`/`save_handoff`/`read_handoff`). Adds three hardenings beyond
+  the reference example: real per-tool enforcement via `toolPolicies`
+  (deny-by-default) plus `mode:"plan"` for the 28 read-only roles, so a
+  ported `security-reviewer` (`Read`/`Grep`/`Glob` only in the source
+  catalog) can't silently gain `Bash`/`Edit`/`Write`; reserved bundled role
+  names, so a project- or global-tier preset can't impersonate a bundled
+  role by frontmatter name and manufacture false approval/review authority;
+  and preset-only dispatch (no free-form-instructions fallback) with
+  workspace-containment-checked `cwd`. Reviewed independently by
+  security-reviewer, test-engineer, code-reviewer,
+  supply-chain-security-reviewer, and technical-writer — no High/Critical
+  findings. A static, one-time hand-authored port of this repository's own
+  `agents/*.md`, not wired to auto-regenerate from the Cadre register or
+  from `agents/*.md`; drift risk is named in its own README.
+
+### Fixed
+
+- **`cline-agents/` was undiscoverable from this repository's own top-level docs.** It ships a full Cline plugin (own `package.json`, `npm test`/`npm run typecheck`, 71 dispatchable Cadre role presets) but was mentioned nowhere in README.md's Repository Layout tree or "Running Tests" list, nor in AGENTS.md's component description or command list. Added a `cline-agents/` row to README's layout tree and test commands, and an equivalent component description and test commands to AGENTS.md (the file CLAUDE.md points to as authoritative for commands, so not duplicated there).
+- **`agents_select` could accept or reject the same out-of-taxonomy
+  `classification` value depending on which internal path served the
+  request.** The (now-removed, see below) native LangGraph bridge's
+  `DispatchRequest.validate()` rejected an out-of-taxonomy `classification`
+  unconditionally at parse time, before routing happened — while
+  `build_dispatch_plan.py`, the CLI path's and the actual dispatch source of
+  truth, only rejects it once a task has actually routed to an agent,
+  short-circuiting to "not-applicable" on a needs-triage result without
+  validating classification at all. Same input, opposite outcome depending
+  on which path ran it. Fixed by removing the bridge's own check and
+  deferring entirely to `build_dispatch_plan.py` as the single source of
+  truth. Moot for any consumer as of this release: the entry below removes
+  the native path this divergence lived in, so it can no longer recur by
+  construction rather than merely by fix.
+- **Install instructions embedded in this repository's own shipped
+  `suite/roster/RUNBOOK.md`, and reference URLs across every generated
+  `agents/*.md`/`codex-agents/*.toml` role file, still pointed at the
+  archived `deagy/cadre-plugin` repository instead of this one.** Corrected
+  the `cline plugin install`, `/plugin marketplace add`, and `codex plugin
+  marketplace add` examples and version pins in `RUNBOOK.md` (they were
+  literal copy-paste install commands, not just prose), plus repo-name
+  references throughout the generated `agents/*.md`/`codex-agents/*.toml`
+  files and `suite/`. In the same pass, the corrected text also disclosed a
+  real gap: this repository's `release.yml` does not currently attach a
+  release tarball, SBOM, or attestation the way the archived
+  `deagy/cadre-plugin` repository's release process did — a known
+  regression, not yet closed.
+
+### Removed
+
+- **`agents_select`'s native LangGraph bridge execution path, and the vendored
+  `agentic_sdlc_langgraph/` engine it depended on, have been removed.**
+  `cline/index.ts` now has a single execution path: it always shells out to
+  this repository's own `bin/cadre select` CLI, the same code path every
+  other consumer (Codex, `cline-agents/`, `bin/cadre` itself) already uses.
+  This drops `cline/index.ts` from 554 to 179 lines — the file-path
+  resolution, `child.stdin` handling, response-envelope translation,
+  validation-message reconciliation, and `SIGKILL` timer-escalation logic
+  that the native path required (see the [0.1.1] entry below for the bug
+  chain that path accumulated) are gone along with it, not carried forward.
+  `agentic_sdlc_langgraph/` (`bridge.py`, `runtime.py`, and their tests) is
+  deleted outright; the Agentic SDLC kernel remains available exclusively as
+  the external, separately-installed `agentic-sdlc` CLI dependency it always
+  was for every other consumer. `cline/index.test.mts` was rewritten to
+  match (10 tests, replacing the prior native-path-aware suite of 15), then
+  4 more were added on review to close coverage gaps: `requireSdlc`
+  forwarding to `--require-sdlc` (asserting the actual
+  hard-failure-vs-standalone-degrade behavioral difference, not just flag
+  presence, across two tests), `base` used alone without `files` (the
+  `<base>...HEAD` git-diff discovery path), and a routed task rejecting an
+  out-of-taxonomy `classification` value — 14 tests in total.
+- Corrected two remaining "merged Cadre + Agentic SDLC + Cline + LangGraph"
+  repository-identity references (`README.md`'s and `cadre-ref.txt`'s
+  "Regenerating Assets" prose) left stale by the above — this repository's
+  own composition is now Cadre + Agentic SDLC + Cline identity; LangGraph is
+  only ever present as the external Agentic SDLC kernel's own internal
+  engine, correctly described elsewhere (README.md's architecture section,
+  `suite/roster/RUNBOOK.md`, `skills/run-agent-orchestration/SKILL.md`) and
+  left untouched.
+
+## [0.7.0](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.7.0) - 2026-08-04
+
+### Changed
+
+- **`cadre-lifecycle-github` and `cadre-lifecycle-gitlab` no longer require a separate `cadre-lifecycle-core` install.** Each now bundles its own renamed copies of `lifecycle-onboarding`, the generic `lifecycle-review`, and `brief-pending-gates` (`-github`/`-gitlab` suffixed, to avoid a skill-name collision if installed alongside `cadre-lifecycle-core` anyway), plus its own copy of the kernel bootstrap script. `cadre-lifecycle-core` is unchanged and remains available standalone. `provider.json` itself is not duplicated — all three bootstrap-script copies still read the single shared repository-root file.
+- Added `tools/test_plugin_duplication_health.py`, run alongside the existing `tools/` suite, to fail loudly if the duplicated skills or bootstrap script ever drift out of sync across the three plugins — this is the mechanical safeguard for a duplication approach that has no build-time dependency resolution to fall back on (Claude Code/Codex plugin manifests carry no dependency-declaration field).
+- README's "Regenerating Assets" section now documents the extra manual re-sync step this duplication requires after every register regen of `cadre-lifecycle-core`'s skills.
+
+### Fixed
+
+- The initial `cadre-lifecycle-github` duplication left GitLab-only terminology untranslated in three skills — `lifecycle-onboarding-github`, `link-source-issue-github`, and `publish-gate-status-github` referenced a `gitlab-gate-tracking` skill and `gitlab-user-unresolved`/`gitlab-user-ambiguous` reason codes that don't exist in that plugin, instead of their real GitHub equivalents (`create-github-gate-issues`, `github-user-unresolved`). Corrected, along with a `github-user-ambiguous` reason code that was fabricated while fixing the above — GitHub's login lookup is exact-match, unlike GitLab's, so there is no ambiguous-match case to translate. `tools/test_plugin_duplication_health.py` now asserts these GitLab-only tokens can never appear untranslated in a github copy again.
+
+## [0.6.0](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.6.0) - 2026-08-04
+
+### Added
+
+- **`brief-pending-gates`** (`cadre-lifecycle-core`) — a local-only, forge-agnostic briefing of a task's pending lifecycle gates: which gate(s) are still awaiting a decision and which authority role/person is required for each. Composes existing `agentic-sdlc status` output with direct `run-record.json`/`authorities.json` reads, without modifying `gate_status_projection()` or adding kernel code. Aimed at teams recording approvals via plain `agentic-sdlc decide` rather than a GitHub/GitLab review flow, who otherwise have no equivalent to `report-gate-reviewers-*`/`publish-gate-status-*`'s pending-reviewer visibility. No new kernel version required.
+
+### Changed
+
+Tightened the "Before you start" wording across all 11 existing forge skills (`cadre-lifecycle-github`, `cadre-lifecycle-gitlab`) to explicitly permit reusing root/task-id/project-path context already established earlier in the conversation instead of re-asking every time, while preserving each skill's "never fabricate" invariant. Came out of the same follow-up review round as `brief-pending-gates`; both were found to need no new kernel code.
+
+## [0.5.0](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.5.0) - 2026-08-04
+
+### Added
+
+Three more skills, from a second recommendation round that reviewed what shipped in `v0.4.0`. Requires `agentic-sdlc` [v0.12.0](https://github.com/deagy/agentic-sdlc/releases/tag/v0.12.0) or later — same caveat pattern as prior releases: `provider.json`'s `kernel_compatibility` range does not by itself guarantee an installed kernel has these commands.
+
+- **`create-github-gate-issues`** (`cadre-lifecycle-github`) — GitHub mirror of `gitlab-gate-tracking`: publishes a tracking issue per gate plus assigned approval-subtask issues per authority. Deliberately scoped narrower than the GitLab original — no issue-linking enhancement (GitHub has no clean equivalent to GitLab's Issue Links API; only the description cross-reference floor exists), and a new repository-visibility pre-flight (`--allow-public-repo` required for public repos) since GitHub issues have no per-issue confidentiality flag.
+- **`publish-reviewer-nudge-github`** (`cadre-lifecycle-github`) — posts an advisory PR comment listing who should be asked to review, sourced from `report-gate-reviewers-github`'s existing candidate report. Explicitly not a review request: logins are rendered as `` `code spans` ``, never `@`-mentions, so posting the comment cannot itself notify anyone. This sidesteps the still-unbuilt write-capable reviewer-request path (`Pull requests: write` has no narrower scope and still needs an explicit human decision that was never made) by reusing `publish-gate-status-github`'s already-approved comment-write capability instead.
+- **`report-gate-reviewers-gitlab`** (`cadre-lifecycle-gitlab`) — GitLab reviewer-candidate reporting, read-only, targeting the MR `reviewer_ids` field rather than GitLab's heavier, quorum-based approval-rules model. GitLab's approval API exposes no per-approver commit SHA, so there is no equivalent of GitHub's `review-stale` classification — a documented, permanent gap, not a placeholder; the report surfaces the MR's head SHA for manual cross-checking instead.
+
+All three independently security- and code-reviewed (no critical/high findings) before landing.
+
+## [0.4.0](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.4.0) - 2026-08-04
+
+### Added
+
+Six new skills across the two forge plugins, following a recommendation review of what `cadre-lifecycle-github`/`cadre-lifecycle-gitlab` were missing relative to each other and to the underlying kernel's actual command surface. All drive new kernel commands in [`agentic-sdlc` v0.11.0](https://github.com/deagy/agentic-sdlc/releases/tag/v0.11.0) — `cadre-lifecycle-core` requires that version or later for these to work; `provider.json`'s `kernel_compatibility` range does not by itself guarantee it (same caveat pattern as `v0.3.1`/`v0.3.2`).
+
+- **`link-source-issue-github` / `link-source-issue-gitlab`** (`cadre-lifecycle-github`/`cadre-lifecycle-gitlab`) — record a GitHub or GitLab issue as the source for a G1 (Intent) or G2 (Requirements Baseline) gate, via the kernel's `link-intent-from-<forge>-issue`/`link-requirements-from-<forge>-issue`. GitLab already had this kernel-side; GitHub didn't. Neither forge had a conversational skill wrapper for it before now. Deliberately not approval evidence — never touches `human_approvals`/`gate.status`.
+- **`publish-gate-status-github` / `publish-gate-status-gitlab`** (`cadre-lifecycle-github`/`cadre-lifecycle-gitlab`) — publish a one-way, read-only gate-status summary comment on a task's PR/MR, updated in place on re-run, via the kernel's `publish-gate-status`. Carries a mandatory non-approval advisory; never derived from anything the kernel itself doesn't already track, and the underlying command was independently security- and code-reviewed before this skill was built on top of it.
+- **`report-gate-reviewers-github`** (`cadre-lifecycle-github`) — reports which GitHub logins would be requested as PR reviewers for a task's gates, and their current status, via the kernel's `request-gate-reviewers`. **Read-only in this version** — it never actually requests a review. GitHub has no token scope narrower than `Pull requests: write` for that (which also permits editing/closing PRs and changing labels), and shipping the write-capable version needs an explicit decision on that permission escalation, not an inferred one. This skill is explicit about that limitation rather than implying more capability than exists.
+
+### Changed
+
+- `cadre-lifecycle-core`'s `lifecycle-onboarding` skill now preflight-checks a GitHub/GitLab identity's *shape* (explicit field, or well-formed `gitlab.com/`/`github.com/` URI) as soon as a human provides it for an authority role, instead of only surfacing a binding problem later, the first time a forge-write skill actually runs. Explicitly documented as a shape check only, not live account-existence verification — no kernel command exposes that today, and the skill says so rather than overclaiming.
+
+## [0.3.2](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.3.2) - 2026-08-04
+
+### Fixed
+
+- **`gitlab-gate-tracking`'s kernel-availability caveat updated: `agentic-sdlc create-gate-issues` is now released.**
+  `v0.3.1`'s CHANGELOG entry and the Architecture table noted that the
+  kernel commit this skill depends on hadn't been cut into a tagged
+  `agentic-sdlc` release yet. It has, as
+  [v0.10.0](https://github.com/deagy/agentic-sdlc/releases/tag/v0.10.0) —
+  both references updated to point at that release instead of the raw
+  commit. Also fixed a broken link: the `v0.3.1` entry linked to
+  `deagy/agentic-sdlc`'s `CHANGELOG.md`, which doesn't exist in that
+  repository (it uses GitHub Releases only, no changelog file) — now
+  points at the actual release notes.
+
+## [0.3.1](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.3.1) - 2026-08-04
+
+### Added
+
+- **`cadre-lifecycle-gitlab` gains a second skill, `gitlab-gate-tracking`**,
+  the opposite direction from `lifecycle-review-gitlab`: instead of reading
+  an existing GitLab MR approval back into the kernel, it publishes a GitLab
+  tracking issue per applicable lifecycle gate, plus a linked "approval"
+  issue per gate per required authority role, assigned to that authority's
+  real GitLab account (resolved via the kernel's existing
+  `authority_gitlab_username()`). Drives the new kernel commands
+  `agentic-sdlc create-gate-issues`/`list-gate-issues` — see
+  [`deagy/agentic-sdlc` v0.10.0's release notes](https://github.com/deagy/agentic-sdlc/releases/tag/v0.10.0)
+  for the kernel-side implementation, which was independently
+  security-reviewed and code-reviewed before landing. The skill is
+  dry-run-first by design and refuses to `--apply` without the human
+  explicitly confirming the shown assignments — creating an issue and
+  assigning a real person is treated as a mutation requiring human
+  confirmation, the same as any other consequential action in this suite.
+
+  **Requires**: an `agentic-sdlc` kernel at
+  [v0.10.0](https://github.com/deagy/agentic-sdlc/releases/tag/v0.10.0) or
+  later. `provider.json`'s `kernel_compatibility` range (`>=0.3.0,<0.4.0`)
+  does not by itself guarantee an installed kernel has this command (the
+  kernel's own `VERSION` constant deliberately stayed at `0.3.0` for this
+  release, since it's additive with no G1-G10 contract/schema change); the
+  skill's own "Before you start" step checks for the command and tells the
+  human plainly if it's missing, rather than assuming.
+
+## [0.3.0](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.3.0) - 2026-08-04
+
+### Changed — breaking
+
+- **Lifecycle governance is no longer bundled into the core plugin — it's
+  now 3 separate, optional plugins, and the core plugin is renamed.** This
+  repository previously shipped one plugin, `cadre-lifecycle`, combining
+  Cadre role selection (71 specialist roles, `agents_select`) with Agentic
+  SDLC lifecycle governance (G1–G10 gates). It now ships 4 independently
+  installable plugins from the same repository:
+  - **`cadre`** (renamed from `cadre-lifecycle`) — role selection only:
+    the catalog, routing, `agents_select` Cline tool, and orchestration
+    skills. No lifecycle governance.
+  - **`cadre-lifecycle-core`** (`plugins/lifecycle/`) — forge-agnostic
+    lifecycle governance: the `lifecycle-onboarding` and `lifecycle-review`
+    skills, plus `plugins/lifecycle/tools/bootstrap_sdlc.py` (moved from
+    `tools/bootstrap_sdlc.py`).
+  - **`cadre-lifecycle-github`** (`plugins/lifecycle-github/`) — a
+    `lifecycle-review-github` skill that records gate decisions from a real
+    GitHub PR review (`approve-from-github`/`approve-from-github-pr`).
+  - **`cadre-lifecycle-gitlab`** (`plugins/lifecycle-gitlab/`) — the GitLab
+    equivalent (`approve-from-gitlab`/`approve-from-gitlab-mr`).
+
+  The marketplace itself is unchanged (`cadre-lifecycle-team`, still at
+  this repository) — only the plugin entries within it changed. All 4
+  plugins share one version number and release together.
+
+  **Migration**: existing `cadre-lifecycle@cadre-lifecycle-team` installs
+  do not automatically become `cadre@cadre-lifecycle-team` — the rename is
+  a new install key. Uninstall the old plugin and run:
+  ```text
+  /plugin install cadre@cadre-lifecycle-team
+  ```
+  and, only if you use lifecycle governance, also install
+  `cadre-lifecycle-core@cadre-lifecycle-team` (plus `-github`/`-gitlab` as
+  needed). See README.md's "Installing" section for the full per-plugin
+  instructions.
+
+### Fixed
+
+- `lifecycle-review`'s GitHub/GitLab `approve-from-*` preference logic
+  moved out to the new forge-specific plugins — the forge-agnostic skill
+  now only ever calls `decide`, and points at the matching
+  `cadre-lifecycle-github`/`cadre-lifecycle-gitlab` plugin instead of
+  trying to cover every forge itself.
+
+## [0.2.5](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.2.5) - 2026-08-04
+
+### Added
+
+- **`.github/workflows/release.yml`.** `tools/plugin_version.py`'s docstring
+  and README's "Releasing" section already described a version bump landing
+  on `main` as automatically tagging and publishing a GitHub Release — that
+  workflow didn't actually exist until now. It verifies both plugin
+  manifests agree on a valid semver, skips (idempotently) if `v<version>` is
+  already tagged, then tags the commit and creates a GitHub Release titled
+  `v<version>` with that version's `CHANGELOG.md` entry as its notes,
+  extracted by the new `tools/changelog_entry.py` (and its test suite,
+  `tools/test_changelog_entry.py`). Manual `git tag`/`gh release create` is
+  no longer the release step for a version bump reaching `main` — this
+  workflow's own release (`v0.2.5`) is the first to be cut by it rather than
+  by hand, proving it end-to-end.
+
+### Changed
+
+- README's Claude Code and Codex CLI install pins re-pointed from `v0.2.4`
+  to `v0.2.5`, this release itself (same reasoning as `v0.2.4`'s own fix:
+  pin to the version this change ships as, not the previous latest).
+
+## [0.2.4](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.2.4) - 2026-08-04
+
+### Fixed
+
+- **README's Claude Code and Codex CLI install instructions were pinned to
+  `v0.1.0`**, the repository's very first tag, left over from before the
+  release-tagging convention existed. Both `/plugin marketplace add
+  deagy/cadre-lifecycle@v0.1.0` and `git clone --branch v0.1.0 ...` now
+  pin to `v0.2.4`, this release itself.
+
+## [0.2.3](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.2.3) - 2026-08-04
+
+### Added
+
+- **GitHub Release links in README.md and CHANGELOG.md.** `v0.1.0` through
+  `v0.2.2` had git tags with no corresponding GitHub Release pages, so the
+  release history wasn't browsable from GitHub's UI. Backfilled a Release
+  for each existing tag (title, notes from this file's matching entry), and
+  linked them: README's "Releasing" section now links the full Releases
+  page plus each version, and each version heading in this file links to
+  its own Release.
+
+## [0.2.2](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.2.2) - 2026-08-04
+
+### Fixed
+
+- **`agents_select` failed on every call inside a real Cline host** (not
+  reproducible in this plugin's own tests). `createTool()` only converts a
+  Zod `inputSchema` to JSON Schema via `schema instanceof ZodType`, checked
+  against the *host's* bundled `zod`, not the plugin's. A Cline plugin loads
+  from a separate installation than its host, so even a version-matching
+  `zod` is a different module instance there — the check silently failed,
+  conversion was skipped, and the raw `ZodObject` (which carries circular
+  internal references) was registered as the tool's declared schema,
+  breaking its serialization. `cline/index.ts` now converts the schema to
+  JSON Schema with the plugin's own `zod` before registering it, removing
+  the dependency on that cross-realm `instanceof` check.
+
+## [0.2.1](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.2.1) - 2026-08-04
+
+### Fixed
+
+- **`cadre generate-plugin --output` was unsafe to run directly against this
+  repository.** `deagy/cadre` split its downstream plugin distribution into
+  a separate `deagy/cadre-plugin` repository before this repository's
+  previously-pinned `cadre-ref.txt` revision, and the register's `README.md`
+  template describes that repository — a different three-way
+  `cadre`/`cadre-plugin`/`agentic-sdlc` split with its own versioning — not
+  this repository's merged Cadre + Agentic SDLC + Cline + LangGraph
+  identity. `CLAUDE.md`, `AGENTS.md`, and `README.md` previously instructed
+  running that command directly, which would have silently overwritten
+  `README.md` with the wrong content. Corrected all three to document the
+  actual safe procedure (regenerate into a scratch directory, diff, apply
+  everything except `README.md`, which is now explicitly hand-authored
+  here) and fixed `cadre-ref.txt`'s claim of CI enforcement that doesn't
+  exist in this repository.
+
+### Changed
+
+- **`cadre-ref.txt` bumped to `8511c75`** to pick up
+  `run-agent-orchestration`'s broadened proactive trigger (see
+  [`deagy/cadre`'s changelog](https://github.com/deagy/cadre/blob/main/CHANGELOG.md)
+  for the trigger-description change itself). Applied by hand to
+  `skills/run-agent-orchestration/SKILL.md` rather than through the (at the
+  time still unsafe) regeneration command, then verified byte-for-byte
+  against this revision's actual generated output before the ref bump.
+
+## [0.2.0](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.2.0) - 2026-08-03
+
+### Added
+
+- **`tools/bootstrap_sdlc.py`** — an opt-in, one-command way to install and
+  configure the external Agentic SDLC kernel, instead of requiring a
+  separate manual `pipx install` plus `agentic-sdlc init` invocation. It
+  `pipx install`s the exact version `provider.json`'s
+  `kernel_compatibility.minimum` currently declares (never a floating
+  "latest", to avoid reintroducing kernel/provider version drift), refuses
+  to touch an existing `agentic-sdlc` install that falls outside that
+  range rather than silently replacing it, and then runs `agentic-sdlc
+  init --provider provider.json` against the target project. Deliberately
+  a standalone script under `tools/`, not a `bin/cadre` subcommand:
+  `bin/cadre` and everything under `suite/` is fully regenerated by
+  `deagy/cadre`'s `cadre generate-plugin` on every sync, so a hand-added
+  case there would be silently lost on the next regeneration.
+
+## [0.1.2](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.1.2) - 2026-08-03
+
+### Fixed
+
+- **`cline plugin install` warned `Cannot find module 'vitest'` on every
+  install.** Cline's plugin installer scans every non-hidden `.js`/`.ts`
+  file under the installed package as a candidate plugin module,
+  including `cline/index.test.ts`. That file imports `vitest`, a
+  `devDependency` the installer's production-only `npm install` never
+  provisions. Renamed to `cline/index.test.mts` — outside the
+  installer's `.js`/`.ts` scan, still discovered and run by `vitest`'s
+  default include glob.
+- **`codex plugin marketplace add` failed with `marketplace 'cadre-team'
+  is already added from a different source`.** `.agents/plugins/
+  marketplace.json` still declared the pre-merge marketplace/plugin
+  names (`cadre-team`/`cadre`) left over from before this repository
+  combined the standalone `cadre` and `agentic-sdlc` repos, colliding
+  with an older, separately-installed `cadre-team` marketplace pointing
+  at the original pre-merge `cadre` repo. Renamed to
+  `cadre-lifecycle-team`/`cadre-lifecycle` to match
+  `.claude-plugin/marketplace.json`, which already used the correct
+  post-merge names.
+
+## [0.1.1](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.1.1) - 2026-08-03
+
+### Fixed
+
+- **The `agents_select` tool's native LangGraph bridge path was silently
+  unreachable.** `cline/index.ts` resolved the bridge's file path two
+  directories too high (a leftover from before this repository's rename/
+  merge), so every call silently fell back to the slower CLI path.
+  Fixing that path exposed and required fixing a chain of further,
+  previously-dormant bugs before the native path actually worked: Node's
+  async `execFile` silently ignoring its `input` option, a
+  response-envelope shape mismatch, a validation-message wording
+  mismatch, the native adapter hardcoding this repository's own root
+  instead of accepting an arbitrary target workspace, and the native
+  adapter's changed-file discovery not mirroring the CLI's git-status
+  fallback for the default no-args invocation shape. Also fixed: a
+  missing `child.stdin` error handler that could crash the host process
+  on a broken pipe, and a timer-escalation bug that could orphan a
+  scheduled `SIGKILL`.
+- **Documentation described a vendored `agentic_sdlc/` kernel and a
+  fabricated release history that don't match this checkout.**
+  CLAUDE.md/README.md/AGENTS.md corrected to describe the Agentic SDLC
+  kernel as an external, separately-installed CLI dependency, not
+  vendored; this file's own `[0.1.0]` entry (below) replaced a copied-
+  from-a-different-repository entry describing a split/SBOM/provenance
+  story that never happened here; `PHASE2_COMPLETION_SUMMARY.md`'s
+  status corrected to match its own reported test state.
+
+### Changed
+
+- `cline/package.json`'s version realigned to `0.1.0` to match every
+  other manifest in this repository (it had drifted to `0.1.2`
+  independently, with no corresponding release).
+- Removed root `package.json`'s npm workspace declaration
+  (`workspaces: ["cline"]` and its two forwarding scripts). It backed no
+  documented or actually-used workflow (every install/test instruction
+  in this repository runs `npm ...` from inside `cline/` directly, never
+  `npm ... --workspaces` from the root) and was an active footgun: npm
+  invoked inside `cline/` auto-detected the ancestor workspace root and
+  silently reached for a lockfile/`node_modules` there instead of
+  `cline/`'s own, on both `npm install` and `npm ci`.
+
+## [0.1.0](https://github.com/deagy/cadre-lifecycle/releases/tag/v0.1.0) - 2026-08-03
+
+First release from this repository.
+
+### Changed
+
+- **Renamed and merged from `cadre-agentic-sdlc` into `cadre-lifecycle`**,
+  combining the Cadre register's generated role-selection assets
+  (catalog, routing, orchestration runtime under `suite/roster/`) with the
+  Cline plugin (`cline/`), the vendored LangGraph orchestration engine
+  (`agentic_sdlc_langgraph/`), and an external dependency on the
+  `agentic-sdlc` CLI ([`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc))
+  for G1–G10 lifecycle gate execution. See `RENAME_SUMMARY.md` for the file
+  and package-name inventory of the rename.

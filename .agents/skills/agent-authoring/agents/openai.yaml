@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Authoring"
+  short_description: "Wire repo agents consistently."
+  default_prompt: "Use $agent-authoring to add or revise a repository agent cleanly."

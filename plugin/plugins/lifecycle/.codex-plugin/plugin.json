@@ -1,0 +1,25 @@
+{
+  "name": "cadre-lifecycle-core",
+  "version": "0.10.1",
+  "description": "Forge-agnostic Agentic SDLC lifecycle governance (G1-G10 gates) for the Cadre role suite: conversational onboarding and generic gate-decision skills, plus a kernel bootstrap script. Optional companion to the cadre plugin. For GitHub- or GitLab-flavored gate approvals, also install cadre-lifecycle-github / cadre-lifecycle-gitlab.",
+  "author": {
+    "name": "Cadre maintainers",
+    "url": "https://github.com/deagy/cadre-lifecycle"
+  },
+  "homepage": "https://github.com/deagy/cadre-lifecycle",
+  "repository": "https://github.com/deagy/cadre-lifecycle",
+  "keywords": ["cadre", "lifecycle-governance", "agentic-sdlc"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Cadre Lifecycle (Core)",
+    "shortDescription": "Forge-agnostic Agentic SDLC lifecycle governance for the Cadre suite.",
+    "longDescription": "Conversationally onboard a project onto G1-G10 lifecycle gates and record gate decisions, without touching a CLI, YAML, or JSON directly. Optional companion to the cadre plugin.",
+    "developerName": "Cadre maintainers",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": [
+      "Use lifecycle-onboarding to set up Agentic SDLC lifecycle tracking for this project.",
+      "Use lifecycle-review to record a gate decision."
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Local Compose Debug"
+  short_description: "Debug local Compose failures."
+  default_prompt: "Use $local-compose-debug to diagnose a failing local compose stack."

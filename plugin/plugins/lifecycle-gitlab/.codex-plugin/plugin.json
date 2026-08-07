@@ -1,0 +1,31 @@
+{
+  "name": "cadre-lifecycle-gitlab",
+  "version": "0.10.1",
+  "description": "GitLab-flavored Agentic SDLC gate governance: lifecycle-review-gitlab records gate decisions from a real GitLab MR approval; gitlab-gate-tracking publishes GitLab tracking issues for a task's gates and assigns linked approval-subtask issues to each gate's authority; link-source-issue-gitlab records a real GitLab issue as the recorded source for a task's G1 (Intent) or G2 (Requirements Baseline) gate; publish-gate-status-gitlab posts (and idempotently updates) a one-way, read-only gate-status summary note on a task's GitLab MR; report-gate-reviewers-gitlab reports (read-only, never sets) which GitLab usernames would be set as MR reviewers for a task's lifecycle gates. Bundles its own onboarding, generic gate-decision, pending-gates briefing, and kernel bootstrap skills (lifecycle-onboarding-gitlab, lifecycle-review-generic-gitlab, brief-pending-gates-gitlab), so cadre-lifecycle-core is optional -- only needed for forge-agnostic-only use elsewhere. Requires a recent-enough agentic-sdlc kernel.",
+  "author": {
+    "name": "Cadre maintainers",
+    "url": "https://github.com/deagy/cadre-lifecycle"
+  },
+  "homepage": "https://github.com/deagy/cadre-lifecycle",
+  "repository": "https://github.com/deagy/cadre-lifecycle",
+  "keywords": ["cadre", "lifecycle-governance", "agentic-sdlc", "gitlab"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Cadre Lifecycle (GitLab)",
+    "shortDescription": "Record Agentic SDLC gate decisions and publish gate/approval tracking issues in GitLab.",
+    "longDescription": "Conversationally record a lifecycle gate decision sourced from an actual GitLab merge request approval, publish GitLab tracking issues for a task's gates with linked approval subtasks assigned to each gate's authority, record a real GitLab issue as the recorded source for a task's G1 (Intent) or G2 (Requirements Baseline) gate, post (and idempotently update) a one-way, read-only gate-status summary note on a task's GitLab MR, or report (read-only, never sets) which GitLab usernames would be set as MR reviewers for a task's lifecycle gates. Bundles its own onboarding, generic gate-decision, and pending-gates briefing skills plus kernel bootstrap -- cadre-lifecycle-core is optional.",
+    "developerName": "Cadre maintainers",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": [
+      "Use lifecycle-onboarding-gitlab to set up Agentic SDLC lifecycle tracking for this project.",
+      "Use lifecycle-review-gitlab to record a gate decision from a GitLab MR approval.",
+      "Use lifecycle-review-generic-gitlab to record a gate decision when there's no GitLab approval to cite.",
+      "Use brief-pending-gates-gitlab for a local-only briefing of pending gates and who needs to sign off.",
+      "Use gitlab-gate-tracking to publish GitLab issues for this task's gates and approvals.",
+      "Use link-source-issue-gitlab to record a GitLab issue as the source for a task's G1 or G2 gate.",
+      "Use publish-gate-status-gitlab to post or refresh a one-way, read-only gate-status summary note on this task's GitLab MR.",
+      "Use report-gate-reviewers-gitlab to see which GitLab usernames would be set as MR reviewers for a task's lifecycle gates (read-only, never sets)."
+    ]
+  }
+}

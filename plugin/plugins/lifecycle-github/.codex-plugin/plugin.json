@@ -1,0 +1,32 @@
+{
+  "name": "cadre-lifecycle-github",
+  "version": "0.10.1",
+  "description": "GitHub-flavored Agentic SDLC gate governance: lifecycle-review-github records lifecycle gate decisions from a real GitHub PR review; link-source-issue-github records a real GitHub issue as the recorded source for a task's G1 (Intent) or G2 (Requirements Baseline) gate; create-github-gate-issues publishes GitHub tracking issues per applicable lifecycle gate plus linked approval issues assigned to each gate's authority; report-gate-reviewers-github reports (read-only, never requests) which GitHub logins would be requested as PR reviewers for a task's lifecycle gates; publish-gate-status-github posts (and idempotently updates) a one-way, read-only gate-status summary comment on a task's GitHub PR; publish-reviewer-nudge-github posts (and idempotently updates) an advisory, SUGGESTION-ONLY comment naming reviewer candidates -- never a review request and never notifies anyone. Bundles its own onboarding, generic gate-decision, pending-gates briefing, and kernel bootstrap skills (lifecycle-onboarding-github, lifecycle-review-generic-github, brief-pending-gates-github), so cadre-lifecycle-core is optional -- only needed for forge-agnostic-only use elsewhere. If you don't have a GitHub review to cite, the bundled generic lifecycle-review-generic-github skill covers that case.",
+  "author": {
+    "name": "Cadre maintainers",
+    "url": "https://github.com/deagy/cadre-lifecycle"
+  },
+  "homepage": "https://github.com/deagy/cadre-lifecycle",
+  "repository": "https://github.com/deagy/cadre-lifecycle",
+  "keywords": ["cadre", "lifecycle-governance", "agentic-sdlc", "github"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Cadre Lifecycle (GitHub)",
+    "shortDescription": "Record Agentic SDLC gate decisions from a real GitHub PR review.",
+    "longDescription": "Conversationally record a lifecycle gate decision sourced from an actual GitHub pull request review, or record a real GitHub issue as the recorded source for a task's G1 (Intent) or G2 (Requirements Baseline) gate, or publish GitHub tracking issues per applicable lifecycle gate plus linked approval issues assigned to each gate's authority, or report (read-only, never requests) which GitHub logins would be requested as PR reviewers for a task's lifecycle gates, or post (and idempotently update) a one-way, read-only gate-status summary comment on a task's GitHub PR, or post (and idempotently update) an advisory, suggestion-only comment naming reviewer candidates -- never a review request and never notifies anyone. Bundles its own onboarding, generic gate-decision, and pending-gates briefing skills plus kernel bootstrap -- cadre-lifecycle-core is optional.",
+    "developerName": "Cadre maintainers",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": [
+      "Use lifecycle-onboarding-github to set up Agentic SDLC lifecycle tracking for this project.",
+      "Use lifecycle-review-github to record a gate decision from a GitHub PR review.",
+      "Use lifecycle-review-generic-github to record a gate decision when there's no GitHub review to cite.",
+      "Use brief-pending-gates-github for a local-only briefing of pending gates and who needs to sign off.",
+      "Use link-source-issue-github to record a GitHub issue as the source for a task's G1 or G2 gate.",
+      "Use create-github-gate-issues to publish GitHub tracking issues for a task's lifecycle gates and linked approval issues assigned to each gate's authority.",
+      "Use report-gate-reviewers-github to see which GitHub logins would be requested as PR reviewers for a task's lifecycle gates (read-only, never requests).",
+      "Use publish-gate-status-github to post or refresh a one-way, read-only gate-status summary comment on this task's GitHub PR.",
+      "Use publish-reviewer-nudge-github to post or refresh an advisory, suggestion-only reviewer nudge comment on this task's GitHub PR (never a review request, never notifies anyone)."
+    ]
+  }
+}

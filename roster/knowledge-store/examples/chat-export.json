@@ -1,0 +1,22 @@
+{
+  "conversations": [
+    {
+      "id": "architecture-review-001",
+      "title": "Production release controls",
+      "messages": [
+        {
+          "id": "m1",
+          "role": "user",
+          "timestamp": "2026-01-10T16:00:00Z",
+          "content": "What controls are required before a production release?"
+        },
+        {
+          "id": "m2",
+          "role": "assistant",
+          "timestamp": "2026-01-10T16:00:02Z",
+          "content": "Require an immutable artifact, independent reviews, an approved rollback plan, and explicit human authorization for the exact production target."
+        }
+      ]
+    }
+  ]
+}

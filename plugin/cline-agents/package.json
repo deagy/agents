@@ -1,0 +1,34 @@
+{
+  "name": "@deagy/cadre-lifecycle-cline-agents-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "cline": {
+    "plugins": [
+      {
+        "paths": [
+          "./index.ts"
+        ],
+        "capabilities": [
+          "tools",
+          "rules"
+        ]
+      }
+    ]
+  },
+  "dependencies": {
+    "@cline/sdk": "0.0.65",
+    "@cline/shared": "0.0.65",
+    "yaml": "2.9.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run"
+  }
+}
