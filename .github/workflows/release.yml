@@ -168,26 +168,55 @@ jobs:
           pip install --no-cache-dir build==1.5.0
           python -m build --wheel --sdist --outdir dist ./kernel
 
-      # Scoped to kernel/, so this records what the kernel *declares*:
-      # jsonschema[format]==4.26.0, and nothing beneath it.
+      # The SBOM describes the *resolved* dependency tree, so it has to be
+      # taken from an environment where the wheel is actually installed.
+      # Scanning kernel/ instead reads pyproject.toml and finds exactly one
+      # package (jsonschema), which is a declaration, not an inventory --
+      # what really lands is 19 distributions, most of them pulled in
+      # beneath jsonschema.
       #
-      # It is deliberately not the resolved closure. A real install pulls 19
-      # packages (jsonschema drags in arrow, referencing, rpds-py, and the
-      # rest), and capturing those would mean scanning an installed
-      # environment or shipping a lockfile the kernel does not have. Worth
-      # doing -- an SBOM listing one dependency is a weak inventory -- but it
-      # is a separate change, and claiming the closure here while emitting
-      # the declaration would be worse than emitting the declaration.
-      - name: Generate an SBOM for the kernel's dependencies
+      # This mirrors what bootstrap_sdlc.py does on a user's machine: create
+      # a venv, pip install the wheel. So the SBOM describes the environment
+      # a consumer ends up with, pip included, rather than a hypothetical.
+      - name: Install the built wheel into a throwaway venv
         if: steps.tag.outputs.skip == 'false'
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
-        with:
-          path: kernel
-          format: spdx-json
-          artifact-name: agentic-sdlc-sbom.spdx.json
-          output-file: dist/agentic-sdlc-sbom.spdx.json
-          upload-release-assets: false
-          upload-artifact: false
+        run: |
+          set -eu
+          python -m venv "$RUNNER_TEMP/sbom-venv"
+          "$RUNNER_TEMP/sbom-venv/bin/pip" install --no-cache-dir --disable-pip-version-check dist/*.whl
+          # Resolved rather than hardcoded: the path carries the minor version.
+          echo "SITE_PACKAGES=$(
+            "$RUNNER_TEMP/sbom-venv/bin/python" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])'
+          )" >> "$GITHUB_ENV"
+
+      # Run syft directly rather than through sbom-action: the action exposes
+      # no cataloger selection or source naming, and without them the output
+      # carries six "Simple Launcher" binaries and a package named after the
+      # scan path.
+      - name: Install syft
+        if: steps.tag.outputs.skip == 'false'
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+
+      - name: Generate an SBOM of the resolved dependency tree
+        if: steps.tag.outputs.skip == 'false'
+        run: |
+          set -eu
+          syft scan "dir:$SITE_PACKAGES" \
+            --select-catalogers python \
+            --source-name agentic-sdlc \
+            --source-version "${{ steps.version.outputs.value }}" \
+            -o spdx-json=dist/agentic-sdlc-sbom.spdx.json
+          python3 -c "
+          import json, pathlib
+          d = json.loads(pathlib.Path('dist/agentic-sdlc-sbom.spdx.json').read_text())
+          names = {p['name'] for p in d.get('packages', []) if p.get('name')}
+          # Guards the whole point of this step: if the scan silently reverts
+          # to reading declarations, this is 2 and the release should fail
+          # rather than publish a misleading inventory.
+          assert len(names) >= 15, f'SBOM has only {len(names)} packages: {sorted(names)}'
+          assert 'jsonschema' in names and 'rpds-py' in names, sorted(names)
+          print(f'SBOM lists {len(names)} distinct packages')
+          "
 
       # bootstrap_sdlc.py installs the kernel from a release asset rather than
       # a git ref so the download can be hash-checked. A moving tag cannot be
