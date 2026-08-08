@@ -230,8 +230,18 @@ jobs:
       # three entrypoints declared by root package.json and resolves their
       # plugin-owned runtime imports from this production-only dependency
       # closure; @cline/* is supplied by Cline's host sandbox.
-      - run: npm ci --ignore-scripts --omit=dev
+      #
+      # These two steps check all three entrypoints at once and depend on
+      # nothing in the matrix, so they run on one leg rather than repeating
+      # identically three times. They must also stay ahead of the
+      # cline-plugins/ `npm ci` below: once that creates a nearer
+      # node_modules, createRequire's upward walk would resolve against the
+      # dev workspace and the check would pass even with a broken root
+      # closure.
+      - if: matrix.package == 'cline'
+        run: npm ci --ignore-scripts --omit=dev
       - name: Verify Cline Git-source runtime imports resolve from each entrypoint
+        if: matrix.package == 'cline'
         run: |
           node --input-type=module -e '
             import { createRequire } from "node:module";
