@@ -2,7 +2,7 @@
   "version": 1,
   "ignored_gates": [],
   "change_intake": {
-    "keywords": ["implement", "create", "new feature", "new service", "add feature", "build", "change", "update", "modify", "refactor", "fix", "repair", "remove", "delete", "migrate", "introduce", "enhance", "extend", "replace", "upgrade", "rework"],
+    "keywords": ["implement", "create", "new feature", "new service", "add feature", "build", "change", "update", "modify", "refactor", "fix", "repair", "remove", "delete", "migrate", "introduce", "enhance", "extend", "replace", "upgrade", "rework", "refine", "refinement"],
     "agents": ["product-intent-agent", "requirements-agent"],
     "quality_gates": ["G1", "G2"]
   },
@@ -286,6 +286,13 @@
       "quality_gates": ["G6"]
     },
     {
+      "id": "code-review-request",
+      "paths": [],
+      "keywords": ["review this pull request", "review this pr", "review this merge request", "code review", "pr review", "review these changes", "review my changes", "peer review this code"],
+      "primary": ["code-reviewer"],
+      "support": ["security-reviewer"]
+    },
+    {
       "id": "debugging",
       "paths": ["debug/**", "diagnostics/**", "repro/**", "roster/catalog.yaml", "roster/**/AGENT.md", ".agents/skills/agent-authoring/**", "**/fixtures/bugs/**", "**/regression/**"],
       "keywords": ["debug", "debugging", "bug", "root cause", "reproduce", "reproduction", "failing test", "failing command", "stack trace", "crash", "panic", "race condition", "flaky test", "test failure", "runtime failure", "tooling failure", "tune agent", "agent tune-up", "inspect agents", "agent issue", "agent definition", "agent prompt", "role defect", "routing issue", "selector regression", "misroute", "dispatch bug"],
@@ -399,7 +406,7 @@
     {
       "id": "api-contract",
       "paths": ["contracts/**", "**/openapi.yaml", "**/openapi.yml", "**/*.proto", "**/schema.graphql"],
-      "keywords": ["api contract", "schema contract", "api versioning", "breaking change", "contract compatibility", "openapi", "graphql schema", "proto schema"],
+      "keywords": ["api contract", "schema contract", "api versioning", "breaking change", "contract compatibility", "openapi", "graphql schema", "proto schema", "api design", "schema design", "interface design", "endpoint design", "contract design"],
       "primary": ["api-contract-engineer"],
       "reviewers": ["code-reviewer"],
       "support": ["cloud-architect", "backend-engineer", "frontend-engineer"],
@@ -429,7 +436,7 @@
     {
       "id": "architecture-design",
       "paths": ["**/architecture/**"],
-      "keywords": ["design the architecture", "system design", "architecture proposal", "platform topology design", "failure domain design"],
+      "keywords": ["design the architecture", "system design", "architecture proposal", "platform topology design", "failure domain design", "new service design", "component design", "service boundary design", "new system design", "greenfield architecture", "service topology design"],
       "primary": ["cloud-architect"],
       "reviewers": ["threat-modeler"],
       "quality_gates": ["G3"]
@@ -471,7 +478,7 @@
     },
     {
       "id": "architecture-change",
-      "keywords": ["architecture", "trust boundary", "new service", "new component", "platform topology"],
+      "keywords": ["architecture", "trust boundary", "new service", "new component", "platform topology", "greenfield", "threat model", "threat modeling", "attack surface", "greenfield build", "brand new service", "from scratch", "abuse case", "adversarial scenario", "attack vector"],
       "paths": ["**/architecture/**", "**/adr/**"],
       "support": ["cloud-architect", "threat-modeler"],
       "quality_gates": ["G3"]

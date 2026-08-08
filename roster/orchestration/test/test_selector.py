@@ -1098,6 +1098,26 @@ class SelectorTests(unittest.TestCase):
         self.assertIn("threat-modeler", result["agents"]["reviewers"])
         self.assertNotIn("threat-modeler", result["agents"]["support"])
 
+    def test_greenfield_service_brief_pulls_in_design_and_threat_modeling_support(self) -> None:
+        result = plan(
+            task=(
+                "Design and build a new greenfield policy-exception-register service. "
+                "Requires new API/schema design coordinated with the shared governance "
+                "model, and threat modeling for exception forgery and replay."
+            ),
+            changed_files=[
+                "policy-exception-register/go.mod",
+                "policy-exception-register/internal/api/handlers.go",
+            ],
+        )
+        self.assertIn("api-contract-engineer", result["agents"]["primary"])
+        self.assertIn("cloud-architect", result["agents"]["support"])
+        self.assertIn("threat-modeler", result["agents"]["support"])
+        matched_risks = {risk["id"]: risk for risk in result["matched_risks"]}
+        self.assertIn("architecture-change", matched_risks)
+        self.assertIn("greenfield", matched_risks["architecture-change"]["reasons"]["keywords"])
+        self.assertIn("threat modeling", matched_risks["architecture-change"]["reasons"]["keywords"])
+
     def test_matched_risks_include_populated_reasons(self) -> None:
         result = plan(
             task="Run a production database migration that alters the users table",
@@ -1109,6 +1129,19 @@ class SelectorTests(unittest.TestCase):
         self.assertIsNotNone(reasons)
         self.assertTrue(reasons["keywords"] or reasons["paths"])
         self.assertNotIn("matched", reasons)
+
+    def test_feature_refinement_reaches_change_intake(self) -> None:
+        result = plan(task="Refine the existing exception approval feature based on user feedback")
+        self.assertEqual(result["dispatch_disposition"]["status"], "advisory-only")
+        self.assertIn("product-intent-agent", result["agents"]["support"])
+        self.assertIn("requirements-agent", result["agents"]["support"])
+
+    def test_code_review_request_selects_code_reviewer_as_primary_without_an_implementer(self) -> None:
+        result = plan(task="Review this pull request for correctness and security")
+        self.assertEqual(result["agents"]["primary"], ["code-reviewer"])
+        self.assertIn("security-reviewer", result["agents"]["support"])
+        self.assertNotIn("backend-engineer", result["agents"]["primary"])
+        self.assertNotIn("frontend-engineer", result["agents"]["primary"])
 
     def test_returns_needs_triage_instead_of_guessing(self) -> None:
         result = plan(task="Investigate an unexplained issue", changed_files=["unknown/file.xyz"])

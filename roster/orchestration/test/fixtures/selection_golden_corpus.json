@@ -1562,6 +1562,27 @@
           "delivery-sequencing"
         ]
       }
+    },
+    {
+      "id": "CODE-REVIEW-REQUEST-1",
+      "description": "code-review-request route; task text reused verbatim from test_selector.py::test_code_review_request_selects_code_reviewer_as_primary_without_an_implementer",
+      "task": "Review this pull request for correctness and security",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-CODE-REVIEW-REQUEST-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "code-reviewer"
+        ],
+        "reviewers": [],
+        "support": [
+          "security-reviewer"
+        ],
+        "matched_routes": [
+          "code-review-request"
+        ]
+      }
     }
   ]
 }
