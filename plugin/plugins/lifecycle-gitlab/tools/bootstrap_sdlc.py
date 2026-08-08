@@ -58,8 +58,14 @@ removing that directory fully undoes anything this script did.
 
 Before the monorepo merge this file existed three times over -- once per
 lifecycle plugin, byte-identical apart from four docstring lines, held in
-sync by a `test_plugin_duplication_health.py` that existed only to police
-the copies. The merge left one.
+sync by hand.
+
+This is now the single hand-maintained copy. Each lifecycle plugin still
+ships its own `tools/bootstrap_sdlc.py`, because a plugin must be installable
+without the others, but those three are *generated* from this file at build
+time (`generate_global_plugin.py`'s BOOTSTRAP_SOURCE -> BOOTSTRAP_TARGETS)
+and are checked against it by `cadre generate-plugin --check` and by
+`test_plugin_duplication_health.py`. Edit this file; never edit a copy.
 """
 
 from __future__ import annotations

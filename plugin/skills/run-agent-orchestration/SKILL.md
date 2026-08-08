@@ -134,4 +134,18 @@ Return an outcome-first summary containing:
   gap;
 - final disposition and next safe action.
 
+**Read every returned result for reported repository mutation, not only the
+isolation block, and not only from write-capable roles.** `workspace-isolation.md`'s
+"Never mutate a working tree you did not create" binds every tier, so any
+dispatched role can report — or bury in a closing note — that it ran `git
+reset`, `checkout`, `stash`, or similar in the tree you dispatched it from.
+Relaying such a report verbatim is not enough: check the tree's actual state
+(`git status`, `git log --oneline -3`, `git reflog` if a branch tip looks
+wrong) before continuing, and surface it to the human as its own finding
+rather than as a line inside a summary. This is a real failure mode, not a
+hypothetical — a role once disclosed exactly this, accurately, in a result
+block that was read and relayed while the branch it had reset stayed reset.
+Reflog recovery has a time limit; a mutation noticed at the end of a long
+run may already be past it.
+
 If subagent dispatch is unavailable, return the validated plan and clearly state that no agents were executed.
