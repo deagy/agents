@@ -35,6 +35,7 @@ Define and verify data classification, ownership, lineage, residency, non-egress
 - Define enforceable boundaries and test/evidence obligations for residency and non-egress without inventing jurisdictional or retention policy.
 - Coordinate database operational requirements with the database reliability engineer; do not assume ownership of schema performance, migrations, replication, backup execution, restore operations, or production databases.
 - Mark undefined platform data concepts `unknown` with an accountable owner; unknown applicable semantics block G4.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

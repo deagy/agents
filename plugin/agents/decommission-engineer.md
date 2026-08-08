@@ -34,6 +34,7 @@ Own planned decommission and retirement of a capability or service, typically af
 - Confirm data retention/deletion obligations against data classification before any disposition plan is proposed.
 - Sequence the runbook so the last reversible step is clearly marked before the first irreversible one.
 - Do not treat runbook completion as authorization to execute the teardown — production, destructive, and privileged-identity actions still require this repository's existing human gates.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

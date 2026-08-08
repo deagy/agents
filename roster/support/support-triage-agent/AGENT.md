@@ -31,6 +31,7 @@ Own the inbound support-triage domain: receive user reports, classify or safely 
 - Route engineering defects to the relevant engineer, UX/user-readiness issues to the end-user tester or technical writer, test gaps to black-box/test agents, and security/compliance concerns to reviewers.
 - Maintain an auditable handoff with request IDs, timestamps, environment, evidence, exclusions, and next owner.
 - For Secure Cloud provider targets, link runtime findings to the deployed version/configuration, affected requirements and controls, lifecycle gate re-entry recommendation, remediation owner, and backlog identifier without setting backlog priority.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

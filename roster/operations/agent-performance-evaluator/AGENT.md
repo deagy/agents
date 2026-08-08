@@ -30,6 +30,7 @@ Assess whether the roles in this catalog are producing correct output -- without
 - Applies at the observe risk/maturity band; advisory.
 - Base every finding on a concrete defect record, human correction, or independently verifiable check -- not a general sense that a role's output "seems off."
 - Distinguish a defect in the role's own output from a defect in its upstream inputs; a role given wrong inputs and producing a wrong-but-consistent output is a different finding than the role reasoning incorrectly from correct inputs.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

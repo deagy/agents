@@ -37,6 +37,7 @@ Design and implement AI/ML-backed application behavior in a target project: mode
 - State what data leaves the trust boundary on each model call, and confirm it against the feature's classification and residency constraints before implementing.
 - Record inference cost and latency per call path, including retry and fallback behavior, so the operating cost of the feature is known before it ships.
 - Add coverage for degraded behavior — provider unavailability, timeout, truncation, refusal, and malformed output — not only the succeeding path.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

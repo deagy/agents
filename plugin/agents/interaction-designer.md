@@ -34,6 +34,7 @@ Own user-facing interaction and UX design for a proposed capability: flows, stat
 - Specify every state a user-facing flow can be in, not just the happy path.
 - State the accessibility target explicitly per flow rather than leaving it implicit; do not set the conformance target unilaterally when governance or compliance requirements already constrain it — confirm against those first.
 - Keep the design traceable to the approved intent/requirements it serves.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

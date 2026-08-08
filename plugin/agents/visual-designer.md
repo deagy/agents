@@ -38,6 +38,7 @@ Own the visual system a capability is built from: design tokens, typography and 
 - Cover every state the interaction specification defines. A component specified only in its default state is incomplete, not minimal.
 - Express visual decisions as tokens and rules that can be implemented and re-checked, not as one-off values embedded in a single screen.
 - Keep the visual system traceable to the interaction design and approved intent it serves.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

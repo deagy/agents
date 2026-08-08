@@ -2,7 +2,7 @@
 
 # Cadre Agent Runbook
 
-This runbook explains how to operate the agent suite. The definitions are runner-agnostic: use them with an agent platform, separate model sessions, or structured human-assisted reviews.
+This runbook explains how to operate the agent suite. The definitions are runner-agnostic — use them with an agent platform, separate model sessions, or structured human-assisted reviews.
 
 Use the [documentation index](../docs/README.md) to choose a focused guide:
 [getting started](../docs/getting-started.md),
@@ -684,7 +684,7 @@ Use `workflows/production-release.md`. Invoke `workflows/rollback.md` or inciden
 
 ## 15. Current team profile and remaining decisions
 
-The active provider profile currently centers on self-hosted Proxmox, OpenTofu, Talos, Kubernetes, Helm, Go/Python/PostgreSQL backends, React/TypeScript frontends, Gherkin integration/regression behavior, and GitLab for VCS and CI/CD. Those stack choices specialize this Secure Cloud provider; they do not change that agent selection and review boundaries stay capability-first. Preferred Go dependencies are Gorilla Mux, Viper, pgx, cenkalti/backoff, Godog, Mockery with Testify mocks, and Testify `require`/`assert`; the exact paths and constraints are in `shared/library-standards.yaml`. The default autonomy policy permits scoped repository edits and local validation, but requires explicit authorization for shared-system reads and human approval for persistent environment mutations.
+The active provider profile centers on self-hosted Proxmox, OpenTofu, Talos, Kubernetes, Helm, Go/Python/PostgreSQL backends, React/TypeScript frontends, Gherkin integration/regression behavior, and GitLab for VCS and CI/CD. These stack choices specialize this Secure Cloud provider; agent selection and review boundaries stay capability-first regardless. Preferred Go dependencies are Gorilla Mux, Viper, pgx, cenkalti/backoff, Godog, Mockery with Testify mocks, and Testify `require`/`assert` — see `shared/library-standards.yaml` for exact paths and constraints. The default autonomy policy permits scoped repository edits and local validation, but requires explicit authorization for shared-system reads and human approval for persistent environment mutations.
 
 `shared/team-profile.yaml` is optional (see `roster/shared/README.md`) and must never carry personal names, emails, or other individual-identifying data — it is embedded verbatim into every generated role wrapper (71+ files, including a separately published public repo). As of 2026-07-26 it records resolved decisions for all of the below except supported tool and language versions (policy resolved; exact pins deferred to a future version manifest) and compliance frameworks/evidence retention (explicitly out of scope for now) — see that file's `resolved_standards_2026_07_26` and `out_of_scope_standards` blocks for the authoritative, current record rather than duplicating it here:
 
@@ -784,7 +784,7 @@ This plugin system currently applies to the Cline CLI, SDK, and Kanban only, not
 
 ## 17. Make this repository's own suite available system-wide
 
-Most projects want §16's `cadre sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 74 roles, 12 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
+Most projects want §16's `cadre sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section covers the narrower case: wanting this repository's 74 roles, 12 skills, and shared knowledge store reachable from *every* project directory unconditionally, since everything above otherwise requires your cwd to be inside this checkout.
 
 The marketplace lives in [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle)
 (the successor to the now-archived `deagy/cadre-plugin`), not here. Claude
@@ -982,8 +982,7 @@ would silently ignore a configured value. This repository's own Python
 `bin/cadre.py` dispatcher resolves the same field directly in-process and
 does not need this subcommand.
 
-Two properties of that wrapper are worth knowing, since both are easy to
-break:
+Two easy-to-break properties of that wrapper:
 
 - **`cadre sdlc ...` still needs no Python at all** when the binary is
   already locatable without a config file (`AGENTIC_SDLC_BIN` set, or

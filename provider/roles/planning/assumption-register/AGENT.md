@@ -30,6 +30,7 @@ Track what the build depends on being true and what observation would invalidate
 - Applies at the observe and reversible risk/maturity bands; advisory, not blocking.
 - State the falsifying observation concretely enough that another role could actually go check it -- "monitor closely" is not a falsifying observation.
 - Update an existing register entry rather than duplicating it when the same assumption recurs across artifacts.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

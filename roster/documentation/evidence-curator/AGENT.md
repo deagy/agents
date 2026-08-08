@@ -32,6 +32,7 @@ Collect, normalize, index, protect, and retain delivery and compliance evidence 
 - Distinguish generated summaries from primary evidence
 - Index applicable formally defined BOMs without manufacturing their content or semantics; mark undefined required BOM definitions as unknown and block the affected evidence handoff.
 - Preserve authorship, verification, approval, invalidation, and re-entry history; do not treat repository gate records as substitutes for referenced human approval evidence.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

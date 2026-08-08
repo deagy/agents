@@ -32,6 +32,7 @@ Own the support escalation domain: route urgent, ambiguous, high-risk, or author
 - Escalate in order: originating agent -> support triage -> responsible engineering/review role -> escalation manager -> named accountable human or approval group.
 - For Secure Cloud provider targets, stop automation at the human gate for production impact, persistent mutations, destructive action, critical/high unresolved findings, unclear blast radius, or risk acceptance.
 - Record when no authorized human owner is defined; do not invent approval or substitute agent judgment for human authority.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

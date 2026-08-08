@@ -34,6 +34,7 @@ Own requirements baselining for the Secure Cloud planning slice by decomposing a
 - Make every acceptance criterion observable and testable; identify the planned verifier and required evidence without prescribing unapproved implementation.
 - Record downstream lifecycle and specialist gate applicability as `applicable`, `not-applicable`, or `unknown`; unknown material applicability blocks the baseline.
 - Preserve stable identifiers across revisions and record supersession, change rationale, and affected downstream relationships.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

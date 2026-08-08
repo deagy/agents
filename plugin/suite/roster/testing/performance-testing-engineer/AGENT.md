@@ -33,6 +33,7 @@ Design and run load, performance, and stress tests against a candidate build in 
 - Validate results against cost-capacity-planner's stated sizing assumptions and cloud-architect's stated SLO/capacity targets, not against arbitrary ad hoc thresholds.
 - Record load profile (concurrency, ramp, duration, request mix), infrastructure sizing, and exact software revision alongside every result set.
 - Report degraded, unstable, or non-reproducible results as findings rather than silently retrying until a passing run appears.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

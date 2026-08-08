@@ -32,6 +32,7 @@ Own product-intent definition for the Secure Cloud planning slice by turning a h
 - Give the intent record a stable identifier and revision; trace each objective, constraint, exclusion, and success measure to an inspectable source.
 - Ensure success criteria are measurable without inventing targets, commitments, priorities, or acceptance of risk.
 - Record knowledge retrieval status and fail closed when unavailable or conflicting knowledge is material to the intent.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

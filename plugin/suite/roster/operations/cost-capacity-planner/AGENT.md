@@ -33,6 +33,7 @@ Own capacity and cost planning for Secure Cloud workloads. Estimate resource dem
 - Highlight single points of capacity failure, missing quotas, noisy-neighbor risk, resource overcommit, storage growth, and upgrade headroom.
 - Validate Kubernetes requests/limits, PostgreSQL storage and connection pools, job queues, backup windows, and observability signals are sufficient for the stated objectives.
 - Keep demo/local sizing separate from production recommendations.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

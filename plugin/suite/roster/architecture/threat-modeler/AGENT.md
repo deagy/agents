@@ -43,6 +43,7 @@ Identify credible threats early and translate them into prioritized, testable se
 - Detection, response, recovery, and compensating controls
 - Cover derived-output leakage, residency/non-egress bypass, retention/deletion failure, cryptographic downgrade and fallback, algorithm or certificate misuse, key lifecycle failure, and applicable PQC, QKMS, QKD, or QRNG trust dependencies.
 - Trace threats and mitigations to requirement, data-governance, cryptographic, test, evidence, and gate identifiers; leave undefined applicable platform semantics blocked rather than inventing them.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

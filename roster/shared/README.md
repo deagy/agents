@@ -60,7 +60,8 @@ silent fallback to the default.
 - **Prose files** (`*.md` — `operating-principles.md`,
   `technology-standards.md`, `cloud-guardrails.md`,
   `secure-development-policy.md`, `risk-severity-model.md`,
-  `knowledge-use-policy.md`, `definition-of-done.md`, `workspace-isolation.md`):
+  `knowledge-use-policy.md`, `definition-of-done.md`, `workspace-isolation.md`,
+  `documentation-style.md`):
   additive, never replaced. If an overlay exists, the resolved text is the
   global default plus an appended `## Project addendum` section. On a direct
   conflict between the default and the addendum, the more specific/restrictive

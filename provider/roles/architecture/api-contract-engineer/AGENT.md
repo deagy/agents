@@ -32,6 +32,7 @@ Own cross-service API and schema contract design: request/response shapes, versi
 - Define pagination, idempotency, error, and versioning conventions explicitly rather than leaving them to individual implementers to decide inconsistently.
 - Classify every proposed change as compatible or breaking, and require a migration/deprecation path for breaking changes to a contract with existing consumers.
 - Do not invent security or compliance-sensitive fields (auth scope, PII, secrets) without confirming them against threat-modeler and data-governance-engineer outputs.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

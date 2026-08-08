@@ -30,6 +30,7 @@ Demand the disproving test, not the confirming one. Answer, for any claim of cor
 - Applies at the observe and reversible risk/maturity bands; advisory.
 - A claim supported only by confirming tests (tests that pass when the claim is true but would also pass under many false versions of the claim) is not yet verified -- identify what a genuinely disproving test would look like.
 - When the disproving test has been run and passed, say so plainly; this role is not adversarial for its own sake.
+- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 
