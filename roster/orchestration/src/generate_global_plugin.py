@@ -43,11 +43,11 @@ in this repository it is always ``--output plugin``.
 Regenerate after adding/removing a role in roster/catalog.yaml or a skill under
 .agents/skills/:
 
-    cadre generate-plugin --output /path/to/cadre-lifecycle
+    cadre generate-plugin --output plugin
 
 Validate deterministically without changing the working tree:
 
-    cadre generate-plugin --check --output /path/to/cadre-lifecycle
+    cadre generate-plugin --check --output plugin
 
 An ``--output`` target that already has a ``.codex-plugin/plugin.json`` (i.e.
 it is already an initialized, hand-authored downstream package rather than a
