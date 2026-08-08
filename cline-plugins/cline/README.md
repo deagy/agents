@@ -11,18 +11,12 @@ there is nothing forge- or lifecycle-specific to install here.
 
 ## Install
 
-Cline installs one plugin per repository clone/URL, so installing this repository
-installs `cline/` alongside the rest of `cadre`:
+This plugin is a subdirectory of the `deagy/cadre` monorepo, so install it by
+pointing Cline at that subdirectory of a checkout:
 
 ```sh
-cline plugin install --git https://github.com/deagy/cadre-lifecycle --force
-```
-
-Or from a local checkout:
-
-```sh
-git clone https://github.com/deagy/cadre-lifecycle.git
-cline plugin install /path/to/cadre-lifecycle --force
+git clone https://github.com/deagy/cadre.git
+cline plugin install ./cadre/cline-plugins/cline --force
 ```
 
 If `agents_select` doesn't show up after installing, restart the Cline hub daemon:

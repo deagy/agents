@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/deagy/agentic-sdlc"
+Repository = "https://github.com/deagy/cadre"
 
 [project.scripts]
 agentic-sdlc = "agentic_sdlc:main"

@@ -28,10 +28,11 @@ lighter (a plain checklist, GitHub Issues), say so and stop — this skill is
 specifically for G1-G10 gate tracking.
 
 Check whether `agentic-sdlc` is reachable (`AGENTIC_SDLC_BIN` env var, or
-`agentic-sdlc` on `PATH`, or a local checkout of
-`https://github.com/deagy/agentic-sdlc`). If not, tell the human in plain
-terms that a one-time install step is needed, offer to do it (clone the
-repo, or `pipx install` per its README), and proceed once it is available.
+`agentic-sdlc` on `PATH`, or this repository's own in-tree `kernel/`). If
+not, tell the human in plain terms that a one-time install step is needed,
+offer to do it (`pipx install ./kernel` from this checkout, or `pipx
+install` a pinned `kernel-v*` release per `kernel/README.md`), and proceed
+once it is available.
 
 Prefer running through this suite's compatibility launcher,
 `./bin/cadre sdlc <subcommand>`, rather than the bare `agentic-sdlc`

@@ -27,7 +27,7 @@ documentation or automation reasoning about a session from the outside).
 | --- | --- | --- | --- |
 | Generated per-role wrapper present | the plugin package's `agents/*.md` (or a project-local `.claude/agents/<role-id>.md` override) | `provider/codex-agents/agents-*.toml`, synced to `~/.codex/agents/` | None — no generated wrapper exists for Cline yet |
 | Project config directory | `.claude/` (`.claude/agents/`, `.claude/skills/`) | `.codex/` (`.codex/agents/`, `.codex/config.toml`) | `.clinerules/` (one general pointer file, not per-role) |
-| Subagent-dispatch tool name in the session | `Agent`/`Task` tool referencing a named subagent type | `spawn_agent` tool with a generic `agent_type` argument | Host-registered tools only; the Cline plugin in [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) (`cline/index.ts`) registers exactly one tool, `agents_select`, which plans only and never dispatches |
+| Subagent-dispatch tool name in the session | `Agent`/`Task` tool referencing a named subagent type | `spawn_agent` tool with a generic `agent_type` argument | Host-registered tools only; the Cline plugin in [`cline-plugins/cline/`](https://github.com/deagy/cadre/tree/main/cline-plugins/cline) (`index.ts`) registers exactly one tool, `agents_select`, which plans only and never dispatches |
 | Distinguishing environment/config signal | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env var gates Agent Teams | `config.toml` `[mcp_servers.*]` / `[agents]` blocks | `~/.cline/data/teams/[team-name]/` if team mode has run |
 
 ## What that implies

@@ -25,16 +25,16 @@ collision, and it predates this project's use of the name.
 pipx install ./kernel
 
 # From a pinned git tag
-pipx install "git+https://github.com/deagy/agentic-sdlc.git@v<version>#subdirectory=kernel"
+pipx install "git+https://github.com/deagy/cadre.git@kernel-v<version>#subdirectory=kernel"
 
 # From a checkout, without installing anything
 ./bin/agentic-sdlc --help
 ```
 
 Wheels and sdists attached to this repository's
-[Releases](https://github.com/deagy/agentic-sdlc/releases) are also
-authoritative. Verify them against the `SHA256SUMS` file published alongside
-each release before installing.
+[Releases](https://github.com/deagy/cadre/releases) (filter for `kernel-v*`
+tags) are also authoritative. Verify them against the `SHA256SUMS` file
+published alongside each release before installing.
 
 ### Verifying what you have
 
@@ -43,7 +43,7 @@ agentic-sdlc --version          # this kernel prints a bare semver, e.g. 0.13.0
 pip show agentic-sdlc           # check the Home-page / Project-URL field
 ```
 
-If `pip show` reports a homepage that is not `github.com/deagy/agentic-sdlc`,
+If `pip show` reports a homepage that is not `github.com/deagy/cadre`,
 you have the wrong package. Uninstall it before continuing.
 
 ### Automated installers
@@ -112,7 +112,7 @@ touches.
 ## Reporting a vulnerability
 
 Open a
-[security advisory](https://github.com/deagy/agentic-sdlc/security/advisories/new)
+[security advisory](https://github.com/deagy/cadre/security/advisories/new)
 rather than a public issue.
 
 ## Security-relevant invariants

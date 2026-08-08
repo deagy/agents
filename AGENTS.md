@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-Agent roles, policies, workflows, orchestration, testing, support/escalation, and the knowledge store live under `roster/`; publishable repository skills live under `.agents/skills/`, with thin per-skill pointer files under `.claude/skills/` (Claude Code). A single general pointer file under `.clinerules/` (Cline CLI) references `AGENTS.md`/`roster/RUNBOOK.md` directly — it is unrelated to the per-skill pointer mechanism. The installable plugin distributions live in a separate repository, [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) (the successor to the now-archived `deagy/cadre-plugin`): the packaged Claude Code / Codex plugin generated from `roster/catalog.yaml`, `roster/`, `.agents/skills/` and this repository's `provider/` bundle, plus a hand-authored TypeScript Cline CLI plugin under its `cline/`, plus optional, separately-owned Agentic SDLC lifecycle-governance plugins. The portable lifecycle kernel itself is maintained separately at `github.com/deagy/agentic-sdlc`.
+Agent roles, policies, workflows, orchestration, testing, support/escalation, and the knowledge store live under `roster/`; publishable repository skills live under `.agents/skills/`, with thin per-skill pointer files under `.claude/skills/` (Claude Code). A single general pointer file under `.clinerules/` (Cline CLI) references `AGENTS.md`/`roster/RUNBOOK.md` directly — it is unrelated to the per-skill pointer mechanism. The installable plugin distributions live in this same repository, under `plugin/`: the packaged Claude Code / Codex plugin generated from `roster/catalog.yaml`, `roster/`, `.agents/skills/` and this repository's `provider/` bundle, plus the three lifecycle plugin manifests, plus a hand-authored TypeScript Cline CLI plugin under `cline-plugins/cline/`. The portable lifecycle kernel itself lives in this repository too, under `kernel/` (with the LangGraph orchestration engine that drives it under `engine/`).
 
 Read `roster/RUNBOOK.md` for orchestration and any project-local `AGENTS.md` before product changes. Keep role definitions and `roster/catalog.yaml` synchronized.
 
@@ -14,11 +14,11 @@ Resolve Python 3.10+ as documented in the runbook. From each internal-tool compo
 <python> -B -m unittest discover -s test -p "test_*.py"
 ```
 
-After changing `roster/catalog.yaml`, `roster/`, or `.agents/skills/`, run `cadre generate-role-metadata` (it regenerates `roster/catalog.yaml`, routing's `knowledge_focus` block, and the generated half of `provider/`) and re-run `roster/orchestration/test/test_repository_health.py`, which fails on drift. Regenerating the packaged plugin itself is a change to [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) (`cadre generate-plugin --output /path/to/cadre-lifecycle`), guarded there by its own CI. Run lifecycle integration tests against the pinned standalone Agentic SDLC executable.
+After changing `roster/catalog.yaml`, `roster/`, or `.agents/skills/`, run `cadre generate-role-metadata` (it regenerates `roster/catalog.yaml`, routing's `knowledge_focus` block, and the generated half of `provider/`) and re-run `roster/orchestration/test/test_repository_health.py`, which fails on drift. Regenerating the packaged plugin itself is `cadre generate-plugin --output plugin`, run in this same repository and committed alongside the source change; `.github/workflows/validate.yml`'s `generated-content` job re-runs it with `--check` so drift cannot outlive a pull request. Run lifecycle integration tests against the in-tree `kernel/`.
 
 For Go services, use `gofmt`, `go tool goimports`, `go vet ./...`, `go test ./...`, `go test -race ./...`, and `go tool golangci-lint run ./...`. For React frontends, use the project-pinned package manager for install, test, typecheck, and build commands. Podman, PostgreSQL migrations, Helm, and OpenTofu remain disposable or validation-only unless a project has explicit production approval; follow the component README and never target a persistent environment without approval.
 
-This repository has no Node/TypeScript source of its own; the Cline CLI plugin moved to [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) and is tested there.
+The only Node/TypeScript source in this repository is the Cline CLI plugin under `cline-plugins/`, a separate npm workspace kept out of `plugin/` deliberately (see `README.md`'s repository layout notes).
 
 ## Coding Style & Naming Conventions
 

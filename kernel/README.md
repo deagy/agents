@@ -9,17 +9,17 @@ This plugin makes the repository's G1–G10 Agentic SDLC portable. It supplies a
 > third-party project — `pip install agentic-sdlc` installs *different
 > software*, not this kernel. Use only the checkout or git-URL forms below, or
 > a wheel from this repository's
-> [Releases](https://github.com/deagy/agentic-sdlc/releases). See
-> [SECURITY.md](../../SECURITY.md).
+> [Releases](https://github.com/deagy/cadre/releases) (filter for `kernel-v*`
+> tags). See [SECURITY.md](../SECURITY.md).
 
 ```sh
 pipx install ./kernel        # from a checkout
-pipx install git+https://github.com/deagy/agentic-sdlc.git#subdirectory=kernel
+pipx install "git+https://github.com/deagy/cadre.git@kernel-v<version>#subdirectory=kernel"
 ```
 
 Either form puts a real `agentic-sdlc` executable on `PATH`, isolated in its own environment, with no repository checkout required at runtime — `contracts/` is bundled into the installed distribution at build time (see `pyproject.toml`). `pip install` works the same way if you'd rather manage the environment yourself; use `pip install -e ./kernel` for an editable install while developing the kernel itself. Requires Python 3.10+.
 
-Orchestrating actual work against this kernel — dispatching author/reviewer roles, stopping at human/mutation gates, tracking gate state across a task's lifetime — is done by the LangGraph engine in [`../../agentic_sdlc_langgraph/`](../../agentic_sdlc_langgraph), not by this plugin. See that package's README for the `agentic-sdlc-lg` CLI and the standalone service. (An earlier version of this plugin shipped that orchestration as six Claude Code/Codex CLI skills an LLM host had to interpret step by step; those were retired once the LangGraph engine replaced them with real, testable control flow.)
+Orchestrating actual work against this kernel — dispatching author/reviewer roles, stopping at human/mutation gates, tracking gate state across a task's lifetime — is done by the LangGraph engine in [`../engine/agentic_sdlc_langgraph/`](../engine/agentic_sdlc_langgraph), not by this plugin. See that package's README for the `agentic-sdlc-lg` CLI and the standalone service. (An earlier version of this plugin shipped that orchestration as six Claude Code/Codex CLI skills an LLM host had to interpret step by step; those were retired once the LangGraph engine replaced them with real, testable control flow.)
 
 The intended adoption path is:
 
@@ -358,7 +358,7 @@ Initialization, detection, planning, status, and invalidation work with Python 3
 python3 -m pip install -r kernel/requirements-validation.txt
 ```
 
-This kernel CLI covers bootstrapping and bookkeeping (`init`/`detect`/`validate`/`status`/`invalidate`/`approve-from-github*`). For actually dispatching and driving a task through the G1–G10 lifecycle — author/reviewer dispatch, human/mutation-gate interrupts, invalidation with real re-execution — use the LangGraph engine's `agentic-sdlc-lg` CLI or service in [`../../agentic_sdlc_langgraph/`](../../agentic_sdlc_langgraph).
+This kernel CLI covers bootstrapping and bookkeeping (`init`/`detect`/`validate`/`status`/`invalidate`/`approve-from-github*`). For actually dispatching and driving a task through the G1–G10 lifecycle — author/reviewer dispatch, human/mutation-gate interrupts, invalidation with real re-execution — use the LangGraph engine's `agentic-sdlc-lg` CLI or service in [`../engine/agentic_sdlc_langgraph/`](../engine/agentic_sdlc_langgraph).
 
 ## Team demonstration
 
@@ -368,7 +368,7 @@ Use a synthetic or non-production repository for the first demonstration:
 2. Show the generated unknown/unassigned values and explain why they fail closed.
 3. Use `detect` to review observable stack and command candidates.
 4. Use `plan` for an intent-and-requirements task and inspect the selected workflow, agents, `required_quality_gates`, and separate `human_gates`.
-5. From `../../agentic_sdlc_langgraph/`, run `agentic-sdlc-lg plan`/`resume` against the same task and show it suspending at each gate's human-approval interrupt and at any matched mutation-gate phrase, with author/reviewer separation enforced structurally rather than by convention.
+5. From `../engine/agentic_sdlc_langgraph/`, run `agentic-sdlc-lg plan`/`resume` against the same task and show it suspending at each gate's human-approval interrupt and at any matched mutation-gate phrase, with author/reviewer separation enforced structurally rather than by convention.
 6. Validate and display the exported run record (`agentic-sdlc-lg export` / `validate`).
 7. Change a material upstream assumption and demonstrate downstream invalidation (`agentic-sdlc-lg invalidate` then `reenter`) without granting a new approval.
 

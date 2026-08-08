@@ -24,7 +24,7 @@ Own routine, non-debugging changes to this suite's own tooling and orchestration
 ## Outputs
 
 - Scoped changes to `roster/catalog.yaml`, role `AGENT.md` files, `roster/orchestration/routing.yaml`, orchestration source, or publishable skills, plus their tests
-- Regenerated `catalog.yaml`/`routing.yaml` and the generated half of `provider/` (`cadre generate-role-metadata`) when the change touches generated output. The packaged plugin is not built here — it is regenerated in a `deagy/cadre-lifecycle` checkout (`cadre generate-plugin --output /path/to/cadre-lifecycle`) and committed there.
+- Regenerated `catalog.yaml`/`routing.yaml` and the generated half of `provider/` (`cadre generate-role-metadata`) when the change touches generated output. The packaged plugin is regenerated in-tree (`cadre generate-plugin --output plugin`) and committed in the same pull request.
 - Implementation notes, assumptions, known limitations, and reviewer handoff
 
 ## Required checks
@@ -41,7 +41,7 @@ May edit this suite's own tooling source, role definitions, and tests within tas
 
 ## Escalate when
 
-The change requires altering lifecycle-gate schemas or gate-authority semantics (owned by the separate `deagy/agentic-sdlc` kernel, never this repository), a new privileged access, weakened controls, or an undocumented breaking change to the dispatch-plan schema or a role's public contract.
+The change requires altering lifecycle-gate schemas or gate-authority semantics (owned by `kernel/`, a permanently separate component, never `roster/`), a new privileged access, weakened controls, or an undocumented breaking change to the dispatch-plan schema or a role's public contract.
 
 ## Completion criteria
 
