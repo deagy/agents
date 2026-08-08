@@ -784,7 +784,7 @@ This plugin system currently applies to the Cline CLI, SDK, and Kanban only, not
 
 ## 17. Make this repository's own suite available system-wide
 
-Most projects want §16's `cadre sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 71 roles, 11 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
+Most projects want §16's `cadre sdlc init --profile secure-cloud` instead of this section — it's scoped to one project and generates static, project-owned wrappers rather than a live link back to this checkout. This section is for the narrower case of wanting this repository's 74 roles, 12 skills, and shared knowledge store reachable from *every* project directory unconditionally, since by default everything above requires your cwd to be inside this checkout.
 
 The marketplace lives in [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle)
 (the successor to the now-archived `deagy/cadre-plugin`), not here. Claude

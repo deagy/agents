@@ -24,6 +24,13 @@
       "quality_gates": ["G1", "G2"]
     },
     {
+      "id": "delivery-sequencing",
+      "paths": [],
+      "keywords": ["dependency map", "dependency mapping", "critical path", "sequencing", "sequence the work", "delivery order", "what blocks what"],
+      "primary": ["delivery-sequencer"],
+      "support": ["assumption-register", "cost-capacity-planner"]
+    },
+    {
       "id": "premortem",
       "paths": [],
       "keywords": ["premortem", "pre-mortem", "assume this failed"],
@@ -229,9 +236,27 @@
       "quality_gates": ["G3", "G5", "G6", "G7"]
     },
     {
+      "id": "visual-system",
+      "paths": ["design-system/**", "design-tokens/**", "**/tokens.json", "**/*.tokens.json", "**/*.stories.tsx", "**/theme/**"],
+      "keywords": ["design system", "design token", "design tokens", "component library", "visual design", "visual system", "style guide", "typography scale", "color palette"],
+      "primary": ["visual-designer"],
+      "reviewers": ["accessibility-reviewer"],
+      "support": ["interaction-designer", "frontend-engineer"],
+      "quality_gates": ["G3", "G5"]
+    },
+    {
+      "id": "ai-feature",
+      "paths": ["**/prompts/**", "**/evals/**", "**/*.prompt", "**/*.prompt.*", "**/model/**/*.yaml"],
+      "keywords": ["llm", "large language model", "prompt", "prompt engineering", "model selection", "eval", "evals", "eval harness", "fine-tune", "fine-tuning", "inference", "embedding model", "agentic feature", "retrieval augmented generation"],
+      "primary": ["ai-engineer"],
+      "reviewers": ["security-reviewer", "code-reviewer", "test-engineer"],
+      "support": ["data-governance-engineer", "cost-capacity-planner"],
+      "quality_gates": ["G3", "G4", "G5", "G6", "G7"]
+    },
+    {
       "id": "backend",
       "paths": ["backend/**", "services/**", "api/**", "**/*.go", "**/*.sql", "**/migrations/**"],
-      "keywords": ["backend", "api", "service implementation", "datastore", "schema", "migration", "golang", "postgres", "postgresql", "pgx", "database"],
+      "keywords": ["backend", "api", "service implementation", "datastore", "schema", "migration", "golang", "python", "postgres", "postgresql", "pgx", "database"],
       "primary": ["backend-engineer"],
       "reviewers": ["test-engineer", "code-reviewer"],
       "quality_gates": ["G3", "G4", "G5", "G6", "G7"]
@@ -246,8 +271,8 @@
     },
     {
       "id": "pipeline",
-      "paths": [".gitlab-ci.yml", ".gitlab/**", "**/.gitlab-ci.yml", "ci/**", "pipelines/**"],
-      "keywords": ["pipeline", "ci", "cd", "runner", "build job", "deployment job", "gitlab ci"],
+      "paths": [".gitlab-ci.yml", ".gitlab/**", "**/.gitlab-ci.yml", ".github/workflows/**", "**/.github/workflows/**", ".github/actions/**", "ci/**", "pipelines/**"],
+      "keywords": ["ci pipeline", "build pipeline", "delivery pipeline", "deployment pipeline", "release pipeline", "ci", "cd", "runner", "build job", "deployment job", "gitlab ci", "github actions", "workflow run", "reusable workflow"],
       "primary": ["cicd-engineer"],
       "reviewers": ["pipeline-security-reviewer"],
       "quality_gates": ["G5", "G6", "G7", "G8"]
@@ -693,6 +718,9 @@
     "ip-provenance-agent": "the current IP rule version, counsel guidance history, and prior provenance determinations",
     "agent-performance-evaluator": "prior agent-output defects, human corrections, and per-role evaluation history",
     "agent-version-control": "agent-definition change history and prior provenance records",
-    "quantum-timing-assurance-engineer": "QKD segment telemetry, entanglement fidelity data, timing source readings, strata tolerances, and physical-trust equipment specifications"
+    "quantum-timing-assurance-engineer": "QKD segment telemetry, entanglement fidelity data, timing source readings, strata tolerances, and physical-trust equipment specifications",
+    "delivery-sequencer": "prior dependency maps, sequencing decisions, blocked-work history, and which dependencies previously proved wrong",
+    "visual-designer": "prior visual-system decisions, design tokens, component inventory and variants, and component-library or styling-system evaluations",
+    "ai-engineer": "prior model and provider selections, prompt and agent designs, eval results and regressions, retrieval design decisions, and inference cost/latency history"
   }
 }

@@ -18,6 +18,7 @@
 # reflects its intended dispatch precedence. Removing a role: remove both.
 product-intent-agent
 requirements-agent
+delivery-sequencer
 premortem
 assumption-register
 scope-boundary
@@ -31,10 +32,12 @@ threat-modeler
 first-principles-challenger
 api-contract-engineer
 interaction-designer
+visual-designer
 application-engineer
 architecture-authority
 frontend-engineer
 backend-engineer
+ai-engineer
 infrastructure-provisioner
 cicd-engineer
 debugging-engineer

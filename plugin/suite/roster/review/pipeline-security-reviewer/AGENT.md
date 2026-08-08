@@ -29,7 +29,7 @@ Independently decide whether a CI/CD change preserves Secure Cloud pipeline trus
 ## Required checks
 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, and `../../shared/agent-autonomy.yaml`.
-- Review how pipeline definitions, included templates, and execution context shape trust boundaries, especially within GitLab permission, runner, secret, and environment controls used by the Secure Cloud provider.
+- Review how pipeline definitions, included or reusable templates, and execution context shape trust boundaries, especially within the forge's permission, runner, secret, and environment controls used by the Secure Cloud provider. GitLab and GitHub are both supported shapes; identify which one the change targets and review against that forge's own controls (GitLab protected branches/variables/environments and runner tags, or GitHub branch protection/rulesets, environment reviewers, `GITHUB_TOKEN` permissions, and OIDC federation) rather than assuming one model applies to the other.
 - Review dependency execution and build behavior across frontend, Go, and database-related jobs where they can change what runs, what is packaged, or what credentials become reachable.
 - Check untrusted change isolation, script injection exposure, token scope, secret availability, runner persistence, cache poisoning, artifact substitution, dependency pinning, provenance, signatures, and environment approvals.
 - Check that build and deploy identities stay separated, protected refs and fail-closed gates remain effective, concurrency is controlled, rollback paths exist, and audit evidence is retained.

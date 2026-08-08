@@ -158,6 +158,20 @@ backend:
   migration_tool: golang-migrate (forward-only preferred, reviewed paired up/down migrations, tested up->down->up in CI against disposable instance)
   api_protocols: project_defined
 
+# Applies to AI/ML behavior a consuming project ships as product functionality.
+# It does not describe the models this suite's own agents run on -- those are
+# the per-role `model`/`codex_model` tiers recorded in the role catalog -- nor
+# the knowledge_store block below, which is this suite's own retrieval layer.
+ai:
+  model_provider: not_yet_selected
+  eval_framework: not_yet_selected
+  vector_store: not_yet_selected
+  prompt_versioning: required
+  eval_baseline_before_change: required
+  model_output_trust: untrusted_reference
+  privileged_action_from_model_output: prohibited_without_human_authorization
+  inference_cost_and_latency_budget: project_defined
+
 knowledge_store:
   purpose: agent_retrieval_and_reference
   ordinary_agent_access: read_only
@@ -337,6 +351,20 @@ These standards specialize `team-profile.yaml`. Where a value remains `not_yet_s
 - Use Python when it materially simplifies a bounded task, integration, data transformation, or test utility; document why it is preferable for that component.
 - Pin dependencies, use supported project-defined versions, run `gofmt`, `goimports`, `go vet`, `go test`, and `golangci-lint`, and avoid introducing a second implementation path without need.
 - Keep interfaces and operational behavior consistent across languages.
+
+## AI/ML product features
+
+These apply to AI behavior a consuming project ships to its own users. They do
+not govern the models this suite's own agents run on (the per-role `model` tier
+recorded in the role catalog) or the agent knowledge store
+(`knowledge-use-policy.md`).
+
+- Do not establish an organization-wide model provider, eval framework, or vector store while `team-profile.yaml`'s `ai` block records them as `not_yet_selected`. Present alternatives with cost, latency, data-residency, and exit-cost tradeoffs, and request a decision.
+- Treat model output as untrusted data on the same footing as retrieved knowledge and tool output. Validate and constrain it before it reaches a downstream system, a rendered surface, or any privileged action; model output never authorizes a privileged or destructive action on its own.
+- Establish an eval baseline before changing a prompt, model, or retrieval strategy, and report the measured effect rather than the expected one. Version prompts as reviewable artifacts, not as inline string literals edited in place.
+- State what data crosses the trust boundary on each model call, including anything assembled into context by retrieval, and check it against the feature's classification and residency constraints before implementing.
+- Record inference cost and latency per call path, including retries and fallbacks, and define behavior for provider unavailability, timeout, truncation, refusal, and malformed output. A feature with no defined degraded mode is not finished.
+- Pin model identifiers and provider SDK versions. A floating model alias makes a behavior change indistinguishable from a regression in your own code.
 
 ## React frontends
 

@@ -30,10 +30,16 @@ creation, promotion, deployment, verification, and rollback.
 
 - Follow `../../shared/team-profile.yaml`, `../../shared/technology-standards.md`, `../../shared/library-standards.yaml`, and `../../shared/agent-autonomy.yaml`.
 - In this provider, pin Go libraries and tools, reproduce Mockery generation,
-  and run dependency, license, vulnerability, and generated-diff checks in
-  GitLab CI/CD.
-- Implement pipelines using the provider's GitLab merge-request model,
-  protected branches, variables, environments, and runner trust tiers.
+  and run dependency, license, vulnerability, and generated-diff checks in the
+  project's CI/CD.
+- Implement pipelines against the forge the project actually uses. GitLab and
+  GitHub are both supported shapes and their controls are not interchangeable:
+  establish which one applies before designing, then use that forge's own
+  change-review model (merge request or pull request), protected refs,
+  variables or secrets, environments, and runner trust tiers. Do not carry a
+  control's name across from the other forge on the assumption it behaves the
+  same way — job permission scoping, environment approval, and workload
+  identity federation differ materially between them.
 - Include provider-relevant language, integration, infrastructure, deployment,
   and policy validation as applicable.
 - Include provider-relevant frontend, backend, dependency, migration, and

@@ -180,7 +180,7 @@ class RealRepoRegressionTests(unittest.TestCase):
             shutil.copytree(generated_package() / "agents", root / "agents")
 
             ported = p.port_agents(root)
-            self.assertEqual(len(ported), 71)
+            self.assertEqual(len(ported), 74)
 
             mismatches = []
             for role in ported:
@@ -203,7 +203,7 @@ class RealRepoRegressionTests(unittest.TestCase):
             shutil.copytree(generated_package() / "skills", root / "skills")
 
             ported = p.port_skills(root)
-            self.assertEqual(len(ported), 7)
+            self.assertEqual(len(ported), 8)
 
             for name in ported:
                 content = (root / "cline-agents" / "skills" / f"{name}.md").read_text(encoding="utf-8")
@@ -270,7 +270,7 @@ class RealRepoRegressionTests(unittest.TestCase):
             text=True,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("Ported 71 agent(s) and 7 skill(s)", result.stdout)
+        self.assertIn("Ported 74 agent(s) and 8 skill(s)", result.stdout)
 
 
 if __name__ == "__main__":
