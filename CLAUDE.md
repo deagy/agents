@@ -8,14 +8,14 @@ A runner-neutral **Cadre** monorepo. Four repositories were merged into this one
 
 | Directory | What it owns |
 | --- | --- |
-| `roster/` | 71 specialist role definitions (`<phase>/<role>/AGENT.md`), their inventory (`catalog.yaml`), deterministic orchestration/routing, shared policy, and the knowledge store. |
+| `roster/` | 74 specialist role definitions (`<phase>/<role>/AGENT.md`), their inventory (`catalog.yaml`), deterministic orchestration/routing, shared policy, and the knowledge store. |
 | `kernel/` | The G1–G10 lifecycle kernel: gate contracts, run-record validation, gate-authority semantics, project initializer. A separately versioned, separately publishable pip distribution. |
 | `engine/` | The LangGraph orchestration engine that drives a task through the gates as a compiled graph (`uv`, Python ≥3.11). |
 | `provider/` | The `secure-cloud` provider bundle: profiles, extensions, generated Codex wrappers, and `provider.json`'s `kernel_compatibility` window. |
 | `providers/` | The kernel's own example default provider package. |
 | `plugin/` | Hand-authored plugin distribution sources: the marketplace manifest, the three lifecycle plugin manifests, the three Cline plugins, and packaging tools. |
 
-**The generated plugin distribution is not committed.** `cadre generate-plugin` writes it into a gitignored `/plugin-dist/` at build time. Before the merge those ~340 files (role wrappers, skills, `suite/`, the provider bundle) were committed into `cadre-lifecycle` and reconciled by `cadre-ref.txt`, `drift-check.yml`, and `regenerate.yml` — all now deleted. There is exactly one copy of every role, skill, and provider file here.
+**The generated half of `plugin/` is committed, deliberately.** `cadre generate-plugin --output plugin` writes it, and `.github/workflows/validate.yml`'s `generated-content` job re-runs the same command with `--check` so drift cannot outlive a pull request. It is committed because a GitHub-sourced marketplace serves the repository tree: an uncommitted distribution would install a plugin with no roles in it. Never hand-edit it — edit the source and regenerate. This is not the old arrangement returning: before the merge those ~340 files were committed into a *separate* repository and reconciled by `cadre-ref.txt`, `drift-check.yml`, and `regenerate.yml`, all now deleted. Source and output now live in one commit.
 
 This repository does not run its own `.agentic-sdlc/` overlay (see boundary note below).
 

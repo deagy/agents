@@ -27,6 +27,15 @@
       ],
       "definition": "suite/roster/operations/agent-version-control/AGENT.md"
     },
+    "ai-engineer": {
+      "phase": "build",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/roster/engineering/ai-engineer/AGENT.md"
+    },
     "api-contract-engineer": {
       "phase": "design",
       "kind": "author",
@@ -210,6 +219,15 @@
         "dispatch"
       ],
       "definition": "suite/roster/operations/decommission-engineer/AGENT.md"
+    },
+    "delivery-sequencer": {
+      "phase": "planning",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/roster/planning/delivery-sequencer/AGENT.md"
     },
     "deployment-realist": {
       "phase": "operations",
@@ -624,6 +642,15 @@
         "dispatch"
       ],
       "definition": "suite/roster/operations/vendor-register-steward/AGENT.md"
+    },
+    "visual-designer": {
+      "phase": "design",
+      "kind": "author",
+      "capabilities": [
+        "author",
+        "dispatch"
+      ],
+      "definition": "suite/roster/architecture/visual-designer/AGENT.md"
     }
   }
 }

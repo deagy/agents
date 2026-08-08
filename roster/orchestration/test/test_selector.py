@@ -984,6 +984,71 @@ class SelectorTests(unittest.TestCase):
         self.assertIn("frontend-engineer", result["agents"]["primary"])
         self.assertIn("accessibility-reviewer", result["agents"]["reviewers"])
 
+    def test_github_actions_workflow_selects_the_same_agents_as_gitlab_ci(self) -> None:
+        # Before the forge-neutrality repair the pipeline route carried only
+        # GitLab paths, so a GitHub Actions change matched no build-shaped
+        # route at all and was dispatched with no primary agent -- while the
+        # identical task on .gitlab-ci.yml selected cicd-engineer. The two
+        # forges are both supported, so they must staff the same way.
+        github = plan(
+            task="Update the release workflow to sign tags",
+            changed_files=[".github/workflows/release.yml"],
+        )
+        gitlab = plan(
+            task="Update the release workflow to sign tags",
+            changed_files=[".gitlab-ci.yml"],
+        )
+        self.assertIn("cicd-engineer", github["agents"]["primary"])
+        self.assertIn("pipeline-security-reviewer", github["agents"]["reviewers"])
+        self.assertEqual(github["agents"]["primary"], gitlab["agents"]["primary"])
+        self.assertEqual(github["agents"]["reviewers"], gitlab["agents"]["reviewers"])
+
+    def test_python_service_work_selects_the_backend_engineer(self) -> None:
+        # `**/*.py` is deliberately NOT a path glob on the backend route: this
+        # repository is itself Python, and a bare glob cross-matched its own
+        # orchestration source (already routed to application-engineer),
+        # adding backend-engineer as a spurious second primary. The `python`
+        # keyword covers a consuming project's Python service without that.
+        result = plan(
+            task="Implement a Python data transformation service",
+            changed_files=["src/etl/transform.py"],
+        )
+        self.assertIn("backend-engineer", result["agents"]["primary"])
+
+        own_source = plan(
+            task="Fix the selector ordering",
+            changed_files=["roster/orchestration/src/select_agents.py"],
+        )
+        self.assertNotIn("backend-engineer", own_source["agents"]["primary"])
+
+    def test_ai_feature_route_selects_the_ai_engineer_not_the_cicd_engineer(self) -> None:
+        # "pipeline" as a bare pipeline-route keyword matched any pipeline --
+        # data, ETL, or RAG -- so an AI feature was dispatched to the CI/CD
+        # engineer. The route keywords are compounds now.
+        result = plan(
+            task="Build a RAG pipeline with an llm provider and evaluate prompt quality",
+            changed_files=["src/ai/rag.py"],
+        )
+        self.assertIn("ai-engineer", result["agents"]["primary"])
+        self.assertNotIn("cicd-engineer", result["agents"]["primary"])
+        self.assertIn("security-reviewer", result["agents"]["reviewers"])
+
+    def test_visual_system_route_selects_the_visual_designer(self) -> None:
+        result = plan(
+            task="Define the design system tokens and component library",
+            changed_files=["design-system/tokens.json"],
+        )
+        self.assertIn("visual-designer", result["agents"]["primary"])
+        self.assertIn("accessibility-reviewer", result["agents"]["reviewers"])
+        self.assertIn("interaction-designer", result["agents"]["support"])
+
+    def test_delivery_sequencing_route_selects_the_delivery_sequencer(self) -> None:
+        result = plan(
+            task="Produce the dependency map and critical path for this initiative",
+            changed_files=[],
+        )
+        self.assertIn("delivery-sequencer", result["agents"]["primary"])
+
     def test_selects_engineering_and_review_for_orchestration_config_only(self) -> None:
         result = plan(
             task="Adjust configuration behavior",

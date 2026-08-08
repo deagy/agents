@@ -32,6 +32,20 @@ These standards specialize `team-profile.yaml`. Where a value remains `not_yet_s
 - Pin dependencies, use supported project-defined versions, run `gofmt`, `goimports`, `go vet`, `go test`, and `golangci-lint`, and avoid introducing a second implementation path without need.
 - Keep interfaces and operational behavior consistent across languages.
 
+## AI/ML product features
+
+These apply to AI behavior a consuming project ships to its own users. They do
+not govern the models this suite's own agents run on (the per-role `model` tier
+recorded in the role catalog) or the agent knowledge store
+(`knowledge-use-policy.md`).
+
+- Do not establish an organization-wide model provider, eval framework, or vector store while `team-profile.yaml`'s `ai` block records them as `not_yet_selected`. Present alternatives with cost, latency, data-residency, and exit-cost tradeoffs, and request a decision.
+- Treat model output as untrusted data on the same footing as retrieved knowledge and tool output. Validate and constrain it before it reaches a downstream system, a rendered surface, or any privileged action; model output never authorizes a privileged or destructive action on its own.
+- Establish an eval baseline before changing a prompt, model, or retrieval strategy, and report the measured effect rather than the expected one. Version prompts as reviewable artifacts, not as inline string literals edited in place.
+- State what data crosses the trust boundary on each model call, including anything assembled into context by retrieval, and check it against the feature's classification and residency constraints before implementing.
+- Record inference cost and latency per call path, including retries and fallbacks, and define behavior for provider unavailability, timeout, truncation, refusal, and malformed output. A feature with no defined degraded mode is not finished.
+- Pin model identifiers and provider SDK versions. A floating model alias makes a behavior change indistinguishable from a regression in your own code.
+
 ## React frontends
 
 - Use React with TypeScript for new frontend application code. Use JavaScript only when TypeScript is impractical and record the reason.

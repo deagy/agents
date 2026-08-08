@@ -1,6 +1,6 @@
 # Role index
 
-This index is a human-readable view of the 71 roles in
+This index is a human-readable view of the 74 roles in
 [`roster/catalog.yaml`](../roster/catalog.yaml). The catalog and each linked
 `AGENT.md` remain authoritative.
 
@@ -33,6 +33,7 @@ tier, route, quality gate, human gate, ...), see the
 | threat-modeler | design | Identify credible threats and translate them into testable requirements. | [AGENT.md](../roster/architecture/threat-modeler/AGENT.md) |
 | api-contract-engineer | design | Own cross-service API/schema contract design, versioning, and compatibility. | [AGENT.md](../roster/architecture/api-contract-engineer/AGENT.md) |
 | interaction-designer | design | Own user-facing interaction/UX design, flow states, and accessibility intent upstream of implementation. | [AGENT.md](../roster/architecture/interaction-designer/AGENT.md) |
+| visual-designer | design | Own the visual system: design tokens, component specifications, and usage rules, downstream of interaction design. | [AGENT.md](../roster/architecture/visual-designer/AGENT.md) |
 | data-governance-engineer | design | Define classification, ownership, lineage, residency, retention, and deletion requirements. | [AGENT.md](../roster/data/data-governance-engineer/AGENT.md) |
 | cryptographic-assurance-engineer | security | Assess cryptographic inventory, algorithms, keys, certificates, and agility. | [AGENT.md](../roster/security/cryptographic-assurance-engineer/AGENT.md) |
 | quantum-timing-assurance-engineer | security | Validate that physical measurements from quantum and timing sources are trustworthy enough to act on. | [AGENT.md](../roster/security/quantum-timing-assurance-engineer/AGENT.md) |
@@ -50,6 +51,7 @@ tier, route, quality gate, human gate, ...), see the
 | application-engineer | build | Own routine changes to this suite's own tooling, catalog, and orchestration source (not a target project's application code). | [AGENT.md](../roster/engineering/application-engineer/AGENT.md) |
 | frontend-engineer | build | Build secure, accessible React and TypeScript frontends. | [AGENT.md](../roster/engineering/frontend-engineer/AGENT.md) |
 | backend-engineer | build | Build secure Go backend services with PostgreSQL. | [AGENT.md](../roster/engineering/backend-engineer/AGENT.md) |
+| ai-engineer | build | Build a product's model-facing layer: model selection, prompts, retrieval, evals, and inference cost/latency. | [AGENT.md](../roster/engineering/ai-engineer/AGENT.md) |
 | infrastructure-provisioner | build | Create reusable infrastructure-as-code and reviewable plans. | [AGENT.md](../roster/engineering/infrastructure-provisioner/AGENT.md) |
 | cicd-engineer | build | Build secure pipelines for tests, scans, artifacts, promotion, and rollback. | [AGENT.md](../roster/engineering/cicd-engineer/AGENT.md) |
 | debugging-engineer | build | Reproduce failures, identify root cause, and apply scoped authorized fixes. | [AGENT.md](../roster/engineering/debugging-engineer/AGENT.md) |
@@ -99,6 +101,7 @@ Cross-cutting roles that gate, route, capture provenance for, or deliberately ch
 | decision-record | document | Capture decision provenance: who decided, when, on what basis, and what alternatives were rejected. | [AGENT.md](../roster/documentation/decision-record/AGENT.md) |
 | red-team | verify | Run adversarial assessment against the system as actually deployed, not as designed. | [AGENT.md](../roster/testing/red-team/AGENT.md) |
 | premortem | planning | Assume a committed initiative already failed and work backward to plausible causes. | [AGENT.md](../roster/planning/premortem/AGENT.md) |
+| delivery-sequencer | planning | Map dependencies, the critical path, and delivery sequence — order only, never priority or dates. | [AGENT.md](../roster/planning/delivery-sequencer/AGENT.md) |
 | first-principles-challenger | design | Challenge whether an inherited design constraint is real or just unexamined. | [AGENT.md](../roster/architecture/first-principles-challenger/AGENT.md) |
 | subtraction-agent | review | Argue for removal on any scope increase, feature addition, or interface expansion. | [AGENT.md](../roster/review/subtraction-agent/AGENT.md) |
 | falsification-agent | verify | Demand the disproving test for any claim of correctness, resilience, or continuity. | [AGENT.md](../roster/testing/falsification-agent/AGENT.md) |

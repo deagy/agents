@@ -63,6 +63,13 @@ agents:
     model: sonnet
     codex_model: gpt-5.6-terra
     reasoning_effort: medium
+  delivery-sequencer:
+    definition: planning/delivery-sequencer/AGENT.md
+    phase: planning
+    capability: document_author
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
   premortem:
     definition: planning/premortem/AGENT.md
     phase: planning
@@ -154,6 +161,13 @@ agents:
     model: opus
     codex_model: gpt-5.6-sol
     reasoning_effort: high
+  visual-designer:
+    definition: architecture/visual-designer/AGENT.md
+    phase: design
+    capability: document_author
+    model: opus
+    codex_model: gpt-5.6-sol
+    reasoning_effort: high
   application-engineer:
     definition: engineering/application-engineer/AGENT.md
     phase: build
@@ -177,6 +191,13 @@ agents:
     reasoning_effort: medium
   backend-engineer:
     definition: engineering/backend-engineer/AGENT.md
+    phase: build
+    capability: code_author
+    model: sonnet
+    codex_model: gpt-5.6-terra
+    reasoning_effort: medium
+  ai-engineer:
+    definition: engineering/ai-engineer/AGENT.md
     phase: build
     capability: code_author
     model: sonnet

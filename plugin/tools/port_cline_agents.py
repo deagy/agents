@@ -419,6 +419,17 @@ SKILL_PATH_SUBSTITUTIONS: list[tuple[str, str]] = [
     ("roster/orchestration/src/role_metadata.py", "the bundled role-metadata module"),
     ("`roster/orchestration/test/test_selector.py`", "the bundled selector's own test suite"),
     ("roster/orchestration/test/test_selector.py", "the bundled selector's own test suite"),
+    (
+        "`roster/orchestration/test/fixtures/selection_golden_corpus.json`",
+        "the bundled selector's golden-corpus fixtures",
+    ),
+    (
+        "`roster/orchestration/test/test_repository_health.py`",
+        "the bundled repository-health test suite",
+    ),
+    ("`roster/orchestration/test/test_role_metadata.py`", "the bundled role-metadata test suite"),
+    ("`test_routing_coverage.py`", "the bundled routing-coverage test suite"),
+    ("`plugin/tools/test_port_cline_agents.py`", "the bundled Cline port's own test suite"),
     ("`roster/runner-capabilities.json`", "the bundled runner-capabilities manifest"),
     ("roster/runner-capabilities.json", "the bundled runner-capabilities manifest"),
     ("`roster/runner-capabilities.schema.json`", "the bundled runner-capabilities manifest's schema"),

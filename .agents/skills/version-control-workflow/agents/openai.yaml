@@ -1,0 +1,4 @@
+interface:
+  display_name: "Version Control Workflow"
+  short_description: "Operate git and its forges safely."
+  default_prompt: "Use $version-control-workflow to plan a git branch, rebase, history repair, or pull/merge request change."

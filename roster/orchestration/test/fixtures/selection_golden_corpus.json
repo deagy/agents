@@ -1488,6 +1488,80 @@
           "ip-provenance-determination"
         ]
       }
+    },
+    {
+      "id": "AI-FEATURE-1",
+      "description": "ai-feature route; authored to isolate the route",
+      "task": "Select an llm provider and build an eval harness for the summarization feature",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-AI-FEATURE-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "ai-engineer"
+        ],
+        "reviewers": [
+          "test-engineer",
+          "code-reviewer",
+          "security-reviewer"
+        ],
+        "support": [
+          "product-intent-agent",
+          "requirements-agent",
+          "data-governance-engineer",
+          "cost-capacity-planner"
+        ],
+        "matched_routes": [
+          "ai-feature"
+        ]
+      }
+    },
+    {
+      "id": "VISUAL-SYSTEM-1",
+      "description": "visual-system route; authored to isolate the route. Deliberately avoids the word 'token', which the sensitive-data risk rule also matches, so this fixture pins the route rather than a risk-rule interaction",
+      "task": "Define the typography scale and spacing primitives for the visual system",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-VISUAL-SYSTEM-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "visual-designer"
+        ],
+        "reviewers": [
+          "accessibility-reviewer"
+        ],
+        "support": [
+          "interaction-designer",
+          "frontend-engineer"
+        ],
+        "matched_routes": [
+          "visual-system"
+        ]
+      }
+    },
+    {
+      "id": "DELIVERY-SEQUENCING-1",
+      "description": "delivery-sequencing route; authored to isolate the route. Deliberately avoids 'dependency map', which the supply-chain route's 'dependency' keyword also matches",
+      "task": "Work out the critical path and sequencing for this initiative",
+      "changed_files": [],
+      "classification": "internal",
+      "task_id": "GOLDEN-DELIVERY-SEQUENCING-1",
+      "expect_needs_triage": false,
+      "expected": {
+        "primary": [
+          "delivery-sequencer"
+        ],
+        "reviewers": [],
+        "support": [
+          "assumption-register",
+          "cost-capacity-planner"
+        ],
+        "matched_routes": [
+          "delivery-sequencing"
+        ]
+      }
     }
   ]
 }

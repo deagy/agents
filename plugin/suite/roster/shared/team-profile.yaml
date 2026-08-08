@@ -61,6 +61,20 @@ backend:
   migration_tool: golang-migrate (forward-only preferred, reviewed paired up/down migrations, tested up->down->up in CI against disposable instance)
   api_protocols: project_defined
 
+# Applies to AI/ML behavior a consuming project ships as product functionality.
+# It does not describe the models this suite's own agents run on -- those are
+# the per-role `model`/`codex_model` tiers recorded in the role catalog -- nor
+# the knowledge_store block below, which is this suite's own retrieval layer.
+ai:
+  model_provider: not_yet_selected
+  eval_framework: not_yet_selected
+  vector_store: not_yet_selected
+  prompt_versioning: required
+  eval_baseline_before_change: required
+  model_output_trust: untrusted_reference
+  privileged_action_from_model_output: prohibited_without_human_authorization
+  inference_cost_and_latency_budget: project_defined
+
 knowledge_store:
   purpose: agent_retrieval_and_reference
   ordinary_agent_access: read_only

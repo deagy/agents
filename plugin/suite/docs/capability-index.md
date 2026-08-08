@@ -2,7 +2,7 @@
 
 # Capability index
 
-This page lists all 71 roles from [`roster/catalog.yaml`](../roster/catalog.yaml)
+This page lists all 74 roles from [`roster/catalog.yaml`](../roster/catalog.yaml)
 grouped by their `capability` and `phase` fields, so you can find every role
 in a given class of change authority (for example, every role that can only
 review, or every role that can operate a live environment) or every role
@@ -56,7 +56,7 @@ Reads and evaluates only; produces findings, decision packages, or approvals but
 | supply-chain-security-reviewer | review | [AGENT.md](../roster/review/supply-chain-security-reviewer/AGENT.md) |
 | system-architect-aide | authority | [AGENT.md](../roster/authority/system-architect-aide/AGENT.md) |
 
-### `document_author` (21 roles)
+### `document_author` (23 roles)
 
 Creates or edits documents, plans, and requirements (not application code).
 
@@ -74,8 +74,10 @@ Creates or edits documents, plans, and requirements (not application code).
 | evidence-curator | evidence | [AGENT.md](../roster/documentation/evidence-curator/AGENT.md) |
 | governance-planner | design | [AGENT.md](../roster/governance/governance-planner/AGENT.md) |
 | interaction-designer | design | [AGENT.md](../roster/architecture/interaction-designer/AGENT.md) |
+| visual-designer | design | [AGENT.md](../roster/architecture/visual-designer/AGENT.md) |
 | ip-provenance-agent | evidence | [AGENT.md](../roster/documentation/ip-provenance-agent/AGENT.md) |
 | premortem | planning | [AGENT.md](../roster/planning/premortem/AGENT.md) |
+| delivery-sequencer | planning | [AGENT.md](../roster/planning/delivery-sequencer/AGENT.md) |
 | product-intent-agent | planning | [AGENT.md](../roster/planning/product-intent-agent/AGENT.md) |
 | quantum-timing-assurance-engineer | security | [AGENT.md](../roster/security/quantum-timing-assurance-engineer/AGENT.md) |
 | requirements-agent | planning | [AGENT.md](../roster/planning/requirements-agent/AGENT.md) |
@@ -84,12 +86,13 @@ Creates or edits documents, plans, and requirements (not application code).
 | threat-modeler | design | [AGENT.md](../roster/architecture/threat-modeler/AGENT.md) |
 | vendor-register-steward | operations | [AGENT.md](../roster/operations/vendor-register-steward/AGENT.md) |
 
-### `code_author` (9 roles)
+### `code_author` (10 roles)
 
 Creates or edits application, infrastructure, pipeline, or policy-as-code source.
 
 | Role | Phase | Definition |
 | --- | --- | --- |
+| ai-engineer | build | [AGENT.md](../roster/engineering/ai-engineer/AGENT.md) |
 | application-engineer | build | [AGENT.md](../roster/engineering/application-engineer/AGENT.md) |
 | backend-engineer | build | [AGENT.md](../roster/engineering/backend-engineer/AGENT.md) |
 | cicd-engineer | build | [AGENT.md](../roster/engineering/cicd-engineer/AGENT.md) |
@@ -134,18 +137,19 @@ sequencing. It does not always match the role's `AGENT.md` directory --
 see the [role index](role-index.md) for the subject-matter-domain
 grouping instead.
 
-### `planning` (6 roles)
+### `planning` (7 roles)
 
 | Role | Capability | Definition |
 | --- | --- | --- |
 | assumption-register | document_author | [AGENT.md](../roster/planning/assumption-register/AGENT.md) |
 | cost-capacity-planner | document_author | [AGENT.md](../roster/operations/cost-capacity-planner/AGENT.md) |
+| delivery-sequencer | document_author | [AGENT.md](../roster/planning/delivery-sequencer/AGENT.md) |
 | premortem | document_author | [AGENT.md](../roster/planning/premortem/AGENT.md) |
 | product-intent-agent | document_author | [AGENT.md](../roster/planning/product-intent-agent/AGENT.md) |
 | requirements-agent | document_author | [AGENT.md](../roster/planning/requirements-agent/AGENT.md) |
 | scope-boundary | read_only | [AGENT.md](../roster/planning/scope-boundary/AGENT.md) |
 
-### `design` (7 roles)
+### `design` (8 roles)
 
 | Role | Capability | Definition |
 | --- | --- | --- |
@@ -156,6 +160,7 @@ grouping instead.
 | governance-planner | document_author | [AGENT.md](../roster/governance/governance-planner/AGENT.md) |
 | interaction-designer | document_author | [AGENT.md](../roster/architecture/interaction-designer/AGENT.md) |
 | threat-modeler | document_author | [AGENT.md](../roster/architecture/threat-modeler/AGENT.md) |
+| visual-designer | document_author | [AGENT.md](../roster/architecture/visual-designer/AGENT.md) |
 
 ### `security` (4 roles)
 
@@ -166,10 +171,11 @@ grouping instead.
 | quantum-timing-assurance-engineer | document_author | [AGENT.md](../roster/security/quantum-timing-assurance-engineer/AGENT.md) |
 | secrets-identity-engineer | code_author | [AGENT.md](../roster/security/secrets-identity-engineer/AGENT.md) |
 
-### `build` (6 roles)
+### `build` (7 roles)
 
 | Role | Capability | Definition |
 | --- | --- | --- |
+| ai-engineer | code_author | [AGENT.md](../roster/engineering/ai-engineer/AGENT.md) |
 | application-engineer | code_author | [AGENT.md](../roster/engineering/application-engineer/AGENT.md) |
 | backend-engineer | code_author | [AGENT.md](../roster/engineering/backend-engineer/AGENT.md) |
 | cicd-engineer | code_author | [AGENT.md](../roster/engineering/cicd-engineer/AGENT.md) |
