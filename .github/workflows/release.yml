@@ -114,8 +114,17 @@ jobs:
       - name: Tag
         if: steps.tag.outputs.skip == 'false'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Tagger identity must belong to the account that owns the signing
+          # key, or GitHub reports the signature as unknown_key however valid
+          # it is -- it matches the key to the signer's account by email.
+          # github-actions[bot]@users.noreply.github.com is not on that
+          # account, which is exactly how plugin-v0.12.4 ended up signed,
+          # locally verifiable, and still shown Unverified.
+          #
+          # The noreply form is used rather than a personal address: always
+          # associated with the account, and it exposes nothing.
+          git config user.name "deagy"
+          git config user.email "48447733+deagy@users.noreply.github.com"
           # -s when a signing key is configured, -a otherwise.
           if [ "${{ steps.signing.outputs.enabled }}" = "true" ]; then
             git tag -s "plugin-v${{ steps.version.outputs.value }}" \
@@ -384,8 +393,17 @@ jobs:
       - name: Tag
         if: steps.tag.outputs.skip == 'false'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Tagger identity must belong to the account that owns the signing
+          # key, or GitHub reports the signature as unknown_key however valid
+          # it is -- it matches the key to the signer's account by email.
+          # github-actions[bot]@users.noreply.github.com is not on that
+          # account, which is exactly how plugin-v0.12.4 ended up signed,
+          # locally verifiable, and still shown Unverified.
+          #
+          # The noreply form is used rather than a personal address: always
+          # associated with the account, and it exposes nothing.
+          git config user.name "deagy"
+          git config user.email "48447733+deagy@users.noreply.github.com"
           # -s when a signing key is configured, -a otherwise.
           if [ "${{ steps.signing.outputs.enabled }}" = "true" ]; then
             git tag -s "kernel-v${{ steps.version.outputs.value }}" \

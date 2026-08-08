@@ -15,6 +15,25 @@ release convention (see `README.md`'s "Releasing" section) ties git tags
 `python3 tools/plugin_version.py --check`/`--set`. Each version heading
 below links to its [GitHub Release](https://github.com/deagy/cadre-lifecycle/releases).
 
+## [0.12.5](https://github.com/deagy/cadre/releases/tag/plugin-v0.12.5) - 2026-08-08
+
+### Fixed
+
+- **Signed tags now show as Verified on GitHub.** 0.12.4's tag was correctly
+  signed and verified locally, but GitHub reported `unknown_key`: it matches
+  a signing key to the signer's account by email, and the tagger was
+  `github-actions[bot]@users.noreply.github.com`, which is not an address on
+  the account holding the key.
+
+  Release tags are now tagged as `deagy
+  <48447733+deagy@users.noreply.github.com>` — the noreply form, always
+  associated with the account and exposing no personal address. The tag is
+  still created by the release workflow; the identity reflects whose key
+  signs it.
+
+  `plugin-v0.12.4` remains signed and locally verifiable, but GitHub will
+  always show it Unverified.
+
 ## [0.12.4](https://github.com/deagy/cadre/releases/tag/plugin-v0.12.4) - 2026-08-08
 
 ### Added
