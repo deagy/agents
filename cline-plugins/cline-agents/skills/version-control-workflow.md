@@ -92,6 +92,23 @@ Regardless of forge: keep a request scoped to one reviewable change, write the
 description for someone who was not in the conversation, and never approve your
 own work — that separation is a hard invariant of this suite, not a convention.
 
+## Forge CLI tools
+
+Prefer `gh` (GitHub) and `glab` (GitLab) over hand-built REST/GraphQL calls or
+asking a human to click through the web UI, whenever the CLI is installed and
+authenticated. Both cover the operations this skill actually needs: creating
+and updating pull/merge requests, reading review/CI status, managing labels
+and issues, and inspecting protected-branch/ruleset configuration — without
+hand-rolling auth headers or pagination. Fall back to the forge API directly
+only for operations the CLI does not expose, and fall back to describing the
+manual web steps only when neither the CLI nor the API is usable in the
+current environment.
+
+The CLI does not relax anything above: it is still an operator's authenticated
+identity performing the action, so authorship/approval separation, protected-ref
+rules, and the escalation triggers below apply exactly as if the same call were
+made through the web UI.
+
 ## Escalate rather than proceed
 
 Stop and hand to a human when a rewrite would touch a protected or shared ref,
