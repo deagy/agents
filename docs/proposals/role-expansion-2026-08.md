@@ -1,13 +1,17 @@
 # Proposal: seven candidate roles, three added
 
-Status: **IMPLEMENTED — scoped down from seven candidates to three roles, one
-skill, and two routing repairs.**
+Status: **SHIPPED — scoped down from seven candidates to three roles, one
+skill, and two routing repairs. Merged in [#116](https://github.com/deagy/cadre/pull/116)
+(`a23c292`), released as `plugin-v0.13.0` via
+[#118](https://github.com/deagy/cadre/pull/118) (`adde338`).**
 Task ID: `role-expansion-2026-08-07`
 Classification: internal
 Author role: governance-planner (Cadre suite)
 Requested by: repository owner / declared Product Owner
 (`roster/shared/team-profile.yaml`)
-Required approver: Product Owner
+Required approver: Product Owner — approved conversationally in the session
+that requested the work, per the decisions recorded below. The authoritative
+approval record is #116's own review/merge history, not this prose.
 
 Seven roles were proposed: **AI Engineer, Project Manager, Git Expert (possibly
 split into GitHub and GitLab Experts), UX Expert, UI Expert**, and — asked as an
@@ -181,6 +185,61 @@ Every row of the evidence table above now selects a primary agent, and three
 selector tests plus three golden-corpus fixtures pin that. The AI-feature test
 asserts both halves — `ai-engineer` **is** selected and `cicd-engineer` is **not**
 — because the original failure was a confidently wrong plan, not an empty one.
+
+### The local suites reported green while CI was red
+
+Worth recording, because it is the same class of failure this document is
+about. Four Python suites passed with a broken role count in
+`plugin/cline-agents/test/presets.test.mts` (`SOURCE_ROLE_COUNT = 71`,
+`SOURCE_SKILL_COUNT = 7`). The count checklist had been assembled by grepping
+*Python* test files, so a TypeScript test was never in scope, and the only
+thing that could catch it was CI's `cline-plugins` job.
+
+`.agents/skills/agent-authoring/SKILL.md` now names that file explicitly and
+states that the Python suites run green without it. Five count constants and
+two coverage guards failed during this change; the checklist there is the
+record of all of them, so the next role addition does not rediscover them one
+CI run at a time.
+
+## Outcome
+
+| | |
+| --- | --- |
+| Merged | [#116](https://github.com/deagy/cadre/pull/116) → `a23c292` |
+| Released | `plugin-v0.13.0` via [#118](https://github.com/deagy/cadre/pull/118) → `adde338` |
+| Catalog | 71 → 74 roles, 11 → 12 skills |
+| Kernel | `0.13.2`, untouched — correctly not re-released |
+
+Release integrity was checked against GitHub's own view rather than inferred
+from a green run, because each of these has failed silently on this repository
+before:
+
+| Check | Result |
+| --- | --- |
+| Tag signature (`git/tags` API) | `verified: true`, reason `valid` |
+| Tagger identity | `deagy <48447733+deagy@users.noreply.github.com>` |
+| Release body | 64 lines, published, not a draft |
+| Cline SBOM | 302 packages (287 before the three new roles' skills) |
+| SLSA provenance | `gh attestation verify` exit 0, bound to `release.yml` at `adde338` |
+
+### A workflow defect this change surfaced
+
+Merging #116 fired a full `Release` run that released nothing. The role-count
+bump from 71 to 74 touched `plugin/.claude-plugin/plugin.json`, which is a
+`paths` trigger, and the only thing that stopped it was the already-tagged
+check downstream. That guard answers *"is this version published?"*, not *"did
+this push intend a release?"* — and from outside, a run that succeeds having
+released nothing looks exactly like one that released something.
+
+[#117](https://github.com/deagy/cadre/pull/117) (`6200d70`) added a `changed`
+job that diffs each component's version against `github.event.before`, with
+both release jobs gated on it. Both guards stay: the version diff cannot see a
+re-run, a `workflow_dispatch`, or a hand-created tag, and the tag check cannot
+see intent.
+
+Both halves are now demonstrated on live pushes rather than simulations —
+`6200d70` produced no `Release` run at all, and `adde338` ran the plugin job
+while skipping the kernel job whose version had not moved.
 
 ## Deliberately not done
 
