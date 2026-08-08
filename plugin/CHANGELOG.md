@@ -15,6 +15,30 @@ release convention (see `README.md`'s "Releasing" section) ties git tags
 `python3 tools/plugin_version.py --check`/`--set`. Each version heading
 below links to its [GitHub Release](https://github.com/deagy/cadre-lifecycle/releases).
 
+## [0.12.4](https://github.com/deagy/cadre/releases/tag/plugin-v0.12.4) - 2026-08-08
+
+### Added
+
+- **Release tags are signed**, with an SSH key. GitHub shows them as
+  **Verified** — no tooling needed to check the common case.
+
+  To verify locally, build an `allowed_signers` entry from the public key
+  committed at [`.github/tag-signing-key.pub`](https://github.com/deagy/cadre/blob/main/.github/tag-signing-key.pub):
+
+  ```sh
+  echo "releases@cadre $(curl -sL https://raw.githubusercontent.com/deagy/cadre/main/.github/tag-signing-key.pub)" \
+    > /tmp/cadre-allowed-signers
+  git -c gpg.ssh.allowedSignersFile=/tmp/cadre-allowed-signers verify-tag plugin-v0.12.4
+  ```
+
+  Artifacts remain keyless (Sigstore/Rekor); tags use a stored key. That
+  inconsistency is deliberate — keyless tag signing was tried in 0.12.2 and
+  produced signatures with no Rekor entry, so nothing could verify them. See
+  [SECURITY.md](https://github.com/deagy/cadre/blob/main/SECURITY.md).
+
+  The release workflow verifies its own signature before pushing the tag and
+  fails if it does not hold.
+
 ## [0.12.3](https://github.com/deagy/cadre/releases/tag/plugin-v0.12.3) - 2026-08-08
 
 ### Fixed
