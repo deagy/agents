@@ -70,24 +70,38 @@ Each release also carries an SPDX SBOM: the kernel's records its resolved
 Python dependency tree, and the plugin's records the Cline plugins' npm
 tree, which is that distribution's only third-party surface.
 
-### Why tags are not signed
+### Verifying a tag
 
-Release tags are unsigned annotated tags. Keyless tag signing via
-[gitsign](https://github.com/sigstore/gitsign) was implemented and reverted:
-it produced a valid-looking signature on the tag object but created no Rekor
-entry, and a keyless certificate is ephemeral, so with nothing in the
-transparency log there is nothing to verify the signature against. It failed
-verification immediately at signing time and still failed hours later, with
-the same gitsign version that produced it.
+Release tags are signed with an SSH key. GitHub shows them as **Verified**,
+which is the check most people will actually use — no tooling required.
 
-A signature nobody can verify is worse than none — it implies an assurance
-that does not exist. The artifact attestations above are unaffected and do
-reach Rekor; that difference is exactly what made the tag problem visible.
+To verify locally, tell git which key to trust:
 
-The alternative, a GPG or SSH key held in repository secrets, would give
-GitHub's "Verified" badge and native `git verify-tag`, at the cost of a
-long-lived private key — which is what the keyless posture exists to avoid.
-That remains a deliberate open choice rather than an oversight.
+```sh
+echo "releases@cadre $(gh api repos/deagy/cadre/contents/.github/tag-signing-key.pub \
+  --jq .content | base64 -d)" > /tmp/cadre-allowed-signers
+git -c gpg.ssh.allowedSignersFile=/tmp/cadre-allowed-signers verify-tag plugin-v<version>
+```
+
+### Why tags use a key when artifacts do not
+
+Artifacts are signed keylessly; tags are not. That inconsistency is
+deliberate and was arrived at the hard way.
+
+Keyless tag signing via [gitsign](https://github.com/sigstore/gitsign) was
+implemented, shipped in `plugin-v0.12.2`, and reverted. It produced a
+valid-looking signature on the tag object but created no Rekor entry, and a
+keyless certificate is ephemeral — with nothing in the transparency log
+there was nothing to verify against. It failed at signing time and still
+failed hours later with the same gitsign version that produced it. In the
+same workflow run, the artifact attestation logged its Rekor upload
+normally; the tag signing logged none. `plugin-v0.12.2` still carries that
+unverifiable signature.
+
+A signature nobody can verify is worse than none, so tags now use a stored
+SSH key: a long-lived private key in repository secrets, which is exactly
+what the keyless posture exists to avoid, accepted here because it is the
+option that demonstrably verifies.
 
 The plugin distribution itself carries no artifact provenance, deliberately.
 A marketplace installs it by cloning a git commit, so there is no downloaded
