@@ -257,9 +257,9 @@ jobs:
             import path from "node:path";
             const root = process.cwd();
             for (const entrypoint of [
-              "cline-plugins/cline/index.ts",
               "cline-plugins/cline-agents/index.ts",
               "cline-plugins/cline-lifecycle/index.ts",
+              "cline-plugins/cline/index.ts",
             ]) {
               const require = createRequire(path.join(root, entrypoint));
               require.resolve("zod");
