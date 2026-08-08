@@ -198,6 +198,55 @@ jobs:
             exit 1
           fi
 
+  cline-git-source:
+    # A Git-source install starts at this repository root. Cline loads the
+    # three entrypoints declared by root package.json and resolves their
+    # plugin-owned runtime imports from this production-only dependency
+    # closure; @cline/* is supplied by Cline's host sandbox.
+    #
+    # That last part is an assumption about Cline's installer, not something
+    # this workflow can prove: the three workspace packages declare
+    # @cline/sdk and @cline/shared as direct runtime dependencies, and the
+    # root manifest deliberately omits them. If a Git-source install ever
+    # fails on a missing @cline/* module, that assumption is what broke --
+    # not this dependency closure.
+    #
+    # This is a standalone job rather than a step in cline-plugins below, for
+    # two reasons. It must never run `npm ci` in cline-plugins/: that creates
+    # a nearer node_modules, and createRequire's upward walk would then
+    # resolve against the dev workspace and pass even with a broken root
+    # closure. And as a step gated to one matrix leg, renaming that leg would
+    # skip the check silently -- green, with no missing status check.
+    name: Cline Git-source dependency closure
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --ignore-scripts --omit=dev
+      - name: Verify Cline Git-source runtime imports resolve from each entrypoint
+        run: |
+          node --input-type=module -e '
+            import { createRequire } from "node:module";
+            import path from "node:path";
+            const root = process.cwd();
+            for (const entrypoint of [
+              "cline-plugins/cline-agents/index.ts",
+              "cline-plugins/cline-lifecycle/index.ts",
+              "cline-plugins/cline/index.ts",
+            ]) {
+              const require = createRequire(path.join(root, entrypoint));
+              require.resolve("zod");
+            }
+            createRequire(path.join(root, "cline-plugins/cline-agents/index.ts")).resolve("yaml");
+          '
+
   cline-plugins:
     name: cline-plugins/* (npm test, typecheck)
     runs-on: ubuntu-latest

@@ -48,6 +48,11 @@ evidence/
 # Local Claude Code settings (not portable across contributors).
 .claude/settings.local.json
 
+# Codex CLI marketplace install state, written into whichever checkout the
+# install was run against. It pins the revision that happened to be on that
+# contributor's disk, so it is stale the moment it is written.
+.codex-marketplace-install.json
+
 # Node/TypeScript build artifacts. The only Node code here is the three Cline
 # plugins under cline-plugins/ (a single npm workspace); this blanket rule also
 # stops a stray local install under a sample-*/ tree being committed.
