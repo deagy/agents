@@ -102,12 +102,6 @@ git clone https://github.com/deagy/cadre.git
 cline plugin install ./cadre/cline-plugins/cline --force
 ```
 
-**Known upstream defect:** as of cline CLI 3.0.46, invoking *any*
-locally-installed plugin's tool fails with `JSON.stringify cannot serialize
-cyclic structures`. This affects Cline's own example plugin too. Install and
-uninstall work; tool invocation is expected to start working when Cline ships
-a fix.
-
 ## From a checkout
 
 For working on Cadre itself, or running it without installing anything:

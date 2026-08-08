@@ -59,10 +59,11 @@ supports.
 ## Requires the external `agentic-sdlc` kernel
 
 `bin/cadre sdlc` is a thin pass-through to the separately-installed
-`agentic-sdlc` kernel binary — gate state and transitions live entirely in that
-external kernel, not in this repository (see root `CLAUDE.md`'s "Architecture
-Notes"). Install it first via one of the lifecycle plugins' bundled bootstrap
-scripts, e.g.:
+`agentic-sdlc` kernel binary — gate state and transitions live entirely in
+that kernel, a permanently separate, independently versioned component (its
+source is in-tree at `kernel/`, but it is installed and invoked as a
+standalone binary; see root `CLAUDE.md`'s kernel ownership boundary). Install
+it first via one of the lifecycle plugins' bundled bootstrap scripts, e.g.:
 
 ```sh
 python3 plugins/lifecycle/tools/bootstrap_sdlc.py --root /path/to/project --profile secure-cloud
@@ -74,8 +75,8 @@ isn't resolvable — this plugin does not install it.
 ## Install
 
 ```sh
-git clone https://github.com/deagy/cadre-lifecycle.git
-cline plugin install /path/to/cadre-lifecycle/cline-lifecycle --force
+git clone https://github.com/deagy/cadre.git
+cline plugin install ./cadre/cline-plugins/cline-lifecycle --force
 ```
 
 ## System prompt

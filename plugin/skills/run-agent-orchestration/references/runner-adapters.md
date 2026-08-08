@@ -275,12 +275,11 @@ authoritative for the *why*.
 
 ## Cline
 
-`cline/` in [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) (the
-hand-authored, non-generated Cline CLI plugin —
+`cline-plugins/cline/` (the hand-authored, non-generated Cline CLI plugin —
 see `AGENTS.md`'s project-structure note) registers exactly one tool,
 `agents_select`, which shells out to `./bin/cadre select` and returns the
 JSON dispatch plan. It is explicitly documented as "Plan only: never invokes
-agents" and must stay that way (see that repository's `cline/index.ts` tool
+agents" and must stay that way (see that plugin's `index.ts` tool
 description). **There is currently no
 plugin-registered tool in this repo, and no supported one to add, that
 actually dispatches a named role on Cline** — this is a confirmed gap, not an

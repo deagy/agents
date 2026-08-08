@@ -180,13 +180,13 @@ APPLICATION_ENGINEER_PORT_NOTE = (
     "\n\n---\n\n"
     "_Port note (not part of the original role authority text): "
     "application-engineer's role text describes maintaining THIS "
-    "cadre-lifecycle source repository's own tooling (roster/catalog.yaml, "
+    "deagy/cadre monorepo's own tooling (roster/catalog.yaml, "
     "roster/orchestration/routing.yaml, roster/RUNBOOK.md, the packaged-plugin "
     "regeneration flow via `cadre generate-plugin`/`cadre generate-role-metadata`, "
-    "deagy/cadre-lifecycle). Those are the literal subject of the role, not "
+    "plugin/). Those are the literal subject of the role, not "
     "incidental cross-references, so they were left unrewritten; this preset is "
     "only meaningful when dispatched against a checkout of the "
-    "cadre-lifecycle/cadre register repositories themselves, not an arbitrary "
+    "deagy/cadre register repository itself, not an arbitrary "
     "consumer project._"
 )
 FAIL_LOUD_EXEMPT_ROLES = {"application-engineer"}

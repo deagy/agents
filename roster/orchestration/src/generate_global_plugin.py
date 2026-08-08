@@ -33,13 +33,12 @@ convenience layered on top of the manual PATH setup, not a replacement for it.
 A generated package-relative agent-catalog.json is loaded by the standalone
 kernel through provider.json.
 
-The package itself is maintained in a separate repository, deagy/cadre-lifecycle
-(the successor to the now-archived deagy/cadre-plugin), which is almost
-entirely this script's output: only the two plugin manifests carrying the
-release version are hand-authored there (see PACKAGE_ASSETS). ``--output
-<directory>`` points at a checkout of that repository and is therefore
-required — this source repository has no plugins/ directory of its own to
-write into.
+The package itself is committed in this same repository under plugin/, which
+is almost entirely this script's output: only the plugin manifests carrying
+the release version and a few hand-authored files are maintained there
+directly (see PACKAGE_ASSETS). ``--output <directory>`` is still required
+rather than defaulting, so a run can never silently create a stray directory;
+in this repository it is always ``--output plugin``.
 
 Regenerate after adding/removing a role in roster/catalog.yaml or a skill under
 .agents/skills/:
@@ -297,6 +296,13 @@ SHARED_POLICIES = [
     "roster/shared/knowledge-use-policy.md",
     "roster/shared/agent-autonomy.yaml",
     "roster/shared/documentation-style.md",
+    # Every role, not just write-capable ones: its "Never mutate a working
+    # tree you did not create" section binds every tier. Destroying
+    # uncommitted work with `git reset --hard`/`stash` needs no file-write
+    # tool and produces no edit, so gating that rule behind a *write*-capable
+    # tier coupled it to the wrong thing. The file opens with an
+    # applicability header telling each tier which of its sections apply.
+    "roster/shared/workspace-isolation.md",
 ]
 ASK_HUMAN_RULE = (
     "You are a dispatched subagent: you cannot ask the human directly. If you "
@@ -392,17 +398,25 @@ ALLOWED_REASONING_EFFORTS = set(_RUNNER_CAPABILITIES["allowed_reasoning_efforts"
 # that can make a repository edit. Derived from the manifest rather than
 # hardcoded tier names, so a future tier is picked up automatically (idea:
 # "write-capable Cadre roles work in a git worktree by default").
+#
+# No longer consulted here now that TIER_SCOPED_POLICIES is empty, but kept
+# as the single derivation of "which tiers can write": workspace-isolation.md
+# names it explicitly when scoping which of its sections apply to whom, and
+# `roster/orchestration/test/test_repository_health.py` reads it.
 WRITE_CAPABLE_TIERS = frozenset(
     name for name, profile in CAPABILITY_PROFILES.items() if profile["sandbox_mode"] != "read-only"
 )
-# Shared-policy files that are only embedded into write-capable roles' wrapper
+# Shared-policy files embedded only into some capability tiers' wrapper
 # instructions, keyed by the same repository-relative path convention as
-# SHARED_POLICIES. A read-only role can still read the file directly (or via
-# `cadre resolve-shared`), so it must open with its own applicability header
-# rather than relying on this tier gate for enforcement.
-TIER_SCOPED_POLICIES: dict[str, frozenset[str]] = {
-    "roster/shared/workspace-isolation.md": WRITE_CAPABLE_TIERS,
-}
+# SHARED_POLICIES. A read-only role can still read any such file directly
+# (or via `cadre resolve-shared`), so a file here must open with its own
+# applicability header rather than relying on this tier gate for enforcement.
+#
+# Currently empty: workspace-isolation.md was the only entry and moved to
+# SHARED_POLICIES once part of it came to bind every tier. The mechanism is
+# kept because the tier-gating question recurs, and an empty dict is a
+# clearer answer than a deleted concept.
+TIER_SCOPED_POLICIES: dict[str, frozenset[str]] = {}
 
 GENERATED_MARKER = "<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->"
 GENERATED_TOP_LEVEL = {
@@ -1291,16 +1305,14 @@ def files_equal(left: Path, right: Path, *, compare_readme: bool = True) -> bool
 def main() -> int:
     catalog = load_catalog(AGENTS_ROOT / "catalog.yaml")
     arguments = sys.argv[1:]
-    # The package is written into a checkout of the plugin repository
-    # (deagy/cadre-lifecycle, successor to the now-archived deagy/cadre-plugin).
-    # This repository has nothing to generate into, so --output is required
-    # rather than defaulting anywhere -- a default would silently create a
-    # stray directory here.
+    # --output is required rather than defaulting anywhere -- a default would
+    # silently create a stray directory. In this repository it is always
+    # `--output plugin`.
     if "--output" not in arguments:
         raise SystemExit(
             "cadre generate-plugin: --output is required. The packaged plugin lives in "
-            "deagy/cadre-lifecycle; clone it and pass its root, e.g.\n"
-            "    cadre generate-plugin --output /path/to/cadre-lifecycle"
+            "this repository's plugin/ directory, e.g.\n"
+            "    cadre generate-plugin --output plugin"
         )
     output_index = arguments.index("--output")
     try:

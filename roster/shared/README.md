@@ -69,27 +69,31 @@ silent fallback to the default.
 
 ### Tier-scoped shared policies
 
-Most files in this directory are embedded into *every* generated role
-wrapper (`SHARED_POLICIES` in `generate_global_plugin.py`). A smaller set is
-embedded only into wrappers for capability tiers the file names, via
-`TIER_SCOPED_POLICIES` in the same module — currently just
-`workspace-isolation.md`, scoped to `WRITE_CAPABLE_TIERS` (every capability
-tier whose `sandbox_mode` in `roster/runner-capabilities.json` is not
-`read-only`; a read-only role has no edits to isolate). A tier-scoped file
-still follows the same missing/emptied/present optionality rule as any
-`SHARED_POLICIES` file for the tiers it applies to, and still opens with an
-explicit applicability header naming those tiers, because the scoping below
-is generated-wrapper-only.
+Every file in this directory is currently embedded into *every* generated
+role wrapper (`SHARED_POLICIES` in `generate_global_plugin.py`).
 
-**This scoping applies only to the generated wrapper, not to
+The module also has a `TIER_SCOPED_POLICIES` mechanism for embedding a file
+only into wrappers for the capability tiers it names. **It is empty today.**
+`workspace-isolation.md` was its only entry, scoped to `WRITE_CAPABLE_TIERS`,
+until that file gained a section (`Never mutate a working tree you did not
+create`) binding every tier regardless of write capability — at which point
+tier-scoping it meant the roles least likely to be shown the rule were the
+ones dispatched for read-only work. It moved to `SHARED_POLICIES`; the
+mechanism stays because the question recurs.
+
+If you do reintroduce a tier-scoped file: it follows the same
+missing/emptied/present optionality rule as any `SHARED_POLICIES` file for
+the tiers it applies to, and it must open with an explicit applicability
+header naming those tiers, because the scoping is generated-wrapper-only.
+
+**Any such scoping applies only to the generated wrapper, not to
 `cadre resolve-shared`.** `resolve.py` is filename-based and knows nothing
-about capability tiers, so running `cadre resolve-shared
-workspace-isolation.md` from a read-only role (or from any shell) still
-returns the file's full resolved text — the tier gate only decides whether
-`generate_global_plugin.py` embeds the section into a *specific role's*
-generated wrapper instructions. That asymmetry is why every tier-scoped
-file must state its own applicability in its own text: `cadre
-resolve-shared` cannot do that filtering for it.
+about capability tiers, so `cadre resolve-shared <file>` from any role or
+shell returns the file's full resolved text — a tier gate only decides
+whether `generate_global_plugin.py` embeds the section into a *specific
+role's* generated wrapper instructions. That asymmetry is why a tier-scoped
+file must state its own applicability in its own text: `cadre resolve-shared`
+cannot do that filtering for it.
 
 ## Where overlays live
 

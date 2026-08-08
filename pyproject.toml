@@ -130,7 +130,6 @@ packages = ["cadre_cli"]
 "roster/shared/secure-development-policy.md" = "cadre_cli/_vendor/roster/shared/secure-development-policy.md"
 "roster/shared/team-profile.yaml" = "cadre_cli/_vendor/roster/shared/team-profile.yaml"
 "roster/shared/technology-standards.md" = "cadre_cli/_vendor/roster/shared/technology-standards.md"
-# Tier-scoped shared policy (generate_global_plugin.py's TIER_SCOPED_POLICIES).
 # Like the SHARED_POLICIES entries above it, role_wrapper_inputs() embeds this
 # into generated wrapper instructions -- and because a missing shared file is
 # deliberately *skipped* rather than an error, omitting it here would not
@@ -152,9 +151,9 @@ packages = ["cadre_cli"]
 #
 # This directory is register-owned precisely so these two subcommands keep
 # working from a pip/pipx install with no plugin checkout anywhere: the
-# separate Claude/Codex plugin distribution (deagy/cadre-lifecycle, successor
-# to the now-archived deagy/cadre-plugin) receives a
-# copy of it, rather than the other way round. Both subcommands only *read*
+# packaged Claude/Codex plugin distribution (plugin/, in this same
+# repository) receives a copy of it, rather than the other way round. Both
+# subcommands only *read*
 # these resources (bootstrap-codex writes into the caller's own home
 # directory, never back into this package), so vendoring them is safe --
 # unlike generate-plugin below, which fails closed instead (see

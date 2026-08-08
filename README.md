@@ -53,7 +53,7 @@ Key areas:
 - [roster/knowledge-store/](roster/knowledge-store/) contains the retrieval layer for approved historical context.
 - [roster/testing/](roster/testing/) and [roster/support/](roster/support/) define black-box testing, end-user testing, support triage, and escalation roles.
 - [.agents/skills/](.agents/skills/) contains this repository's skills, packaged for Codex CLI directly and pointed to from `.claude/skills/` for Claude Code.
-- [deagy/agentic-sdlc](https://github.com/deagy/agentic-sdlc) owns the portable lifecycle kernel, initializer, validator, and lifecycle skills.
+- [`kernel/`](kernel/) owns the portable lifecycle kernel, initializer, validator, and lifecycle skills — a separately versioned, separately released pip distribution (see "Releasing" below), even though its source now lives in this repository. It was `deagy/agentic-sdlc` before the monorepo merge.
 - [`plugin/`](plugin/) packages this suite, its 74 roles, and the `secure-cloud` provider profile as installable Claude Code / Codex plugins, alongside the optional Agentic SDLC lifecycle-governance plugins. It was `deagy/cadre-lifecycle` before the monorepo merge.
 - [`cline-plugins/`](cline-plugins/) holds the three Cline CLI plugins and the single npm workspace that backs them — the only Node code in this repository. It is deliberately *not* inside `plugin/`: an npm workspace root there made installing the Claude Code plugin run `npm install` and write 263 MB of Cline SDK dependencies into every user's plugin cache.
 
@@ -68,7 +68,7 @@ repository does not run its own `.agentic-sdlc/` overlay.
 
 ## Supported runners
 
-Every role definition and orchestration tool is runner-neutral text and data. Lifecycle contracts and runner adapters are versioned by [Agentic SDLC](https://github.com/deagy/agentic-sdlc).
+Every role definition and orchestration tool is runner-neutral text and data. Lifecycle contracts and runner adapters are versioned by the Agentic SDLC kernel, released independently from [`kernel/`](kernel/) (see "Releasing" below).
 
 | Runner | Support | Notes |
 | --- | --- | --- |
@@ -78,15 +78,6 @@ Every role definition and orchestration tool is runner-neutral text and data. Li
 
 <details>
 <summary>Known Cline plugin limitations</summary>
-
-**Tool invocation fails with a cyclic-structure error.** As of `cline` CLI
-`3.0.46` (the latest published version at the time this was built), invoking
-any locally-installed plugin's tool fails with `JSON.stringify cannot
-serialize cyclic structures` — confirmed as an upstream Cline bug, not
-specific to this plugin, by reproducing the identical failure with
-`cline/cline`'s own unmodified example plugin. The plugin installs and
-uninstalls cleanly; tool invocation should start working once Cline ships a
-fix.
 
 **Bare git-URL install can fail with a missing `vitest` module.** Installing
 via a bare repository URL, rather than the local-install form, previously
@@ -109,14 +100,17 @@ otherwise.
 
 ## Quick start
 
-Read [AGENTS.md](AGENTS.md) first, then use the [getting-started guide](docs/getting-started.md). `bin/cadre` resolves a Python 3.10+ interpreter for you (checks `python3`/`python`; `.\bin\cadre.ps1` also checks `py -3` in PowerShell) — see "Put `cadre` on `PATH`" to put it on `PATH`, or run it as `./bin/cadre` (`.\bin\cadre.ps1` in PowerShell) from the repository root. Then validate the suite-only component and the orchestration tools (most of these run standalone; a handful of lifecycle-contract-specific tests only run when the standalone lifecycle executable is also available):
+Read [AGENTS.md](AGENTS.md) first, then use the [getting-started guide](docs/getting-started.md). `bin/cadre` resolves a Python 3.10+ interpreter for you (checks `python3`/`python`; `.\bin\cadre.ps1` also checks `py -3` in PowerShell) — see "Put `cadre` on `PATH`" to put it on `PATH`, or run it as `./bin/cadre` (`.\bin\cadre.ps1` in PowerShell) from the repository root. Then validate the suite-only component, the orchestration tools, and the in-tree lifecycle kernel:
 
 ```sh
 python3 -m unittest discover -s roster/knowledge-store/test -p "test_*.py"
 python3 -m unittest discover -s roster/orchestration/test -p "test_*.py"
-# AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc \
-#   python3 -m unittest discover -s roster/orchestration/test -p "test_*.py"  # also runs the lifecycle-contract-specific tests
+python3 -B -m unittest discover -s kernel/test -p "test_*.py"
 ```
+
+The kernel is in-tree, so `cadre sdlc` and the lifecycle-contract tests above
+need no separate install and no `AGENTIC_SDLC_BIN` — set that env var only to
+point at a *different* kernel deliberately.
 
 Generate a reviewable dispatch plan:
 
@@ -132,30 +126,30 @@ The selector emits a plan only. It does not run agents, retrieve knowledge, depl
 
 ## Agentic SDLC quick start
 
-Install the reusable G1-G10 lifecycle from its standalone repository, then use
-this suite's compatibility command to inject the Cadre provider. Pin to a
-reviewed release in automation — `main` is fine for exploration but not an
-immutable dependency. Check
-[the repository's releases](https://github.com/deagy/agentic-sdlc/releases)
-for the current tag rather than hardcoding one here, since this section goes
-stale otherwise.
+Install the reusable G1-G10 lifecycle kernel, then use this suite's
+compatibility command to inject the Cadre provider. The kernel's source lives
+in this same repository, under [`kernel/`](kernel/), but it is still released
+independently — pin to a reviewed `kernel-v*` tag in automation, since `main`
+is fine for exploration but not an immutable dependency. Check
+[this repository's releases](https://github.com/deagy/cadre/releases)
+(filter for `kernel-v*`) for the current tag rather than hardcoding one here,
+since this section goes stale otherwise.
 
 The kernel is a real pip/pipx-installable distribution (puts `agentic-sdlc`
-directly on `PATH`, no repository checkout needed at runtime). See the
-[standalone lifecycle guide](https://github.com/deagy/agentic-sdlc/tree/main/kernel)
-for the exact `pipx install` command and current release tag; duplicating
-that command here would just go stale again.
+directly on `PATH`, no repository checkout needed at runtime). See
+[`kernel/README.md`](kernel/README.md) for the exact `pipx install` command;
+duplicating that command here would just go stale again.
 
-For development against an unreleased change, clone and run from the
-checkout instead:
+For development against an unreleased change, or if you already have this
+repository checked out, run from the checkout instead — no separate clone
+needed:
 
 ```sh
-git clone https://github.com/deagy/agentic-sdlc.git
-git -C agentic-sdlc checkout <reviewed-tag>
+pipx install ./kernel
 ```
 
-Put `agentic-sdlc/bin/agentic-sdlc` on `PATH`, or set
-`AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc`.
+Put the resulting `agentic-sdlc` executable on `PATH` (pipx does this by
+default), or set `AGENTIC_SDLC_BIN=/path/to/agentic-sdlc`.
 
 Either way, once `agentic-sdlc` resolves on `PATH` (or via `AGENTIC_SDLC_BIN`),
 run `cadre sdlc init --root /path/to/target`.
@@ -172,7 +166,7 @@ A project with a different stack should stay on `quick`/`generic`/`web-service` 
 
 Initialization detects candidate technologies and validation commands, but deliberately leaves human authorities, compliance applicability, persistent/production environment classification, and other consequential decisions unresolved. The target project owns those decisions and its lifecycle records under `.agentic-sdlc/`.
 
-See the [standalone lifecycle guide](https://github.com/deagy/agentic-sdlc/tree/main/kernel) for commands and upgrades.
+See [`kernel/README.md`](kernel/README.md) for commands and upgrades.
 
 ### No A2A surface today
 

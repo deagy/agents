@@ -4,11 +4,14 @@
 
 This repository supplies the Secure Cloud role suite and provider profile. The
 portable Agentic SDLC kernel, lifecycle schemas, gate transitions, and lifecycle
-skills are maintained at [deagy/agentic-sdlc](https://github.com/deagy/agentic-sdlc)
-— that ownership is permanent and applies to every consuming project,
-including this one. This repository does not run its own `.agentic-sdlc/`
+skills are maintained in this same repository's
+[`kernel/`](https://github.com/deagy/cadre/tree/main/kernel), but as a
+permanently separate, independently versioned and released component —
+`roster/` never takes over that ownership, and that boundary applies to every
+consuming project, including this one (see `CLAUDE.md`'s kernel ownership
+boundary). This repository does not run its own `.agentic-sdlc/`
 overlay; lifecycle schemas, run-record validators, and gate-authority logic
-never move into this repo regardless.
+never move into `roster/` regardless.
 
 ## Conversational onboarding (recommended for non-engineers)
 
@@ -23,13 +26,13 @@ follow.
 
 ## Initialize a target project (direct CLI)
 
-Install the reviewed standalone release and make its executable available as
-`agentic-sdlc` or through `AGENTIC_SDLC_BIN`:
+Install the reviewed release and make its executable available as
+`agentic-sdlc` or through `AGENTIC_SDLC_BIN` — see
+[`kernel/README.md`](https://github.com/deagy/cadre/tree/main/kernel/README.md)
+for the exact `pipx install` command and current `kernel-v*` tag:
 
 ```sh
-git clone https://github.com/deagy/agentic-sdlc.git
-git -C agentic-sdlc checkout v0.13.0
-export AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc
+pipx install "git+https://github.com/deagy/cadre.git@kernel-v0.13.0#subdirectory=kernel"
 cadre sdlc init --root /path/to/target --profile secure-cloud
 ```
 
