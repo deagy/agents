@@ -79,9 +79,20 @@ KNOWN_DIVERGENT_SECTIONS: dict[tuple[str, str], str] = {
     ),
 }
 
-# The kernel bootstrap script is duplicated verbatim -- no forge-specific
-# content at all -- so it gets the strict check.
-BOOTSTRAP_COPIES = (
+# The kernel bootstrap script is a different case from the skills above: it
+# has exactly one hand-maintained copy, `plugin/tools/bootstrap_sdlc.py`, which
+# `generate_global_plugin.py` fans out verbatim to each lifecycle plugin at
+# build time (its BOOTSTRAP_SOURCE -> BOOTSTRAP_TARGETS). So the invariant is
+# not "the copies agree with each other" but "each copy still equals the source
+# it was generated from" -- which also catches a hand-edit to a copy, the thing
+# the fan-out exists to make unnecessary.
+#
+# `cadre generate-plugin --check` covers this too, by regenerating everything.
+# This check is here because it is nearly free, names the specific file, and
+# fails with a message pointing at the source rather than at a diff of 384
+# regenerated files.
+BOOTSTRAP_SOURCE = Path(__file__).resolve().parent / "bootstrap_sdlc.py"
+BOOTSTRAP_GENERATED_COPIES = (
     "lifecycle/tools/bootstrap_sdlc.py",
     "lifecycle-github/tools/bootstrap_sdlc.py",
     "lifecycle-gitlab/tools/bootstrap_sdlc.py",
@@ -241,22 +252,27 @@ class SkillDuplicationTests(unittest.TestCase):
 
 
 class BootstrapDuplicationTests(unittest.TestCase):
-    def test_bootstrap_copies_are_byte_identical(self) -> None:
+    def test_generated_bootstrap_copies_match_their_source(self) -> None:
         """Unlike the skills, bootstrap_sdlc.py carries no forge-specific
-        content, so any difference at all is drift."""
-        contents: dict[str, str] = {}
-        for relative in BOOTSTRAP_COPIES:
-            path = PLUGINS_ROOT / relative
-            self.assertTrue(path.is_file(), f"missing bootstrap copy: {path}")
-            contents[relative] = path.read_text(encoding="utf-8")
-        reference_name, reference = next(iter(contents.items()))
-        for name, body in list(contents.items())[1:]:
-            self.assertEqual(
-                reference,
-                body,
-                f"{name} has drifted from {reference_name}; these copies must "
-                f"stay byte-identical",
-            )
+        content and is not hand-maintained per plugin -- it is generated from a
+        single source, so any difference at all is drift."""
+        self.assertTrue(
+            BOOTSTRAP_SOURCE.is_file(),
+            f"missing bootstrap source: {BOOTSTRAP_SOURCE}",
+        )
+        source = BOOTSTRAP_SOURCE.read_text(encoding="utf-8")
+        for relative in BOOTSTRAP_GENERATED_COPIES:
+            with self.subTest(copy=relative):
+                path = PLUGINS_ROOT / relative
+                self.assertTrue(path.is_file(), f"missing bootstrap copy: {path}")
+                self.assertEqual(
+                    source,
+                    path.read_text(encoding="utf-8"),
+                    f"plugins/{relative} has drifted from its source "
+                    f"{BOOTSTRAP_SOURCE.name}. It is generated -- edit the "
+                    f"source and re-run `cadre generate-plugin --output plugin` "
+                    f"rather than editing the copy.",
+                )
 
 
 if __name__ == "__main__":
