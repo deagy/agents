@@ -53,6 +53,45 @@ release asset (falling back to a pinned git tag), never from PyPI, for exactly
 this reason.
 If you write your own automation, do the same.
 
+## Verifying a release
+
+Release artifacts carry a SLSA provenance attestation, and release tags are
+signed. Both use Sigstore keyless signing — an ephemeral certificate minted
+from the release workflow's OIDC identity and recorded in the Rekor
+transparency log — so there is no long-lived signing key anywhere in this
+project to be stolen or rotated.
+
+Artifacts, using the GitHub CLI:
+
+```sh
+gh release download kernel-v<version> --repo deagy/cadre
+gh attestation verify agentic_sdlc-<version>-py3-none-any.whl --repo deagy/cadre
+sha256sum -c SHA256SUMS
+```
+
+Tags, using [gitsign](https://github.com/sigstore/gitsign):
+
+```sh
+gitsign verify kernel-v<version> \
+  --certificate-identity-regexp='https://github.com/deagy/cadre/' \
+  --certificate-oidc-issuer=https://token.actions.githubusercontent.com
+```
+
+**GitHub's web UI shows these tags as "Unverified".** Its badge recognises
+only GPG and SSH keys registered to a user account, and this project
+deliberately has neither — a stored private key is the thing keyless signing
+exists to avoid. Use the command above rather than the badge.
+
+Each release also carries an SPDX SBOM: the kernel's records its resolved
+Python dependency tree, and the plugin's records the Cline plugins' npm
+tree, which is that distribution's only third-party surface.
+
+The plugin distribution itself carries no artifact provenance, deliberately.
+A marketplace installs it by cloning a git commit, so there is no downloaded
+file to verify and integrity comes from git's content addressing. Signing a
+tarball nobody installs from would prove something about a file no user
+touches.
+
 ## Reporting a vulnerability
 
 Open a

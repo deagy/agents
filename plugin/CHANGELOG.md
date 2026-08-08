@@ -15,6 +15,27 @@ release convention (see `README.md`'s "Releasing" section) ties git tags
 `python3 tools/plugin_version.py --check`/`--set`. Each version heading
 below links to its [GitHub Release](https://github.com/deagy/cadre-lifecycle/releases).
 
+## [0.12.2](https://github.com/deagy/cadre/releases/tag/plugin-v0.12.2) - 2026-08-08
+
+### Added
+
+- **Release tags are now signed**, keylessly, via
+  [gitsign](https://github.com/sigstore/gitsign) — an ephemeral certificate
+  from the release workflow's OIDC identity, recorded in Rekor. No private
+  key exists in this project to be stolen or rotated, matching the
+  `cosign keyless (Sigstore OIDC)` standard the suite already declares.
+
+  ```sh
+  gitsign verify plugin-v0.12.2 \
+    --certificate-identity-regexp='https://github.com/deagy/cadre/' \
+    --certificate-oidc-issuer=https://token.actions.githubusercontent.com
+  ```
+
+  GitHub's UI will show these tags as "Unverified": its badge recognises
+  only GPG and SSH keys registered to an account, and there is deliberately
+  no such key here. That is a display limitation, not a failed signature.
+  See [SECURITY.md](https://github.com/deagy/cadre/blob/main/SECURITY.md).
+
 ## [0.12.1](https://github.com/deagy/cadre/releases/tag/plugin-v0.12.1) - 2026-08-08
 
 ### Added

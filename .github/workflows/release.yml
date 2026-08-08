@@ -78,13 +78,34 @@ jobs:
         if: steps.tag.outputs.skip == 'false'
         run: python3 plugin/tools/changelog_entry.py "${{ steps.version.outputs.value }}" > /tmp/release-notes.md
 
+      # Keyless tag signing, matching the cosign posture in
+      # roster/shared/team-profile.yaml: gitsign mints an ephemeral
+      # certificate from this workflow's OIDC identity and records the
+      # signature in Rekor, so there is no private key in repo secrets to
+      # manage, rotate, or leak.
+      #
+      # Verify with:
+      #   gitsign verify <tag> \
+      #     --certificate-identity-regexp='https://github.com/deagy/cadre/' \
+      #     --certificate-oidc-issuer=https://token.actions.githubusercontent.com
+      #
+      # GitHub's own UI will show these tags as "Unverified" -- its badge
+      # only recognises GPG and SSH keys registered to an account, and there
+      # is deliberately no such key here. That is a display limitation, not
+      # a failed signature.
+      - name: Set up keyless tag signing
+        if: steps.tag.outputs.skip == 'false'
+        uses: chainguard-dev/actions/setup-gitsign@9d631658f55713e5f63ca0cc21ee168f81301fd9 # v1.6.30
+
       - name: Tag
         if: steps.tag.outputs.skip == 'false'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "plugin-v${{ steps.version.outputs.value }}" \
+          # -s, not -a: setup-gitsign has pointed gpg.x509.program at gitsign.
+          git tag -s "plugin-v${{ steps.version.outputs.value }}" \
             -m "Plugin distribution v${{ steps.version.outputs.value }}"
+          git tag -v "plugin-v${{ steps.version.outputs.value }}" || true
           git push origin "plugin-v${{ steps.version.outputs.value }}"
 
       # The plugin's own content is Markdown and stdlib Python -- 367
@@ -303,13 +324,34 @@ jobs:
             dist/*.tar.gz
             dist/agentic-sdlc-sbom.spdx.json
 
+      # Keyless tag signing, matching the cosign posture in
+      # roster/shared/team-profile.yaml: gitsign mints an ephemeral
+      # certificate from this workflow's OIDC identity and records the
+      # signature in Rekor, so there is no private key in repo secrets to
+      # manage, rotate, or leak.
+      #
+      # Verify with:
+      #   gitsign verify <tag> \
+      #     --certificate-identity-regexp='https://github.com/deagy/cadre/' \
+      #     --certificate-oidc-issuer=https://token.actions.githubusercontent.com
+      #
+      # GitHub's own UI will show these tags as "Unverified" -- its badge
+      # only recognises GPG and SSH keys registered to an account, and there
+      # is deliberately no such key here. That is a display limitation, not
+      # a failed signature.
+      - name: Set up keyless tag signing
+        if: steps.tag.outputs.skip == 'false'
+        uses: chainguard-dev/actions/setup-gitsign@9d631658f55713e5f63ca0cc21ee168f81301fd9 # v1.6.30
+
       - name: Tag
         if: steps.tag.outputs.skip == 'false'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "kernel-v${{ steps.version.outputs.value }}" \
+          # -s, not -a: setup-gitsign has pointed gpg.x509.program at gitsign.
+          git tag -s "kernel-v${{ steps.version.outputs.value }}" \
             -m "Lifecycle kernel v${{ steps.version.outputs.value }}"
+          git tag -v "kernel-v${{ steps.version.outputs.value }}" || true
           git push origin "kernel-v${{ steps.version.outputs.value }}"
 
       # --latest=false, not merely omitting --latest: gh defaults to marking
