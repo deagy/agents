@@ -15,6 +15,42 @@ release convention (see `README.md`'s "Releasing" section) ties git tags
 `python3 tools/plugin_version.py --check`/`--set`. Each version heading
 below links to its [GitHub Release](https://github.com/deagy/cadre-lifecycle/releases).
 
+## [0.13.1](https://github.com/deagy/cadre/releases/tag/plugin-v0.13.1) - 2026-08-08
+
+### Fixed
+
+- **Installing this plugin no longer downloads 263 MB of npm dependencies it
+  never uses.** A Claude Code install was writing **277 MB**, of which 263 MB
+  was `node_modules`: 252 packages including OpenTelemetry (60 MB), TypeScript
+  (23 MB), the AWS SDK, and the SAP AI SDK. None of it is reachable from this
+  plugin, whose content is Markdown, generated role wrappers, and stdlib
+  Python.
+
+  The cause was packaging, not dependencies. The three **Cline** plugins are
+  a real npm workspace, and their workspace root sat at `plugin/package.json`
+  — the same directory the marketplace installs this plugin from. Something
+  ran `npm install` against it at install time. The Cline workspaces now live
+  in a sibling `cline-plugins/` directory, so there is no `package.json`
+  anywhere under `plugin/` at any depth.
+
+  **Expect roughly 14 MB instead of 277 MB.** Nothing about this plugin's
+  contents, agents, skills, or behaviour changes.
+
+### Changed
+
+- **Cline users: the install path moved.** `cline plugin install
+  ./cadre/plugin/cline` is now `cline plugin install
+  ./cadre/cline-plugins/cline`, and likewise for `cline-agents` and
+  `cline-lifecycle`. `install.sh` and `install.ps1` handle this for you; only
+  a hand-written install command needs updating. The plugins themselves are
+  unchanged.
+
+- **All 8 plugin manifests now advertise the correct repository.**
+  `homepage`, `repository`, and `author.url` pointed at
+  `github.com/deagy/cadre-lifecycle`, which was archived at the monorepo
+  merge — that is the URL users saw in `/plugin details`. They now point at
+  `github.com/deagy/cadre`.
+
 ## [0.13.0](https://github.com/deagy/cadre/releases/tag/plugin-v0.13.0) - 2026-08-08
 
 ### Added
