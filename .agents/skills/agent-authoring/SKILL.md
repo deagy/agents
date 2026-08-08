@@ -24,6 +24,26 @@ For each new or changed agent:
 
 Every role's `AGENT.md` starts with a `---`-delimited frontmatter block declaring `id`, `phase`, `capability`, `model`, `codex_model`, `reasoning_effort`, and `knowledge_focus` as flat scalar fields (see `roster/orchestration/src/role_metadata.py`). `definition` is never stored in frontmatter -- it is always derived from the file's own path under `roster/`. A role's metadata comes entirely from its frontmatter; there is no fallback to a legacy `catalog.yaml`/`routing.yaml` entry, so a missing required field fails the generator closed rather than silently inheriting a stale value. An `AGENT.md` that does not carry frontmatter is a generator error, not a supported transitional state. Regenerate with `cadre generate-role-metadata` (`roster/orchestration/src/generate_role_metadata.py`) after editing frontmatter, and validate with `cadre generate-role-metadata --check`.
 
+### There is no docs-only change under `docs/`
+
+`cadre generate-plugin` copies documentation into the packaged plugin, so
+editing a Markdown file that looks like pure prose still makes the generated
+tree stale and fails `validate.yml`'s `generated-content` job. What gets
+packaged, from `generate_global_plugin.py`'s `documentation_paths`:
+
+- everything under `docs/` recursively, **except `docs/kernel/`** (that documents the lifecycle kernel and the LangGraph engine, whose sibling directories the package does not ship -- copying it in would produce dangling links)
+- `AGENTS.md`, `CONTRIBUTING.md`, and `IDENTITY.md`
+
+Only **git-tracked** files are copied, from `git ls-files`. A new file that has
+not been `git add`ed is skipped silently by the copy and then read back by a
+later step, which fails with a bare `FileNotFoundError` naming the packaged
+path rather than the source one -- so stage new files before regenerating.
+
+The same applies to `.agents/skills/`: adding or editing a skill is a
+generated-content change, and a new skill also needs its
+`agents/openai.yaml` and its `.claude/skills/<name>/SKILL.md` pointer, whose
+`name`/`description` are compared byte-for-byte against the canonical file.
+
 ## Guardrails
 
 - Do not let an implementation agent approve its own work.
