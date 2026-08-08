@@ -168,10 +168,16 @@ jobs:
           pip install --no-cache-dir build==1.5.0
           python -m build --wheel --sdist --outdir dist ./kernel
 
-      # Syft over kernel/ rather than the built wheel: the wheel records its
-      # declared dependencies, but scanning the source tree captures the
-      # resolved tree an installer actually pulls (jsonschema plus ~18
-      # transitive packages).
+      # Scoped to kernel/, so this records what the kernel *declares*:
+      # jsonschema[format]==4.26.0, and nothing beneath it.
+      #
+      # It is deliberately not the resolved closure. A real install pulls 19
+      # packages (jsonschema drags in arrow, referencing, rpds-py, and the
+      # rest), and capturing those would mean scanning an installed
+      # environment or shipping a lockfile the kernel does not have. Worth
+      # doing -- an SBOM listing one dependency is a weak inventory -- but it
+      # is a separate change, and claiming the closure here while emitting
+      # the declaration would be worse than emitting the declaration.
       - name: Generate an SBOM for the kernel's dependencies
         if: steps.tag.outputs.skip == 'false'
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
