@@ -129,7 +129,7 @@ separately from the role catalog:
 | --- | --- | --- |
 | Plugin distribution | `plugin/**/plugin.json` (8 manifests) | `plugin-v*` |
 | Lifecycle kernel | `kernel/agentic_sdlc/__init__.py` | `kernel-v*` |
-| LangGraph engine | `engine/pyproject.toml` | not released (see Still open) |
+| LangGraph engine | `engine/pyproject.toml` — pinned `0.0.0` | never released; checkout-only |
 
 `release.yml` did not work at all after the merge — it watched pre-merge
 paths and called scripts at their old locations, so the repository could not
@@ -201,11 +201,18 @@ hiding it. Setup for the key is in `.github/TAG-SIGNING-SETUP.md`.
 
 - `install.ps1` is **untested** — no PowerShell was available. Treat the
   first real Windows run as the test.
-- The LangGraph engine is checkout-only by construction: `runtime.py` reads
-  the kernel's contracts at a repo-relative path, so an installed copy would
-  import and then fail at graph-build time. `release.yml` covers the plugin
-  and the kernel only, which is correct — but `engine/pyproject.toml` carries
-  a version that implies a release line it does not have.
+- The LangGraph engine is checkout-only **by construction**, not by
+  omission: `runtime.py` reads the kernel's contracts at a path relative to
+  the checkout, so an installed copy resolves to a directory that does not
+  exist and fails at graph-build time. `release.yml` covering only the
+  plugin and the kernel is therefore correct.
+
+  Its version is pinned at `0.0.0` with a `Private :: Do Not Upload`
+  classifier so the file stops implying a release line — it read `0.3.0`
+  while the lockfile said `0.1.0`, since nothing consumed either number.
+  Making it installable is a real change (bundle the contracts as package
+  data, as `kernel/pyproject.toml` already does via `force-include`), not a
+  version bump.
 - The plugin *distribution itself* still carries no provenance
   attestation, deliberately. A marketplace installs it by cloning a git
   commit, so there is no downloaded file to verify and integrity comes from

@@ -1,6 +1,22 @@
 [project]
 name = "agentic-sdlc-langgraph"
-version = "0.3.0"
+# 0.0.0 on purpose: this package is never released, so a rising version
+# would imply a release line that does not exist. It used to read 0.3.0,
+# which invited exactly that reading -- and the lockfile had drifted to
+# 0.1.0 besides, since nothing consumes either number.
+#
+# It is not released because it cannot be: runtime.py reads the kernel's
+# contracts from a path relative to this checkout (KERNEL_ROOT/kernel/
+# contracts), so an installed copy resolves to a directory that does not
+# exist and fails at graph-build time. Running it means running it from a
+# checkout. `Private :: Do Not Upload` makes an accidental `twine upload`
+# fail rather than succeed quietly.
+#
+# Making it installable is a real change -- bundle the contracts as package
+# data the way kernel/pyproject.toml already does with force-include -- not
+# a version bump.
+version = "0.0.0"
+classifiers = ["Private :: Do Not Upload"]
 description = "LangGraph-based execution engine for the Agentic SDLC G1-G10 lifecycle (Phase 0 spike: G1-G3)."
 requires-python = ">=3.11"
 dependencies = [
