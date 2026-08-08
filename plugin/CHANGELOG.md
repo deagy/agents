@@ -15,6 +15,72 @@ release convention (see `README.md`'s "Releasing" section) ties git tags
 `python3 tools/plugin_version.py --check`/`--set`. Each version heading
 below links to its [GitHub Release](https://github.com/deagy/cadre-lifecycle/releases).
 
+## [0.13.0](https://github.com/deagy/cadre/releases/tag/plugin-v0.13.0) - 2026-08-08
+
+### Added
+
+- **Three new roles, taking the packaged catalog from 71 to 74.** Each fills a
+  gap an existing role explicitly disclaimed:
+
+  - **`ai-engineer`** — a project's model-facing layer: model and provider
+    selection, prompt and agent design, retrieval, eval harnesses, and
+    inference cost/latency. Nothing covered this. The two roles that look
+    adjacent are both scoped to the suite's *own* machinery —
+    `knowledge-store-steward` operates the agent knowledge store, and
+    `agent-performance-evaluator` assesses the catalog's own roles — and
+    `ai-engineer`'s authority section names both, so the boundary travels with
+    the role rather than living only in release notes.
+  - **`visual-designer`** — design tokens, component specifications, and usage
+    rules. `interaction-designer` ends its own scope statement with "not the
+    visual system," and `frontend-engineer` may not select a component library
+    or styling system while that decision is unresolved. The visual system sat
+    in the gap both of them name.
+  - **`delivery-sequencer`** — dependency map, critical path, and sequencing.
+    `premortem` already listed a dependency map among its inputs and nothing
+    produced one. Order and prerequisites only; it may not set priority,
+    dates, scope, or risk tolerance.
+
+- **A `version-control-workflow` skill** (12 skills, up from 11): branching,
+  merge vs rebase, history repair, conflict resolution, and PR/MR hygiene
+  across both forges. Deliberately a skill rather than a role — procedural
+  know-how is not an accountability boundary.
+
+### Fixed
+
+- **A task changing a GitHub Actions workflow selected no primary agent.** The
+  routing's `pipeline` route carried only GitLab paths, so `.github/workflows/**`
+  matched nothing build-shaped, while the identical task on `.gitlab-ci.yml`
+  selected `cicd-engineer` and `pipeline-security-reviewer`. Both forges now
+  staff identically for the same task, asserted by a test so it cannot quietly
+  regress to one-forge coverage. `cicd-engineer` and `pipeline-security-reviewer`
+  no longer assume GitLab either: both now require establishing which forge
+  applies first, since job permission scoping, environment approval, and
+  workload identity federation differ materially between them. Neither role's
+  authority widened.
+
+- **Python service work matched no route at all.** The `backend` route now
+  carries a `python` keyword.
+
+### Changed
+
+- **The `pipeline` route's bare `pipeline` keyword is narrowed to compounds**
+  (`ci pipeline`, `build pipeline`, `delivery pipeline`, …). It previously
+  matched *any* pipeline — data, ETL, or RAG — which is why an AI feature task
+  was dispatched to the CI/CD engineer.
+
+  **Upgrade impact:** this is the one change here that can *remove* an agent
+  from a plan you get today. A task whose text says only "pipeline", with no
+  CI-shaped file in its changed set, no longer selects `cicd-engineer`. Say
+  "ci pipeline", or include the pipeline file.
+
+- **Every packaged role wrapper changes**, including the 71 whose own
+  definitions did not. Shared policy is embedded verbatim into each wrapper,
+  and `technology-standards.md` gained an AI/ML section: model output is
+  untrusted data, an eval baseline precedes a prompt or model change, and
+  model output never authorizes a privileged action on its own. Model
+  provider, eval framework, and vector store are recorded as unresolved, so a
+  role must present alternatives rather than choose one.
+
 ## [0.12.5](https://github.com/deagy/cadre/releases/tag/plugin-v0.12.5) - 2026-08-08
 
 ### Fixed
