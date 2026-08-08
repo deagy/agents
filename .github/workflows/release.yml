@@ -46,6 +46,12 @@ jobs:
   plugin:
     name: Release the plugin distribution
     runs-on: ubuntu-latest
+    # Per-job, matching the kernel job: the SBOM below is attested, so this
+    # needs the same Sigstore permissions.
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -81,6 +87,54 @@ jobs:
             -m "Plugin distribution v${{ steps.version.outputs.value }}"
           git push origin "plugin-v${{ steps.version.outputs.value }}"
 
+      # The plugin's own content is Markdown and stdlib Python -- 367
+      # markdown/json/yaml files, 53 Python, and no install step. Its entire
+      # third-party surface is the three Cline workspaces' npm trees, so
+      # that is what an SBOM here is about.
+      #
+      # Scanned from package-lock.json rather than an installed
+      # node_modules: the lockfile *is* the resolved tree, it is committed,
+      # and reading it needs no `npm ci` -- so this cannot fail on a
+      # registry outage during a release. (Scanning node_modules directly
+      # returns 4 packages; the javascript cataloger wants the lockfile.)
+      - name: Install syft
+        if: steps.tag.outputs.skip == 'false'
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+
+      - name: Generate an SBOM for the Cline plugin dependencies
+        if: steps.tag.outputs.skip == 'false'
+        run: |
+          set -eu
+          mkdir -p dist
+          syft scan file:plugin/package-lock.json \
+            --select-catalogers javascript \
+            --source-name cadre-plugin-cline \
+            --source-version "${{ steps.version.outputs.value }}" \
+            -o spdx-json=dist/cadre-plugin-cline-sbom.spdx.json
+          python3 -c "
+          import json, pathlib
+          d = json.loads(pathlib.Path('dist/cadre-plugin-cline-sbom.spdx.json').read_text())
+          names = {p['name'] for p in d.get('packages', []) if p.get('name')}
+          # Fails the release rather than publishing a near-empty inventory,
+          # which is what scanning the wrong path produces.
+          assert len(names) >= 200, f'SBOM has only {len(names)} packages'
+          for required in ('@cline/sdk', '@cline/shared', 'zod'):
+              assert required in names, f'{required} missing from SBOM'
+          print(f'SBOM lists {len(names)} distinct packages')
+          "
+
+      # Attested because it is a real downloadable artifact. The plugin
+      # itself deliberately gets no provenance: a marketplace installs by
+      # cloning a git commit, so there is no downloaded file for a consumer
+      # to verify, and building a tarball purely to have something to sign
+      # would produce an artifact nobody installs from and that can drift
+      # from what the marketplace serves.
+      - name: Attest the SBOM
+        if: steps.tag.outputs.skip == 'false'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/cadre-plugin-cline-sbom.spdx.json
+
       - name: Publish GitHub Release
         if: steps.tag.outputs.skip == 'false'
         env:
@@ -89,7 +143,8 @@ jobs:
           gh release create "plugin-v${{ steps.version.outputs.value }}" \
             --title "Plugin distribution v${{ steps.version.outputs.value }}" \
             --notes-file /tmp/release-notes.md \
-            --latest
+            --latest \
+            dist/cadre-plugin-cline-sbom.spdx.json
 
   kernel:
     name: Release the lifecycle kernel

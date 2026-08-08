@@ -15,6 +15,30 @@ release convention (see `README.md`'s "Releasing" section) ties git tags
 `python3 tools/plugin_version.py --check`/`--set`. Each version heading
 below links to its [GitHub Release](https://github.com/deagy/cadre-lifecycle/releases).
 
+## [0.12.1](https://github.com/deagy/cadre/releases/tag/plugin-v0.12.1) - 2026-08-08
+
+### Added
+
+- **An SBOM of the Cline plugins' dependencies**, attached to the release as
+  `cadre-plugin-cline-sbom.spdx.json` and carrying a SLSA provenance
+  attestation (`gh attestation verify <file> --repo deagy/cadre`).
+
+  This plugin's own content is Markdown and stdlib Python, with no install
+  step — its entire third-party surface is the three Cline workspaces' npm
+  trees, 287 packages beneath `@cline/sdk`, `@cline/shared`, `zod`, and
+  `yaml`. That is what the SBOM inventories.
+
+  It is generated from the committed `package-lock.json`, which is already
+  the resolved tree, so producing it needs no `npm ci` and a release cannot
+  fail on a registry outage.
+
+The plugin itself deliberately carries no provenance attestation. A
+marketplace installs it by cloning a git commit, so there is no downloaded
+file for anyone to verify; integrity comes from git's content addressing.
+Building a tarball purely to have something to sign would create an artifact
+nobody installs from, free to drift from what the marketplace actually
+serves.
+
 ## [0.12.0](https://github.com/deagy/cadre/releases/tag/plugin-v0.12.0) - 2026-08-08
 
 ### Changed
