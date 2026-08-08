@@ -15,6 +15,30 @@ release convention (see `README.md`'s "Releasing" section) ties git tags
 `python3 tools/plugin_version.py --check`/`--set`. Each version heading
 below links to its [GitHub Release](https://github.com/deagy/cadre-lifecycle/releases).
 
+## [0.12.3](https://github.com/deagy/cadre/releases/tag/plugin-v0.12.3) - 2026-08-08
+
+### Fixed
+
+- **Reverted the keyless tag signing added in 0.12.2, and the documentation
+  claiming it was verifiable.** It was not.
+
+  gitsign produced a real signature on the tag object but created no Rekor
+  entry. A keyless certificate is ephemeral, so with nothing in the
+  transparency log there is nothing to verify the signature against.
+  Verification failed immediately at signing time, and still failed hours
+  later using the same gitsign version that produced it. The contrast in the
+  same workflow run was the giveaway: the SBOM attestation logged
+  "uploaded to Rekor transparency log" with a log index; the tag signing
+  logged no upload at all.
+
+  `plugin-v0.12.2` therefore carries a signature nobody can verify. That is
+  worse than an unsigned tag, because it implies an assurance that does not
+  exist. Tags are unsigned annotated tags again, and SECURITY.md now says so
+  and explains why.
+
+  **Artifact attestations are unaffected** — those reach Rekor and verify
+  normally, which is precisely what made the tag failure visible.
+
 ## [0.12.2](https://github.com/deagy/cadre/releases/tag/plugin-v0.12.2) - 2026-08-08
 
 ### Added
