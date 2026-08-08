@@ -1125,7 +1125,19 @@ class RepositoryHealthTests(unittest.TestCase):
             encoding="utf-8",
             env=os.environ.copy(),
         )
-        self.assertEqual("0.13.0", result.stdout.strip())
+        # Derived, not hardcoded. This asserted the literal "0.13.0" and so
+        # broke the moment the kernel was released -- the same class of bug
+        # as the pinned marketplace tags and the "Agentic SDLC v0.3.x"
+        # strings. It also passed locally while failing in CI, because a
+        # developer machine with an older agentic-sdlc on PATH resolves that
+        # instead of the in-tree kernel CI points AGENTIC_SDLC_BIN at.
+        expected = re.search(
+            r'^VERSION = "(\d+\.\d+\.\d+)"',
+            (REPOSITORY_ROOT / "kernel" / "agentic_sdlc" / "__init__.py").read_text(encoding="utf-8"),
+            re.MULTILINE,
+        )
+        self.assertIsNotNone(expected, "kernel VERSION not found")
+        self.assertEqual(expected.group(1), result.stdout.strip())
 
     @unittest.skipUnless(sys.platform != "win32", "bin/cadre is a POSIX sh script")
     def test_bin_agents_wrapper_dispatches_select_matching_direct_invocation(self) -> None:

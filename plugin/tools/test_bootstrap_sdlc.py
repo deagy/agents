@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -26,6 +27,28 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import bootstrap_sdlc  # noqa: E402
+
+
+def setUpModule() -> None:
+    """Run as if no kernel were configured on the developer's machine.
+
+    AGENTIC_SDLC_BIN is a documented, supported way to point at a kernel, so
+    anyone who actually uses it could not run this suite: seven tests here
+    reach os.environ through a helper's env=None default and would resolve
+    that binary instead of their fixtures. CI never noticed because the job
+    running these tests does not set the variable -- exactly the kind of
+    "passes for the wrong reason" gap that let a hardcoded kernel version
+    reach CI green locally and red on the runner.
+    """
+    global _ENV_PATCH
+    _ENV_PATCH = mock.patch.dict(os.environ, {}, clear=False)
+    _ENV_PATCH.start()
+    os.environ.pop("AGENTIC_SDLC_BIN", None)
+    os.environ.pop("CLAUDE_PLUGIN_DATA", None)
+
+
+def tearDownModule() -> None:
+    _ENV_PATCH.stop()
 
 
 def _args(**overrides) -> argparse.Namespace:
@@ -152,7 +175,7 @@ class EnsureKernelTests(unittest.TestCase):
     def test_install_success_but_still_unresolvable_reports_path_guidance(self) -> None:
         with mock.patch.object(bootstrap_sdlc.shutil, "which", return_value=None):
                 with mock.patch.object(bootstrap_sdlc, "pipx_install", return_value=0):
-                    exit_code, binary = bootstrap_sdlc.ensure_kernel(_args())
+                    exit_code, binary = bootstrap_sdlc.ensure_kernel(_args(), {})
         self.assertEqual(1, exit_code)
         self.assertIsNone(binary)
 
