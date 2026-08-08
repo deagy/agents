@@ -1,5 +1,15 @@
 # Secure-Cloud Profile Migration
 
+> [!IMPORTANT]
+> **Superseded — this migration was reversed.** The monorepo merge folded
+> `deagy/cadre-profile-secure-cloud` back in; its `profile.json` was
+> byte-identical to `provider/profiles/secure-cloud/`, and the separate
+> repository existed only for CI to drift-check one copy against the
+> other. That repository is archived. See
+> [Monorepo migration](monorepo-migration.md).
+>
+> Kept as a record of the reasoning at the time.
+
 ## Overview
 
 The `secure-cloud` provider profile has been migrated from `cadre/provider/profiles/secure-cloud/` to a separate repository: **cadre-profile-secure-cloud**.

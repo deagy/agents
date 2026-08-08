@@ -13,6 +13,7 @@ Use this index to choose the shortest useful path.
 | --- | --- |
 | **Install it** | **[Installing Cadre](INSTALL.md)** — the canonical guide for every runner |
 | Roll it out to a fleet | [Enterprise deployment](enterprise.md) |
+| Understand how this repository got its shape | [Monorepo migration](migration/monorepo-migration.md) |
 | Understand the suite | [Identity](../IDENTITY.md), then [Terminology](terminology.md) |
 | Adopt this suite in a new project, start to finish | [Adopt-Cadre quickstart](adopt-cadre-quickstart.md) |
 | Make a first local selection | [Getting started](getting-started.md) |
