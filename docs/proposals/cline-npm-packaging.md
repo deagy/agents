@@ -1,6 +1,9 @@
 # Why the Cline plugins live outside `plugin/`
 
-Status: **IMPLEMENTED.**
+Status: **SHIPPED and measured.** Merged in
+[#121](https://github.com/deagy/cadre/pull/121) (`13deb5e`), released as
+`plugin-v0.13.1` via [#122](https://github.com/deagy/cadre/pull/122)
+(`ba4cbbd`). A marketplace install went from **277 MB to 11 MB**.
 Task ID: `cline-npm-packaging-2026-08-08`
 Classification: internal
 Author role: cicd-engineer (Cadre suite)
@@ -120,11 +123,41 @@ and `generate-role-metadata --check` are clean. The lockfile still yields 387
 distinct package names with `@cline/sdk`, `@cline/shared`, and `zod` present,
 so the release SBOM guard's `>= 200` assertion still holds.
 
-**The check that actually proves it** can only run after a release: install
-from the marketplace and measure the cache. Expect ~14 MB and no
-`node_modules` anywhere under it — and confirm none appeared under
-`~/.claude/plugins/marketplaces/cadre-team/` either, since the rejection of the
-simpler approach rests on that being a place npm install could happen.
+### Measured after release (`plugin-v0.13.1`)
+
+Installed from the marketplace, not from a checkout:
+
+| | Before (0.13.0) | After (0.13.1) |
+| --- | --- | --- |
+| Install size | 277 MB | **11 MB** |
+| `node_modules` in the install | 263 MB, 252 packages | none |
+| `package.json` in the install | 1 | none |
+
+74 agents, 8 skills, and the routing acceptance checks (`cicd-engineer`,
+`visual-designer`, `ai-engineer`) all still resolve from the installed copy.
+
+## The rejected option would have worked
+
+`~/.claude/plugins/marketplaces/cadre-team/` has **no `node_modules`** — 32 MB,
+just the git clone. npm install does *not* run against the marketplace
+checkout.
+
+That was the entire basis for rejecting the simpler fix: moving only the
+workspace root up to the repository root, which would have kept
+`cline plugin install ./cadre/plugin/cline` valid and required no code change
+at all. The risk it was rejected for does not exist.
+
+Recorded plainly, because the decision reads as more obviously correct than it
+was. The information was not available before the change — the only way to
+learn it was to release something — and the failure being insured against was
+silently re-shipping 263 MB to every user. But the cost was real: Cline users'
+documented install path changed to buy insurance that turned out to be
+unnecessary. Anyone revisiting this should weigh that rather than assume the
+caution was vindicated.
+
+It does not follow that the layout should be reverted. `cline-plugins/` keeps
+npm out of *both* trees rather than relocating it into one of them, and undoing
+it would cost Cline users a second path change to reverse a completed one.
 
 ## Still open
 
