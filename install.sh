@@ -138,7 +138,9 @@ link_launcher() {
   run mkdir -p "$BIN_DIR"
   # -f so re-running repoints an existing link instead of failing.
   run ln -sfn "$CHECKOUT/bin/cadre" "$BIN_DIR/cadre"
-  say "  linked $BIN_DIR/cadre"
+  # Past tense only when it actually happened -- a dry run that reports work
+  # it did not do is worse than no dry run.
+  [ "$DRY_RUN" -eq 1 ] || say "  linked $BIN_DIR/cadre"
   case ":$PATH:" in
     *":$BIN_DIR:"*) : ;;
     *)

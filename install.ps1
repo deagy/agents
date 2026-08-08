@@ -17,9 +17,14 @@
       environment, which only affects new shells -- so this reports that
       rather than pretending the current session picked it up.
 
-  NOT TESTED ON WINDOWS. No PowerShell was available in the environment this
-  was written in; install.sh was verified end to end and this mirrors it.
-  Treat the first real Windows run as the test.
+  Tested on Windows (PowerShell 7.6.3, Win32NT): dry run, real install,
+  the generated cadre.cmd shim, a real `cadre select` returning a dispatch
+  plan, and a -Runner-scoped uninstall.
+
+  Running this as a *file* needs -ExecutionPolicy Bypass, because a
+  downloaded or UNC-hosted script is unsigned and blocked by default. The
+  documented `irm ... | iex` invocation is unaffected -- Invoke-Expression
+  never touches execution policy.
 
 .EXAMPLE
   irm https://raw.githubusercontent.com/deagy/cadre/main/install.ps1 | iex
@@ -112,7 +117,8 @@ function Install-Launcher {
         New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
         Set-Content -Path $shim -Value $body -Encoding ASCII
     }
-    Write-Step "  wrote $shim"
+    # Past tense only when it actually happened.
+    if (-not $DryRun) { Write-Step "  wrote $shim" }
 
     $userPath = [Environment]::GetEnvironmentVariable('PATH', 'User')
     if ($userPath -notlike "*$BinDir*") {
@@ -122,7 +128,12 @@ function Install-Launcher {
         # Deliberately explicit: the registry-backed user PATH does not reach
         # an already-running shell, and silently "succeeding" here would look
         # like a broken install when `cadre` is not found.
-        Write-Note "  Added $BinDir to your user PATH. Open a NEW terminal for it to take effect."
+        if ($DryRun) {
+            Write-Step "  would add $BinDir to the user PATH (needs a new terminal)"
+        }
+        else {
+            Write-Note "  Added $BinDir to your user PATH. Open a NEW terminal for it to take effect."
+        }
     }
 }
 

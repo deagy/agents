@@ -44,7 +44,15 @@ curl -fsSL https://raw.githubusercontent.com/deagy/cadre/main/install.sh | sh
 ```
 
 Installs for whichever of `claude`, `codex`, and `cline` it finds on `PATH`.
-On Windows use [`install.ps1`](https://github.com/deagy/cadre/blob/main/install.ps1) instead.
+On Windows use [`install.ps1`](https://github.com/deagy/cadre/blob/main/install.ps1):
+
+```powershell
+irm https://raw.githubusercontent.com/deagy/cadre/main/install.ps1 | iex
+```
+
+If you save it and run the file instead, PowerShell blocks unsigned scripts
+by default — use `pwsh -ExecutionPolicy Bypass -File install.ps1`. The
+piped form above is unaffected.
 
 ```sh
 ./install.sh --dry-run           # print every action, change nothing
