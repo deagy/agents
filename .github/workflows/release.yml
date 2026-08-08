@@ -21,9 +21,24 @@ name: Release
 # "nothing to do" -- a silent no-op rather than a failure, which is the worst
 # possible way for a release to break.
 #
-# Both jobs are idempotent: they no-op when their component's version is
-# already tagged, so a re-run, a push that touches these files without
-# changing a version, or a hand-created tag are all safe.
+# Two independent guards stand between a push and a release, because they
+# answer different questions and neither subsumes the other:
+#
+#   the `changed` job    did this push actually move a version? The `paths`
+#                        filter below is file-level -- GitHub cannot filter on
+#                        a JSON field -- so editing a manifest's description
+#                        or its advertised role count starts this workflow.
+#                        That is exactly what happened when the catalog went
+#                        from 71 to 74 roles: a full Release run fired for a
+#                        change that released nothing.
+#   already-tagged       is this version already published? Covers a re-run,
+#                        a manual workflow_dispatch, and a hand-created tag,
+#                        none of which the version diff can see.
+#
+# The `changed` job deliberately fails open -- it reports "changed" whenever
+# it has nothing to diff against (workflow_dispatch, a force-push, the
+# all-zero before-sha) rather than silently skipping a real release. A
+# needless run is cheap; a release that quietly does not happen is not.
 on:
   push:
     branches: [main]
@@ -43,8 +58,114 @@ permissions:
   contents: write
 
 jobs:
+  changed:
+    name: Detect which versions changed
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      plugin: ${{ steps.detect.outputs.plugin }}
+      kernel: ${{ steps.detect.outputs.kernel }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Compare each component's version against the previous commit
+        id: detect
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -eu
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os, re, subprocess, sys
+
+          before = os.environ.get("BEFORE", "")
+          event = os.environ["EVENT"]
+
+          def at(ref, path):
+              """The file's text at `ref`, or None when it is not there."""
+              result = subprocess.run(
+                  ["git", "show", f"{ref}:{path}"],
+                  capture_output=True, text=True, encoding="utf-8",
+              )
+              return result.stdout if result.returncode == 0 else None
+
+          def manifest_version(text):
+              if text is None:
+                  return None
+              try:
+                  return json.loads(text).get("version")
+              except json.JSONDecodeError:
+                  # Unparseable is not "unchanged" -- let the job run and let
+                  # plugin_version.py --check report it properly.
+                  return "<unparseable>"
+
+          def kernel_version(text):
+              if text is None:
+                  return None
+              match = re.search(r'^VERSION = "(\d+\.\d+\.\d+)"', text, re.MULTILINE)
+              return match.group(1) if match else "<unreadable>"
+
+          # All 8 plugin manifests, not just the first: if a bump lands in
+          # only some of them, this must still run so plugin_version.py
+          # --check can fail on the disagreement instead of the release
+          # being silently skipped.
+          PLUGIN_MANIFESTS = [
+              "plugin/.claude-plugin/plugin.json",
+              "plugin/.codex-plugin/plugin.json",
+              "plugin/plugins/lifecycle/.claude-plugin/plugin.json",
+              "plugin/plugins/lifecycle/.codex-plugin/plugin.json",
+              "plugin/plugins/lifecycle-github/.claude-plugin/plugin.json",
+              "plugin/plugins/lifecycle-github/.codex-plugin/plugin.json",
+              "plugin/plugins/lifecycle-gitlab/.claude-plugin/plugin.json",
+              "plugin/plugins/lifecycle-gitlab/.codex-plugin/plugin.json",
+          ]
+
+          def commit_exists(ref):
+              return subprocess.run(
+                  ["git", "cat-file", "-e", f"{ref}^{{commit}}"],
+                  capture_output=True,
+              ).returncode == 0
+
+          # Nothing to diff against: workflow_dispatch carries no before-sha,
+          # and a force-push or a branch's first push reports all zeros.
+          # Fail open and let the already-tagged check decide.
+          comparable = (
+              event == "push"
+              and before
+              and set(before) != {"0"}
+              and commit_exists(before)
+          )
+          if not comparable:
+              print(f"no comparable previous commit (event={event}, before={before!r});"
+                    " treating every component as changed", file=sys.stderr)
+
+          components = {
+              "plugin": (PLUGIN_MANIFESTS, manifest_version),
+              "kernel": (["kernel/agentic_sdlc/__init__.py"], kernel_version),
+          }
+          for name, (paths, read) in components.items():
+              if not comparable:
+                  print(f"{name}=true")
+                  continue
+              moved = [
+                  (path, read(at(before, path)), read(at("HEAD", path)))
+                  for path in paths
+              ]
+              moved = [entry for entry in moved if entry[1] != entry[2]]
+              for path, was, now in moved:
+                  print(f"{name}: {path} {was} -> {now}", file=sys.stderr)
+              if not moved:
+                  print(f"{name}: version unchanged in this push; not releasing", file=sys.stderr)
+              print(f"{name}={'true' if moved else 'false'}")
+          PY
+
   plugin:
     name: Release the plugin distribution
+    needs: changed
+    if: needs.changed.outputs.plugin == 'true'
     runs-on: ubuntu-latest
     # Per-job, matching the kernel job: the SBOM below is attested, so this
     # needs the same Sigstore permissions.
@@ -202,6 +323,8 @@ jobs:
 
   kernel:
     name: Release the lifecycle kernel
+    needs: changed
+    if: needs.changed.outputs.kernel == 'true'
     runs-on: ubuntu-latest
     # Declared per-job rather than at the workflow level so the plugin job
     # above does not also gain the ability to mint attestations it never
