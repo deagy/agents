@@ -2,6 +2,7 @@
 """Guard against hand-maintained version coordinates rotting in the docs.
 
 This repository's install instructions used to pin a marketplace ref
+archived-ref-ok: next line quotes the pre-merge string as the bug's example.
 (`/plugin marketplace add deagy/cadre-lifecycle@v0.7.0`) and a clone ref
 (`git clone --branch v0.7.0`). Nothing checked them, so they drifted: this
 repository's README and RUNBOOK quoted v0.7.0, `packaging/plugin-README.md`
@@ -95,7 +96,7 @@ class TestDocsCarryNoPinnedTags(unittest.TestCase):
             [],
             "Install docs must not pin the marketplace ref to a tag -- the installed "
             "version comes from the plugin's own manifest, and a written-down tag only "
-            "goes stale. Use `/plugin marketplace add deagy/cadre-lifecycle`.\n"
+            "goes stale. Use `/plugin marketplace add deagy/cadre`.\n"
             + "\n".join(hits),
         )
 

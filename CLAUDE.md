@@ -102,4 +102,5 @@ but receive no further changes:
 - [`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle) — plugin distribution → `plugin/`
 - [`deagy/cadre-profile-secure-cloud`](https://github.com/deagy/cadre-profile-secure-cloud) — a two-file mirror whose `profile.json` was byte-identical to `provider/profiles/secure-cloud/`
 
+<!-- archived-ref-ok: states what is already in existing users' settings; not an instruction to run -->
 **Marketplace continuity:** `/plugin marketplace add deagy/cadre-lifecycle` is live in existing users' settings. An archived repository stays cloneable, so those installs keep working — but they freeze, never updating, with no signal. Before archiving, cut a final `cadre-lifecycle` release whose plugins ship a `SessionStart` hook pointing at the new marketplace; that is the only mechanism that reaches an already-installed user (marketplace `renames` migrate names *within* a marketplace, not across them).
