@@ -223,10 +223,10 @@ install_cline() {
   # The Cline plugin lives in a subdirectory, so this one does need the
   # checkout that the other runners do not.
   if [ "$DRY_RUN" -eq 1 ]; then
-    say "  would run: cline plugin install $CHECKOUT/plugin/cline --force"
+    say "  would run: cline plugin install $CHECKOUT/cline-plugins/cline --force"
     return 0
   fi
-  if cline plugin install "$CHECKOUT/plugin/cline" --force; then
+  if cline plugin install "$CHECKOUT/cline-plugins/cline" --force; then
     say "  installed"
   else
     # Known upstream defect, not something this script can fix: as of cline

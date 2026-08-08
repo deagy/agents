@@ -4,10 +4,10 @@
   "description": "Secure cloud agent suite (74 specialist roles) with deterministic role selection and dispatch, reachable from any project once installed at global scope. Lifecycle governance (Agentic SDLC G1–G10 gates) is a separate, optional plugin — see cadre-lifecycle-core.",
   "author": {
     "name": "Cadre maintainers",
-    "url": "https://github.com/deagy/cadre-lifecycle"
+    "url": "https://github.com/deagy/cadre"
   },
-  "homepage": "https://github.com/deagy/cadre-lifecycle",
-  "repository": "https://github.com/deagy/cadre-lifecycle",
+  "homepage": "https://github.com/deagy/cadre",
+  "repository": "https://github.com/deagy/cadre",
   "keywords": ["cadre", "orchestration", "system-wide", "knowledge-store"],
   "skills": "./skills/",
   "interface": {

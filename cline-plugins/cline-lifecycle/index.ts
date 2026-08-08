@@ -9,11 +9,11 @@ import { safeJsonStringify } from "@cline/shared";
 const execFileAsync = promisify(execFile);
 
 // Same resolution convention as cline/index.ts's CADRE_BIN: relative to this
-// plugin module's own location (this plugin sits at cline-lifecycle/, a
-// sibling of cline/ and cline-agents/, all at this repository's root), never
-// relative to the target workspace.
+// plugin module's own location (this plugin sits at cline-plugins/cline-lifecycle/,
+// a sibling of cline/ and cline-agents/), never relative to the target
+// workspace. Two levels up reaches the repository's own bin/cadre.
 const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url));
-const CADRE_BIN = path.resolve(PLUGIN_DIR, "..", "bin", "cadre");
+const CADRE_BIN = path.resolve(PLUGIN_DIR, "..", "..", "bin", "cadre");
 
 // ---------------------------------------------------------------------------
 // About this plugin

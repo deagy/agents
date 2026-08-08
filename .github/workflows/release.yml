@@ -262,10 +262,17 @@ jobs:
           fi
           git push origin "plugin-v${{ steps.version.outputs.value }}"
 
-      # The plugin's own content is Markdown and stdlib Python -- 367
-      # markdown/json/yaml files, 53 Python, and no install step. Its entire
-      # third-party surface is the three Cline workspaces' npm trees, so
-      # that is what an SBOM here is about.
+      # The packaged Claude Code / Codex plugin has *no* third-party surface:
+      # Markdown and stdlib Python, no install step, and since the Cline
+      # workspaces moved to cline-plugins/ there is no package.json anywhere
+      # under plugin/. So this SBOM is not about that plugin -- it covers the
+      # three Cline plugins, which ship from this same repository and tag and
+      # are the only thing here with an npm dependency tree.
+      #
+      # Keeping them in plugin/ meant installing the Claude Code plugin ran
+      # npm install and wrote 263 MB of this tree into every user's plugin
+      # cache. Nothing about the tree itself changed -- only where it lives,
+      # and therefore who has to download it.
       #
       # Scanned from package-lock.json rather than an installed
       # node_modules: the lockfile *is* the resolved tree, it is committed,
@@ -281,7 +288,7 @@ jobs:
         run: |
           set -eu
           mkdir -p dist
-          syft scan file:plugin/package-lock.json \
+          syft scan file:cline-plugins/package-lock.json \
             --select-catalogers javascript \
             --source-name cadre-plugin-cline \
             --source-version "${{ steps.version.outputs.value }}" \

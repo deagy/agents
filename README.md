@@ -54,7 +54,8 @@ Key areas:
 - [roster/testing/](roster/testing/) and [roster/support/](roster/support/) define black-box testing, end-user testing, support triage, and escalation roles.
 - [.agents/skills/](.agents/skills/) contains this repository's skills, packaged for Codex CLI directly and pointed to from `.claude/skills/` for Claude Code.
 - [deagy/agentic-sdlc](https://github.com/deagy/agentic-sdlc) owns the portable lifecycle kernel, initializer, validator, and lifecycle skills.
-- [`plugin/`](plugin/) packages this suite, its 74 roles, and the `secure-cloud` provider profile as installable Claude Code / Codex / Cline plugins, alongside the optional Agentic SDLC lifecycle-governance plugins. It was `deagy/cadre-lifecycle` before the monorepo merge.
+- [`plugin/`](plugin/) packages this suite, its 74 roles, and the `secure-cloud` provider profile as installable Claude Code / Codex plugins, alongside the optional Agentic SDLC lifecycle-governance plugins. It was `deagy/cadre-lifecycle` before the monorepo merge.
+- [`cline-plugins/`](cline-plugins/) holds the three Cline CLI plugins and the single npm workspace that backs them — the only Node code in this repository. It is deliberately *not* inside `plugin/`: an npm workspace root there made installing the Claude Code plugin run `npm install` and write 263 MB of Cline SDK dependencies into every user's plugin cache.
 
 The boundary is intentional: Agentic SDLC owns lifecycle state, schemas, gate
 transitions, approval-source policy, and portable commands. This repository
@@ -73,7 +74,7 @@ Every role definition and orchestration tool is runner-neutral text and data. Li
 | --- | --- | --- |
 | Codex CLI | Generated wrapper, packaged in the Cadre plugin | See [`docs/INSTALL.md`](docs/INSTALL.md#codex-cli). |
 | Claude Code | Generated wrapper, packaged in the Cadre plugin | See [`docs/INSTALL.md`](docs/INSTALL.md#claude-code). |
-| [Cline](https://docs.cline.bot) | Native `AGENTS.md` support, plus an installable CLI plugin | [Reads `AGENTS.md` natively](https://docs.cline.bot/customization/cline-rules); this repository also provides `.clinerules/agents-repository.md`, pointing at the same canonical `AGENTS.md`/`roster/RUNBOOK.md` sources — works for any Cline session with this repository as its working directory, no install required. Separately, [`deagy/cadre-lifecycle`](plugin/)'s `cline/` is a real, hand-authored (not generated) installable Cline CLI plugin (`cline plugin install ./cline` from a checkout, or a git URL) exposing an `agents_select` tool that wraps `cadre select`. Applies to the Cline CLI, SDK, and Kanban only — not the VSCode/JetBrains extension. |
+| [Cline](https://docs.cline.bot) | Native `AGENTS.md` support, plus an installable CLI plugin | [Reads `AGENTS.md` natively](https://docs.cline.bot/customization/cline-rules); this repository also provides `.clinerules/agents-repository.md`, pointing at the same canonical `AGENTS.md`/`roster/RUNBOOK.md` sources — works for any Cline session with this repository as its working directory, no install required. Separately, [`cline-plugins/cline/`](cline-plugins/cline/) is a real, hand-authored (not generated) installable Cline CLI plugin (`cline plugin install ./cline-plugins/cline` from a checkout) exposing an `agents_select` tool that wraps `cadre select`. Applies to the Cline CLI, SDK, and Kanban only — not the VSCode/JetBrains extension. |
 
 <details>
 <summary>Known Cline plugin limitations</summary>
@@ -95,10 +96,12 @@ with no root `package.json` `cline.plugins` manifest and no root
 `index.ts`/`index.js` falls back to an unbounded recursive `.ts`/`.js` scan
 of the whole cloned repository, which can import files whose own
 dependencies (here, the `vitest` devDependency) were never installed.
-[`plugin/`](plugin/) declares
-its Cline plugin locations explicitly via `plugin/package.json`'s `cline.plugins`
-key so the git-URL install path resolves directly without triggering that
-recursive scan; the underlying scanner behavior is still worth reporting
+**No `cline.plugins` manifest key is present.** This paragraph previously
+claimed one was declared in the workspace root manifest; it is not, and was
+not — the claim described the archived `deagy/cadre-lifecycle` repository.
+Use the local-install form ([`cline-plugins/`](cline-plugins/)) documented in
+[docs/INSTALL.md](docs/INSTALL.md), which does not trigger the scan. The
+underlying scanner behavior is still worth reporting
 upstream, since Cline's git plugin-source format has no way to select a
 subdirectory otherwise.
 

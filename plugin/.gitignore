@@ -1,6 +1,8 @@
-# Node
-node_modules/
-npm-debug.log*
+# No Node rules here on purpose. Nothing under plugin/ is an npm package
+# since the Cline workspaces moved to cline-plugins/ -- and a package.json at
+# this plugin's marketplace source root is exactly what made installing it
+# fetch 263 MB of node_modules. If a node_modules/ ever appears here, that is
+# a defect to investigate, not something to ignore.
 
 # Python
 __pycache__/

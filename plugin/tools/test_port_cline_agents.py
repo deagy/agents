@@ -27,6 +27,14 @@ import port_cline_agents as p  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
+# The port *target* is no longer a sibling of this tool. The three Cline
+# workspaces moved to a top-level cline-plugins/ because an npm workspace root
+# inside plugin/ made installing the Claude Code plugin -- whose marketplace
+# source is ./plugin -- fetch 263 MB of node_modules. Named explicitly rather
+# than derived by counting `.parent`s, so the next move fails loudly here
+# instead of silently resolving somewhere plausible.
+CLINE_ROOT = REPO_ROOT.parent / "cline-plugins"
+
 # `agents/` and `skills/` stopped being committed at the monorepo merge --
 # they are generated into a build directory now. Build them on demand.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -185,7 +193,7 @@ class RealRepoRegressionTests(unittest.TestCase):
             mismatches = []
             for role in ported:
                 generated = (root / "cline-agents" / "agents" / f"{role}.md").read_text(encoding="utf-8")
-                committed_path = REPO_ROOT / "cline-agents" / "agents" / f"{role}.md"
+                committed_path = CLINE_ROOT / "cline-agents" / "agents" / f"{role}.md"
                 if not committed_path.is_file():
                     continue
                 committed = committed_path.read_text(encoding="utf-8")
@@ -255,14 +263,15 @@ class RealRepoRegressionTests(unittest.TestCase):
 
     def test_cli_runs_cleanly_against_this_checkout(self) -> None:
         # --source is separate from --root since the monorepo merge: the
-        # agents/ and skills/ being ported are build artifacts now, while
-        # cline-agents/ (the port target) is committed under plugin/.
+        # agents/ and skills/ being ported are build artifacts under
+        # plugin/, while cline-agents/ (the port target) is committed under
+        # cline-plugins/ -- so --root and --source genuinely differ here.
         result = subprocess.run(
             [
                 sys.executable,
                 str(REPO_ROOT / "tools" / "port_cline_agents.py"),
                 "--root",
-                str(REPO_ROOT),
+                str(CLINE_ROOT),
                 "--source",
                 str(generated_package()),
             ],

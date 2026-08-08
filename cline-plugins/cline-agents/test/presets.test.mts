@@ -30,12 +30,13 @@ import {
 
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(TEST_DIR, "..");
-// REPO_ROOT above is this *plugin's* own root (cline-agents/), used
-// throughout this file as the workspace root passed into registerTools --
-// correct for that purpose, but the knowledge-store CLI lives one level up,
-// in the actual cadre-lifecycle repository root.
-const CADRE_LIFECYCLE_ROOT = resolve(REPO_ROOT, "..");
-const KNOWLEDGE_STORE_CLI = join(CADRE_LIFECYCLE_ROOT, "suite", "roster", "knowledge-store", "src", "cli.py");
+// REPO_ROOT above is this *plugin's* own root (cline-plugins/cline-agents/),
+// used throughout this file as the workspace root passed into registerTools --
+// correct for that purpose. The knowledge-store CLI is not here at all: it
+// ships inside the *packaged* plugin, which lives in a sibling top-level
+// directory since the Cline workspaces moved out of plugin/.
+const PACKAGED_PLUGIN_ROOT = resolve(REPO_ROOT, "..", "..", "plugin");
+const KNOWLEDGE_STORE_CLI = join(PACKAGED_PLUGIN_ROOT, "suite", "roster", "knowledge-store", "src", "cli.py");
 const SOURCE_ROLE_COUNT = 74;
 
 const READ_ONLY_SAMPLE = [
@@ -168,7 +169,7 @@ describe("preset discovery", () => {
 const SOURCE_SKILL_COUNT = 8;
 
 describe("bundled skill discovery", () => {
-  it("loads exactly 7 bundled skills with unique names", () => {
+  it("loads exactly 8 bundled skills with unique names", () => {
     const defs = readSkillDefinitions(REPO_ROOT);
     const bundled = defs.filter((d) => d.source === "bundled");
     expect(bundled).toHaveLength(SOURCE_SKILL_COUNT);
@@ -724,7 +725,7 @@ describe("knowledge-store retrieval wiring", () => {
     // Deliberately missing every required argument (--agent, --task-id,
     // --query, --classification) so the real knowledge-store CLI's own
     // argparse rejects it (exit 2, confirmed by directly invoking
-    // KNOWLEDGE_STORE_CLI the same way -- see CADRE_LIFECYCLE_ROOT's
+    // KNOWLEDGE_STORE_CLI the same way -- see PACKAGED_PLUGIN_ROOT's
     // comment for why this is NOT under REPO_ROOT) -- this only needs a
     // real Python interpreter, not a configured knowledge store, and
     // exercises the same failure path a genuinely unconfigured/
@@ -738,7 +739,7 @@ describe("knowledge-store retrieval wiring", () => {
       },
     };
 
-    const result = await retrieveKnowledgeContext(request, CADRE_LIFECYCLE_ROOT);
+    const result = await retrieveKnowledgeContext(request, PACKAGED_PLUGIN_ROOT);
     expect(result.status).toBe("unavailable");
     expect(result.error).toBeTruthy();
     // The real argparse rejection, not a "file not found" from a wrong path.

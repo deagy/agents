@@ -26,14 +26,15 @@ const MAX_ERROR_TEXT_LENGTH = 2000;
 // when rootPath happens to be this repository itself, and fails closed with
 // ENOENT in every other consumer project.
 //
-// One level up, not two: this plugin sits at cline/ in the plugin repository,
-// whose root *is* the packaged Cadre plugin, so bin/cadre is its sibling. (It
-// was two levels before the split, when this lived at plugins/cline/ in the
-// register repository and reached that repository's own source CLI.) The
-// packaged wrapper exposes `select` and resolves its suite/ runtime relative
-// to itself, so this needs no source checkout.
+// Two levels up: this plugin sits at cline-plugins/cline/, so the repository's
+// own bin/cadre dispatcher is two directories above it. It was one level while
+// these plugins lived inside plugin/ (whose root is the packaged Cadre plugin,
+// making plugin/bin/cadre a sibling), and two levels before that. They moved
+// back out because plugin/package.json made npm a dependency of installing the
+// *Claude Code* plugin, which shipped 263 MB of this workspace's node_modules
+// to every Claude Code user -- see docs/proposals/cline-npm-packaging.md.
 const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url));
-const CADRE_BIN = path.resolve(PLUGIN_DIR, "..", "bin", "cadre");
+const CADRE_BIN = path.resolve(PLUGIN_DIR, "..", "..", "bin", "cadre");
 
 // ---------------------------------------------------------------------------
 // Schema
