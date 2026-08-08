@@ -296,6 +296,7 @@ SHARED_POLICIES = [
     "roster/shared/library-standards.yaml",
     "roster/shared/knowledge-use-policy.md",
     "roster/shared/agent-autonomy.yaml",
+    "roster/shared/documentation-style.md",
 ]
 ASK_HUMAN_RULE = (
     "You are a dispatched subagent: you cannot ask the human directly. If you "

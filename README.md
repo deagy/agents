@@ -2,9 +2,9 @@
 
 [![validate](https://github.com/deagy/cadre/actions/workflows/validate.yml/badge.svg)](https://github.com/deagy/cadre/actions/workflows/validate.yml)
 
-This repository contains a secure cloud agent suite. It is intended for teams building self-hosted infrastructure and applications with Proxmox, Talos, Kubernetes, Helm, OpenTofu, GitLab CI/CD, Go, PostgreSQL, React, TypeScript, Python where useful, and Gherkin-based integration/regression testing.
+A secure cloud agent suite for teams building self-hosted infrastructure and applications with Proxmox, Talos, Kubernetes, Helm, OpenTofu, GitLab CI/CD, Go, PostgreSQL, React, TypeScript, Python where useful, and Gherkin-based integration/regression testing.
 
-The agent suite helps select, coordinate, test, review, document, support, and escalate work across specialized roles. Agents may prepare scoped repository changes and evidence, but human approval is still required for production, persistent infrastructure, destructive actions, policy exceptions, privileged access, and risk acceptance.
+The suite selects, coordinates, tests, reviews, documents, supports, and escalates work across specialized roles. Agents may prepare scoped repository changes and evidence; human approval is still required for production, persistent infrastructure, destructive actions, policy exceptions, privileged access, and risk acceptance.
 
 ## Repository layout
 
@@ -44,7 +44,7 @@ The agent suite helps select, coordinate, test, review, document, support, and e
 
 Key areas:
 
-- [bin/cadre](bin/cadre) dispatches the suite tools (`cadre select`, `cadre selection-telemetry`, `cadre knowledge`, `cadre sdlc`, `cadre generate-plugin`, `cadre generate-authority-aides`, `cadre generate-role-metadata`, `cadre bootstrap-codex`, `cadre resolve-shared`, `cadre mcp-dispatch-server`, `cadre profile`, and `cadre init`). `cadre select` works standalone by default and optionally enriches its plan when the standalone `agentic-sdlc` CLI is also available — see [RUNBOOK.md §2 "Select agents locally"](roster/RUNBOOK.md#select-agents-locally) for the standalone-vs-integrated behavior and `--require-sdlc`. Lifecycle *validation* itself is always provided by that separate `agentic-sdlc` CLI, never by this suite.
+- [bin/cadre](bin/cadre) dispatches the suite tools (`cadre select`, `cadre selection-telemetry`, `cadre knowledge`, `cadre sdlc`, `cadre generate-plugin`, `cadre generate-authority-aides`, `cadre generate-role-metadata`, `cadre bootstrap-codex`, `cadre resolve-shared`, `cadre mcp-dispatch-server`, `cadre profile`, and `cadre init`). `cadre select` works standalone by default and optionally enriches its plan when the standalone `agentic-sdlc` CLI is also available — see [RUNBOOK.md §2 "Select agents locally"](roster/RUNBOOK.md#select-agents-locally) for the standalone-vs-integrated behavior and `--require-sdlc`. That separate `agentic-sdlc` CLI always provides lifecycle *validation*; this suite never does.
 - [roster/catalog.yaml](roster/catalog.yaml) is the machine-readable role inventory.
 - [roster/RUNBOOK.md](roster/RUNBOOK.md) explains how to select, dispatch, review, and escalate agent work.
 - [roster/orchestration/](roster/orchestration/) contains routing rules, lifecycle applicability mappings, handoff contracts, escalation policy, selectors, and tests.
@@ -82,7 +82,7 @@ Every role definition and orchestration tool is runner-neutral text and data. Li
 **Tool invocation fails with a cyclic-structure error.** As of `cline` CLI
 `3.0.46` (the latest published version at the time this was built), invoking
 any locally-installed plugin's tool fails with `JSON.stringify cannot
-serialize cyclic structures` — confirmed to be an upstream Cline bug, not
+serialize cyclic structures` — confirmed as an upstream Cline bug, not
 specific to this plugin, by reproducing the identical failure with
 `cline/cline`'s own unmodified example plugin. The plugin installs and
 uninstalls cleanly; tool invocation should start working once Cline ships a
@@ -91,19 +91,19 @@ fix.
 **Bare git-URL install can fail with a missing `vitest` module.** Installing
 via a bare repository URL, rather than the local-install form, previously
 failed with `Cannot find module 'vitest'` while Cline's "sync plugin MCP
-servers" step scanned the plugin's test file — because a git-plugin-source
-with no root `package.json` `cline.plugins` manifest and no root
+servers" step scanned the plugin's test file: a git-plugin-source with no
+root `package.json` `cline.plugins` manifest and no root
 `index.ts`/`index.js` falls back to an unbounded recursive `.ts`/`.js` scan
 of the whole cloned repository, which can import files whose own
-dependencies (here, the `vitest` devDependency) were never installed.
-**No `cline.plugins` manifest key is present.** This paragraph previously
-claimed one was declared in the workspace root manifest; it is not, and was
-not — the claim described the archived `deagy/cadre-lifecycle` repository.
+dependencies (here, the `vitest` devDependency) were never installed. No
+`cline.plugins` manifest key is present — a prior version of this paragraph
+wrongly claimed one was declared in the workspace root manifest; that
+described the archived `deagy/cadre-lifecycle` repository, not this one.
 Use the local-install form ([`cline-plugins/`](cline-plugins/)) documented in
 [docs/INSTALL.md](docs/INSTALL.md), which does not trigger the scan. The
-underlying scanner behavior is still worth reporting
-upstream, since Cline's git plugin-source format has no way to select a
-subdirectory otherwise.
+underlying scanner behavior is still worth reporting upstream, since
+Cline's git plugin-source format has no way to select a subdirectory
+otherwise.
 
 </details>
 
@@ -133,18 +133,18 @@ The selector emits a plan only. It does not run agents, retrieve knowledge, depl
 ## Agentic SDLC quick start
 
 Install the reusable G1-G10 lifecycle from its standalone repository, then use
-this suite's compatibility command to inject the Cadre provider. Pin
-to a reviewed release in automation; `main` is useful for exploration but is
-not an immutable dependency — check
+this suite's compatibility command to inject the Cadre provider. Pin to a
+reviewed release in automation — `main` is fine for exploration but not an
+immutable dependency. Check
 [the repository's releases](https://github.com/deagy/agentic-sdlc/releases)
 for the current tag rather than hardcoding one here, since this section goes
 stale otherwise.
 
 The kernel is a real pip/pipx-installable distribution (puts `agentic-sdlc`
-directly on `PATH`, no repository checkout needed at runtime) — see the
+directly on `PATH`, no repository checkout needed at runtime). See the
 [standalone lifecycle guide](https://github.com/deagy/agentic-sdlc/tree/main/kernel)
-for the exact `pipx install` command and current release tag, since
-duplicating that command here would just go stale again.
+for the exact `pipx install` command and current release tag; duplicating
+that command here would just go stale again.
 
 For development against an unreleased change, clone and run from the
 checkout instead:
@@ -162,7 +162,7 @@ run `cadre sdlc init --root /path/to/target`.
 
 This defaults to the low-ceremony `quick` profile and generates subagent wrappers for both runners (`init --runner {codex,claude,both}`).
 
-If the target project actually uses this repository's own cloud stack (Proxmox, Talos, Kubernetes, Helm, OpenTofu, GitLab CI, PostgreSQL), use `--profile secure-cloud` instead of the default. This is the **recommended** way to get this repository's 74 roles into a project — scoped to that one project, generated once as static files the project owns from that point on (no live link back to this checkout, so a later role edit here doesn't silently change that project's behavior):
+If the target project actually uses this repository's own cloud stack (Proxmox, Talos, Kubernetes, Helm, OpenTofu, GitLab CI, PostgreSQL), use `--profile secure-cloud` instead of the default. This is the **recommended** way to get this repository's 74 roles into a project: scoped to that one project, generated once as static files the project owns from then on (no live link back to this checkout, so a later role edit here doesn't silently change that project's behavior):
 
 ```sh
 cadre sdlc init --root /path/to/target --profile secure-cloud
@@ -254,14 +254,13 @@ function cadre { & "C:\path\to\this\checkout\bin\cadre.ps1" @args }
 
 This is a second, independent way to run the `cadre` CLI, alongside the
 checkout path above (`./bin/cadre` / `bin/cadre.py` / `bin/cadre.ps1`) — it
-does not replace it, and the checkout path keeps working completely
-unmodified whether or not you ever build or install this package.
-`pyproject.toml` at the repository root packages the CLI (subcommand table,
-dispatch logic, and every resource each subcommand reads: `roster/`,
-`.agents/skills/`, and `provider/` for `cadre sdlc`/`cadre bootstrap-codex`)
-as an installable `cadre` distribution, so it can run from any directory on
-a machine that has never cloned this repository, no checkout required at
-runtime.
+does not replace it, and the checkout path keeps working unmodified whether
+or not you ever build or install this package. `pyproject.toml` at the
+repository root packages the CLI (subcommand table, dispatch logic, and
+every resource each subcommand reads: `roster/`, `.agents/skills/`, and
+`provider/` for `cadre sdlc`/`cadre bootstrap-codex`) as an installable
+`cadre` distribution, runnable from any directory on a machine that has
+never cloned this repository.
 
 Build and install a local wheel:
 
@@ -298,22 +297,20 @@ source through this repository's own git index and write generated content
 back to a real checkout (the `plugin/` directory named by `--output` for
 `generate-plugin`; `roster/authority/*/AGENT.md` for
 `generate-authority-aides`) — an operation that only makes sense against a
-real checkout, never against an installed site-packages copy. `cadre
-generate-role-metadata` is a partial case: it is **read/check-only from a
-pip/pipx install** — `cadre generate-role-metadata --check` works fully
-(it only verifies the installed package's own bundled
+real checkout, never an installed site-packages copy. `cadre
+generate-role-metadata` is a partial case: `--check` works fully from a
+pip/pipx install (it only verifies the installed package's own bundled
 `roster/catalog.yaml`/`roster/orchestration/routing.yaml` are internally
-current, a legitimate installed-mode use case), but its default (no-flag)
-write mode requires a checkout, for the same reason as `generate-plugin`
-above: from an install it would otherwise silently regenerate the
+current), but its default write mode requires a checkout for the same
+reason as `generate-plugin` — otherwise it would silently regenerate the
 installed package's own vendored copy under site-packages rather than a
-real project. Every other subcommand (`select`, `selection-telemetry`, `knowledge`,
-`bootstrap-codex`, `resolve-shared`, `mcp-dispatch-server`, `profile`,
-`init`, and `sdlc`) works fully from the pip/pipx install. Invoking `generate-plugin`,
-`generate-authority-aides`, or `generate-role-metadata` without
-`--check` from an installed distribution fails closed with an explicit
-error message and a non-zero exit code, pointing back at the checkout
-path, instead of silently writing into site-packages or raising a raw
+real project. Every other subcommand (`select`, `selection-telemetry`,
+`knowledge`, `bootstrap-codex`, `resolve-shared`, `mcp-dispatch-server`,
+`profile`, `init`, and `sdlc`) works fully from the pip/pipx install.
+Invoking `generate-plugin`, `generate-authority-aides`, or
+`generate-role-metadata` without `--check` from an installed distribution
+fails closed with an explicit error and non-zero exit, pointing back at the
+checkout path, instead of writing into site-packages or raising a raw
 traceback.
 
 ## Agent orchestration
@@ -383,9 +380,9 @@ component-prefixed tags:
 
 The prefixes are load-bearing. This repository inherited 25 bare `v*` tags
 from before the monorepo merge (`v0.1.1`–`v0.16.0`, plus `v1`–`v7`), so an
-unprefixed `v<version>` scheme collides with them — and the collision would
-match the workflow's already-tagged check and report "nothing to do" rather
-than failing. Those old tags are left as-is.
+unprefixed `v<version>` scheme would collide with them — and the collision
+would match the workflow's already-tagged check and report "nothing to do"
+rather than failing. Those old tags are left as-is.
 
 Keep the version lines independent: `provider/provider.json`'s
 `kernel_compatibility` window is only meaningful if the kernel can move

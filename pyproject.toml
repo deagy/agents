@@ -120,6 +120,7 @@ packages = ["cadre_cli"]
 "roster/shared/cloud-guardrails.md" = "cadre_cli/_vendor/roster/shared/cloud-guardrails.md"
 "roster/shared/control-mapping-template.yaml" = "cadre_cli/_vendor/roster/shared/control-mapping-template.yaml"
 "roster/shared/definition-of-done.md" = "cadre_cli/_vendor/roster/shared/definition-of-done.md"
+"roster/shared/documentation-style.md" = "cadre_cli/_vendor/roster/shared/documentation-style.md"
 "roster/shared/knowledge-use-policy.md" = "cadre_cli/_vendor/roster/shared/knowledge-use-policy.md"
 "roster/shared/library-standards.yaml" = "cadre_cli/_vendor/roster/shared/library-standards.yaml"
 "roster/shared/operating-principles.md" = "cadre_cli/_vendor/roster/shared/operating-principles.md"

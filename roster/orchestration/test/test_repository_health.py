@@ -1043,6 +1043,73 @@ class RepositoryHealthTests(unittest.TestCase):
             "[tool.hatch.build.targets.wheel.force-include])",
         )
 
+    def test_every_shared_policy_file_is_embedded_or_explicitly_exempted(self) -> None:
+        """A shared file under roster/shared/ can silently never reach any
+        agent: SHARED_POLICIES and TIER_SCOPED_POLICIES are opt-in
+        allowlists, so adding a new roster/shared/*.md policy without adding
+        it to either is not an error anywhere else -- it just quietly never
+        gets embedded (documentation-style.md shipped exactly this way for a
+        full release). This test closes that gap by requiring every
+        roster/shared/*.md file to be accounted for one of three ways:
+        embedded universally (SHARED_POLICIES), embedded for a subset of
+        capability tiers (TIER_SCOPED_POLICIES), or named in the allowlist
+        below with a reason it is deliberately not embedded.
+        """
+        sys.path.insert(0, str(ROOT / "orchestration" / "src"))
+        try:
+            import generate_global_plugin
+        finally:
+            sys.path.pop(0)
+
+        # Files that deliberately do not go through automatic embedding.
+        # Adding a file here is a real design decision, not a way to silence
+        # this test -- explain why the file is exempt.
+        not_embedded_by_design = {
+            # Directory README, not agent-facing policy content.
+            "roster/shared/README.md": "index/reference document, not a role policy",
+            # Opt-in policy referenced explicitly by the specific roles that
+            # need it (cloud-architect, etc.), not every role -- unlike
+            # documentation-style.md, applying to a narrow, deliberately
+            # chosen subset is the intended shape here.
+            "roster/shared/cloud-guardrails.md": "opt-in, referenced explicitly by the roles it applies to",
+            "roster/shared/secure-development-policy.md": "opt-in, referenced explicitly by the roles it applies to",
+            # General reference material cited from RUNBOOK.md as shared
+            # context for reviewers/release engineers, not per-role
+            # instructions meant to be embedded into every wrapper.
+            "roster/shared/definition-of-done.md": "general completion-bar reference cited from RUNBOOK.md, not per-role embedded policy",
+            "roster/shared/risk-severity-model.md": "general reference cited from RUNBOOK.md, not per-role embedded policy",
+        }
+
+        embedded = set(generate_global_plugin.SHARED_POLICIES) | set(
+            generate_global_plugin.TIER_SCOPED_POLICIES
+        )
+        shared_markdown_files = {
+            f"roster/shared/{path.name}"
+            for path in (REPOSITORY_ROOT / "roster" / "shared").glob("*.md")
+        }
+
+        unaccounted = sorted(
+            shared_markdown_files - embedded - set(not_embedded_by_design)
+        )
+        self.assertEqual(
+            [],
+            unaccounted,
+            "roster/shared/*.md file(s) are neither embedded (SHARED_POLICIES "
+            "or TIER_SCOPED_POLICIES in generate_global_plugin.py) nor listed "
+            "in this test's not_embedded_by_design allowlist with a reason: "
+            f"{unaccounted}. Add the file to one of those, deliberately.",
+        )
+
+        stale_allowlist_entries = sorted(
+            set(not_embedded_by_design) - shared_markdown_files
+        )
+        self.assertEqual(
+            [],
+            stale_allowlist_entries,
+            "not_embedded_by_design names file(s) that no longer exist under "
+            f"roster/shared/: {stale_allowlist_entries}. Remove the stale entry.",
+        )
+
     def test_secure_cloud_agents_plugin_is_self_contained(self) -> None:
         plugin_root = generated_package()
         provider = json.loads((plugin_root / "provider.json").read_text(encoding="utf-8"))

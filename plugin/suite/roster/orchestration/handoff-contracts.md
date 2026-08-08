@@ -27,6 +27,13 @@ Every handoff includes:
   what determines the actual mode on each runner.
 - For black-box, UAT, or support cases: user-visible steps, expected and actual behavior, affected persona or reporter class, client/browser version, timestamps, request IDs, sanitized attachments, workaround status, and user-safe communication draft when applicable.
 
+A listed field may be omitted, or stated as a one-line "not applicable", when
+it does not materially apply to the task. Every field that does materially
+apply remains mandatory in full — see `roster/shared/documentation-style.md`
+for the proportionality principle this follows; it never excuses dropping an
+audit-trail, citation, evidence-integrity, approval-status, or
+assumption/unresolved-question field once that field is applicable.
+
 The receiving agent verifies completeness and rejects an ambiguous or unauditable handoff. A rejected handoff returns to its author without being treated as approval.
 
 Material changes must be reported to the target project's lifecycle kernel for
