@@ -97,7 +97,7 @@ the MCP extra: `pip install -r roster/orchestration/mcp/requirements-mcp.txt`.
 
 ```sh
 git clone https://github.com/deagy/cadre.git
-cline plugin install ./cadre/plugin/cline --force
+cline plugin install ./cadre/cline-plugins/cline --force
 ```
 
 **Known upstream defect:** as of cline CLI 3.0.46, invoking *any*

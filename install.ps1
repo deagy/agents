@@ -201,7 +201,7 @@ $BlockEnd
 
 function Install-Cline {
     Write-Step 'cline:'
-    $source = Join-Path $Checkout 'plugin\cline'
+    $source = Join-Path $Checkout 'cline-plugins\cline'
     Invoke-Step "cline plugin install $source --force" {
         cline plugin install $source --force
         if ($LASTEXITCODE -ne 0) {

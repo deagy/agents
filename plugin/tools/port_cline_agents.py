@@ -22,7 +22,10 @@ opens a PR, rather than silently shipping a leaked source-repo path. Extend
 PATH_SUBSTITUTIONS (or the per-role/per-skill exception maps) when that
 happens; do not loosen the check.
 
-    python3 tools/port_cline_agents.py --root .
+The port target lives in a different top-level directory from the generated
+source, so --root and --source are always both required in practice:
+
+    python3 plugin/tools/port_cline_agents.py --root cline-plugins --source plugin
 """
 
 from __future__ import annotations
@@ -558,7 +561,7 @@ def port_skills(root: Path, source_root: Path | None = None) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--root", type=Path, default=Path("."),
+        "--root", type=Path, default=Path("cline-plugins"),
         help="Directory containing cline-agents/ (the port target).",
     )
     parser.add_argument(

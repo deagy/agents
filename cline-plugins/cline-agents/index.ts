@@ -93,11 +93,12 @@ const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const BUNDLED_AGENTS_DIR = join(MODULE_DIR, "agents");
 const BUNDLED_SKILLS_DIR = join(MODULE_DIR, "skills");
 // Resolved the same way cline/index.ts resolves its own CADRE_BIN: relative
-// to this plugin module's own location (this plugin sits at cline-agents/,
-// a sibling of cline/, both at this repository's root), never relative to
-// the target workspace -- a bare "./bin/cadre" only works when the
-// workspace happens to be this repository itself.
-const CADRE_BIN = resolve(MODULE_DIR, "..", "bin", "cadre");
+// to this plugin module's own location (this plugin sits at
+// cline-plugins/cline-agents/, a sibling of cline/), never relative to the
+// target workspace -- a bare "./bin/cadre" only works when the workspace
+// happens to be this repository itself. Two levels up reaches the
+// repository's own bin/cadre.
+const CADRE_BIN = resolve(MODULE_DIR, "..", "..", "bin", "cadre");
 const execFileAsync = promisify(execFile);
 
 // Mirrors cline/index.ts's buildSelectArgs -- small enough, and this plugin

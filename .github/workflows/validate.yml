@@ -199,7 +199,7 @@ jobs:
           fi
 
   cline-plugins:
-    name: plugin/cline* (npm test, typecheck)
+    name: cline-plugins/* (npm test, typecheck)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -223,16 +223,22 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: plugin/package-lock.json
-      # plugin/package.json declares npm workspaces (cline, cline-agents,
-      # cline-lifecycle) backed by a single lockfile, so `npm ci` runs from
-      # plugin/ rather than each package directory.
+          cache-dependency-path: cline-plugins/package-lock.json
+      # cline-plugins/package.json declares npm workspaces (cline,
+      # cline-agents, cline-lifecycle) backed by a single lockfile, so `npm ci`
+      # runs from cline-plugins/ rather than each package directory.
+      #
+      # This lives outside plugin/ deliberately. While the workspace root sat
+      # at plugin/package.json, installing the *Claude Code* plugin -- whose
+      # marketplace source is ./plugin -- pulled this entire tree down as
+      # node_modules: 263 MB and 252 packages of Cline SDK dependencies that
+      # a Claude Code user never executes.
       - run: npm ci
-        working-directory: plugin
+        working-directory: cline-plugins
       - run: npm test
-        working-directory: plugin/${{ matrix.package }}
+        working-directory: cline-plugins/${{ matrix.package }}
       - run: npm run typecheck
-        working-directory: plugin/${{ matrix.package }}
+        working-directory: cline-plugins/${{ matrix.package }}
 
   generated-content:
     name: plugin/ generated content matches its source
