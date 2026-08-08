@@ -231,6 +231,15 @@ jobs:
       # plugin-owned runtime imports from this production-only dependency
       # closure; @cline/* is supplied by Cline's host sandbox.
       #
+      # That last part is an assumption about Cline's installer, not something
+      # this workflow can prove: the three workspace packages declare
+      # @cline/sdk and @cline/shared as direct runtime dependencies, and the
+      # root manifest deliberately omits them. It was checked once by hand,
+      # against an isolated `cline plugin install` of this repository, which
+      # loaded all three entrypoints with `mcpSyncFailures: []`. If a
+      # Git-source install ever fails on a missing @cline/* module, that
+      # assumption is what broke -- not this dependency closure.
+      #
       # These two steps check all three entrypoints at once and depend on
       # nothing in the matrix, so they run on one leg rather than repeating
       # identically three times. They must also stay ahead of the
