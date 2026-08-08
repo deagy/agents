@@ -5,7 +5,7 @@ description: Conversationally record a human's approve/reject/request-changes de
 
 > Packaged suite note: when the current project has no local `roster/` tree, resolve suite files under `../../../../suite/roster/` relative to this `SKILL.md`. The packaged plugin is self-contained; do not look for the source checkout.
 
-> Duplication note: this skill's body is intentionally duplicated across the core plugin and both forge plugins so each plugin is self-sufficient and needs no dependency on the others (see AGENTS.md's plugin-split rationale). Frontmatter `name`/`description` and forge-specific cross-references intentionally differ per copy; the body must otherwise stay in sync -- `tools/test_plugin_duplication_health.py` enforces it.
+> Duplication note: this skill's body is intentionally duplicated across the core plugin and both forge plugins so each plugin is self-sufficient and needs no dependency on the others (see AGENTS.md's plugin-split rationale). Frontmatter `name`/`description` and forge-specific cross-references intentionally differ per copy; the body must otherwise stay in sync -- no test enforces this today, so propagate any body change to every copy deliberately.
 
 
 # Lifecycle review

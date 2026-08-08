@@ -34,8 +34,9 @@ Initialization makes a project immediately usable for planning, artifact prepara
 ## Initialize a project
 
 The canonical command is the installed `agentic-sdlc` executable (see
-"Install" above), or `./bin/agentic-sdlc` / `python3 -m agentic_sdlc` from a
-checkout during development, without installing anything:
+"Install" above), or `../bin/agentic-sdlc` (from the repository root:
+`./bin/agentic-sdlc`) / `python3 -m agentic_sdlc` from a checkout during
+development, without installing anything:
 
 ```sh
 agentic-sdlc init --root /path/to/target

@@ -33,13 +33,12 @@ convenience layered on top of the manual PATH setup, not a replacement for it.
 A generated package-relative agent-catalog.json is loaded by the standalone
 kernel through provider.json.
 
-The package itself is maintained in a separate repository, deagy/cadre-lifecycle
-(the successor to the now-archived deagy/cadre-plugin), which is almost
-entirely this script's output: only the two plugin manifests carrying the
-release version are hand-authored there (see PACKAGE_ASSETS). ``--output
-<directory>`` points at a checkout of that repository and is therefore
-required — this source repository has no plugins/ directory of its own to
-write into.
+The package itself is committed in this same repository under plugin/, which
+is almost entirely this script's output: only the plugin manifests carrying
+the release version and a few hand-authored files are maintained there
+directly (see PACKAGE_ASSETS). ``--output <directory>`` is still required
+rather than defaulting, so a run can never silently create a stray directory;
+in this repository it is always ``--output plugin``.
 
 Regenerate after adding/removing a role in roster/catalog.yaml or a skill under
 .agents/skills/:
@@ -1291,16 +1290,14 @@ def files_equal(left: Path, right: Path, *, compare_readme: bool = True) -> bool
 def main() -> int:
     catalog = load_catalog(AGENTS_ROOT / "catalog.yaml")
     arguments = sys.argv[1:]
-    # The package is written into a checkout of the plugin repository
-    # (deagy/cadre-lifecycle, successor to the now-archived deagy/cadre-plugin).
-    # This repository has nothing to generate into, so --output is required
-    # rather than defaulting anywhere -- a default would silently create a
-    # stray directory here.
+    # --output is required rather than defaulting anywhere -- a default would
+    # silently create a stray directory. In this repository it is always
+    # `--output plugin`.
     if "--output" not in arguments:
         raise SystemExit(
             "cadre generate-plugin: --output is required. The packaged plugin lives in "
-            "deagy/cadre-lifecycle; clone it and pass its root, e.g.\n"
-            "    cadre generate-plugin --output /path/to/cadre-lifecycle"
+            "this repository's plugin/ directory, e.g.\n"
+            "    cadre generate-plugin --output plugin"
         )
     output_index = arguments.index("--output")
     try:
