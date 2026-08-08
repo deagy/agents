@@ -7,17 +7,43 @@ restate this repository's own internal commit history — see `git log` for
 that. New adopters should start with the
 [adopt-cadre quickstart](docs/adopt-cadre-quickstart.md) instead of this file.
 
-Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Since
-the plugin split (below), the packaged plugin versions and tags in its own
-repository, [`deagy/cadre-plugin`](https://github.com/deagy/cadre-plugin) (now
-[`deagy/cadre-lifecycle`](https://github.com/deagy/cadre-lifecycle)); this
-repository's own tags track register-side changes only, and `release.yml`
-no longer exists here (it moved with the plugin split), so tags below this
-point are cut manually rather than via an automated version-bump PR.
+Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
+
+**Note on the entries below the monorepo merge.** They describe an arrangement
+that no longer exists: the packaged plugin used to live in its own repository
+(`deagy/cadre-plugin`, later `deagy/cadre-lifecycle`), this repository's tags
+tracked register-side changes only, and `release.yml` was not here — so tags
+below that point were cut by hand. All four upstreams are now merged and
+archived. The plugin is built in-tree, `.github/workflows/release.yml` cuts
+both component lines, and tags are component-prefixed (`plugin-v*`,
+`kernel-v*`) because the merge inherited 25 bare `v*` tags that an unprefixed
+scheme would collide with — silently, matching the workflow's already-tagged
+check and reporting "nothing to do". See
+[`docs/migration/monorepo-migration.md`](docs/migration/monorepo-migration.md).
 
 ## [Unreleased]
 
+### Added
+
+- **Three new roles, taking the catalog from 71 to 74.** Each fills a gap an existing role explicitly disclaimed, rather than widening one:
+
+  - **`ai-engineer`** (`build` / `code_author`) — a consuming project's model-facing layer: model and provider selection, prompt and agent design, retrieval, eval harnesses, and inference cost/latency. Nothing covered this: `knowledge-store-steward` operates *this suite's own* vectorized store and `agent-performance-evaluator` assesses *this catalog's own* roles, and `ai-engineer`'s `## Authority` names both so the boundary is in the role, not just in the changelog.
+  - **`visual-designer`** (`design` / `document_author`) — design tokens, component specifications, and usage rules. `interaction-designer` ends its own scope statement with "not the visual system," and `frontend-engineer` is forbidden to select a component library or styling system while those remain unresolved; the visual system sat in the gap both name.
+  - **`delivery-sequencer`** (`planning` / `document_author`) — dependency map, critical path, and sequencing. `premortem` already listed "the assumption register, capacity model, and dependency map" as inputs and nothing produced the third. It owns order and prerequisites only and may not set priority, dates, scope, or risk tolerance.
+
+- **`roster/shared/technology-standards.md` gains an AI/ML product-features section, and `team-profile.yaml` an `ai` block.** Model provider, eval framework, and vector store are recorded `not_yet_selected`, so a role must present alternatives rather than choose. The section also records the load-bearing constraints: model output is untrusted data, an eval baseline precedes a prompt or model change, and model output never authorizes a privileged action on its own. **Consumer impact:** shared policy is embedded verbatim into every generated wrapper, so all 74 wrappers change even though 73 roles' own definitions did not.
+
+- **A `version-control-workflow` skill** (12 skills, up from 11) — branching, merge vs rebase, history repair, conflict resolution, and PR/MR hygiene across both forges. Deliberately a skill and not a role: procedural know-how is not an accountability boundary. Note `agent-version-control` is a false friend — it tracks role-definition provenance, not git.
+
+### Fixed
+
+- **A task changing a GitHub Actions workflow selected no primary agent at all.** `routing.yaml`'s `pipeline` route carried only GitLab paths, so `.github/workflows/**` matched nothing build-shaped, while the identical task on `.gitlab-ci.yml` selected `cicd-engineer` + `pipeline-security-reviewer`. The route now covers `.github/workflows/**` and `.github/actions/**` with matching keywords, and a selector test asserts the two forges staff *identically* for the same task, so this cannot regress to one-forge coverage silently. `cicd-engineer` and `pipeline-security-reviewer` no longer hardcode GitLab either: both now require establishing which forge applies and reviewing against that forge's own controls, with an explicit warning not to carry a control's name across — job permission scoping, environment approval, and workload identity federation differ materially. Neither role's authority widened.
+
+- **Python work matched no route.** The `backend` route now carries a `python` keyword. **Deliberately not a `**/*.py` path glob**, unlike its `**/*.go` counterpart: this repository is itself Python, and the glob cross-matched its own orchestration source — already correctly routed to `application-engineer` — adding `backend-engineer` as a spurious second primary. The routing schema has no exclusion mechanism, so the asymmetry is the honest fix and is pinned by a test asserting both halves.
+
 ### Changed
+
+- **The `pipeline` route's bare `pipeline` keyword is narrowed to compounds** (`ci pipeline`, `build pipeline`, `delivery pipeline`, `deployment pipeline`, `release pipeline`). It previously matched *any* pipeline — data, ETL, or RAG — which is why "build a RAG pipeline with an LLM provider" returned a confident, fully-staffed plan naming `cicd-engineer`. **Consumer impact:** a task whose text says only "pipeline" with no CI-shaped file no longer selects `cicd-engineer`; say "ci pipeline" or change a pipeline file. This is the one change here that can *remove* an agent from an existing task's plan.
 
 - **BREAKING (behavioral): write-capable Cadre roles now default to working in a dedicated `git worktree` instead of the caller's main working tree.** All 43 capability tiers with `sandbox_mode != "read-only"` (derived from `roster/runner-capabilities.json`, not hardcoded) now embed a new shared policy, `roster/shared/workspace-isolation.md`, into their generated wrapper instructions (`generate_global_plugin.py`'s new `TIER_SCOPED_POLICIES`, alongside the existing `SHARED_POLICIES`). It instructs an agent to check whether it is already inside a linked worktree, and if not and conditions allow (`agent-autonomy.yaml`'s `repository.create_local_branch_or_worktree: allowed`, no dirty paths intersecting the task's scope), create one in-root at `<repository_root>/.worktrees/<task-id>/<role-id>/` and work there, reporting the path/branch in its result. This is **prompt policy plus an orchestrator dispatch-contract expectation, not a mechanically enforced gate** — `roster/orchestration/mcp/dispatch_core.py` is unchanged, and no `agent-autonomy.yaml` value moved (`commit: on_request`, `push: on_request`, `merge: never`, and `create_local_branch_or_worktree: allowed` are all exactly as they were; this loosens no permission, it only changes where allowed edits land by default).
 
