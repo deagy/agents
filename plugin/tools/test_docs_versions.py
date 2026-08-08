@@ -60,8 +60,12 @@ PINNED_CLONE = re.compile(r"clone\s+--branch\s+v[\d.]+")
 # ("Requires `agentic-sdlc` [v0.13.0](...)+"). Both drifted independently --
 # the second form sat two minor versions behind for several releases because
 # a regex written only for the first form never saw it.
+# Captures the full version when prose states one, so a patch-level drift
+# is caught. This compared only major.minor until bumping the window from
+# 0.13.0 to 0.13.2 left two READMEs citing v0.13.0 -- with links to the
+# archived repository's dead tag scheme -- and the guard passed them.
 KERNEL_VERSION_PROSE = re.compile(
-    r"(?:Agentic SDLC\s+v|`agentic-sdlc`\s*\[v)(\d+\.\d+)"
+    r"(?:Agentic SDLC\s+v|`agentic-sdlc`\s*\[v)(\d+\.\d+(?:\.\d+)?)"
 )
 
 
@@ -131,14 +135,22 @@ class TestKernelVersionProseMatchesProvider(unittest.TestCase):
         minimum = manifest["kernel_compatibility"]["minimum"]
         supported_series = ".".join(minimum.split(".")[:2])
 
+        def acceptable(found: str) -> bool:
+            # A full version must match the declared minimum exactly; a bare
+            # series (x.y) is still allowed, since prose sometimes means the
+            # line rather than a specific release.
+            return found == minimum if found.count(".") == 2 else found == supported_series
+
         mismatches = []
         for path in markdown_files():
             text = _strip_history_blocks(path.read_text(encoding="utf-8"))
             for lineno, line in enumerate(text.splitlines(), start=1):
                 for found in KERNEL_VERSION_PROSE.findall(line):
-                    if found != supported_series:
+                    if not acceptable(found):
                         rel = path.relative_to(REPO_ROOT)
-                        mismatches.append(f"{rel}:{lineno}: quotes v{found}, expected v{supported_series}")
+                        mismatches.append(
+                            f"{rel}:{lineno}: quotes v{found}, expected v{minimum} (or v{supported_series})"
+                        )
 
         self.assertEqual(
             mismatches,

@@ -50,7 +50,7 @@ NOT mirrored: both just wrap `bin/cadre sdlc status`, i.e. exactly what
 `sdlc_status` above already calls — there is nothing new to wrap.
 
 This repository's `provider.json` pins `kernel_compatibility.minimum` to
-`agentic-sdlc` [v0.13.0](https://github.com/deagy/agentic-sdlc/releases/tag/v0.13.0)
+`agentic-sdlc` [v0.13.2](https://github.com/deagy/cadre/releases/tag/kernel-v0.13.2)
 or later — 10 of the 16 GitLab/GitHub tools require it (see CHANGELOG.md for
 why). If a tool call fails with "invalid choice" on an older pinned kernel,
 `agentic-sdlc <subcommand> --help` will tell you what that kernel actually

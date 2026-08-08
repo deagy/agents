@@ -15,6 +15,32 @@ release convention (see `README.md`'s "Releasing" section) ties git tags
 `python3 tools/plugin_version.py --check`/`--set`. Each version heading
 below links to its [GitHub Release](https://github.com/deagy/cadre-lifecycle/releases).
 
+## [0.12.0](https://github.com/deagy/cadre/releases/tag/plugin-v0.12.0) - 2026-08-08
+
+### Changed
+
+- **The lifecycle plugins now install Agentic SDLC kernel v0.13.2**, up from
+  v0.13.0. `provider.json`'s `kernel_compatibility` window moved to
+  `[0.13.2, 1.0.0)`, and each lifecycle plugin's `kernel-compatibility.json`
+  follows it.
+
+  0.13.2 is the first kernel release whose SBOM records the resolved
+  dependency tree (19 packages) rather than the single declared one, so this
+  is the first version where the published inventory describes what actually
+  installs. Both it and the wheel carry a SLSA provenance attestation;
+  `bootstrap_sdlc.py` verifies the wheel's checksum before installing.
+
+  **If you already have a kernel**, nothing breaks. A 0.13.0 on your `PATH`
+  is now outside the window, and the plugin leaves it strictly alone and
+  installs its own copy alongside. If you pinned `AGENTIC_SDLC_BIN` at an
+  out-of-window kernel, the bootstrap fails closed and says so rather than
+  silently substituting a different binary — point it at 0.13.2+, or unset
+  it to let the plugin manage its own.
+
+- Two READMEs cited kernel v0.13.0 with links to the archived
+  `deagy/agentic-sdlc` repository's retired tag scheme. Both now point at
+  `deagy/cadre`'s `kernel-v*` releases.
+
 ## [0.11.1](https://github.com/deagy/cadre/releases/tag/plugin-v0.11.1) - 2026-08-07
 
 ### Fixed
