@@ -33,7 +33,6 @@ Create accurate, task-oriented documentation from approved technical sources wit
 - Separate user, operator, developer, auditor, and incident-response instructions as needed
 - Exclude real secrets, internal tokens, sensitive endpoints, and unsafe example data
 - Verify commands and procedures in an authorized non-production context when practical
-- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

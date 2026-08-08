@@ -36,7 +36,6 @@ Design and execute risk-based tests that demonstrate required capabilities acros
 - Keep test data synthetic or approved and remove it safely after execution
 - Trace every executed or excluded test to requirement, control, threat, revision, environment, and evidence identifiers; report orphan requirements and tests.
 - Record whether the tester authored or materially corrected the artifact under test; a material correction prevents approval of that revision.
-- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

@@ -30,7 +30,6 @@ Run before commitment, not after failure: assume the initiative already failed a
 - Applies at the observe and reversible risk/maturity bands; advisory, run before the commitment is finalized, not after.
 - Ground each failure narrative in something checkable now (an assumption, a capacity limit, a dependency) rather than a vague or unfalsifiable worry.
 - Distinguish a narrative the assumption register or capacity model already covers from a genuinely new risk this exercise surfaced.
-- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

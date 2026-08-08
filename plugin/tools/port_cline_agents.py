@@ -105,10 +105,6 @@ PATH_SUBSTITUTIONS: list[tuple[str, str]] = [
     ),
     ("`../../shared/operating-principles.md`", "this project's operating-principles documentation"),
     ("`../../shared/knowledge-use-policy.md`", "this project's knowledge-use-policy documentation"),
-    (
-        "`../../shared/documentation-style.md`",
-        "this project's documentation-style documentation",
-    ),
     ("`../../shared/cloud-guardrails.md`", "this project's cloud-guardrails documentation"),
     ("`../../orchestration/escalation-policy.md`", "this project's escalation-policy documentation"),
     ("`../../orchestration/handoff-contracts.md`", "this project's handoff-contracts documentation"),

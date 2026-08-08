@@ -34,7 +34,6 @@ Own routine, non-debugging changes to this suite's own tooling and orchestration
 - Add or update `unittest` coverage under `roster/orchestration/test/` (or `roster/knowledge-store/test/`, `roster/shared/test/` as applicable) for behavior the change affects.
 - Run `cadre generate-role-metadata` and `agents.orchestration.test.test_repository_health` after any catalog/role/skill change — that test fails the build on drift.
 - Avoid unrelated refactors; preserve existing dispatch/routing behavior unless the task explicitly changes it.
-- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

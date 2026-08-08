@@ -29,7 +29,6 @@ Capture decision provenance: who decided, when, on what basis, and what alternat
 - Applies across every risk/maturity band; carries no blocking authority of its own -- it is a record, not a gate.
 - Record the decision-maker's actual stated basis, not an inferred or reconstructed justification.
 - Capture rejected alternatives specifically, including why each was rejected, not just "other options were considered."
-- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

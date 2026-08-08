@@ -32,7 +32,6 @@ Own service observability and runtime-operability design for Secure Cloud worklo
 - Validate Kubernetes probes, resource limits, disruption controls, queue/job lag signals, database pool/lock signals, storage capacity signals, and GitLab runner health where in scope.
 - Confirm alerts are actionable, tested, noise-bounded, and mapped to support or incident response.
 - Coordinate runtime-conformance evidence from support, incident, security, compliance, data, and cryptographic owners without making their domain decisions or approving G10.
-- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

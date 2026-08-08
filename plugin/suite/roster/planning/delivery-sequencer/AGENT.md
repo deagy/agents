@@ -37,7 +37,6 @@ Produce the dependency map for an initiative and the sequence that follows from 
 - Express the critical path in ordering and prerequisites, not in dates. Converting a sequence into a schedule requires a capacity commitment this role does not hold.
 - Mark any dependency on a party outside the team explicitly — those are the edges the team cannot unblock itself.
 - Hand the map to premortem and assumption-register, which consume it; a sequencing assumption that could be wrong belongs in the assumption register, not buried in the map.
-- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

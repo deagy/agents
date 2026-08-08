@@ -30,7 +30,6 @@ Maintain provenance for the agent definitions themselves -- roles are artifacts 
 - Applies at the observe and reversible risk/maturity bands; advisory.
 - Bind provenance to the exact revision (not "the current version" as a moving target) so a later definition change doesn't silently reattribute past artifacts.
 - Record what changed in a role definition specifically (authority, scope, required checks), not just that a change occurred.
-- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

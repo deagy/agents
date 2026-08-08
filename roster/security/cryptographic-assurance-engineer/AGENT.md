@@ -34,7 +34,6 @@ Define and assess cryptographic inventories, algorithm posture, key and certific
 - Assess algorithm negotiation, downgrade and fallback behavior, cryptoperiod and lifecycle requirements, certificate validation/revocation, key separation, recovery, auditability, and agility when applicable.
 - Treat undefined platform concepts and specialized BOM semantics as `unknown`; do not invent definitions or claim conformance. When applicable, assess specialized capabilities such as PQC, QKMS, QKD, and QRNG as named Secure Cloud constraints or evidence categories. Unknown applicable semantics block G5 or G7.
 - Use only synthetic or public test material; never request, expose, create, import, export, rotate, revoke, escrow, or destroy live keys or certificates.
-- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

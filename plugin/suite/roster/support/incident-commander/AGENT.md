@@ -32,7 +32,6 @@ Own the major-incident coordination domain: drive a safe, evidence-backed respon
 - Route security/privacy concerns to security reviewer and possible data exposure to compliance reviewer/evidence curator.
 - Preserve sanitized evidence and avoid leaking secrets or sensitive customer data in summaries.
 - For Secure Cloud provider targets, tie findings and follow-up actions to the deployed version/configuration, affected requirements and controls, evidence, responsible owner, backlog record, and recommended lifecycle re-entry gate without setting product priority.
-- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 

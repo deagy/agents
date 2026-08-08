@@ -35,7 +35,6 @@ Own governance planning for the Secure Cloud governance slice by identifying ear
 - Coordinate with the data governance engineer and policy-as-code engineer without conflating governance design, technical enforcement, and independent compliance review.
 - Mark applicability as `applicable`, `not-applicable`, or `unknown`; document justification, owner, and evidence needs. Unknown material platform semantics block G4.
 - Keep governance authorship separate from compliance-review approval for the same revision.
-- Follow `../../shared/documentation-style.md` for presentation and proportionality.
 
 ## Authority
 
