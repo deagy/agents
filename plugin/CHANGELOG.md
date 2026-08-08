@@ -13,7 +13,84 @@ release convention (see `README.md`'s "Releasing" section) ties git tags
 (`vMAJOR.MINOR.PATCH`) to a deliberate, reviewed version bump of
 `.claude-plugin/plugin.json` / `.codex-plugin/plugin.json`, checked with
 `python3 tools/plugin_version.py --check`/`--set`. Each version heading
-below links to its [GitHub Release](https://github.com/deagy/cadre-lifecycle/releases).
+below links to its [GitHub Release](https://github.com/deagy/cadre/releases).
+
+## [0.14.0](https://github.com/deagy/cadre/releases/tag/plugin-v0.14.0) - 2026-08-08
+
+### Added
+
+- **Three new roles, taking the catalog from 71 to 74.** Each fills a gap an
+  existing role explicitly disclaimed, rather than widening one.
+- **A `version-control-workflow` skill** (12 skills, up from 11) — branching,
+  merge vs rebase, history repair, conflict resolution, and PR/MR hygiene
+  across GitHub and GitLab, preferring the `gh`/`glab` CLIs. Deliberately a
+  skill and not a role: procedural know-how is not an accountability
+  boundary. Note `agent-version-control` is a false friend — it tracks
+  role-definition provenance, not git.
+- **An AI/ML product-features section in `technology-standards.md`.** Model
+  provider, eval framework, and vector store are recorded
+  `not_yet_selected`, so a role must present alternatives rather than pick
+  one. It also records the load-bearing constraints: model output is
+  untrusted data, an eval baseline precedes a prompt or model change, and
+  model output never authorizes a privileged action on its own.
+
+### Changed
+
+- **BREAKING (behavioral): write-capable roles now default to working in a
+  dedicated `git worktree` rather than the caller's main working tree.**
+  **Consumer impact:** a project that dispatches these roles and then
+  inspects its main working tree for changes will see none — the changes land
+  in `.worktrees/<task-id>/<role-id>/` on a new branch, and must be reviewed
+  and merged from there. This is prompt policy and a dispatch-contract
+  expectation, not a mechanically enforced gate; no autonomy value moved, so
+  it loosens no permission and only changes where allowed edits land by
+  default. **Opt out** by narrowing `repository.create_local_branch_or_worktree`
+  in a project's own `.agents/shared/agent-autonomy.yaml` overlay, which is
+  legitimate under the narrowing-only merge rule and makes every write-capable
+  role degrade explicitly to in-place edits.
+- **Every role is now told never to mutate a working tree it did not
+  create** — no `git reset --hard`, `checkout`/`switch` leaving dirty state,
+  `restore`, `stash`, `clean -f`, `branch -f/-D`, `rebase`, or force-push in
+  a tree it was dispatched into, with read-only alternatives given for
+  inspecting a revision. `agent-autonomy.yaml` gains the matching
+  `repository.discard_uncommitted_work_or_move_branches: never`. Prompted by
+  a dispatched role that ran `git reset --hard main` to read a branch's diff,
+  moved the branch off an unpushed commit, and truthfully reported it had
+  made no edits — it never touched a file. Binds every capability tier: the
+  destructive commands need no file-write tool and produce no edit, so
+  gating the rule behind write capability was gating it on the wrong thing.
+- **The `pipeline` route's bare `pipeline` keyword is narrowed to compounds**
+  (`ci pipeline`, `build pipeline`, `delivery pipeline`, `deployment
+  pipeline`, `release pipeline`). It previously matched *any* pipeline —
+  data, ETL, or RAG. **Consumer impact:** this is the one change here that
+  can *remove* an agent from an existing task's plan. A task whose text says
+  only "pipeline", with no CI-shaped file in scope, no longer selects
+  `cicd-engineer`; say "ci pipeline" or change a pipeline file.
+- **Agent-generated documentation follows an explicit concision policy**, so
+  role output stays proportionate to what the task actually changed.
+
+### Fixed
+
+- **A task changing a GitHub Actions workflow selected no primary agent at
+  all.** The `pipeline` route carried only GitLab paths, so
+  `.github/workflows/**` matched nothing build-shaped while the identical
+  task on `.gitlab-ci.yml` staffed correctly. Both forges now staff
+  identically for the same task, pinned by a test. `cicd-engineer` and
+  `pipeline-security-reviewer` no longer hardcode GitLab either — both must
+  establish which forge applies and review against that forge's own
+  controls, with an explicit warning not to carry a control's name across:
+  job permission scoping, environment approval, and workload identity
+  federation differ materially. Neither role's authority widened.
+- **Python work matched no route.** The `backend` route now carries a
+  `python` keyword — deliberately not a `**/*.py` path glob, unlike its
+  `**/*.go` counterpart, because that cross-matched this repository's own
+  orchestration source and added a spurious second primary.
+- **Documentation no longer points at repositories that were archived by the
+  monorepo merge.** Install and regeneration instructions across the bundled
+  suite named `deagy/cadre-lifecycle` and `deagy/agentic-sdlc`; both are
+  archived, and the plugin, kernel, and engine now live in `deagy/cadre`.
+  Also fixes a stale kernel `Repository` field that made the documented
+  `pip show` provenance check fail against the real package.
 
 ## [0.13.1](https://github.com/deagy/cadre/releases/tag/plugin-v0.13.1) - 2026-08-08
 

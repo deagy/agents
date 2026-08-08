@@ -23,6 +23,10 @@ check and reporting "nothing to do". See
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-08-08
+
+Shipped to users as plugin [v0.14.0](https://github.com/deagy/cadre/releases/tag/plugin-v0.14.0) — the packaged plugin is how register-side changes reach an installed runner.
+
 ### Added
 
 - **Three new roles, taking the catalog from 71 to 74.** Each fills a gap an existing role explicitly disclaimed, rather than widening one:
