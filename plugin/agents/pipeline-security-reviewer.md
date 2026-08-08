@@ -166,11 +166,16 @@ cicd:
     install on a mismatch rather than falling back. The plugin release is a
     tag plus release notes with no attached archive, since a marketplace
     installs from the repository tree rather than a downloaded artifact.
-    Still open, and a known regression from the archived deagy/cadre-plugin's
-    release process: no SBOM and no SLSA build provenance attestation on
-    either, so there is nothing to `gh attestation verify` yet. The pip/pipx
-    wheel is deliberately not published anywhere, so it has no promotion path
-    to verify.
+    The kernel release also carries an SPDX SBOM of its dependency tree and a
+    SLSA build-provenance attestation over the wheel, sdist, and SBOM, minted
+    from the workflow's OIDC identity via GitHub's hosted Sigstore -- this is
+    the keyless cosign posture above, with no signing key to manage. Verify
+    with `gh attestation verify <file> --repo deagy/cadre`. Still open: the
+    plugin distribution publishes no archive to attest, since a marketplace
+    installs from the repository tree rather than a downloaded artifact, so
+    it has provenance only through its git tag. The pip/pipx wheel is
+    deliberately not published anywhere, so it has no promotion path to
+    verify.
 
 observability:
   platform: prometheus + grafana + loki + tempo, opentelemetry for instrumentation

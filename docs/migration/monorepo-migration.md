@@ -123,11 +123,15 @@ not a convenience.
 
 - `install.ps1` is **untested** — no PowerShell was available. Treat the
   first real Windows run as the test.
-- The LangGraph engine has no release path; `release.yml` covers the plugin
-  and the kernel only.
-- No SBOM and no SLSA provenance attestation on either release, so there is
-  nothing to `gh attestation verify` yet. A known regression from the
-  archived `deagy/cadre-plugin`'s release process.
+- The LangGraph engine is checkout-only by construction: `runtime.py` reads
+  the kernel's contracts at a repo-relative path, so an installed copy would
+  import and then fail at graph-build time. `release.yml` covers the plugin
+  and the kernel only, which is correct — but `engine/pyproject.toml` carries
+  a version that implies a release line it does not have.
+- The plugin distribution has no SBOM or provenance attestation. It
+  publishes no archive to attest — a marketplace installs from the repository
+  tree — so deciding what to sign is an open question, not just unfinished
+  work. The kernel release carries both.
 - `required_approving_review_count` is `0`, so this repository's own central
   invariant — no one approves their own work — is not enforced for its
   releases.
