@@ -5,6 +5,16 @@ repository:
   read_assigned_repositories: allowed
   edit_assigned_scope: allowed
   create_local_branch_or_worktree: allowed
+  # Any git operation that discards uncommitted work or moves a branch off
+  # commits it already had -- `reset --hard`, `checkout`/`switch` away from
+  # dirty state, `stash`, `clean -f`, `branch -f`/`-D`, `rebase`, `push
+  # --force`. These destroy work the caller may not have pushed, and they
+  # are never a side effect a dispatched agent should produce on its own.
+  # Applies to every role including read-only reviewers: not editing files
+  # is not the same as not mutating the repository. See
+  # workspace-isolation.md's "Never mutate a working tree you did not
+  # create".
+  discard_uncommitted_work_or_move_branches: never
   commit: on_request
   push: on_request
   create_gitlab_merge_request: on_request

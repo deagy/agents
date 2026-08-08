@@ -296,6 +296,14 @@ SHARED_POLICIES = [
     "roster/shared/knowledge-use-policy.md",
     "roster/shared/agent-autonomy.yaml",
     "roster/shared/documentation-style.md",
+    # Every role, not just write-capable ones: its "Never mutate a working
+    # tree you did not create" section binds read-only reviewers too. It was
+    # previously tier-scoped to write-capable roles, which meant the roles
+    # most likely to reach for `git reset --hard`/`stash` to inspect a diff
+    # -- read-only reviewers -- were the only ones never shown the rule. The
+    # file opens with an applicability header telling each tier which of its
+    # sections apply.
+    "roster/shared/workspace-isolation.md",
 ]
 ASK_HUMAN_RULE = (
     "You are a dispatched subagent: you cannot ask the human directly. If you "
@@ -391,17 +399,25 @@ ALLOWED_REASONING_EFFORTS = set(_RUNNER_CAPABILITIES["allowed_reasoning_efforts"
 # that can make a repository edit. Derived from the manifest rather than
 # hardcoded tier names, so a future tier is picked up automatically (idea:
 # "write-capable Cadre roles work in a git worktree by default").
+#
+# No longer consulted here now that TIER_SCOPED_POLICIES is empty, but kept
+# as the single derivation of "which tiers can write": workspace-isolation.md
+# names it explicitly when scoping which of its sections apply to whom, and
+# `roster/orchestration/test/test_repository_health.py` reads it.
 WRITE_CAPABLE_TIERS = frozenset(
     name for name, profile in CAPABILITY_PROFILES.items() if profile["sandbox_mode"] != "read-only"
 )
-# Shared-policy files that are only embedded into write-capable roles' wrapper
+# Shared-policy files embedded only into some capability tiers' wrapper
 # instructions, keyed by the same repository-relative path convention as
-# SHARED_POLICIES. A read-only role can still read the file directly (or via
-# `cadre resolve-shared`), so it must open with its own applicability header
-# rather than relying on this tier gate for enforcement.
-TIER_SCOPED_POLICIES: dict[str, frozenset[str]] = {
-    "roster/shared/workspace-isolation.md": WRITE_CAPABLE_TIERS,
-}
+# SHARED_POLICIES. A read-only role can still read any such file directly
+# (or via `cadre resolve-shared`), so a file here must open with its own
+# applicability header rather than relying on this tier gate for enforcement.
+#
+# Currently empty: workspace-isolation.md was the only entry and moved to
+# SHARED_POLICIES once part of it came to bind every tier. The mechanism is
+# kept because the tier-gating question recurs, and an empty dict is a
+# clearer answer than a deleted concept.
+TIER_SCOPED_POLICIES: dict[str, frozenset[str]] = {}
 
 GENERATED_MARKER = "<!-- GENERATED FILE: edit the canonical source and regenerate; do not edit this copy. -->"
 GENERATED_TOP_LEVEL = {
