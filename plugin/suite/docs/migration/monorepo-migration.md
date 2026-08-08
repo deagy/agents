@@ -121,6 +121,84 @@ and reports; it never installs. A plugin fetching and executing code from the
 network before the human has asked for anything is a supply-chain objection,
 not a convenience.
 
+## Releasing, and what a release now carries
+
+Three version lines, deliberately independent — `provider.json`'s
+`kernel_compatibility` window is only meaningful if the kernel can move
+separately from the role catalog:
+
+| Component | Version source | Tag |
+| --- | --- | --- |
+| Plugin distribution | `plugin/**/plugin.json` (8 manifests) | `plugin-v*` |
+| Lifecycle kernel | `kernel/agentic_sdlc/__init__.py` | `kernel-v*` |
+| LangGraph engine | `engine/pyproject.toml` | not released (see Still open) |
+
+`release.yml` did not work at all after the merge — it watched pre-merge
+paths and called scripts at their old locations, so the repository could not
+cut a release. Fixing that surfaced the tag-namespace collision recorded
+above.
+
+| Release | Carries |
+| --- | --- |
+| `kernel-v*` | wheel, sdist, `SHA256SUMS`, SPDX SBOM, SLSA provenance |
+| `plugin-v*` | SPDX SBOM of the Cline npm trees, SLSA provenance over it |
+
+`bootstrap_sdlc.py` installs the kernel from the published wheel and
+verifies its checksum before installing, falling back to a git ref only when
+a release has no assets. A checksum *mismatch* aborts rather than falling
+back — "this route is unavailable" and "what was served is not what was
+published" are different failures.
+
+### An SBOM has to describe the resolved tree
+
+The first kernel SBOM listed **2 packages**. Scanning a source tree reads
+`pyproject.toml`, so it found the one declared dependency and stopped. A
+real install pulls **19**. The SBOM is now taken from an environment where
+the wheel is actually installed — create a venv, install, scan
+site-packages — which is what `bootstrap_sdlc.py` does on a user's machine,
+so it describes the environment a consumer really gets.
+
+The plugin's own content is Markdown and stdlib Python with no install step;
+its entire third-party surface is the three Cline workspaces' npm trees, 287
+packages. That SBOM is generated from the committed `package-lock.json`,
+which is already the resolved tree — so it needs no `npm ci` and a release
+cannot fail on a registry outage. Scanning `node_modules` directly returns
+4 packages; the javascript cataloger wants the lockfile.
+
+Both are guarded: the steps assert a minimum package count and the presence
+of known transitives, so a silent revert to declaration-scanning fails the
+release instead of publishing a misleading inventory.
+
+### Tag signing took three attempts, and the failures are the useful part
+
+**Keyless (gitsign) does not work here.** It produced a valid-looking
+signature on the tag object but created no Rekor entry, and a keyless
+certificate is ephemeral — with nothing in the transparency log there is
+nothing to verify against. It failed at signing time and still failed hours
+later with the same gitsign version. In the same workflow run the artifact
+attestation logged its Rekor upload normally; the tag signing logged none.
+`plugin-v0.12.2` still carries that unverifiable signature.
+
+That shipped because the in-workflow verification was non-fatal and its
+output went unread. A signature nobody can verify is worse than none — it
+asserts an assurance that does not exist. The check is now fatal.
+
+**GitHub matches a signing key to the signer's account by email.**
+`plugin-v0.12.4` was signed with a correctly registered SSH key and verified
+locally with "Good git signature", yet GitHub reported `unknown_key`,
+because the tagger was `github-actions[bot]@users.noreply.github.com` — not
+an address on the account holding the key. Tags are now made as
+`deagy <48447733+deagy@users.noreply.github.com>`.
+
+Note the in-workflow check *could not* have caught that second one: it
+verifies the signature cryptographically, which passed. Account association
+is a separate, server-side check that only exists after the push. Verifying
+through the API afterwards is what found it.
+
+So artifacts are signed keylessly and tags with a stored key. That
+inconsistency is deliberate, and `SECURITY.md` explains it rather than
+hiding it. Setup for the key is in `.github/TAG-SIGNING-SETUP.md`.
+
 ## Still open
 
 - `install.ps1` is **untested** — no PowerShell was available. Treat the
@@ -130,10 +208,12 @@ not a convenience.
   import and then fail at graph-build time. `release.yml` covers the plugin
   and the kernel only, which is correct — but `engine/pyproject.toml` carries
   a version that implies a release line it does not have.
-- The plugin distribution has no SBOM or provenance attestation. It
-  publishes no archive to attest — a marketplace installs from the repository
-  tree — so deciding what to sign is an open question, not just unfinished
-  work. The kernel release carries both.
+- The plugin *distribution itself* still carries no provenance
+  attestation, deliberately. A marketplace installs it by cloning a git
+  commit, so there is no downloaded file to verify and integrity comes from
+  git's content addressing; signing a tarball nobody installs from would
+  prove something about a file no user touches. Its SBOM is attested,
+  because that one is genuinely downloadable.
 Deliberately not closed:
 
 - **`required_approving_review_count` stays `0`.** This repository's roles
