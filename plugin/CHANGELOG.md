@@ -15,6 +15,35 @@ release convention (see `README.md`'s "Releasing" section) ties git tags
 `python3 tools/plugin_version.py --check`/`--set`. Each version heading
 below links to its [GitHub Release](https://github.com/deagy/cadre-lifecycle/releases).
 
+## [0.11.1](https://github.com/deagy/cadre/releases/tag/plugin-v0.11.1) - 2026-08-07
+
+### Fixed
+
+- **`suite/README.md` told you to install from an archived marketplace.**
+  It shipped in 0.11.0 still describing "one of three" repositories and
+  instructing `/plugin marketplace add deagy/cadre-lifecycle` +
+  `/plugin install cadre@cadre-lifecycle-team` — a marketplace archived
+  before that release was cut. Rewritten around what the packaged suite
+  actually is, with install steps pointing at the canonical guide rather
+  than being repeated a third time.
+
+  The file is generated from `packaging/plugin-README.md`. The generator
+  skips the package-root copy for an already-initialized package, which is
+  why the hand-authored `plugin/README.md` was correct while this one was
+  not — it is always written.
+
+- **The role wrappers understated what releases now carry.** Shared policy
+  embedded into all 71 wrappers claimed the release workflow "does not
+  currently attach a release tarball, SBOM, or attestation". Kernel releases
+  have attached a wheel, an sdist, and `SHA256SUMS` since 0.11.0, and the
+  bootstrap verifies the checksum before installing. Corrected, and it still
+  records what is genuinely missing (no SBOM, no SLSA provenance).
+
+- Assorted documentation that described the archived `deagy/cadre-lifecycle`
+  as the live home of this plugin.
+
+No behaviour change. If 0.11.0 works for you, this is prose only.
+
 ## [0.11.0](https://github.com/deagy/cadre/releases/tag/plugin-v0.11.0) - 2026-08-07
 
 First release from the `deagy/cadre` monorepo. Everything below has been on
