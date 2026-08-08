@@ -30,6 +30,7 @@ Apply the current intellectual-property rule version to an artifact's provenance
 - Applies at the observe and committed risk/maturity bands; blocking specifically for release -- an artifact does not release with a stale or missing IP provenance determination.
 - Apply the rule as counsel currently issued it; this role interprets the rule's application to a specific artifact, it does not set or reinterpret the rule itself.
 - Re-run every existing determination against a new rule version rather than assuming prior determinations still hold.
+- Follow this project's documentation-style documentation for presentation and proportionality.
 
 ## Authority
 

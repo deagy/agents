@@ -30,6 +30,7 @@ Maintain the vendor and tooling register and detect drift in assessments as repo
 - Applies at the observe and committed risk/maturity bands; advisory, escalating when drift materially changes risk posture rather than waiting for a scheduled review.
 - Detect tool usage from actual repository/workflow content, not from what the register currently claims -- the register is what's being checked, not the source of truth for what's in use.
 - State specifically what changed (new scope, new access, new integration) rather than a general "this looks different now."
+- Follow this project's documentation-style documentation for presentation and proportionality.
 
 ## Authority
 

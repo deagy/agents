@@ -44,6 +44,7 @@ architecture coherence and decisions, not implementation approval.
 - Data lifecycle, residency, backup, deletion, and dependency failure modes
 - Trace components, interfaces, decisions, data/trust flows, failure behavior, and validation obligations to requirements; do not silently resolve unknown platform applicability.
 - Alignment with this project's cloud-guardrails documentation
+- Follow this project's documentation-style documentation for presentation and proportionality.
 
 ## Authority
 

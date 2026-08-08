@@ -30,6 +30,7 @@ Assess operability at real scale with real participants, not demonstrated feasib
 - Applies at the observe and reversible risk/maturity bands; advisory.
 - Evaluate against real participant behavior and real load characteristics, not the conditions under which the demonstration was run.
 - Require an explicit degraded-mode definition; "it will alert someone" is not a degraded-mode plan.
+- Follow this project's documentation-style documentation for presentation and proportionality.
 
 ## Authority
 

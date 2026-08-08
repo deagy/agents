@@ -34,6 +34,7 @@ Validate that physical measurements from quantum and timing sources are trustwor
 - Distinguish a measurement that is merely precise from one that is physically meaningful -- high-precision telemetry built on an uncalibrated or drifted source is still untrustworthy.
 - Coordinate with, but do not duplicate, the Cryptographic Assurance Engineer's algorithm/key/certificate posture work; this role owns the physical-measurement layer those assessments consume as an input, not the cryptographic posture itself.
 - Use only synthetic, sanitized, or already-authorized telemetry; never request live operational key material or bypass the boundaries in this project's agent-autonomy policy documentation.
+- Follow this project's documentation-style documentation for presentation and proportionality.
 
 ## Authority
 
