@@ -578,15 +578,11 @@ repository:
   read_assigned_repositories: allowed
   edit_assigned_scope: allowed
   create_local_branch_or_worktree: allowed
-  # Any git operation that discards uncommitted work or moves a branch off
-  # commits it already had -- `reset --hard`, `checkout`/`switch` away from
-  # dirty state, `stash`, `clean -f`, `branch -f`/`-D`, `rebase`, `push
-  # --force`. These destroy work the caller may not have pushed, and they
-  # are never a side effect a dispatched agent should produce on its own.
-  # Applies to every role including read-only reviewers: not editing files
-  # is not the same as not mutating the repository. See
-  # workspace-isolation.md's "Never mutate a working tree you did not
-  # create".
+  # In a working tree the agent did not create: any git operation that
+  # discards uncommitted work or moves a branch off commits it already had.
+  # Applies at every capability tier; a read-only *task* is not an
+  # exemption. See workspace-isolation.md's "Never mutate a working tree you
+  # did not create" for the command list and read-only alternatives.
   discard_uncommitted_work_or_move_branches: never
   commit: on_request
   push: on_request
@@ -696,14 +692,10 @@ this project's runner-capability manifest is not `read-only` -- currently
 see `generate_global_plugin.py`'s `WRITE_CAPABLE_TIERS`). A read-only role
 has no edits to isolate, so those steps do not apply to it.
 
-**"Never mutate a working tree you did not create" (below) applies to every
-role, read-only tiers included.** A read-only role is read-only with respect
-to *files*; that is not the same as being harmless to the *repository*. A
-reviewer that runs `git reset --hard`, `git checkout`, or `git stash` to
-inspect a diff can destroy uncommitted work in the caller's tree without
-ever editing a file -- and will report, accurately by its own reckoning,
-that it made no edits. Read that section before running any `git` command
-that is not purely a query.
+**"Never mutate a working tree you did not create" (immediately below)
+applies to every role, every tier, no exceptions.** Read it before running
+any `git` command that is not purely a query -- including when the rest of
+this file does not apply to you.
 
 `cadre resolve-shared workspace-isolation.md` returns this file verbatim on
 request regardless of the caller's tier -- shared policy resolution is
@@ -725,6 +717,85 @@ the worktree and branch described below; `commit: on_request`,
 `push: on_request`, and `merge: never` are untouched -- this file does not
 grant, imply, or expand any permission. Isolating your edits into a worktree
 is a location decision, not a commit/push/merge decision.
+
+## Never mutate a working tree you did not create
+
+**Applies to every role and every capability tier, whether or not the rest
+of this file does.** Being dispatched for a read-only task does not exempt
+you: "I am only reviewing" describes your *intent*, not the effect of the
+command you are about to run.
+
+You may run any `git` command that only *reads* state: `status`, `log`,
+`show`, `diff`, `rev-parse`, `branch --list`, `worktree list`, `cat-file`.
+
+Never run a `git` command that discards uncommitted work or moves a branch
+off commits it already had, in a working tree you did not create yourself.
+The governing rule is that sentence, not the list below;
+`agent-autonomy.yaml`'s `repository.discard_uncommitted_work_or_move_branches:
+never` states it normatively. The list is illustrative and not exhaustive --
+a command's absence from it is never permission:
+
+- `git reset --hard` (and `--merge`/`--keep`)
+- `git checkout <ref>` / `git switch <ref>` that would leave dirty state behind
+- `git checkout -B` / `git switch -C` (force-create, resetting an existing branch)
+- `git checkout -- <path>` / `git restore <path>` (discards that file's changes)
+- `git stash` in any form -- "I'll stash and pop it back" is still a mutation,
+  and a failed pop loses the work
+- `git clean -f` / `-fd`
+- `git branch -f`, `git branch -D`, `git branch -m`
+- `git update-ref`, `git tag -f` (direct ref manipulation)
+- `git rebase`, `git cherry-pick`, `git revert`, `git merge`
+- `git push --force` / `--force-with-lease`
+
+This is the rule an agent is most likely to talk itself past, because the
+reasoning feels safe and sounds responsible: *I just need to see this branch's
+diff; I will reset to `main` and put it back afterwards.* Two things make that
+wrong. The tree may hold uncommitted work the caller has not pushed, which a
+hard reset destroys with no undo. And the branch pointer you move may be the
+only local reference to a commit -- recoverable from `git reflog` only if
+someone notices in time to look.
+
+Note what this rule is *not* protected by: a role with file-write tools has
+no extra license here, and a role without them has no automatic immunity.
+The real incident behind this section was a write-capable documentation role
+that ran `git reset --hard main` to read a branch's diff, restored nothing,
+and truthfully reported that it had made no edits -- it never touched a file.
+It had already been given this file's worktree-isolation steps and followed
+them; what was missing was this rule.
+
+**To inspect a revision that is not checked out, read it without changing
+anything:**
+
+```sh
+git diff main...HEAD              # the branch's own changes
+git show <ref>:<path>             # one file at a revision
+git log --oneline <base>..<head>  # what a branch adds
+gh pr diff <number>               # a PR's diff, no checkout at all
+```
+
+If you genuinely cannot review without a different revision checked out, do
+**not** mutate the caller's tree to get one. Create your own worktree
+(`create_local_branch_or_worktree: allowed` covers doing this purely for
+inspection, at any tier), which leaves the caller's tree untouched:
+
+```sh
+git -C <repository_root> worktree add --detach \
+  ".worktrees/<task-id>/<role-id>-review" <ref>
+```
+
+This is the one place `--detach` is correct: an inspection worktree needs no
+branch, and creating one risks colliding with a real branch name.
+
+If even that is not possible, stop and return a labeled blocking question
+saying what you needed checked out and why -- do not proceed by mutating
+someone else's tree.
+
+If you mutate a tree anyway -- deliberately, or by discovering after the fact
+that a command you ran was destructive -- **say so explicitly and
+prominently in your result**, including the exact command and what state
+preceded it. A destructive action reported immediately is recoverable
+(`git reflog` still holds the old tip); the same action discovered three
+steps later, by someone wondering where their work went, may not be.
 
 ## Step 0 -- Already isolated?
 
@@ -879,70 +950,6 @@ teammate:
   touching the same file inside one shared tree, visible in `git status`
   and in review) for silent divergence across N unmerged branches that no
   one is positioned to reconcile.
-
-## Never mutate a working tree you did not create
-
-**Applies to every role, including read-only reviewers.**
-
-You may run any `git` command that only *reads* state: `status`, `log`,
-`show`, `diff`, `rev-parse`, `branch --list`, `worktree list`, `cat-file`.
-
-Never run a `git` command that discards uncommitted work or moves a branch
-off commits it already had, in a working tree you did not create yourself.
-`agent-autonomy.yaml`'s `repository.discard_uncommitted_work_or_move_branches:
-never` covers this; concretely it includes at least:
-
-- `git reset --hard` (and `--merge`/`--keep`)
-- `git checkout <ref>` / `git switch <ref>` that would leave dirty state behind
-- `git checkout -- <path>` / `git restore <path>` (discards that file's changes)
-- `git stash` in any form -- "I'll stash and pop it back" is still a mutation,
-  and a failed pop loses the work
-- `git clean -f` / `-fd`
-- `git branch -f`, `git branch -D`
-- `git rebase`, `git cherry-pick`, `git revert`, `git merge`
-- `git push --force` / `--force-with-lease`
-
-This is the rule a review agent is most likely to talk itself past, because
-the reasoning feels safe: *I am read-only, I need to see the PR's diff, I
-will reset to `main` and put it back afterwards.* Two things make that wrong.
-The tree may hold uncommitted work the caller has not pushed, which a hard
-reset destroys with no undo. And the branch pointer you move may be the only
-local reference to a commit -- recoverable from `git reflog` only if someone
-notices in time to look.
-
-**To inspect a revision that is not checked out, read it without changing
-anything:**
-
-```sh
-git diff main...HEAD              # the branch's own changes
-git show <ref>:<path>             # one file at a revision
-git log --oneline <base>..<head>  # what a branch adds
-gh pr diff <number>               # a PR's diff, no checkout at all
-```
-
-If you genuinely cannot review without a different revision checked out, do
-**not** mutate the caller's tree to get one. Create your own worktree (Step 1
-above -- `create_local_branch_or_worktree: allowed` covers a read-only role
-doing this for inspection), which leaves the caller's tree untouched:
-
-```sh
-git -C <repository_root> worktree add --detach \
-  ".worktrees/<task-id>/<role-id>-review" <ref>
-```
-
-This is the one place `--detach` is correct: an inspection worktree needs no
-branch, and creating one risks colliding with a real branch name.
-
-If even that is not possible, stop and return a labeled blocking question
-saying what you needed checked out and why -- do not proceed by mutating
-someone else's tree.
-
-If you mutate a tree anyway -- deliberately, or by discovering after the fact
-that a command you ran was destructive -- **say so explicitly and
-prominently in your result**, including the exact command and what state
-preceded it. A destructive action reported immediately is recoverable
-(`git reflog` still holds the old tip); the same action discovered three
-steps later, by someone wondering where their work went, may not be.
 
 ## Never remove or prune a worktree yourself
 

@@ -297,12 +297,11 @@ SHARED_POLICIES = [
     "roster/shared/agent-autonomy.yaml",
     "roster/shared/documentation-style.md",
     # Every role, not just write-capable ones: its "Never mutate a working
-    # tree you did not create" section binds read-only reviewers too. It was
-    # previously tier-scoped to write-capable roles, which meant the roles
-    # most likely to reach for `git reset --hard`/`stash` to inspect a diff
-    # -- read-only reviewers -- were the only ones never shown the rule. The
-    # file opens with an applicability header telling each tier which of its
-    # sections apply.
+    # tree you did not create" section binds every tier. Destroying
+    # uncommitted work with `git reset --hard`/`stash` needs no file-write
+    # tool and produces no edit, so gating that rule behind a *write*-capable
+    # tier coupled it to the wrong thing. The file opens with an
+    # applicability header telling each tier which of its sections apply.
     "roster/shared/workspace-isolation.md",
 ]
 ASK_HUMAN_RULE = (

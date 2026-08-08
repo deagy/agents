@@ -130,7 +130,6 @@ packages = ["cadre_cli"]
 "roster/shared/secure-development-policy.md" = "cadre_cli/_vendor/roster/shared/secure-development-policy.md"
 "roster/shared/team-profile.yaml" = "cadre_cli/_vendor/roster/shared/team-profile.yaml"
 "roster/shared/technology-standards.md" = "cadre_cli/_vendor/roster/shared/technology-standards.md"
-# Tier-scoped shared policy (generate_global_plugin.py's TIER_SCOPED_POLICIES).
 # Like the SHARED_POLICIES entries above it, role_wrapper_inputs() embeds this
 # into generated wrapper instructions -- and because a missing shared file is
 # deliberately *skipped* rather than an error, omitting it here would not

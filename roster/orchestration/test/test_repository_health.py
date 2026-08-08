@@ -453,15 +453,14 @@ class RepositoryHealthTests(unittest.TestCase):
                 self.assertIn("tools: Read, Grep, Glob, Bash, Edit, Write", author)
                 self.assertIn('sandbox_mode = "workspace-write"', (plugin_root / "codex-agents" / f"agents-{agent_id}.toml").read_text(encoding="utf-8"))
 
-            # roster/shared/workspace-isolation.md must reach EVERY role,
-            # read-only reviewers included. Its "Never mutate a working tree
-            # you did not create" section binds them: a read-only role cannot
-            # edit files but can still destroy uncommitted work with `git
-            # reset --hard`/`checkout`/`stash` while inspecting a diff. It was
-            # previously tier-scoped to write-capable roles, so the roles most
-            # likely to reach for those commands were the only ones never
-            # shown the rule -- which is exactly how a review agent wiped a
-            # branch pointer in the caller's tree and reported "no edits made."
+            # roster/shared/workspace-isolation.md must reach EVERY role, at
+            # every capability tier. Its "Never mutate a working tree you did
+            # not create" section binds all of them: destroying uncommitted
+            # work with `git reset --hard`/`checkout`/`stash` while inspecting
+            # a diff requires no file-write tool and produces no edit, so
+            # neither a role's tier nor its tool allowlist is what governs.
+            # The file was previously tier-scoped to write-capable roles,
+            # which coupled a rule about *reading* to a tier about *writing*.
             marker = "Shared policy: roster/shared/workspace-isolation.md"
             for agent_id in (
                 "code-reviewer",  # read-only
