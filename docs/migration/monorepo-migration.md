@@ -132,9 +132,15 @@ not a convenience.
   publishes no archive to attest — a marketplace installs from the repository
   tree — so deciding what to sign is an open question, not just unfinished
   work. The kernel release carries both.
-- `required_approving_review_count` is `0`, so this repository's own central
-  invariant — no one approves their own work — is not enforced for its
-  releases.
+Deliberately not closed:
+
+- **`required_approving_review_count` stays `0`.** This repository's roles
+  enforce that no agent approves its own work, and that stands. But the rule
+  exists to keep a second *person* in the loop, and there is only one
+  maintainer here — a required-review setting with nobody to satisfy it
+  blocks releases without adding a reviewer. Revisit if a second maintainer
+  joins. The branch ruleset still requires a pull request, so changes remain
+  reviewable after the fact rather than pushed straight to `main`.
 
 ## Related
 
