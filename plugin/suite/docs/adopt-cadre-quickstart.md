@@ -8,53 +8,33 @@ For background and full detail, see [Getting started](getting-started.md),
 [roster/RUNBOOK.md](../roster/RUNBOOK.md). See [CHANGELOG.md](https://github.com/deagy/cadre/blob/main/CHANGELOG.md)
 for what's changed in the suite recently.
 
-## 1. Get `cadre` on `PATH`
+## 1. Install `cadre`
 
-Either clone this repository and symlink the launcher:
+See **[Installing Cadre](INSTALL.md)** — one command for whichever runner you
+use. This guide does not repeat the steps; a second install path is one
+nobody remembers to update.
 
-```sh
-git clone https://github.com/deagy/cadre.git
-mkdir -p ~/.local/bin
-ln -s "$(pwd)/cadre/bin/cadre" ~/.local/bin/cadre   # ensure ~/.local/bin is on PATH
-```
-
-or, without keeping a checkout around, build and install the pip/pipx
-distribution from a local build (not published to PyPI):
-
-```sh
-git clone https://github.com/deagy/cadre.git && cd cadre
-python3 -m pip install --upgrade build
-python3 -m build
-pipx install dist/cadre-*.whl
-```
-
-Either way, `cadre` requires Python 3.10+. `cadre generate-plugin` and
-`cadre generate-authority-aides` are maintainer-only — they need a full git
-checkout of this repository and are not available from the pip/pipx install.
-`cadre generate-role-metadata --check` works from either path, but its write
-mode is checkout-only for the same reason. Every other subcommand works from
-either install path.
-
-Confirm it resolves (works from either install path):
+Confirm it resolves:
 
 ```sh
 cadre select --help
 ```
 
+Two subcommands are maintainer-only and need a full checkout of this
+repository: `cadre generate-plugin` and `cadre generate-authority-aides`.
+`cadre generate-role-metadata --check` works from any install; its write mode
+is checkout-only for the same reason. Everything else works everywhere.
+
 ## 2. Initialize lifecycle tracking for your project
 
-This suite's lifecycle gates (G1-G10) are owned by the separate, portable
-[`deagy/agentic-sdlc`](https://github.com/deagy/agentic-sdlc) kernel. Install
-it (see that repository's README for the current `pipx install` command and
-release tag) and put its executable on `PATH`, or point `AGENTIC_SDLC_BIN` at
-it:
+Lifecycle gates (G1–G10) are driven by the Agentic SDLC kernel. It ships in
+this repository, so a checkout needs no separate install and no
+`AGENTIC_SDLC_BIN` — `cadre sdlc` finds it. If you installed Cadre as a
+plugin instead, install the kernel once with the `/cadre-install-kernel`
+skill; see [Adding lifecycle
+governance](INSTALL.md#adding-lifecycle-governance).
 
-```sh
-git clone https://github.com/deagy/agentic-sdlc.git
-git -C agentic-sdlc checkout <reviewed-tag>
-export AGENTIC_SDLC_BIN=/path/to/agentic-sdlc/bin/agentic-sdlc
-```
-
+Then initialize your project through this suite's compatibility launcher,
 Then initialize your project through this suite's compatibility launcher,
 using `--profile secure-cloud` if your project actually runs on this suite's
 own target stack (Proxmox, Talos, Kubernetes, Helm, OpenTofu, GitLab CI,
